@@ -4,6 +4,7 @@ export default function Home() {
   return (
     <div className="flex h-screen flex-col items-center justify-center">
       <Button>Click me</Button>
+      <h1>Hello world</h1>
     </div>
   );
 }
