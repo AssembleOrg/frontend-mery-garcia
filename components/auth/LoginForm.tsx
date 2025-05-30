@@ -254,7 +254,7 @@ export default function LoginForm() {
                 transition: 'all 0.1s ease',
               }}
             >
-              ¿Olvidaste tu contraseña?
+              ¿Olvidaste tu contraseña? (seguramente sea *contact a july)
             </button>
           </motion.div>
         </form>
