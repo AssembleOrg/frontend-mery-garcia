@@ -86,3 +86,16 @@
   --input-rgb: 60 40 47; /* #3c282f - Oscuro rosado */
   --ring-rgb: 249 187 196; /* #f9bbc4 - Rosa principal */
 }
+
+/* Estilos simples y legibles para el sistema */
+.shadow-3xl {
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+}
+
+.button-glow {
+  transition: all 0.2s ease;
+}
+
+.button-glow:hover {
+  box-shadow: 0 8px 25px rgba(249, 187, 196, 0.4);
+}
