@@ -293,8 +293,14 @@ export const useComandaStore = create<ComandaState>()(
 
         // === SISTEMA ===
         inicializar: () => {
-          // Cargar datos iniciales si es necesario
-          set(estadoInicial);
+          // Solo agregar comandas de prueba si no hay datos existentes
+          const { comandas } = get();
+          if (comandas.length === 0) {
+            console.log('Agregando comandas de prueba con fechas para filtros');
+            // Se pueden agregar comandas manualmente desde la UI
+          } else {
+            console.log('Store de comandas ya tiene datos');
+          }
         },
 
         reiniciar: () => {

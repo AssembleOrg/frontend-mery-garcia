@@ -25,7 +25,6 @@ import {
   FileText,
   Printer,
   Columns,
-  Calendar,
 } from 'lucide-react';
 import { FiltrosEncomienda, ColumnaCaja } from '@/types/caja';
 
@@ -60,6 +59,114 @@ export default function FiltrosCaja({
     // Aquí iría la lógica de exportación
   };
 
+  // Si showDateFilters es false, solo mostrar herramientas esenciales
+  if (!showDateFilters) {
+    return (
+      <div className="flex items-center gap-2">
+        {/* Selector de columnas */}
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button
+              variant="outline"
+              size="sm"
+              className="border-2 bg-white/80 font-medium shadow-sm transition-all hover:bg-white hover:shadow-md"
+              style={{
+                borderColor: accentColor,
+                color: '#4a3540',
+              }}
+            >
+              <Columns className="mr-2 h-4 w-4" />
+              📋 Columnas
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent
+            align="end"
+            className="w-56 border border-gray-200 bg-white shadow-xl"
+          >
+            <div className="mb-1 border-b border-gray-100 px-2 py-1 text-xs text-gray-500">
+              Selecciona las columnas a mostrar
+            </div>
+            {columnas
+              .filter((col) => col.key !== 'acciones')
+              .map((col) => (
+                <DropdownMenuItem
+                  key={col.key}
+                  className="flex cursor-pointer items-center space-x-2"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    toggleColumna(col.key);
+                  }}
+                  onSelect={(e) => {
+                    e.preventDefault();
+                  }}
+                >
+                  <Checkbox
+                    checked={col.visible}
+                    onCheckedChange={() => {
+                      toggleColumna(col.key);
+                    }}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                    }}
+                  />
+                  <span
+                    className="flex-1"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      toggleColumna(col.key);
+                    }}
+                  >
+                    {col.label}
+                  </span>
+                </DropdownMenuItem>
+              ))}
+          </DropdownMenuContent>
+        </DropdownMenu>
+
+        {/* Exportar */}
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button
+              variant="outline"
+              size="sm"
+              className="border-2 bg-white/80 font-medium shadow-sm transition-all hover:bg-white hover:shadow-md"
+              style={{
+                borderColor: accentColor,
+                color: '#4a3540',
+              }}
+            >
+              <Download className="mr-2 h-4 w-4" />
+              📤 Exportar
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent
+            align="end"
+            className="border border-gray-200 bg-white shadow-xl"
+          >
+            <DropdownMenuItem onClick={() => exportarDatos('pdf')}>
+              <FileText className="mr-2 h-4 w-4" />
+              Exportar PDF
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => exportarDatos('excel')}>
+              <FileText className="mr-2 h-4 w-4" />
+              Exportar Excel
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => exportarDatos('csv')}>
+              <FileText className="mr-2 h-4 w-4" />
+              Exportar CSV
+            </DropdownMenuItem>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem onClick={() => window.print()}>
+              <Printer className="mr-2 h-4 w-4" />
+              Imprimir
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+      </div>
+    );
+  }
+
+  // Versión completa con todos los filtros
   return (
     <div className="space-y-4">
       {/* Fila superior: Búsqueda y botones de acción */}
@@ -227,7 +334,7 @@ export default function FiltrosCaja({
             </SelectContent>
           </Select>
 
-          {/* Filtro Método Pago */}
+          {/* Filtro Método de Pago */}
           <Select
             value={filtros.metodoPago || 'todos'}
             onValueChange={(value) =>
@@ -245,7 +352,6 @@ export default function FiltrosCaja({
               <SelectItem value="efectivo">Efectivo</SelectItem>
               <SelectItem value="tarjeta">Tarjeta</SelectItem>
               <SelectItem value="transferencia">Transferencia</SelectItem>
-              <SelectItem value="mixto">Mixto</SelectItem>
             </SelectContent>
           </Select>
 
@@ -270,13 +376,14 @@ export default function FiltrosCaja({
             </SelectContent>
           </Select>
 
-          {/* Filtro de fecha (placeholder) */}
-          {showDateFilters && (
-            <Button variant="outline" className="flex items-center gap-2">
-              <Calendar className="h-4 w-4" />
-              Rango de Fechas
-            </Button>
-          )}
+          {/* Filtro por Cliente */}
+          <Input
+            placeholder="Buscar cliente específico..."
+            value={filtros.cliente || ''}
+            onChange={(e) =>
+              onFiltrosChange({ ...filtros, cliente: e.target.value })
+            }
+          />
         </div>
       )}
     </div>

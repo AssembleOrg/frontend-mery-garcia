@@ -2,7 +2,7 @@
 
 import React from 'react';
 import { useComandaForm } from '@/hooks/useComandaForm';
-import { useComandas } from '@/stores/comandaStore';
+import { useComandas } from '@/features/comandas/store/comandaStore';
 import {
   UnidadNegocio,
   Personal,

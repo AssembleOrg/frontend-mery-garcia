@@ -35,7 +35,6 @@ interface TablaEncomiendasProps {
   onVer: (id: string) => void;
   titulo: string;
   accentColor?: string;
-  tipo: 'ingreso' | 'egreso';
 }
 
 export default function TablaEncomiendas({
@@ -46,7 +45,6 @@ export default function TablaEncomiendas({
   onVer,
   titulo,
   accentColor = '#f9bbc4',
-  tipo,
 }: TablaEncomiendasProps) {
   const [filasExpandidas, setFilasExpandidas] = useState<Set<string>>(
     new Set()
@@ -199,6 +197,33 @@ export default function TablaEncomiendas({
         );
       case 'vendedor':
         return encomienda.vendedor;
+      case 'acciones':
+        return (
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" className="h-8 w-8 p-0">
+                <MoreHorizontal className="h-4 w-4" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem onClick={() => onVer(encomienda.id)}>
+                <Eye className="mr-2 h-4 w-4" />
+                Ver Detalles
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => onEditar(encomienda.id)}>
+                <Edit className="mr-2 h-4 w-4" />
+                Editar
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                onClick={() => onEliminar(encomienda.id)}
+                className="text-red-600"
+              >
+                <Trash2 className="mr-2 h-4 w-4" />
+                Eliminar
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        );
       default:
         return String(encomienda[columna.key as keyof Encomienda] || '-');
     }
@@ -235,9 +260,6 @@ export default function TablaEncomiendas({
                     {col.label}
                   </TableHead>
                 ))}
-              <TableHead className="w-20 font-semibold text-[#4a3540]">
-                Acciones
-              </TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -258,34 +280,6 @@ export default function TablaEncomiendas({
                         {renderCellContent(encomienda, col)}
                       </TableCell>
                     ))}
-                  <TableCell>
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" className="h-8 w-8 p-0">
-                          <MoreHorizontal className="h-4 w-4" />
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end">
-                        <DropdownMenuItem onClick={() => onVer(encomienda.id)}>
-                          <Eye className="mr-2 h-4 w-4" />
-                          Ver Detalles
-                        </DropdownMenuItem>
-                        <DropdownMenuItem
-                          onClick={() => onEditar(encomienda.id)}
-                        >
-                          <Edit className="mr-2 h-4 w-4" />
-                          Editar
-                        </DropdownMenuItem>
-                        <DropdownMenuItem
-                          onClick={() => onEliminar(encomienda.id)}
-                          className="text-red-600"
-                        >
-                          <Trash2 className="mr-2 h-4 w-4" />
-                          Eliminar
-                        </DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  </TableCell>
                 </TableRow>
 
                 {/* Fila expandida con servicios */}
@@ -293,9 +287,7 @@ export default function TablaEncomiendas({
                   encomienda.servicios.length > 1 && (
                     <TableRow>
                       <TableCell
-                        colSpan={
-                          columnas.filter((col) => col.visible).length + 1
-                        }
+                        colSpan={columnas.filter((col) => col.visible).length}
                         className="p-0"
                         style={{ backgroundColor: `${accentColor}02` }}
                       >
@@ -309,7 +301,7 @@ export default function TablaEncomiendas({
                           <div className="grid gap-2">
                             {encomienda.servicios.map((servicio, index) => (
                               <div
-                                key={index}
+                                key={`${encomienda.id}-servicio-${index}`}
                                 className="border-opacity-20 flex items-center justify-between rounded-lg border bg-white/50 p-3"
                                 style={{ borderColor: accentColor }}
                               >
@@ -348,34 +340,6 @@ export default function TablaEncomiendas({
             ))}
           </TableBody>
         </Table>
-      </div>
-
-      {/* Paginación placeholder */}
-      <div className="flex items-center justify-between">
-        <p className="text-sm text-[#6b4c57]">
-          Mostrando {data.length} de {data.length}{' '}
-          {tipo === 'ingreso' ? 'ingresos' : 'egresos'}
-        </p>
-        <div className="flex items-center space-x-2">
-          <Button
-            variant="outline"
-            size="sm"
-            disabled
-            className="border-opacity-20"
-            style={{ borderColor: accentColor }}
-          >
-            Anterior
-          </Button>
-          <Button
-            variant="outline"
-            size="sm"
-            disabled
-            className="border-opacity-20"
-            style={{ borderColor: accentColor }}
-          >
-            Siguiente
-          </Button>
-        </div>
       </div>
     </div>
   );

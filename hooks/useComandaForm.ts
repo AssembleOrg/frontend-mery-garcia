@@ -10,7 +10,7 @@ import {
   Comision,
   Comanda,
 } from '@/types/caja';
-import { useDatosReferencia } from '@/stores/comandaStore';
+import { useDatosReferencia } from '@/features/comandas/store/comandaStore';
 
 export function useComandaForm() {
   // Datos del store

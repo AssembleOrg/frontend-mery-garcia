@@ -14,7 +14,7 @@ import {
   Clock,
 } from 'lucide-react';
 import { useInitializeComandaStore } from '@/hooks/useInitializeComandaStore';
-import { useResumenCaja } from '@/stores/comandaStore';
+import { useResumenCaja } from '@/features/comandas/store/comandaStore';
 
 const breadcrumbItems = [
   { label: 'Inicio', href: '/' },

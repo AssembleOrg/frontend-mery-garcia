@@ -182,3 +182,26 @@ export interface Encomienda {
   estado: 'pendiente' | 'en_proceso' | 'completado' | 'cancelado';
   tipo: 'ingreso' | 'egreso';
 }
+
+// Nuevo tipo para archivos adjuntos
+export interface ArchivoAdjunto {
+  id: string;
+  nombre: string;
+  tipo: 'pdf' | 'imagen';
+  url: string;
+  tamaño: number; // en bytes
+  fechaSubida: Date;
+  descripcion?: string;
+}
+
+// Agregar a la interfaz Comanda existente
+export interface ComandaConArchivos extends Comanda {
+  archivosAdjuntos?: ArchivoAdjunto[];
+}
+
+// Tipos para el componente de upload
+export interface UploadConfig {
+  maxTamaño: number; // en MB
+  tiposPermitidos: string[];
+  maxArchivos: number;
+}
