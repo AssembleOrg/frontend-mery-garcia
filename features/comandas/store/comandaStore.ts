@@ -5,6 +5,7 @@ import {
   FiltrosComanda,
   ResumenCaja,
   Personal,
+  PersonalSimple,
   ProductoServicio,
   TipoCambio,
   ConfiguracionRecargo,
@@ -28,6 +29,7 @@ interface ComandaState {
 
   // Datos de referencia
   personal: Personal[];
+  personalSimple: PersonalSimple[]; // Lista simple para gestión de personal
   productosServicios: ProductoServicio[];
   tipoCambio: TipoCambio;
   configuracionRecargos: ConfiguracionRecargo[];
@@ -55,10 +57,50 @@ interface ComandaState {
     unidad?: string
   ) => ProductoServicio[];
 
+  // Acciones - Productos/Servicios CRUD
+  agregarProductoServicio: (producto: Omit<ProductoServicio, 'id'>) => void;
+  actualizarProductoServicio: (
+    id: string,
+    producto: Partial<ProductoServicio>
+  ) => void;
+  eliminarProductoServicio: (id: string) => void;
+  obtenerProductoServicioPorId: (id: string) => ProductoServicio | undefined;
+
+  // Acciones - Personal Simple CRUD
+  agregarPersonalSimple: (personal: Omit<PersonalSimple, 'id'>) => void;
+  actualizarPersonalSimple: (
+    id: string,
+    personal: Partial<PersonalSimple>
+  ) => void;
+  eliminarPersonalSimple: (id: string) => void;
+  obtenerPersonalSimplePorId: (id: string) => PersonalSimple | undefined;
+
   // Acciones - Sistema
   inicializar: () => void;
   reiniciar: () => void;
 }
+
+// Personal simple convertido del personal mock
+const personalSimpleMock: PersonalSimple[] = [
+  {
+    id: '1',
+    nombre: 'Ana Pérez',
+    comision: 10,
+    rol: 'vendedor',
+  },
+  {
+    id: '2',
+    nombre: 'María García',
+    comision: 10,
+    rol: 'admin',
+  },
+  {
+    id: '3',
+    nombre: 'Carmen López',
+    comision: 10,
+    rol: 'vendedor',
+  },
+];
 
 const estadoInicial = {
   comandas: [],
@@ -66,6 +108,7 @@ const estadoInicial = {
   cargando: false,
   error: null,
   personal: personalMock,
+  personalSimple: personalSimpleMock,
   productosServicios: productosServiciosMock,
   tipoCambio: tipoCambioMock,
   configuracionRecargos: configuracionRecargosMock,
@@ -291,6 +334,92 @@ export const useComandaStore = create<ComandaState>()(
           );
         },
 
+        // === PRODUCTOS/SERVICIOS CRUD ===
+        agregarProductoServicio: (producto: Omit<ProductoServicio, 'id'>) => {
+          const nuevoProducto: ProductoServicio = {
+            ...producto,
+            id: `producto-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+          };
+
+          set((state) => ({
+            productosServicios: [...state.productosServicios, nuevoProducto],
+          }));
+
+          console.log('✅ [MOCK] Producto/Servicio creado:', nuevoProducto);
+        },
+
+        actualizarProductoServicio: (
+          id: string,
+          productoActualizado: Partial<ProductoServicio>
+        ) => {
+          set((state) => ({
+            productosServicios: state.productosServicios.map((p) =>
+              p.id === id ? { ...p, ...productoActualizado } : p
+            ),
+          }));
+
+          console.log('✅ [MOCK] Producto/Servicio actualizado:', {
+            id,
+            ...productoActualizado,
+          });
+        },
+
+        eliminarProductoServicio: (id: string) => {
+          set((state) => ({
+            productosServicios: state.productosServicios.filter(
+              (p) => p.id !== id
+            ),
+          }));
+
+          console.log('✅ [MOCK] Producto/Servicio eliminado:', id);
+        },
+
+        obtenerProductoServicioPorId: (id: string) => {
+          return get().productosServicios.find((p) => p.id === id);
+        },
+
+        // === PERSONAL SIMPLE CRUD ===
+        agregarPersonalSimple: (personal: Omit<PersonalSimple, 'id'>) => {
+          const nuevoPersonal: PersonalSimple = {
+            ...personal,
+            id: `personal-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+          };
+
+          set((state) => ({
+            personalSimple: [...state.personalSimple, nuevoPersonal],
+          }));
+
+          console.log('✅ [MOCK] Personal creado:', nuevoPersonal);
+        },
+
+        actualizarPersonalSimple: (
+          id: string,
+          personalActualizado: Partial<PersonalSimple>
+        ) => {
+          set((state) => ({
+            personalSimple: state.personalSimple.map((p) =>
+              p.id === id ? { ...p, ...personalActualizado } : p
+            ),
+          }));
+
+          console.log('✅ [MOCK] Personal actualizado:', {
+            id,
+            ...personalActualizado,
+          });
+        },
+
+        eliminarPersonalSimple: (id: string) => {
+          set((state) => ({
+            personalSimple: state.personalSimple.filter((p) => p.id !== id),
+          }));
+
+          console.log('✅ [MOCK] Personal eliminado:', id);
+        },
+
+        obtenerPersonalSimplePorId: (id: string) => {
+          return get().personalSimple.find((p) => p.id === id);
+        },
+
         // === SISTEMA ===
         inicializar: () => {
           // Solo agregar comandas de prueba si no hay datos existentes
@@ -356,11 +485,22 @@ export const useDatosReferencia = () => {
   const store = useComandaStore();
   return {
     personal: store.personal,
+    personalSimple: store.personalSimple,
     productosServicios: store.productosServicios,
     tipoCambio: store.tipoCambio,
     configuracionRecargos: store.configuracionRecargos,
     obtenerPersonalPorUnidad: store.obtenerPersonalPorUnidad,
     buscarProductosServicios: store.buscarProductosServicios,
     actualizarTipoCambio: store.actualizarTipoCambio,
+    // CRUD Productos/Servicios
+    agregarProductoServicio: store.agregarProductoServicio,
+    actualizarProductoServicio: store.actualizarProductoServicio,
+    eliminarProductoServicio: store.eliminarProductoServicio,
+    obtenerProductoServicioPorId: store.obtenerProductoServicioPorId,
+    // CRUD Personal Simple
+    agregarPersonalSimple: store.agregarPersonalSimple,
+    actualizarPersonalSimple: store.actualizarPersonalSimple,
+    eliminarPersonalSimple: store.eliminarPersonalSimple,
+    obtenerPersonalSimplePorId: store.obtenerPersonalSimplePorId,
   };
 };

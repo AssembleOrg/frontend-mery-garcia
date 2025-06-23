@@ -2,8 +2,8 @@
 
 import { useState, useEffect } from 'react';
 import MainLayout from '@/components/layout/MainLayout';
-import PageBanner from '@/components/common/PageBanner';
-import Breadcrumbs from '@/components/common/Breadcrumbs';
+import StandardPageBanner from '@/components/common/StandardPageBanner';
+import StandardBreadcrumbs from '@/components/common/StandardBreadcrumbs';
 import FiltrosCaja from '@/components/cajas/FiltrosCaja';
 import TablaEncomiendas from '@/components/cajas/TablaEncomiendas';
 import { Card, CardContent } from '@/components/ui/card';
@@ -111,22 +111,12 @@ export default function IngresosPage() {
     <MainLayout>
       <div className="min-h-screen bg-gradient-to-br from-[#f9bbc4]/10 via-[#e8b4c6]/8 to-[#d4a7ca]/6">
         {/* Banner más compacto */}
-        <PageBanner
-          title="Ingresos - Caja Chica"
-          imageUrl="/png/imagen2portal.png"
-          altText="Banner Ingresos"
-          heightClass="h-32 md:h-40"
-          imagePosition="object-center"
-        />
+        <StandardPageBanner title="Ingresos - Caja Chica" />
 
-        <div className="relative -mt-8 h-8 bg-gradient-to-b from-transparent to-[#f9bbc4]/5" />
+        <div className="relative -mt-12 h-12 bg-gradient-to-b from-transparent to-[#f9bbc4]/8" />
 
         {/* Breadcrumbs más compactos */}
-        <div className="border-b border-[#f9bbc4]/15 bg-gradient-to-r from-[#f9bbc4]/5 via-[#e8b4c6]/3 to-[#f9bbc4]/5 backdrop-blur-sm">
-          <div className="mx-auto max-w-7xl px-4 py-2 sm:px-6 lg:px-8">
-            <Breadcrumbs items={breadcrumbItems} />
-          </div>
-        </div>
+        <StandardBreadcrumbs items={breadcrumbItems} />
 
         <div className="bg-gradient-to-b from-[#f9bbc4]/5 via-[#e8b4c6]/3 to-[#d4a7ca]/5">
           <div className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">

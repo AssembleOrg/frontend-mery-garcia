@@ -14,6 +14,14 @@ export interface Personal {
   fechaIngreso: Date;
 }
 
+// Personal simplificado para lista de personal
+export interface PersonalSimple {
+  id: string;
+  nombre: string;
+  comision: number; // Porcentaje 0-100
+  rol: 'admin' | 'vendedor';
+}
+
 // Cliente
 export interface Cliente {
   cuit?: string;

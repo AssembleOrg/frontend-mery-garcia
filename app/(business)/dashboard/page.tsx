@@ -1,7 +1,7 @@
 'use client';
 import MainLayout from '@/components/layout/MainLayout';
-import PageBanner from '@/components/common/PageBanner';
-import Breadcrumbs from '@/components/common/Breadcrumbs';
+import StandardPageBanner from '@/components/common/StandardPageBanner';
+import StandardBreadcrumbs from '@/components/common/StandardBreadcrumbs';
 import DashboardCard from '@/components/dashboard/DashboardCard';
 import {
   CreditCard,
@@ -57,7 +57,7 @@ const menuItems = [
   {
     title: 'Lista de Precios',
     description: 'Define y actualiza tus servicios y productos.',
-    href: '/precio-lista',
+    href: '/lista-precios',
     icon: <ListOrdered size={32} strokeWidth={1.5} />,
     gradientFrom: 'from-[#e8b4c6]',
     gradientTo: 'to-[#cc8fa8]',
@@ -78,19 +78,11 @@ export default function DashboardPage() {
   return (
     <MainLayout>
       <div className="min-h-screen bg-gradient-to-br from-[#f9bbc4]/15 via-[#e8b4c6]/12 to-[#d4a7ca]/10">
-        <PageBanner
-          title="Portal de Gestión"
-          imageUrl="/png/imagen2portal.png"
-          altText="Banner principal del portal Mery García"
-          heightClass="h-72 md:h-80 lg:h-96"
-          imagePosition="object-[90%_10%] lg:object-[85%_15%]"
-        />
+        <StandardPageBanner title="Portal de Gestión" />
 
-        <div className="relative -mt-16 h-16 bg-gradient-to-b from-transparent to-[#f9bbc4]/8" />
+        <div className="relative -mt-12 h-12 bg-gradient-to-b from-transparent to-[#f9bbc4]/8" />
 
-        <div className="border-b border-[#f9bbc4]/20 bg-gradient-to-r from-[#f9bbc4]/8 via-[#f0b7c8]/6 to-[#f9bbc4]/8 backdrop-blur-sm">
-          <Breadcrumbs items={breadcrumbItems} />
-        </div>
+        <StandardBreadcrumbs items={breadcrumbItems} />
 
         <div className="bg-gradient-to-b from-[#f9bbc4]/8 via-[#e8b4c6]/6 to-[#d4a7ca]/8">
           <div className="mx-auto max-w-7xl px-4 py-12 sm:px-6 lg:px-8">
