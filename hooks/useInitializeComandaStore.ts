@@ -4,15 +4,31 @@ import { Comanda, ItemComanda } from '@/types/caja';
 import { personalMock } from '@/data/mockData';
 import { logger } from '@/lib/utils';
 
+// Función para generar IDs únicos y estables
+const generateUniqueId = (prefix: string, index: number) => {
+  // Usar una fecha base fija para que los IDs sean consistentes entre servidor y cliente
+  const baseTimestamp = new Date('2025-01-01T00:00:00Z').getTime();
+  const uniqueId = `${prefix}-${(baseTimestamp + index * 1000).toString(36)}`;
+  return uniqueId;
+};
+
 // Función para generar fechas aleatorias en enero 2025
 const generarFechaAleatoria = (dia: number) =>
   new Date(`2025-01-${dia.toString().padStart(2, '0')}`);
 
-// Solo 3 comandas básicas para testing
+// IDs únicos y estables para las comandas de ejemplo
+const COMANDA_IDS = {
+  INGRESO_001: generateUniqueId('cmd-ing', 1),
+  INGRESO_002: generateUniqueId('cmd-ing', 2),
+  INGRESO_003: generateUniqueId('cmd-ing', 3),
+  EGRESO_001: generateUniqueId('cmd-egr', 1),
+};
+
+// Solo 3 comandas básicas para testing con IDs únicos
 const comandasEjemplo: Comanda[] = [
   // INGRESO 1 - Estilismo
   {
-    id: 'cmd-ingreso-001',
+    id: COMANDA_IDS.INGRESO_001,
     numero: 'ING-001',
     fecha: generarFechaAleatoria(15),
     businessUnit: 'estilismo',
@@ -23,7 +39,7 @@ const comandasEjemplo: Comanda[] = [
     mainStaff: personalMock[0],
     items: [
       {
-        productoServicioId: 'srv-corte-001',
+        productoServicioId: generateUniqueId('srv-corte', 1),
         nombre: 'Corte y Peinado',
         tipo: 'servicio',
         cantidad: 1,
@@ -55,7 +71,7 @@ const comandasEjemplo: Comanda[] = [
 
   // INGRESO 2 - Estilismo con tarjeta
   {
-    id: 'cmd-ingreso-002',
+    id: COMANDA_IDS.INGRESO_002,
     numero: 'ING-002',
     fecha: generarFechaAleatoria(14),
     businessUnit: 'estilismo',
@@ -66,7 +82,7 @@ const comandasEjemplo: Comanda[] = [
     mainStaff: personalMock[1],
     items: [
       {
-        productoServicioId: 'srv-manicure-001',
+        productoServicioId: generateUniqueId('srv-manicure', 1),
         nombre: 'Manicure Francesa',
         tipo: 'servicio',
         cantidad: 1,
@@ -98,7 +114,7 @@ const comandasEjemplo: Comanda[] = [
 
   // EGRESO 1 - Simple
   {
-    id: 'cmd-egreso-001',
+    id: COMANDA_IDS.EGRESO_001,
     numero: 'EGR-001',
     fecha: generarFechaAleatoria(13),
     businessUnit: 'estilismo',
@@ -109,7 +125,7 @@ const comandasEjemplo: Comanda[] = [
     mainStaff: personalMock[0],
     items: [
       {
-        productoServicioId: 'prd-champu-001',
+        productoServicioId: generateUniqueId('prd-champu', 1),
         nombre: 'Champú Premium',
         tipo: 'producto',
         cantidad: 5,
@@ -141,7 +157,7 @@ const comandasEjemplo: Comanda[] = [
 
   // INGRESO 3 - Cancelado para testing
   {
-    id: 'cmd-ingreso-003',
+    id: COMANDA_IDS.INGRESO_003,
     numero: 'ING-003',
     fecha: generarFechaAleatoria(12),
     businessUnit: 'tattoo',
@@ -152,7 +168,7 @@ const comandasEjemplo: Comanda[] = [
     mainStaff: personalMock[2],
     items: [
       {
-        productoServicioId: 'srv-tattoo-001',
+        productoServicioId: generateUniqueId('srv-tattoo', 1),
         nombre: 'Tatuaje Pequeño',
         tipo: 'servicio',
         cantidad: 1,
@@ -188,63 +204,105 @@ const comandasEjemplo: Comanda[] = [
   },
 ];
 
-// Global flag to prevent multiple initializations
-let isInitialized = false;
-let isInitializing = false; // Prevent race conditions
+// Global flag con timestamp para evitar race conditions
+const initializationState = {
+  isInitialized: false,
+  isInitializing: false,
+  timestamp: 0,
+};
 
 export function useInitializeComandaStore() {
   const store = useComandaStore();
   const initRef = useRef(false);
+  const mountedRef = useRef(false);
 
   useEffect(() => {
-    // Prevent multiple initializations both globally and per component
-    if (isInitialized || initRef.current || isInitializing) {
+    mountedRef.current = true;
+    return () => {
+      mountedRef.current = false;
+    };
+  }, []);
+
+  useEffect(() => {
+    // Verificar si el componente sigue montado
+    if (!mountedRef.current) return;
+
+    // Prevenir múltiples inicializaciones
+    if (
+      initializationState.isInitialized ||
+      initRef.current ||
+      initializationState.isInitializing
+    ) {
       return;
     }
 
-    // Set initializing flag to prevent race conditions
-    isInitializing = true;
+    // Marcar como inicializando con timestamp
+    initializationState.isInitializing = true;
+    initializationState.timestamp = Date.now();
 
-    // First, clean any duplicates that might exist from persistence
+    const currentTimestamp = initializationState.timestamp;
+
+    // Limpiar duplicados primero
     store.limpiarDuplicados();
 
-    // Check if sample comandas already exist (by ID)
+    // Verificar si ya existen comandas de ejemplo
     const existingIds = store.comandas.map((c) => c.id);
-    const sampleIds = comandasEjemplo.map((c) => c.id);
+    const sampleIds = Object.values(COMANDA_IDS);
     const hasAllSamples = sampleIds.every((id) => existingIds.includes(id));
+
+    // Verificar si el componente sigue montado y es la misma inicialización
+    if (
+      !mountedRef.current ||
+      currentTimestamp !== initializationState.timestamp
+    ) {
+      initializationState.isInitializing = false;
+      return;
+    }
 
     if (!hasAllSamples) {
       logger.info('🚀 Inicializando store con comandas de ejemplo...');
 
-      // Mark as initialized before adding comandas
-      isInitialized = true;
+      // Marcar como inicializado ANTES de agregar comandas
+      initializationState.isInitialized = true;
       initRef.current = true;
 
-      // Only add comandas that don't exist yet
+      // Solo agregar comandas que no existen
+      let comandasAgregadas = 0;
       comandasEjemplo.forEach((comanda) => {
         if (!existingIds.includes(comanda.id)) {
           store.agregarComanda(comanda);
+          comandasAgregadas++;
           logger.info(`✅ Comanda agregada: ${comanda.id}`);
         } else {
           logger.info(`⚠️ Comanda ya existe: ${comanda.id}`);
         }
       });
 
-      logger.info('✅ Store inicializado correctamente');
+      logger.info(
+        `✅ Store inicializado correctamente. ${comandasAgregadas} comandas agregadas.`
+      );
     } else {
-      // If comandas already exist, just mark as initialized
-      isInitialized = true;
+      // Si ya existen, solo marcar como inicializado
+      initializationState.isInitialized = true;
       initRef.current = true;
       logger.info(
         'ℹ️ Store ya tiene comandas de ejemplo, omitiendo inicialización'
       );
     }
 
-    // Clear initializing flag
-    isInitializing = false;
+    // Limpiar flag de inicialización
+    initializationState.isInitializing = false;
+
+    // Verificación final de duplicados
+    setTimeout(() => {
+      if (mountedRef.current) {
+        store.limpiarDuplicados();
+      }
+    }, 100);
   }, [store]);
 
   return {
     isInitialized: store.comandas.length > 0,
+    isInitializing: initializationState.isInitializing,
   };
 }

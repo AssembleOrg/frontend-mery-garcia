@@ -628,26 +628,41 @@ export const useComandaStore = create<ComandaState>()(
         // === FUNCIÓN PARA LIMPIAR DUPLICADOS ===
         limpiarDuplicados: () => {
           const { comandas } = get();
+
+          if (comandas.length === 0) {
+            logger.info('🔍 No hay comandas para verificar duplicados');
+            return;
+          }
+
           logger.info(
             `🔍 Verificando duplicados en ${comandas.length} comandas`
           );
 
-          // Log de IDs actuales
-          const idsActuales = comandas.map((c) => c.id);
-          logger.info(`📋 IDs actuales: [${idsActuales.join(', ')}]`);
+          // Crear un Map para rastrear duplicados más eficientemente
+          const comandasMap = new Map<string, Comanda>();
+          const duplicadosEncontrados: string[] = [];
 
-          const comandasUnicas = comandas.filter(
-            (comanda, index, array) =>
-              array.findIndex((c) => c.id === comanda.id) === index
-          );
+          comandas.forEach((comanda) => {
+            if (comandasMap.has(comanda.id)) {
+              duplicadosEncontrados.push(comanda.id);
+              logger.warning(`⚠️ Duplicado encontrado: ${comanda.id}`);
+            } else {
+              comandasMap.set(comanda.id, comanda);
+            }
+          });
 
-          if (comandasUnicas.length !== comandas.length) {
-            const duplicados = comandas.length - comandasUnicas.length;
-            logger.info(`🧹 Limpiando ${duplicados} comandas duplicadas`);
+          if (duplicadosEncontrados.length > 0) {
+            const comandasUnicas = Array.from(comandasMap.values());
 
-            // Log de IDs únicos
-            const idsUnicos = comandasUnicas.map((c) => c.id);
-            logger.info(`✅ IDs únicos resultantes: [${idsUnicos.join(', ')}]`);
+            logger.info(
+              `🧹 Limpiando ${duplicadosEncontrados.length} comandas duplicadas`
+            );
+            logger.info(
+              `📋 IDs duplicados: [${duplicadosEncontrados.join(', ')}]`
+            );
+            logger.info(
+              `✅ IDs únicos resultantes: [${comandasUnicas.map((c) => c.id).join(', ')}]`
+            );
 
             set({ comandas: comandasUnicas });
           } else {

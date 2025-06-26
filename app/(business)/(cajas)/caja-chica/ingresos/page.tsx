@@ -12,7 +12,7 @@ import { Button } from '@/components/ui/button';
 import { DollarSign, TrendingUp, Users, Plus } from 'lucide-react';
 import { ColumnaCaja } from '@/types/caja';
 import ModalAgregarComanda from '@/components/cajas/ModalAgregarComanda';
-import ModalEditarTransaccion from '@/components/cajas/ModalEditarTransaccion';
+import ModalTransaccion from '@/components/cajas/ModalTransaccion';
 import { useInitializeComandaStore } from '@/hooks/useInitializeComandaStore';
 import { useIncomingTransactions } from '@/features/comandas/hooks/useIncomingTransactions';
 import { Pagination } from '@/components/ui/pagination';
@@ -112,7 +112,6 @@ export default function IngresosPage() {
     updateFilters,
     formatAmount,
     handleDelete,
-    handleView,
     exportToPDF,
     exportToExcel,
     exportToCSV,
@@ -122,7 +121,10 @@ export default function IngresosPage() {
   const [columns, setColumns] = useState<ColumnaCaja[]>(initialColumns);
   const [showAddModal, setShowAddModal] = useState(false);
   const [showChangeStatusModal, setShowChangeStatusModal] = useState(false);
-  const [showEditModal, setShowEditModal] = useState(false);
+  const [showTransactionModal, setShowTransactionModal] = useState(false);
+  const [modalMode, setModalMode] = useState<'view' | 'edit' | 'create'>(
+    'view'
+  );
   const [selectedTransactionId, setSelectedTransactionId] =
     useState<string>('');
 
@@ -145,7 +147,20 @@ export default function IngresosPage() {
   // Handle edit transaction
   const onEditTransaction = (id: string) => {
     setSelectedTransactionId(id);
-    setShowEditModal(true);
+    setModalMode('edit');
+    setShowTransactionModal(true);
+  };
+
+  // Handle view transaction details
+  const onViewTransaction = (id: string) => {
+    setSelectedTransactionId(id);
+    setModalMode('view');
+    setShowTransactionModal(true);
+  };
+
+  // Handle modal mode change
+  const handleModalModeChange = (mode: 'view' | 'edit' | 'create') => {
+    setModalMode(mode);
   };
 
   // Don't render until client-side and store is initialized
@@ -276,7 +291,7 @@ export default function IngresosPage() {
                     columns={columns}
                     onEdit={onEditTransaction}
                     onDelete={handleDelete}
-                    onView={handleView}
+                    onView={onViewTransaction}
                     onChangeStatus={onChangeStatus}
                     title="📈 Transacciones de Ingreso"
                     accentColor="#f9bbc4"
@@ -319,13 +334,16 @@ export default function IngresosPage() {
           estadoActual={selectedTransaction?.estado || 'pendiente'}
         />
 
-        <ModalEditarTransaccion
-          isOpen={showEditModal}
+        <ModalTransaccion
+          isOpen={showTransactionModal}
           onClose={() => {
-            setShowEditModal(false);
+            setShowTransactionModal(false);
             setSelectedTransactionId('');
+            setModalMode('view');
           }}
           transactionId={selectedTransactionId}
+          mode={modalMode}
+          onModeChange={handleModalModeChange}
         />
       </div>
     </MainLayout>
