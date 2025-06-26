@@ -75,7 +75,7 @@ export function useComandaForm() {
       unidadNegocio || undefined
     );
     setItemsDisponibles(items);
-  }, [busquedaItems, unidadNegocio]);
+  }, [busquedaItems, unidadNegocio, buscarProductosServicios]);
 
   // Aplicar descuento global cuando se activa
   useEffect(() => {
@@ -91,7 +91,7 @@ export function useComandaForm() {
       });
       setItems(itemsConDescuento);
     }
-  }, [aplicarDescuentoGlobal, descuentoGlobalPorcentaje]);
+  }, [aplicarDescuentoGlobal, descuentoGlobalPorcentaje, items]);
 
   // Cálculos en PESOS (moneda base)
   const subtotal = items.reduce((sum, item) => sum + item.subtotal, 0);
@@ -296,8 +296,8 @@ export function useComandaForm() {
       id: `comanda-${Date.now()}`,
       numero: numeroComanda,
       fecha: new Date(),
-      unidadNegocio: unidadNegocio as UnidadNegocio,
-      personalPrincipal: personalPrincipal!,
+      businessUnit: unidadNegocio as UnidadNegocio,
+      mainStaff: personalPrincipal!,
       cliente,
       items,
       seña: seña || undefined,

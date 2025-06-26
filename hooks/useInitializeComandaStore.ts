@@ -1,541 +1,29 @@
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import { useComandaStore } from '@/features/comandas/store/comandaStore';
 import { Comanda, ItemComanda } from '@/types/caja';
 import { personalMock } from '@/data/mockData';
+import { logger } from '@/lib/utils';
 
 // Función para generar fechas aleatorias en enero 2025
 const generarFechaAleatoria = (dia: number) =>
   new Date(`2025-01-${dia.toString().padStart(2, '0')}`);
 
-// Datos de ejemplo para inicializar el store - AMPLIADO PARA PROBAR PAGINACIÓN
+// Solo 3 comandas básicas para testing
 const comandasEjemplo: Comanda[] = [
-  // INGRESOS (15 comandas)
+  // INGRESO 1 - Estilismo
   {
-    id: '1',
+    id: 'cmd-ingreso-001',
     numero: 'ING-001',
     fecha: generarFechaAleatoria(15),
-    unidadNegocio: 'estilismo',
+    businessUnit: 'estilismo',
     cliente: {
       nombre: 'María González',
       telefono: '099-123-456',
     },
-    personalPrincipal: personalMock[0],
+    mainStaff: personalMock[0],
     items: [
       {
-        productoServicioId: '1',
-        nombre: 'Corte y Peinado',
-        tipo: 'servicio',
-        cantidad: 1,
-        precio: 25000.0,
-        descuento: 2500.0,
-        subtotal: 22500.0,
-        personalId: personalMock[0].id,
-      },
-    ] as ItemComanda[],
-    seña: undefined,
-    metodosPago: [
-      {
-        tipo: 'efectivo',
-        monto: 22500.0,
-        recargoPorcentaje: 0,
-        montoFinal: 22500.0,
-      },
-    ],
-    subtotal: 22500.0,
-    totalDescuentos: 2500.0,
-    totalRecargos: 0,
-    totalSeña: 0,
-    totalFinal: 22500.0,
-    comisiones: [],
-    estado: 'completado',
-    observaciones: 'Cliente frecuente',
-    tipo: 'ingreso',
-  },
-  {
-    id: '2',
-    numero: 'ING-002',
-    fecha: generarFechaAleatoria(14),
-    unidadNegocio: 'estilismo',
-    cliente: {
-      nombre: 'Carmen López',
-      telefono: '098-765-432',
-    },
-    personalPrincipal: personalMock[1],
-    items: [
-      {
-        productoServicioId: '4',
-        nombre: 'Manicure Francesa',
-        tipo: 'servicio',
-        cantidad: 1,
-        precio: 18000.0,
-        descuento: 0,
-        subtotal: 18000.0,
-        personalId: personalMock[1].id,
-      },
-    ] as ItemComanda[],
-    seña: undefined,
-    metodosPago: [
-      {
-        tipo: 'tarjeta',
-        monto: 18000.0,
-        recargoPorcentaje: 35,
-        montoFinal: 24300.0,
-      },
-    ],
-    subtotal: 18000.0,
-    totalDescuentos: 0,
-    totalRecargos: 6300.0,
-    totalSeña: 0,
-    totalFinal: 24300.0,
-    comisiones: [],
-    estado: 'completado',
-    observaciones: '',
-    tipo: 'ingreso',
-  },
-  {
-    id: '3',
-    numero: 'ING-003',
-    fecha: generarFechaAleatoria(13),
-    unidadNegocio: 'tattoo',
-    cliente: {
-      nombre: 'Ana Rodríguez',
-      telefono: '097-111-222',
-    },
-    personalPrincipal: personalMock[2],
-    items: [
-      {
-        productoServicioId: '6',
-        nombre: 'Microblading Cejas',
-        tipo: 'servicio',
-        cantidad: 1,
-        precio: 150000.0,
-        descuento: 0,
-        subtotal: 150000.0,
-        personalId: personalMock[2].id,
-      },
-    ] as ItemComanda[],
-    seña: {
-      monto: 50000.0,
-      moneda: 'pesos',
-      fecha: generarFechaAleatoria(10),
-      observaciones: 'Seña para reservar turno',
-    },
-    metodosPago: [
-      {
-        tipo: 'efectivo',
-        monto: 100000.0,
-        recargoPorcentaje: 0,
-        montoFinal: 100000.0,
-      },
-    ],
-    subtotal: 150000.0,
-    totalDescuentos: 0,
-    totalRecargos: 0,
-    totalSeña: 50000.0,
-    totalFinal: 100000.0,
-    comisiones: [],
-    estado: 'completado',
-    observaciones: 'Pago con seña previa',
-    tipo: 'ingreso',
-  },
-  {
-    id: '4',
-    numero: 'ING-004',
-    fecha: generarFechaAleatoria(12),
-    unidadNegocio: 'estilismo',
-    cliente: {
-      nombre: 'Lucía Fernández',
-      telefono: '099-444-555',
-    },
-    personalPrincipal: personalMock[0],
-    items: [
-      {
-        productoServicioId: '2',
-        nombre: 'Coloración Completa',
-        tipo: 'servicio',
-        cantidad: 1,
-        precio: 65000.0,
-        descuento: 5000.0,
-        subtotal: 60000.0,
-        personalId: personalMock[0].id,
-      },
-    ] as ItemComanda[],
-    seña: undefined,
-    metodosPago: [
-      {
-        tipo: 'transferencia',
-        monto: 60000.0,
-        recargoPorcentaje: 20,
-        montoFinal: 72000.0,
-      },
-    ],
-    subtotal: 60000.0,
-    totalDescuentos: 5000.0,
-    totalRecargos: 12000.0,
-    totalSeña: 0,
-    totalFinal: 72000.0,
-    comisiones: [],
-    estado: 'completado',
-    observaciones: 'Descuento cliente VIP',
-    tipo: 'ingreso',
-  },
-  {
-    id: '5',
-    numero: 'ING-005',
-    fecha: generarFechaAleatoria(11),
-    unidadNegocio: 'formacion',
-    cliente: {
-      nombre: 'Patricia Silva',
-      telefono: '098-777-888',
-    },
-    personalPrincipal: personalMock[1],
-    items: [
-      {
-        productoServicioId: '10',
-        nombre: 'Curso Microblading Básico',
-        tipo: 'servicio',
-        cantidad: 1,
-        precio: 500000.0,
-        descuento: 50000.0,
-        subtotal: 450000.0,
-        personalId: personalMock[1].id,
-      },
-    ] as ItemComanda[],
-    seña: undefined,
-    metodosPago: [
-      {
-        tipo: 'efectivo',
-        monto: 450000.0,
-        recargoPorcentaje: 0,
-        montoFinal: 450000.0,
-      },
-    ],
-    subtotal: 450000.0,
-    totalDescuentos: 50000.0,
-    totalRecargos: 0,
-    totalSeña: 0,
-    totalFinal: 450000.0,
-    comisiones: [],
-    estado: 'completado',
-    observaciones: 'Curso intensivo 3 días',
-    tipo: 'ingreso',
-  },
-  {
-    id: '6',
-    numero: 'ING-006',
-    fecha: generarFechaAleatoria(10),
-    unidadNegocio: 'estilismo',
-    cliente: {
-      nombre: 'Sofía Martínez',
-      telefono: '097-999-000',
-    },
-    personalPrincipal: personalMock[2],
-    items: [
-      {
-        productoServicioId: '3',
-        nombre: 'Tratamiento Capilar',
-        tipo: 'servicio',
-        cantidad: 1,
-        precio: 35000.0,
-        descuento: 0,
-        subtotal: 35000.0,
-        personalId: personalMock[2].id,
-      },
-    ] as ItemComanda[],
-    seña: undefined,
-    metodosPago: [
-      {
-        tipo: 'tarjeta',
-        monto: 35000.0,
-        recargoPorcentaje: 35,
-        montoFinal: 47250.0,
-      },
-    ],
-    subtotal: 35000.0,
-    totalDescuentos: 0,
-    totalRecargos: 12250.0,
-    totalSeña: 0,
-    totalFinal: 47250.0,
-    comisiones: [],
-    estado: 'en_proceso',
-    observaciones: 'Tratamiento hidratante',
-    tipo: 'ingreso',
-  },
-  {
-    id: '7',
-    numero: 'ING-007',
-    fecha: generarFechaAleatoria(9),
-    unidadNegocio: 'tattoo',
-    cliente: {
-      nombre: 'Valentina Torres',
-      telefono: '099-111-222',
-    },
-    personalPrincipal: personalMock[0],
-    items: [
-      {
-        productoServicioId: '7',
-        nombre: 'Perfilado de Labios',
-        tipo: 'servicio',
-        cantidad: 1,
-        precio: 120000.0,
-        descuento: 0,
-        subtotal: 120000.0,
-        personalId: personalMock[0].id,
-      },
-    ] as ItemComanda[],
-    seña: undefined,
-    metodosPago: [
-      {
-        tipo: 'efectivo',
-        monto: 120000.0,
-        recargoPorcentaje: 0,
-        montoFinal: 120000.0,
-      },
-    ],
-    subtotal: 120000.0,
-    totalDescuentos: 0,
-    totalRecargos: 0,
-    totalSeña: 0,
-    totalFinal: 120000.0,
-    comisiones: [],
-    estado: 'completado',
-    observaciones: 'Micropigmentación labial',
-    tipo: 'ingreso',
-  },
-  {
-    id: '8',
-    numero: 'ING-008',
-    fecha: generarFechaAleatoria(8),
-    unidadNegocio: 'estilismo',
-    cliente: {
-      nombre: 'Isabella Ruiz',
-      telefono: '098-333-444',
-    },
-    personalPrincipal: personalMock[1],
-    items: [
-      {
-        productoServicioId: '1',
-        nombre: 'Corte y Peinado',
-        tipo: 'servicio',
-        cantidad: 1,
-        precio: 25000.0,
-        descuento: 0,
-        subtotal: 25000.0,
-        personalId: personalMock[1].id,
-      },
-      {
-        productoServicioId: '4',
-        nombre: 'Manicure Francesa',
-        tipo: 'servicio',
-        cantidad: 1,
-        precio: 18000.0,
-        descuento: 0,
-        subtotal: 18000.0,
-        personalId: personalMock[1].id,
-      },
-    ] as ItemComanda[],
-    seña: undefined,
-    metodosPago: [
-      {
-        tipo: 'transferencia',
-        monto: 43000.0,
-        recargoPorcentaje: 20,
-        montoFinal: 51600.0,
-      },
-    ],
-    subtotal: 43000.0,
-    totalDescuentos: 0,
-    totalRecargos: 8600.0,
-    totalSeña: 0,
-    totalFinal: 51600.0,
-    comisiones: [],
-    estado: 'completado',
-    observaciones: 'Combo estilismo completo',
-    tipo: 'ingreso',
-  },
-  {
-    id: '9',
-    numero: 'ING-009',
-    fecha: generarFechaAleatoria(7),
-    unidadNegocio: 'formacion',
-    cliente: {
-      nombre: 'Camila Herrera',
-      telefono: '097-555-666',
-    },
-    personalPrincipal: personalMock[2],
-    items: [
-      {
-        productoServicioId: '11',
-        nombre: 'Curso Colorimetría',
-        tipo: 'servicio',
-        cantidad: 1,
-        precio: 300000.0,
-        descuento: 0,
-        subtotal: 300000.0,
-        personalId: personalMock[2].id,
-      },
-    ] as ItemComanda[],
-    seña: undefined,
-    metodosPago: [
-      {
-        tipo: 'efectivo',
-        monto: 150000.0,
-        recargoPorcentaje: 0,
-        montoFinal: 150000.0,
-      },
-      {
-        tipo: 'tarjeta',
-        monto: 150000.0,
-        recargoPorcentaje: 35,
-        montoFinal: 202500.0,
-      },
-    ],
-    subtotal: 300000.0,
-    totalDescuentos: 0,
-    totalRecargos: 52500.0,
-    totalSeña: 0,
-    totalFinal: 352500.0,
-    comisiones: [],
-    estado: 'completado',
-    observaciones: 'Pago mixto efectivo + tarjeta',
-    tipo: 'ingreso',
-  },
-  {
-    id: '10',
-    numero: 'ING-010',
-    fecha: generarFechaAleatoria(6),
-    unidadNegocio: 'estilismo',
-    cliente: {
-      nombre: 'Martina Vega',
-      telefono: '099-777-888',
-    },
-    personalPrincipal: personalMock[0],
-    items: [
-      {
-        productoServicioId: '2',
-        nombre: 'Coloración Completa',
-        tipo: 'servicio',
-        cantidad: 1,
-        precio: 65000.0,
-        descuento: 0,
-        subtotal: 65000.0,
-        personalId: personalMock[0].id,
-      },
-    ] as ItemComanda[],
-    seña: undefined,
-    metodosPago: [
-      {
-        tipo: 'efectivo',
-        monto: 65000.0,
-        recargoPorcentaje: 0,
-        montoFinal: 65000.0,
-      },
-    ],
-    subtotal: 65000.0,
-    totalDescuentos: 0,
-    totalRecargos: 0,
-    totalSeña: 0,
-    totalFinal: 65000.0,
-    comisiones: [],
-    estado: 'pendiente',
-    observaciones: 'Pendiente de confirmación',
-    tipo: 'ingreso',
-  },
-  {
-    id: '11',
-    numero: 'ING-011',
-    fecha: generarFechaAleatoria(5),
-    unidadNegocio: 'tattoo',
-    cliente: {
-      nombre: 'Antonella Castro',
-      telefono: '098-999-111',
-    },
-    personalPrincipal: personalMock[1],
-    items: [
-      {
-        productoServicioId: '8',
-        nombre: 'Retoque Microblading',
-        tipo: 'servicio',
-        cantidad: 1,
-        precio: 80000.0,
-        descuento: 8000.0,
-        subtotal: 72000.0,
-        personalId: personalMock[1].id,
-      },
-    ] as ItemComanda[],
-    seña: undefined,
-    metodosPago: [
-      {
-        tipo: 'tarjeta',
-        monto: 72000.0,
-        recargoPorcentaje: 35,
-        montoFinal: 97200.0,
-      },
-    ],
-    subtotal: 72000.0,
-    totalDescuentos: 8000.0,
-    totalRecargos: 25200.0,
-    totalSeña: 0,
-    totalFinal: 97200.0,
-    comisiones: [],
-    estado: 'completado',
-    observaciones: 'Cliente de retoque',
-    tipo: 'ingreso',
-  },
-  {
-    id: '12',
-    numero: 'ING-012',
-    fecha: generarFechaAleatoria(4),
-    unidadNegocio: 'estilismo',
-    cliente: {
-      nombre: 'Florencia Morales',
-      telefono: '097-222-333',
-    },
-    personalPrincipal: personalMock[2],
-    items: [
-      {
-        productoServicioId: '3',
-        nombre: 'Tratamiento Capilar',
-        tipo: 'servicio',
-        cantidad: 1,
-        precio: 35000.0,
-        descuento: 3500.0,
-        subtotal: 31500.0,
-        personalId: personalMock[2].id,
-      },
-    ] as ItemComanda[],
-    seña: undefined,
-    metodosPago: [
-      {
-        tipo: 'transferencia',
-        monto: 31500.0,
-        recargoPorcentaje: 20,
-        montoFinal: 37800.0,
-      },
-    ],
-    subtotal: 31500.0,
-    totalDescuentos: 3500.0,
-    totalRecargos: 6300.0,
-    totalSeña: 0,
-    totalFinal: 37800.0,
-    comisiones: [],
-    estado: 'completado',
-    observaciones: 'Descuento por fidelidad',
-    tipo: 'ingreso',
-  },
-  {
-    id: '13',
-    numero: 'ING-013',
-    fecha: generarFechaAleatoria(3),
-    unidadNegocio: 'estilismo',
-    cliente: {
-      nombre: 'Renata Jiménez',
-      telefono: '099-444-555',
-    },
-    personalPrincipal: personalMock[0],
-    items: [
-      {
-        productoServicioId: '1',
+        productoServicioId: 'srv-corte-001',
         nombre: 'Corte y Peinado',
         tipo: 'servicio',
         cantidad: 1,
@@ -561,37 +49,77 @@ const comandasEjemplo: Comanda[] = [
     totalFinal: 25000.0,
     comisiones: [],
     estado: 'completado',
-    observaciones: 'Corte clásico',
+    observaciones: '',
     tipo: 'ingreso',
   },
+
+  // INGRESO 2 - Estilismo con tarjeta
   {
-    id: '14',
-    numero: 'ING-014',
-    fecha: generarFechaAleatoria(2),
-    unidadNegocio: 'tattoo',
+    id: 'cmd-ingreso-002',
+    numero: 'ING-002',
+    fecha: generarFechaAleatoria(14),
+    businessUnit: 'estilismo',
     cliente: {
-      nombre: 'Agustina Romero',
-      telefono: '098-666-777',
+      nombre: 'Carmen López',
+      telefono: '098-765-432',
     },
-    personalPrincipal: personalMock[1],
+    mainStaff: personalMock[1],
     items: [
       {
-        productoServicioId: '6',
-        nombre: 'Microblading Cejas',
+        productoServicioId: 'srv-manicure-001',
+        nombre: 'Manicure Francesa',
         tipo: 'servicio',
         cantidad: 1,
-        precio: 150000.0,
-        descuento: 15000.0,
-        subtotal: 135000.0,
+        precio: 18000.0,
+        descuento: 0,
+        subtotal: 18000.0,
         personalId: personalMock[1].id,
       },
     ] as ItemComanda[],
-    seña: {
-      monto: 75000.0,
-      moneda: 'pesos',
-      fecha: generarFechaAleatoria(1),
-      observaciones: 'Seña adelantada',
+    seña: undefined,
+    metodosPago: [
+      {
+        tipo: 'tarjeta',
+        monto: 18000.0,
+        recargoPorcentaje: 35,
+        montoFinal: 24300.0,
+      },
+    ],
+    subtotal: 18000.0,
+    totalDescuentos: 0,
+    totalRecargos: 6300.0,
+    totalSeña: 0,
+    totalFinal: 24300.0,
+    comisiones: [],
+    estado: 'pendiente',
+    observaciones: '',
+    tipo: 'ingreso',
+  },
+
+  // EGRESO 1 - Simple
+  {
+    id: 'cmd-egreso-001',
+    numero: 'EGR-001',
+    fecha: generarFechaAleatoria(13),
+    businessUnit: 'estilismo',
+    cliente: {
+      nombre: 'Proveedor ABC',
+      telefono: '097-111-222',
     },
+    mainStaff: personalMock[0],
+    items: [
+      {
+        productoServicioId: 'prd-champu-001',
+        nombre: 'Champú Premium',
+        tipo: 'producto',
+        cantidad: 5,
+        precio: 12000.0,
+        descuento: 0,
+        subtotal: 60000.0,
+        personalId: personalMock[0].id,
+      },
+    ] as ItemComanda[],
+    seña: undefined,
     metodosPago: [
       {
         tipo: 'efectivo',
@@ -600,473 +128,123 @@ const comandasEjemplo: Comanda[] = [
         montoFinal: 60000.0,
       },
     ],
-    subtotal: 135000.0,
-    totalDescuentos: 15000.0,
+    subtotal: 60000.0,
+    totalDescuentos: 0,
     totalRecargos: 0,
-    totalSeña: 75000.0,
+    totalSeña: 0,
     totalFinal: 60000.0,
     comisiones: [],
     estado: 'completado',
-    observaciones: 'Descuento + seña previa',
-    tipo: 'ingreso',
-  },
-  {
-    id: '15',
-    numero: 'ING-015',
-    fecha: generarFechaAleatoria(1),
-    unidadNegocio: 'formacion',
-    cliente: {
-      nombre: 'Bianca Mendoza',
-      telefono: '097-888-999',
-    },
-    personalPrincipal: personalMock[2],
-    items: [
-      {
-        productoServicioId: '12',
-        nombre: 'Manual de Técnicas',
-        tipo: 'producto',
-        cantidad: 2,
-        precio: 45000.0,
-        descuento: 0,
-        subtotal: 90000.0,
-      },
-    ] as ItemComanda[],
-    seña: undefined,
-    metodosPago: [
-      {
-        tipo: 'transferencia',
-        monto: 90000.0,
-        recargoPorcentaje: 20,
-        montoFinal: 108000.0,
-      },
-    ],
-    subtotal: 90000.0,
-    totalDescuentos: 0,
-    totalRecargos: 18000.0,
-    totalSeña: 0,
-    totalFinal: 108000.0,
-    comisiones: [],
-    estado: 'completado',
-    observaciones: 'Compra de manuales',
-    tipo: 'ingreso',
+    observaciones: 'Compra de productos',
+    tipo: 'egreso',
   },
 
-  // EGRESOS (10 comandas)
+  // INGRESO 3 - Cancelado para testing
   {
-    id: '16',
-    numero: 'EGR-001',
-    fecha: generarFechaAleatoria(15),
-    unidadNegocio: 'estilismo',
-    cliente: {
-      nombre: 'Proveedor - Productos Capilares SRL',
-    },
-    personalPrincipal: personalMock[0],
-    items: [
-      {
-        productoServicioId: '5',
-        nombre: 'Compra productos capilares',
-        tipo: 'producto',
-        cantidad: 10,
-        precio: 12000.0,
-        descuento: 0,
-        subtotal: 120000.0,
-      },
-    ] as ItemComanda[],
-    seña: undefined,
-    metodosPago: [
-      {
-        tipo: 'transferencia',
-        monto: 120000.0,
-        recargoPorcentaje: 0,
-        montoFinal: 120000.0,
-      },
-    ],
-    subtotal: 120000.0,
-    totalDescuentos: 0,
-    totalRecargos: 0,
-    totalSeña: 0,
-    totalFinal: 120000.0,
-    comisiones: [],
-    estado: 'completado',
-    observaciones: 'Compra mensual de productos',
-    tipo: 'egreso',
-  },
-  {
-    id: '17',
-    numero: 'EGR-002',
-    fecha: generarFechaAleatoria(14),
-    unidadNegocio: 'estilismo',
-    cliente: {
-      nombre: 'Distribuidora Beauty Max',
-    },
-    personalPrincipal: personalMock[1],
-    items: [
-      {
-        productoServicioId: '20',
-        nombre: 'Herramientas de corte',
-        tipo: 'producto',
-        cantidad: 5,
-        precio: 25000.0,
-        descuento: 0,
-        subtotal: 125000.0,
-      },
-    ] as ItemComanda[],
-    seña: undefined,
-    metodosPago: [
-      {
-        tipo: 'efectivo',
-        monto: 125000.0,
-        recargoPorcentaje: 0,
-        montoFinal: 125000.0,
-      },
-    ],
-    subtotal: 125000.0,
-    totalDescuentos: 0,
-    totalRecargos: 0,
-    totalSeña: 0,
-    totalFinal: 125000.0,
-    comisiones: [],
-    estado: 'completado',
-    observaciones: 'Tijeras y peines profesionales',
-    tipo: 'egreso',
-  },
-  {
-    id: '18',
-    numero: 'EGR-003',
-    fecha: generarFechaAleatoria(13),
-    unidadNegocio: 'tattoo',
-    cliente: {
-      nombre: 'Insumos Tattoo Pro',
-    },
-    personalPrincipal: personalMock[2],
-    items: [
-      {
-        productoServicioId: '21',
-        nombre: 'Pigmentos micropigmentación',
-        tipo: 'producto',
-        cantidad: 8,
-        precio: 35000.0,
-        descuento: 28000.0,
-        subtotal: 252000.0,
-      },
-    ] as ItemComanda[],
-    seña: undefined,
-    metodosPago: [
-      {
-        tipo: 'tarjeta',
-        monto: 252000.0,
-        recargoPorcentaje: 35,
-        montoFinal: 340200.0,
-      },
-    ],
-    subtotal: 280000.0,
-    totalDescuentos: 28000.0,
-    totalRecargos: 88200.0,
-    totalSeña: 0,
-    totalFinal: 340200.0,
-    comisiones: [],
-    estado: 'completado',
-    observaciones: 'Descuento por volumen',
-    tipo: 'egreso',
-  },
-  {
-    id: '19',
-    numero: 'EGR-004',
+    id: 'cmd-ingreso-003',
+    numero: 'ING-003',
     fecha: generarFechaAleatoria(12),
-    unidadNegocio: 'estilismo',
+    businessUnit: 'tattoo',
     cliente: {
-      nombre: 'Servicios Públicos - EDESUR',
+      nombre: 'Pedro Martínez',
+      telefono: '099-333-444',
     },
-    personalPrincipal: personalMock[0],
+    mainStaff: personalMock[2],
     items: [
       {
-        productoServicioId: '22',
-        nombre: 'Factura de electricidad',
+        productoServicioId: 'srv-tattoo-001',
+        nombre: 'Tatuaje Pequeño',
         tipo: 'servicio',
         cantidad: 1,
-        precio: 85000.0,
-        descuento: 0,
-        subtotal: 85000.0,
-      },
-    ] as ItemComanda[],
-    seña: undefined,
-    metodosPago: [
-      {
-        tipo: 'transferencia',
-        monto: 85000.0,
-        recargoPorcentaje: 0,
-        montoFinal: 85000.0,
-      },
-    ],
-    subtotal: 85000.0,
-    totalDescuentos: 0,
-    totalRecargos: 0,
-    totalSeña: 0,
-    totalFinal: 85000.0,
-    comisiones: [],
-    estado: 'completado',
-    observaciones: 'Pago servicios básicos',
-    tipo: 'egreso',
-  },
-  {
-    id: '20',
-    numero: 'EGR-005',
-    fecha: generarFechaAleatoria(11),
-    unidadNegocio: 'estilismo',
-    cliente: {
-      nombre: 'Limpieza Total SA',
-    },
-    personalPrincipal: personalMock[1],
-    items: [
-      {
-        productoServicioId: '23',
-        nombre: 'Productos de limpieza',
-        tipo: 'producto',
-        cantidad: 15,
-        precio: 8000.0,
-        descuento: 0,
-        subtotal: 120000.0,
-      },
-    ] as ItemComanda[],
-    seña: undefined,
-    metodosPago: [
-      {
-        tipo: 'efectivo',
-        monto: 120000.0,
-        recargoPorcentaje: 0,
-        montoFinal: 120000.0,
-      },
-    ],
-    subtotal: 120000.0,
-    totalDescuentos: 0,
-    totalRecargos: 0,
-    totalSeña: 0,
-    totalFinal: 120000.0,
-    comisiones: [],
-    estado: 'completado',
-    observaciones: 'Stock mensual limpieza',
-    tipo: 'egreso',
-  },
-  {
-    id: '21',
-    numero: 'EGR-006',
-    fecha: generarFechaAleatoria(10),
-    unidadNegocio: 'formacion',
-    cliente: {
-      nombre: 'Editorial Técnica',
-    },
-    personalPrincipal: personalMock[2],
-    items: [
-      {
-        productoServicioId: '24',
-        nombre: 'Material didáctico cursos',
-        tipo: 'producto',
-        cantidad: 20,
-        precio: 15000.0,
-        descuento: 30000.0,
-        subtotal: 270000.0,
-      },
-    ] as ItemComanda[],
-    seña: undefined,
-    metodosPago: [
-      {
-        tipo: 'transferencia',
-        monto: 270000.0,
-        recargoPorcentaje: 20,
-        montoFinal: 324000.0,
-      },
-    ],
-    subtotal: 300000.0,
-    totalDescuentos: 30000.0,
-    totalRecargos: 54000.0,
-    totalSeña: 0,
-    totalFinal: 324000.0,
-    comisiones: [],
-    estado: 'completado',
-    observaciones: 'Material para cursos Q1',
-    tipo: 'egreso',
-  },
-  {
-    id: '22',
-    numero: 'EGR-007',
-    fecha: generarFechaAleatoria(9),
-    unidadNegocio: 'estilismo',
-    cliente: {
-      nombre: 'Mantenimiento Equipos SA',
-    },
-    personalPrincipal: personalMock[0],
-    items: [
-      {
-        productoServicioId: '25',
-        nombre: 'Reparación secadores',
-        tipo: 'servicio',
-        cantidad: 3,
         precio: 45000.0,
         descuento: 0,
-        subtotal: 135000.0,
+        subtotal: 45000.0,
+        personalId: personalMock[2].id,
       },
     ] as ItemComanda[],
-    seña: undefined,
+    seña: {
+      monto: 15000.0,
+      moneda: 'pesos',
+      fecha: generarFechaAleatoria(10),
+      observaciones: 'Seña para reservar turno',
+    },
     metodosPago: [
       {
         tipo: 'efectivo',
-        monto: 135000.0,
+        monto: 30000.0,
         recargoPorcentaje: 0,
-        montoFinal: 135000.0,
+        montoFinal: 30000.0,
       },
     ],
-    subtotal: 135000.0,
+    subtotal: 45000.0,
     totalDescuentos: 0,
     totalRecargos: 0,
-    totalSeña: 0,
-    totalFinal: 135000.0,
+    totalSeña: 15000.0,
+    totalFinal: 45000.0,
     comisiones: [],
-    estado: 'completado',
-    observaciones: 'Mantenimiento preventivo',
-    tipo: 'egreso',
-  },
-  {
-    id: '23',
-    numero: 'EGR-008',
-    fecha: generarFechaAleatoria(8),
-    unidadNegocio: 'tattoo',
-    cliente: {
-      nombre: 'Esterilización Medical',
-    },
-    personalPrincipal: personalMock[1],
-    items: [
-      {
-        productoServicioId: '26',
-        nombre: 'Servicio esterilización',
-        tipo: 'servicio',
-        cantidad: 1,
-        precio: 75000.0,
-        descuento: 0,
-        subtotal: 75000.0,
-      },
-    ] as ItemComanda[],
-    seña: undefined,
-    metodosPago: [
-      {
-        tipo: 'tarjeta',
-        monto: 75000.0,
-        recargoPorcentaje: 35,
-        montoFinal: 101250.0,
-      },
-    ],
-    subtotal: 75000.0,
-    totalDescuentos: 0,
-    totalRecargos: 26250.0,
-    totalSeña: 0,
-    totalFinal: 101250.0,
-    comisiones: [],
-    estado: 'completado',
-    observaciones: 'Esterilización equipos tattoo',
-    tipo: 'egreso',
-  },
-  {
-    id: '24',
-    numero: 'EGR-009',
-    fecha: generarFechaAleatoria(7),
-    unidadNegocio: 'estilismo',
-    cliente: {
-      nombre: 'Alquiler Propiedades',
-    },
-    personalPrincipal: personalMock[2],
-    items: [
-      {
-        productoServicioId: '27',
-        nombre: 'Alquiler local comercial',
-        tipo: 'servicio',
-        cantidad: 1,
-        precio: 450000.0,
-        descuento: 0,
-        subtotal: 450000.0,
-      },
-    ] as ItemComanda[],
-    seña: undefined,
-    metodosPago: [
-      {
-        tipo: 'transferencia',
-        monto: 450000.0,
-        recargoPorcentaje: 0,
-        montoFinal: 450000.0,
-      },
-    ],
-    subtotal: 450000.0,
-    totalDescuentos: 0,
-    totalRecargos: 0,
-    totalSeña: 0,
-    totalFinal: 450000.0,
-    comisiones: [],
-    estado: 'completado',
-    observaciones: 'Alquiler enero 2025',
-    tipo: 'egreso',
-  },
-  {
-    id: '25',
-    numero: 'EGR-010',
-    fecha: generarFechaAleatoria(6),
-    unidadNegocio: 'estilismo',
-    cliente: {
-      nombre: 'Marketing Digital Pro',
-    },
-    personalPrincipal: personalMock[0],
-    items: [
-      {
-        productoServicioId: '28',
-        nombre: 'Campaña publicitaria redes',
-        tipo: 'servicio',
-        cantidad: 1,
-        precio: 180000.0,
-        descuento: 18000.0,
-        subtotal: 162000.0,
-      },
-    ] as ItemComanda[],
-    seña: undefined,
-    metodosPago: [
-      {
-        tipo: 'efectivo',
-        monto: 162000.0,
-        recargoPorcentaje: 0,
-        montoFinal: 162000.0,
-      },
-    ],
-    subtotal: 162000.0,
-    totalDescuentos: 18000.0,
-    totalRecargos: 0,
-    totalSeña: 0,
-    totalFinal: 162000.0,
-    comisiones: [],
-    estado: 'pendiente',
-    observaciones: 'Campaña enero - pendiente aprobación',
-    tipo: 'egreso',
+    estado: 'cancelado',
+    observaciones: 'Cliente no se presentó',
+    tipo: 'ingreso',
   },
 ];
 
+// Global flag to prevent multiple initializations
+let isInitialized = false;
+let isInitializing = false; // Prevent race conditions
+
 export function useInitializeComandaStore() {
-  const { comandas, inicializar, agregarComanda } = useComandaStore();
+  const store = useComandaStore();
+  const initRef = useRef(false);
 
   useEffect(() => {
-    // Solo inicializar si no hay comandas o hay muy pocas
-    if (comandas.length < 5) {
-      console.log(
-        '🚀 Inicializando store con 25 comandas de prueba para paginación...'
-      );
+    // Prevent multiple initializations both globally and per component
+    if (isInitialized || initRef.current || isInitializing) {
+      return;
+    }
 
+    // Set initializing flag to prevent race conditions
+    isInitializing = true;
+
+    // First, clean any duplicates that might exist from persistence
+    store.limpiarDuplicados();
+
+    // Check if sample comandas already exist (by ID)
+    const existingIds = store.comandas.map((c) => c.id);
+    const sampleIds = comandasEjemplo.map((c) => c.id);
+    const hasAllSamples = sampleIds.every((id) => existingIds.includes(id));
+
+    if (!hasAllSamples) {
+      logger.info('🚀 Inicializando store con comandas de ejemplo...');
+
+      // Mark as initialized before adding comandas
+      isInitialized = true;
+      initRef.current = true;
+
+      // Only add comandas that don't exist yet
       comandasEjemplo.forEach((comanda) => {
-        // Verificar si la comanda ya existe antes de agregarla
-        const existe = comandas.find((c) => c.id === comanda.id);
-        if (!existe) {
-          agregarComanda(comanda);
+        if (!existingIds.includes(comanda.id)) {
+          store.agregarComanda(comanda);
+          logger.info(`✅ Comanda agregada: ${comanda.id}`);
+        } else {
+          logger.info(`⚠️ Comanda ya existe: ${comanda.id}`);
         }
       });
 
-      console.log('✅ Store inicializado con comandas de prueba');
+      logger.info('✅ Store inicializado correctamente');
     } else {
-      console.log(`📊 Store ya tiene ${comandas.length} comandas`);
+      // If comandas already exist, just mark as initialized
+      isInitialized = true;
+      initRef.current = true;
+      logger.info(
+        'ℹ️ Store ya tiene comandas de ejemplo, omitiendo inicialización'
+      );
     }
 
-    inicializar();
-  }, [comandas.length, inicializar, agregarComanda]);
+    // Clear initializing flag
+    isInitializing = false;
+  }, [store]);
+
+  return {
+    isInitialized: store.comandas.length > 0,
+  };
 }

@@ -1007,9 +1007,9 @@ export default function ModalAgregarComanda({
                           ≈ US$
                           {(item.precio / tipoCambio.valorVenta).toFixed(2)}
                         </div>
-                        {item.unidadNegocio && (
+                        {item.businessUnit && (
                           <div className="text-xs text-gray-500">
-                            {item.unidadNegocio}
+                            {item.businessUnit}
                           </div>
                         )}
                       </div>

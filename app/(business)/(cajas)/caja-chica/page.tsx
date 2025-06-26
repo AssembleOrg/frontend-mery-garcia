@@ -31,7 +31,7 @@ export default function CajaChicaMenuPage() {
   // Obtener resumen del store
   const { resumen } = useResumenCaja();
 
-  const formatearMonto = (monto: number) => {
+  const formatAmount = (monto: number) => {
     return new Intl.NumberFormat('es-ES', {
       style: 'currency',
       currency: 'USD',
@@ -40,8 +40,8 @@ export default function CajaChicaMenuPage() {
 
   // Calcular datos adicionales para el resumen
   const resumenDelDia = {
-    totalIngresos: resumen.totalIngresos,
-    totalEgresos: resumen.totalEgresos,
+    totalIncoming: resumen.totalIncoming,
+    totalOutgoing: resumen.totalOutgoing,
     saldo: resumen.saldo,
     cantidadIngresos: resumen.cantidadComandas, // Simplificado por ahora
     cantidadEgresos: 0, // Se calculará cuando tengamos más datos
@@ -59,7 +59,7 @@ export default function CajaChicaMenuPage() {
       gradientTo: 'to-[#e292a3]',
       accentColor: '#f9bbc4',
       stats: `${resumenDelDia.cantidadIngresos} encomiendas hoy`,
-      amount: resumenDelDia.totalIngresos,
+      amount: resumenDelDia.totalIncoming,
     },
     {
       title: 'Egresos',
@@ -70,7 +70,7 @@ export default function CajaChicaMenuPage() {
       gradientTo: 'to-[#e087a3]',
       accentColor: '#f7a8b8',
       stats: `${resumenDelDia.cantidadEgresos} movimientos hoy`,
-      amount: resumenDelDia.totalEgresos,
+      amount: resumenDelDia.totalOutgoing,
     },
     {
       title: 'Resumen del Día',
@@ -123,7 +123,7 @@ export default function CajaChicaMenuPage() {
                   <div
                     className={`text-2xl font-bold ${resumenDelDia.saldo >= 0 ? 'text-green-600' : 'text-red-600'}`}
                   >
-                    {formatearMonto(resumenDelDia.saldo)}
+                    {formatAmount(resumenDelDia.saldo)}
                   </div>
                   <p className="text-xs text-[#8b6b75]">Balance del día</p>
                 </CardContent>
@@ -214,7 +214,7 @@ export default function CajaChicaMenuPage() {
                         <div
                           className={`text-2xl font-bold ${option.isBalance && option.amount >= 0 ? 'text-green-600' : option.isBalance && option.amount < 0 ? 'text-red-600' : 'text-[#4a3540]'}`}
                         >
-                          {formatearMonto(option.amount)}
+                          {formatAmount(option.amount)}
                         </div>
                         <p className="text-sm text-[#8b6b75]">{option.stats}</p>
                       </div>

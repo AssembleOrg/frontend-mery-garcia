@@ -94,7 +94,7 @@ export default function ListaPreciosPage() {
   const { productosServicios, tipoCambio, eliminarProductoServicio } =
     useDatosReferencia();
 
-  // Estados para filtros
+  // Estados para filters
   const [busqueda, setBusqueda] = useState('');
   const [unidadSeleccionada, setUnidadSeleccionada] = useState<
     UnidadNegocio | 'todas'
@@ -120,7 +120,7 @@ export default function ListaPreciosPage() {
 
     const cumpleUnidad =
       unidadSeleccionada === 'todas' ||
-      item.unidadNegocio === unidadSeleccionada;
+      item.businessUnit === unidadSeleccionada;
     const cumpleTipo =
       tipoSeleccionado === 'todos' || item.tipo === tipoSeleccionado;
     const cumpleActivo = item.activo;
@@ -128,7 +128,7 @@ export default function ListaPreciosPage() {
     return cumpleBusqueda && cumpleUnidad && cumpleTipo && cumpleActivo;
   });
 
-  const formatearMonto = (monto: number) => {
+  const formatAmount = (monto: number) => {
     const montoARS = new Intl.NumberFormat('es-AR', {
       style: 'currency',
       currency: 'ARS',
@@ -331,7 +331,7 @@ export default function ListaPreciosPage() {
                     </TableHeader>
                     <TableBody>
                       {productosFiltrados.map((item) => {
-                        const precios = formatearMonto(item.precio);
+                        const precios = formatAmount(item.precio);
                         return (
                           <TableRow
                             key={item.id}
@@ -361,11 +361,11 @@ export default function ListaPreciosPage() {
                             </TableCell>
                             <TableCell>
                               <Badge
-                                className={`capitalize ${obtenerColorUnidad(item.unidadNegocio)}`}
+                                className={`capitalize ${obtenerColorUnidad(item.businessUnit)}`}
                               >
                                 <div className="flex items-center gap-1">
-                                  {obtenerIconoUnidad(item.unidadNegocio)}
-                                  {item.unidadNegocio}
+                                  {obtenerIconoUnidad(item.businessUnit)}
+                                  {item.businessUnit}
                                 </div>
                               </Badge>
                             </TableCell>
@@ -427,7 +427,7 @@ export default function ListaPreciosPage() {
                         No se encontraron productos o servicios
                       </p>
                       <p className="mt-2 text-sm text-gray-400">
-                        Intenta ajustar los filtros o crea un nuevo elemento
+                        Intenta ajustar los filters o crea un nuevo elemento
                       </p>
                       <Button
                         onClick={handleNuevoProducto}

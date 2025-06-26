@@ -227,7 +227,7 @@ export default function PersonalPage() {
         isOpen={modalAbierto}
         onClose={() => setModalAbierto(false)}
         personal={personalEditando}
-        onGuardar={handleGuardarPersonal}
+        onSave={handleGuardarPersonal}
       />
 
       {/* Alert Dialog para eliminar */}

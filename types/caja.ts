@@ -36,7 +36,7 @@ export interface ProductoServicio {
   nombre: string;
   precio: number;
   tipo: 'producto' | 'servicio';
-  unidadNegocio: UnidadNegocio;
+  businessUnit: UnidadNegocio;
   descripcion?: string;
   activo: boolean;
   // Para servicios
@@ -91,9 +91,9 @@ export interface Comanda {
   id: string;
   numero: string; // manual, único global
   fecha: Date;
-  unidadNegocio: UnidadNegocio;
+  businessUnit: UnidadNegocio;
   cliente: Cliente;
-  personalPrincipal: Personal; // quien registra la comanda
+  mainStaff: Personal; // quien registra la comanda
   items: ItemComanda[];
   seña?: Seña;
   metodosPago: MetodoPago[];
@@ -103,7 +103,7 @@ export interface Comanda {
   totalSeña: number;
   totalFinal: number;
   comisiones: Comision[];
-  estado: 'pendiente' | 'en_proceso' | 'completado' | 'cancelado';
+  estado: 'pendiente' | 'completado' | 'cancelado';
   observaciones?: string;
   tipo: 'ingreso' | 'egreso';
 }
@@ -125,9 +125,9 @@ export interface TipoCambio {
 
 // Filtros para búsquedas
 export interface FiltrosComanda {
-  fechaInicio?: Date;
-  fechaFin?: Date;
-  unidadNegocio?: UnidadNegocio;
+  startDate?: Date;
+  endDate?: Date;
+  businessUnit?: UnidadNegocio;
   estado?: string;
   personalId?: string;
   numeroComanda?: string;
@@ -138,19 +138,21 @@ export interface FiltrosComanda {
   vendedor?: string;
 }
 
-// Configuración de columnas para tablas
+// Configuración de columns para tablas
 export interface ColumnaComanda {
   key:
     | keyof Comanda
     | 'acciones'
     | 'cliente.nombre'
-    | 'personalPrincipal.nombre'
+    | 'mainStaff.nombre'
     | 'servicios'
     | 'descuentoTotal'
     | 'iva'
     | 'total'
     | 'metodoPago'
-    | 'vendedor';
+    | 'vendedor'
+    | 'estadoNegocio'
+    | 'estadoValidacion';
   label: string;
   visible: boolean;
   sortable: boolean;
@@ -159,8 +161,8 @@ export interface ColumnaComanda {
 
 // Resumen para estadísticas
 export interface ResumenCaja {
-  totalIngresos: number;
-  totalEgresos: number;
+  totalIncoming: number;
+  totalOutgoing: number;
   saldo: number;
   cantidadComandas: number;
   comisionesTotales: number;
@@ -187,8 +189,11 @@ export interface Encomienda {
   metodoPago: string; // legacy: string simple
   observaciones?: string;
   vendedor: string; // legacy: nombre del personal
-  estado: 'pendiente' | 'en_proceso' | 'completado' | 'cancelado';
+  estado: 'pendiente' | 'completado' | 'cancelado';
   tipo: 'ingreso' | 'egreso';
+  // Nuevos campos para validación
+  estadoNegocio?: EstadoComandaNegocio;
+  estadoValidacion?: EstadoValidacion;
 }
 
 // Nuevo tipo para archivos adjuntos
@@ -212,4 +217,69 @@ export interface UploadConfig {
   maxTamaño: number; // en MB
   tiposPermitidos: string[];
   maxArchivos: number;
+}
+
+// Estados de la comanda por vendedor (nuevos estados específicos)
+export type EstadoComandaNegocio = 'pendiente' | 'completo' | 'incompleto';
+
+// Estados de validación por admin
+export type EstadoValidacion = 'no_validado' | 'validado';
+
+// Información de trazabilidad
+export interface TrazabilidadComanda {
+  creadoPor: string; // ID del usuario que creó
+  fechaCreacion: string;
+  modificadoPor?: string; // ID del último usuario que modificó
+  fechaModificacion?: string;
+  validadoPor?: string; // ID del admin que validó
+  fechaValidacion?: string;
+  observacionesValidacion?: string;
+}
+
+// Historial de cambios para auditoría
+export interface HistorialCambio {
+  id: string;
+  comandaId: string;
+  usuario: string;
+  accion: 'creacion' | 'edicion' | 'validacion' | 'cambio_estado';
+  estadoAnterior?: Record<string, unknown>;
+  estadoNuevo: Record<string, unknown>;
+  fecha: string;
+  observaciones?: string;
+}
+
+// Nueva interfaz para comandas con funcionalidades extendidas
+export interface ComandaConValidacion extends Omit<Comanda, 'estado'> {
+  estadoNegocio: EstadoComandaNegocio; // Estado del negocio (vendedor)
+  estadoValidacion: EstadoValidacion; // Validación del admin
+  trazabilidad: TrazabilidadComanda;
+  puedeEditar: boolean; // Calculado: false si está validado
+  puedeValidar: boolean; // Calculado: true si es admin y no está validado
+}
+
+// Información del traspaso a Caja 2
+export interface TraspasoInfo {
+  id: string;
+  fechaTraspaso: string;
+  adminQueTraspaso: string;
+  comandasTraspasadas: string[]; // IDs de comandas
+  montoTotal: number;
+  rangoFechas: {
+    desde: string;
+    hasta: string;
+  };
+  observaciones?: string;
+}
+
+// Filtros extendidos para las nuevas funcionalidades
+export interface FiltrosComandaExtendidos {
+  fechaDesde?: string;
+  fechaHasta?: string;
+  cliente?: string;
+  vendedor?: string;
+  metodoPago?: string;
+  estadoNegocio?: EstadoComandaNegocio[];
+  estadoValidacion?: EstadoValidacion[];
+  soloEditables?: boolean;
+  soloValidables?: boolean;
 }

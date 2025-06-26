@@ -46,7 +46,7 @@ export const productosServiciosMock: ProductoServicio[] = [
     nombre: 'Corte y Peinado',
     precio: 25000.0, // $25.000 ARS (≈ $25 USD)
     tipo: 'servicio',
-    unidadNegocio: 'estilismo',
+    businessUnit: 'estilismo',
     descripcion: 'Corte según el estilo del cliente',
     activo: true,
     duracion: 45,
@@ -56,7 +56,7 @@ export const productosServiciosMock: ProductoServicio[] = [
     nombre: 'Coloración Completa',
     precio: 65000.0, // $65.000 ARS (≈ $65 USD)
     tipo: 'servicio',
-    unidadNegocio: 'estilismo',
+    businessUnit: 'estilismo',
     descripcion: 'Coloración completa con tinte profesional',
     activo: true,
     duracion: 120,
@@ -66,7 +66,7 @@ export const productosServiciosMock: ProductoServicio[] = [
     nombre: 'Tratamiento Capilar',
     precio: 35000.0, // $35.000 ARS (≈ $35 USD)
     tipo: 'servicio',
-    unidadNegocio: 'estilismo',
+    businessUnit: 'estilismo',
     activo: true,
     duracion: 60,
   },
@@ -75,7 +75,7 @@ export const productosServiciosMock: ProductoServicio[] = [
     nombre: 'Manicure Francesa',
     precio: 18000.0, // $18.000 ARS (≈ $18 USD)
     tipo: 'servicio',
-    unidadNegocio: 'estilismo',
+    businessUnit: 'estilismo',
     activo: true,
     duracion: 45,
   },
@@ -84,7 +84,7 @@ export const productosServiciosMock: ProductoServicio[] = [
     nombre: 'Champú Premium',
     precio: 12000.0, // $12.000 ARS (≈ $12 USD)
     tipo: 'producto',
-    unidadNegocio: 'estilismo',
+    businessUnit: 'estilismo',
     descripcion: 'Champú para cabello teñido',
     activo: true,
     codigoBarras: '7891234567890',
@@ -96,7 +96,7 @@ export const productosServiciosMock: ProductoServicio[] = [
     nombre: 'Microblading Cejas',
     precio: 150000.0, // $150.000 ARS (≈ $150 USD)
     tipo: 'servicio',
-    unidadNegocio: 'tattoo',
+    businessUnit: 'tattoo',
     descripcion: 'Técnica de micropigmentación para cejas',
     activo: true,
     duracion: 180,
@@ -106,7 +106,7 @@ export const productosServiciosMock: ProductoServicio[] = [
     nombre: 'Perfilado de Labios',
     precio: 120000.0, // $120.000 ARS (≈ $120 USD)
     tipo: 'servicio',
-    unidadNegocio: 'tattoo',
+    businessUnit: 'tattoo',
     activo: true,
     duracion: 120,
   },
@@ -115,7 +115,7 @@ export const productosServiciosMock: ProductoServicio[] = [
     nombre: 'Retoque Microblading',
     precio: 80000.0, // $80.000 ARS (≈ $80 USD)
     tipo: 'servicio',
-    unidadNegocio: 'tattoo',
+    businessUnit: 'tattoo',
     activo: true,
     duracion: 90,
   },
@@ -124,7 +124,7 @@ export const productosServiciosMock: ProductoServicio[] = [
     nombre: 'Kit Cuidado Post-Tatuaje',
     precio: 25000.0, // $25.000 ARS (≈ $25 USD)
     tipo: 'producto',
-    unidadNegocio: 'tattoo',
+    businessUnit: 'tattoo',
     descripcion: 'Cremas y productos para cuidado posterior',
     activo: true,
   },
@@ -135,7 +135,7 @@ export const productosServiciosMock: ProductoServicio[] = [
     nombre: 'Curso Microblading Básico',
     precio: 500000.0, // $500.000 ARS (≈ $500 USD)
     tipo: 'servicio',
-    unidadNegocio: 'formacion',
+    businessUnit: 'formacion',
     descripcion: 'Curso intensivo de 3 días',
     activo: true,
     duracion: 1440, // 24 horas en minutos
@@ -145,7 +145,7 @@ export const productosServiciosMock: ProductoServicio[] = [
     nombre: 'Curso Colorimetría',
     precio: 300000.0, // $300.000 ARS (≈ $300 USD)
     tipo: 'servicio',
-    unidadNegocio: 'formacion',
+    businessUnit: 'formacion',
     activo: true,
     duracion: 480, // 8 horas
   },
@@ -154,7 +154,7 @@ export const productosServiciosMock: ProductoServicio[] = [
     nombre: 'Manual de Técnicas',
     precio: 45000.0, // $45.000 ARS (≈ $45 USD)
     tipo: 'producto',
-    unidadNegocio: 'formacion',
+    businessUnit: 'formacion',
     descripcion: 'Manual impreso con técnicas avanzadas',
     activo: true,
   },
@@ -194,7 +194,7 @@ export const getProductosServiciosPorUnidad = (
   unidad: UnidadNegocio
 ): ProductoServicio[] => {
   return productosServiciosMock.filter(
-    (ps) => ps.activo && ps.unidadNegocio === unidad
+    (ps) => ps.activo && ps.businessUnit === unidad
   );
 };
 
@@ -206,7 +206,7 @@ export const buscarProductosServicios = (
   let productos = productosServiciosMock.filter((ps) => ps.activo);
 
   if (unidad) {
-    productos = productos.filter((ps) => ps.unidadNegocio === unidad);
+    productos = productos.filter((ps) => ps.businessUnit === unidad);
   }
 
   if (termino.trim()) {

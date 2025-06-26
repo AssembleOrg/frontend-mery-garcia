@@ -63,8 +63,7 @@ export default function ModalProductoServicio({
   const [descripcion, setDescripcion] = useState('');
   const [precio, setPrecio] = useState<number>(0);
   const [tipo, setTipo] = useState<'producto' | 'servicio'>('servicio');
-  const [unidadNegocio, setUnidadNegocio] =
-    useState<UnidadNegocio>('estilismo');
+  const [businessUnit, setBusinessUnit] = useState<UnidadNegocio>('estilismo');
   const [duracion, setDuracion] = useState<number>(0);
 
   // Estados de validación
@@ -82,27 +81,27 @@ export default function ModalProductoServicio({
         setDescripcion(producto.descripcion || '');
         setPrecio(producto.precio);
         setTipo(producto.tipo);
-        setUnidadNegocio(producto.unidadNegocio);
+        setBusinessUnit(producto.businessUnit);
         setDuracion(producto.duracion || 0);
       } else {
         // Modo creación
-        limpiarFormulario();
+        clearForm();
       }
       setErrores({});
     }
   }, [isOpen, producto]);
 
-  const limpiarFormulario = () => {
+  const clearForm = () => {
     setNombre('');
     setDescripcion('');
     setPrecio(0);
     setTipo('servicio');
-    setUnidadNegocio('estilismo');
+    setBusinessUnit('estilismo');
     setDuracion(0);
     setErrores({});
   };
 
-  const validarFormulario = (): boolean => {
+  const validateForm = (): boolean => {
     const nuevosErrores: Record<string, string> = {};
 
     if (!nombre.trim()) {
@@ -122,7 +121,7 @@ export default function ModalProductoServicio({
   };
 
   const handleGuardar = async () => {
-    if (!validarFormulario()) return;
+    if (!validateForm()) return;
 
     setGuardando(true);
 
@@ -132,7 +131,7 @@ export default function ModalProductoServicio({
         descripcion: descripcion.trim() || undefined,
         precio,
         tipo,
-        unidadNegocio,
+        businessUnit,
         activo: true, // Siempre activo para salón de belleza
         ...(tipo === 'servicio' && duracion > 0 && { duracion }),
       };
@@ -154,7 +153,7 @@ export default function ModalProductoServicio({
     }
   };
 
-  const formatearMonto = (monto: number) => {
+  const formatAmount = (monto: number) => {
     if (monto === 0) return { ars: '$0', usd: '$0' };
 
     const montoARS = new Intl.NumberFormat('es-AR', {
@@ -185,7 +184,7 @@ export default function ModalProductoServicio({
 
   if (!isOpen) return null;
 
-  const precios = formatearMonto(precio);
+  const precios = formatAmount(precio);
 
   return (
     <>
@@ -293,11 +292,11 @@ export default function ModalProductoServicio({
                   </div>
 
                   <div>
-                    <Label htmlFor="unidadNegocio">Unidad de Negocio *</Label>
+                    <Label htmlFor="businessUnit">Unidad de Negocio *</Label>
                     <Select
-                      value={unidadNegocio}
+                      value={businessUnit}
                       onValueChange={(value) =>
-                        setUnidadNegocio(value as UnidadNegocio)
+                        setBusinessUnit(value as UnidadNegocio)
                       }
                     >
                       <SelectTrigger>
@@ -399,7 +398,7 @@ export default function ModalProductoServicio({
                   <div className="rounded-lg border p-4">
                     <div className="flex items-start justify-between">
                       <div className="flex items-center gap-3">
-                        {obtenerIconoUnidad(unidadNegocio)}
+                        {obtenerIconoUnidad(businessUnit)}
                         <div>
                           <h3 className="font-medium">
                             {nombre || 'Nombre del elemento'}
@@ -419,7 +418,7 @@ export default function ModalProductoServicio({
                               {tipo}
                             </Badge>
                             <Badge variant="outline" className="capitalize">
-                              {unidadNegocio}
+                              {businessUnit}
                             </Badge>
                           </div>
                         </div>

@@ -4,15 +4,17 @@ import { useState, useEffect } from 'react';
 import MainLayout from '@/components/layout/MainLayout';
 import StandardPageBanner from '@/components/common/StandardPageBanner';
 import StandardBreadcrumbs from '@/components/common/StandardBreadcrumbs';
-import FiltrosCaja from '@/components/cajas/FiltrosCaja';
-import TablaEncomiendas from '@/components/cajas/TablaEncomiendas';
+import TableFilters from '@/components/cajas/TableFilters';
+import TransactionsTable from '@/components/cajas/TransactionsTable';
+import ModalCambiarEstado from '@/components/validacion/ModalCambiarEstado';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { DollarSign, TrendingDown, Users, Plus } from 'lucide-react';
 import { ColumnaCaja } from '@/types/caja';
 import ModalAgregarComanda from '@/components/cajas/ModalAgregarComanda';
+import ModalEditarTransaccion from '@/components/cajas/ModalEditarTransaccion';
 import { useInitializeComandaStore } from '@/hooks/useInitializeComandaStore';
-import { useCajaEgresos } from '@/features/comandas/hooks/useCajaEgresos';
+import { useOutgoingTransactions } from '@/features/comandas/hooks/useOutgoingTransactions';
 import { Pagination } from '@/components/ui/pagination';
 import { DateRangePicker } from '@/components/ui/date-range-picker';
 import { DateRange } from 'react-day-picker';
@@ -24,25 +26,32 @@ const breadcrumbItems = [
   { label: 'Egresos' },
 ];
 
-// Configuración de columnas para egresos - SIMPLIFICADA
-const columnasIniciales: ColumnaCaja[] = [
+// Column configuration for outgoing transactions
+const initialColumns: ColumnaCaja[] = [
   {
     key: 'fecha',
     label: 'Fecha',
     visible: true,
     sortable: true,
-    width: '110px',
+    width: '100px',
   },
-  { key: 'numero', label: 'N°', visible: true, sortable: true, width: '80px' },
   {
-    key: 'cliente',
-    label: 'Proveedor/Concepto',
+    key: 'numero',
+    label: 'Número',
     visible: true,
     sortable: true,
+    width: '100px',
+  },
+  {
+    key: 'cliente',
+    label: 'Proveedor',
+    visible: true,
+    sortable: true,
+    width: '150px',
   },
   {
     key: 'servicios',
-    label: 'Detalle',
+    label: 'Conceptos',
     visible: true,
     sortable: false,
     width: '200px',
@@ -55,16 +64,23 @@ const columnasIniciales: ColumnaCaja[] = [
     width: '120px',
   },
   {
+    key: 'estado',
+    label: 'Estado',
+    visible: false, // Oculto por defecto, usuario puede habilitarlo
+    sortable: true,
+    width: '120px',
+  },
+  {
     key: 'metodoPago',
-    label: 'Método',
-    visible: true,
+    label: 'Método Pago',
+    visible: false, // Oculto por defecto, usuario puede habilitarlo
     sortable: true,
     width: '100px',
   },
   {
     key: 'vendedor',
     label: 'Responsable',
-    visible: true,
+    visible: false, // Oculto por defecto, usuario puede habilitarlo
     sortable: true,
     width: '120px',
   },
@@ -78,136 +94,172 @@ const columnasIniciales: ColumnaCaja[] = [
 ];
 
 export default function EgresosPage() {
-  // Inicializar el store
-  useInitializeComandaStore();
+  // Initialize store only once
+  const { isInitialized } = useInitializeComandaStore();
 
-  // Estado para filtro de fechas
+  // Date range filter state
   const [dateRange, setDateRange] = useState<DateRange | undefined>();
 
-  // Estado para evitar problemas de hidratación
+  // Client-side hydration state
   const [isClient, setIsClient] = useState(false);
 
-  // Usar custom hook optimizado con filtro de fechas
+  // Use clean hook for outgoing transactions
   const {
-    datosEgresos,
-    estadisticas,
-    paginacion,
-    filtros,
-    actualizarFiltros,
-    formatearMonto,
-    manejarEditar,
-    manejarEliminar,
-    manejarVer,
-  } = useCajaEgresos(dateRange);
+    data,
+    statistics,
+    pagination,
+    filters,
+    updateFilters,
+    formatAmount,
+    handleDelete,
+    handleView,
+    exportToPDF,
+    exportToExcel,
+    exportToCSV,
+  } = useOutgoingTransactions(dateRange);
 
-  // Estado local simple (UI)
-  const [columnas, setColumnas] = useState<ColumnaCaja[]>(columnasIniciales);
-  const [mostrarModalComanda, setMostrarModalComanda] = useState(false);
+  // Local UI state
+  const [columns, setColumns] = useState<ColumnaCaja[]>(initialColumns);
+  const [showAddModal, setShowAddModal] = useState(false);
+  const [showChangeStatusModal, setShowChangeStatusModal] = useState(false);
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [selectedTransactionId, setSelectedTransactionId] =
+    useState<string>('');
 
-  // Efecto para marcar cuando el componente está hidratado
+  // Get the selected transaction for the modal
+  const selectedTransaction = data.find((t) => t.id === selectedTransactionId);
+
+  // Handle status change
+  const onChangeStatus = (id: string) => {
+    setSelectedTransactionId(id);
+    setShowChangeStatusModal(true);
+  };
+
+  // Handle edit transaction
+  const onEditTransaction = (id: string) => {
+    setSelectedTransactionId(id);
+    setShowEditModal(true);
+  };
+
+  // Mark as hydrated and wait for store initialization
   useEffect(() => {
-    setIsClient(true);
-  }, []);
+    if (isInitialized) {
+      setIsClient(true);
+    }
+  }, [isInitialized]);
 
-  // Usar datos optimizados del custom hook
-  const datosParaMostrar = datosEgresos;
+  // Don't render until client-side and store is initialized
+  if (!isClient || !isInitialized) {
+    return (
+      <MainLayout>
+        <div className="min-h-screen bg-gradient-to-br from-[#f9bbc4]/10 via-[#e8b4c6]/8 to-[#d4a7ca]/6">
+          <StandardPageBanner title="Transacciones de Egreso - Caja Chica" />
+          <div className="flex items-center justify-center py-12">
+            <div className="text-center">
+              <div className="mx-auto mb-4 h-8 w-8 animate-spin rounded-full border-4 border-[#f9bbc4] border-t-transparent"></div>
+              <p className="text-[#6b4c57]">Cargando transacciones...</p>
+            </div>
+          </div>
+        </div>
+      </MainLayout>
+    );
+  }
 
   return (
     <MainLayout>
-      <div className="min-h-screen bg-gradient-to-br from-[#f7a8b8]/10 via-[#e087a3]/8 to-[#d4a7ca]/6">
-        {/* Banner más compacto */}
-        <StandardPageBanner title="Egresos - Caja Chica" />
+      <div className="min-h-screen bg-gradient-to-br from-[#f9bbc4]/10 via-[#e8b4c6]/8 to-[#d4a7ca]/6">
+        {/* Banner */}
+        <StandardPageBanner title="Transacciones de Egreso - Caja Chica" />
 
         <div className="relative -mt-12 h-12 bg-gradient-to-b from-transparent to-[#f9bbc4]/8" />
 
-        {/* Breadcrumbs más compactos */}
+        {/* Breadcrumbs */}
         <StandardBreadcrumbs items={breadcrumbItems} />
 
-        <div className="bg-gradient-to-b from-[#f7a8b8]/5 via-[#e087a3]/3 to-[#d4a7ca]/5">
+        <div className="bg-gradient-to-b from-[#f9bbc4]/5 via-[#e8b4c6]/3 to-[#d4a7ca]/5">
           <div className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
-            {/* Header compacto con estadísticas esenciales */}
+            {/* Header with statistics */}
             <div className="mb-6">
               <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-                {/* Título y estadísticas en una línea */}
+                {/* Title and statistics */}
                 <div className="flex flex-col gap-2">
                   <h1 className="text-2xl font-bold text-[#4a3540]">
-                    💸 Gestión de Egresos
+                    ✨ Gestión de Transacciones de Egreso
                   </h1>
                   <div className="flex flex-wrap items-center gap-6 text-sm text-[#6b4c57]">
                     <div className="flex items-center gap-2">
                       <DollarSign className="h-4 w-4 text-red-600" />
                       <span className="font-medium">Total:</span>
                       <span className="font-bold text-red-600">
-                        {isClient
-                          ? formatearMonto(estadisticas.totalEgresos)
-                          : '$0'}
+                        {formatAmount(statistics.totalOutgoing)}
                       </span>
                     </div>
                     <div className="flex items-center gap-2">
-                      <TrendingDown className="h-4 w-4 text-[#f7a8b8]" />
+                      <TrendingDown className="h-4 w-4 text-[#f9bbc4]" />
                       <span className="font-medium">Transacciones:</span>
                       <span className="font-bold">
-                        {isClient ? estadisticas.cantidadTransacciones : 0}
+                        {statistics.transactionCount}
                       </span>
                     </div>
                     <div className="flex items-center gap-2">
-                      <Users className="h-4 w-4 text-[#f7a8b8]" />
+                      <Users className="h-4 w-4 text-[#f9bbc4]" />
                       <span className="font-medium">Proveedores:</span>
                       <span className="font-bold">
-                        {isClient ? estadisticas.cantidadProveedores : 0}
+                        {statistics.providerCount}
                       </span>
                     </div>
                   </div>
                 </div>
 
-                {/* Botón Nuevo Egreso */}
+                {/* Add transaction button */}
                 <Button
-                  onClick={() => setMostrarModalComanda(true)}
-                  className="rounded-lg bg-gradient-to-r from-[#f7a8b8] to-[#e087a3] px-6 py-2 font-semibold text-white shadow-md transition-all duration-200 hover:scale-105 hover:from-[#e087a3] hover:to-[#d4a7ca] hover:shadow-lg"
+                  onClick={() => setShowAddModal(true)}
+                  className="rounded-lg bg-gradient-to-r from-[#f9bbc4] to-[#e292a3] px-6 py-2 font-semibold text-white shadow-md transition-all duration-200 hover:scale-105 hover:from-[#e292a3] hover:to-[#d4a7ca] hover:shadow-lg"
                 >
                   <Plus className="mr-2 h-4 w-4" />
-                  Nuevo Egreso
+                  Nueva Transacción
                 </Button>
               </div>
             </div>
 
-            {/* Filtros y herramientas en una sola línea */}
+            {/* Filters and tools */}
             <div className="mb-6">
-              <Card className="border border-[#f7a8b8]/20 bg-white/80 shadow-sm">
+              <Card className="border border-[#f9bbc4]/20 bg-white/80 shadow-sm">
                 <CardContent className="p-4">
                   <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-                    {/* Filtro de fechas compacto */}
+                    {/* Date filter */}
                     <div className="max-w-xs flex-1">
                       <DateRangePicker
                         dateRange={dateRange}
                         onDateRangeChange={setDateRange}
                         placeholder="Filtrar por fecha"
-                        accentColor="#f7a8b8"
+                        accentColor="#f9bbc4"
                       />
                     </div>
 
-                    {/* Herramientas (Columnas y Exportar) */}
+                    {/* Table tools */}
                     <div className="flex items-center gap-3">
-                      <FiltrosCaja
-                        filtros={filtros}
-                        onFiltrosChange={actualizarFiltros}
-                        columnas={columnas}
-                        onColumnasChange={setColumnas}
-                        accentColor="#f7a8b8"
-                        showDateFilters={false}
+                      <TableFilters
+                        filters={filters}
+                        onFiltersChange={updateFilters}
+                        columns={columns}
+                        onColumnsChange={setColumns}
+                        exportToPDF={exportToPDF}
+                        exportToExcel={exportToExcel}
+                        exportToCSV={exportToCSV}
                       />
                     </div>
                   </div>
 
-                  {/* Indicador de filtro activo */}
+                  {/* Active filter indicator */}
                   {dateRange && (
                     <div className="mt-3 flex items-center gap-2 text-xs text-[#6b4c57]">
-                      <div className="h-2 w-2 rounded-full bg-[#f7a8b8]"></div>
+                      <div className="h-2 w-2 rounded-full bg-[#f9bbc4]"></div>
                       <span>
-                        Filtrando del{' '}
+                        Filtrando desde{' '}
                         {dateRange.from?.toLocaleDateString('es-ES')}
                         {dateRange.to &&
-                          ` al ${dateRange.to.toLocaleDateString('es-ES')}`}
+                          ` hasta ${dateRange.to.toLocaleDateString('es-ES')}`}
                       </span>
                     </div>
                   )}
@@ -215,44 +267,67 @@ export default function EgresosPage() {
               </Card>
             </div>
 
-            {/* TABLA - PROTAGONISTA */}
+            {/* Transactions table */}
             <div className="mb-6">
-              <TablaEncomiendas
-                data={datosParaMostrar}
-                columnas={columnas}
-                onEditar={manejarEditar}
-                onEliminar={manejarEliminar}
-                onVer={manejarVer}
-                titulo="📊 Registro de Egresos"
-                accentColor="#f7a8b8"
-              />
-            </div>
+              <Card className="border border-[#f9bbc4]/20 bg-white/80 shadow-sm">
+                <CardContent className="p-4">
+                  <TransactionsTable
+                    data={data}
+                    columns={columns}
+                    onEdit={onEditTransaction}
+                    onDelete={handleDelete}
+                    onView={handleView}
+                    onChangeStatus={onChangeStatus}
+                    title="📉 Transacciones de Egreso"
+                    accentColor="#f9bbc4"
+                  />
 
-            {/* Paginación */}
-            <div className="flex justify-center">
-              <Pagination
-                paginaActual={paginacion.paginaActual}
-                totalPaginas={paginacion.totalPaginas}
-                totalItems={paginacion.totalItems}
-                itemsPorPagina={paginacion.itemsPorPagina}
-                itemInicio={paginacion.itemInicio}
-                itemFin={paginacion.itemFin}
-                onCambiarPagina={paginacion.irAPagina}
-                onCambiarItemsPorPagina={paginacion.cambiarItemsPorPagina}
-                hayPaginaAnterior={paginacion.hayPaginaAnterior}
-                hayPaginaSiguiente={paginacion.hayPaginaSiguiente}
-                className="border-t border-[#f7a8b8]/20 pt-4"
-              />
+                  {/* Pagination */}
+                  <div className="mt-6">
+                    <Pagination
+                      paginaActual={pagination.paginaActual}
+                      totalPaginas={pagination.totalPaginas}
+                      totalItems={pagination.totalItems}
+                      itemsPorPagina={pagination.itemsPorPagina}
+                      itemInicio={pagination.itemInicio}
+                      itemFin={pagination.itemFin}
+                      onCambiarPagina={pagination.irAPagina}
+                      onCambiarItemsPorPagina={pagination.cambiarItemsPorPagina}
+                      hayPaginaAnterior={pagination.hayPaginaAnterior}
+                      hayPaginaSiguiente={pagination.hayPaginaSiguiente}
+                    />
+                  </div>
+                </CardContent>
+              </Card>
             </div>
           </div>
         </div>
-      </div>
 
-      {/* Modal para agregar egreso */}
-      <ModalAgregarComanda
-        isOpen={mostrarModalComanda}
-        onClose={() => setMostrarModalComanda(false)}
-      />
+        {/* Modals */}
+        <ModalAgregarComanda
+          isOpen={showAddModal}
+          onClose={() => setShowAddModal(false)}
+        />
+
+        <ModalCambiarEstado
+          isOpen={showChangeStatusModal}
+          onClose={() => {
+            setShowChangeStatusModal(false);
+            setSelectedTransactionId('');
+          }}
+          comandaId={selectedTransactionId}
+          estadoActual={selectedTransaction?.estado || 'pendiente'}
+        />
+
+        <ModalEditarTransaccion
+          isOpen={showEditModal}
+          onClose={() => {
+            setShowEditModal(false);
+            setSelectedTransactionId('');
+          }}
+          transactionId={selectedTransactionId}
+        />
+      </div>
     </MainLayout>
   );
 }

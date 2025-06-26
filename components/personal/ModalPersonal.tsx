@@ -20,14 +20,14 @@ interface ModalPersonalProps {
   isOpen: boolean;
   onClose: () => void;
   personal?: PersonalSimple | null;
-  onGuardar: (personal: Omit<PersonalSimple, 'id'>) => void;
+  onSave: (personal: Omit<PersonalSimple, 'id'>) => void;
 }
 
 export default function ModalPersonal({
   isOpen,
   onClose,
   personal,
-  onGuardar,
+  onSave,
 }: ModalPersonalProps) {
   // Estados del formulario
   const [nombre, setNombre] = useState('');
@@ -50,20 +50,20 @@ export default function ModalPersonal({
         setRol(personal.rol);
       } else {
         // Modo creación
-        limpiarFormulario();
+        clearForm();
       }
       setErrores({});
     }
   }, [isOpen, personal]);
 
-  const limpiarFormulario = () => {
+  const clearForm = () => {
     setNombre('');
     setComision(10);
     setRol('vendedor');
     setErrores({});
   };
 
-  const validarFormulario = (): boolean => {
+  const validateForm = (): boolean => {
     const nuevosErrores: Record<string, string> = {};
 
     if (!nombre.trim()) {
@@ -79,7 +79,7 @@ export default function ModalPersonal({
   };
 
   const handleGuardar = async () => {
-    if (!validarFormulario()) return;
+    if (!validateForm()) return;
 
     setGuardando(true);
 
@@ -90,7 +90,7 @@ export default function ModalPersonal({
         rol,
       };
 
-      onGuardar(personalData);
+      onSave(personalData);
 
       // Simular delay de guardado
       await new Promise((resolve) => setTimeout(resolve, 300));
