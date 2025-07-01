@@ -13,12 +13,14 @@ interface ModalValidarComandaProps {
   isOpen: boolean;
   onClose: () => void;
   comandaId: string;
+  onSuccess?: () => void;
 }
 
 export default function ModalValidarComanda({
   isOpen,
   onClose,
   comandaId,
+  onSuccess,
 }: ModalValidarComandaProps) {
   const [observaciones, setObservaciones] = useState('');
 
@@ -30,6 +32,7 @@ export default function ModalValidarComanda({
     if (exito) {
       toast.success('Comanda validada exitosamente');
       onClose();
+      onSuccess?.();
     } else {
       toast.error('Error al validar comanda');
     }

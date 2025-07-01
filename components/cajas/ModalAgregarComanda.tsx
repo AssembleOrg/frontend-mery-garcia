@@ -368,8 +368,7 @@ export default function ModalAgregarComanda({
                             } as ProductoServicio)
                           }
                           size="sm"
-                          variant="outline"
-                          className="h-8"
+                          className="h-8 border-[#f9bbc4] bg-[#f9bbc4] font-medium text-white hover:bg-[#e292a3]"
                         >
                           <Plus className="mr-1 h-3 w-3" />
                           Agregar
@@ -459,50 +458,79 @@ export default function ModalAgregarComanda({
                     </div>
 
                     {/* Descuento Global */}
-                    {items.length > 0 && (
-                      <div className="mt-4 space-y-3 border-t pt-4">
-                        <div className="flex items-center justify-between">
-                          <Label className="text-sm font-medium">
-                            Descuento Global
-                          </Label>
-                          <div className="flex gap-2">
-                            <Button
-                              onClick={aplicarDescuentoATodos}
-                              size="sm"
-                              variant="outline"
-                              className="h-7 text-xs"
-                            >
-                              <Percent className="mr-1 h-3 w-3" />
-                              Aplicar
-                            </Button>
-                            <Button
-                              onClick={limpiarDescuentos}
-                              size="sm"
-                              variant="outline"
-                              className="h-7 text-xs"
-                            >
-                              Limpiar
-                            </Button>
-                          </div>
-                        </div>
+                    <Card className="border border-orange-200 bg-orange-50/30">
+                      <CardHeader className="pb-2">
+                        <CardTitle className="flex items-center gap-2 text-sm text-orange-800">
+                          <Percent className="h-4 w-4" />
+                          Descuento Global
+                        </CardTitle>
+                      </CardHeader>
+                      <CardContent className="space-y-3">
                         <div className="flex items-center gap-2">
-                          <Input
-                            type="number"
-                            placeholder="% descuento"
-                            value={descuentoGlobalPorcentaje || ''}
-                            onChange={(e) =>
-                              setDescuentoGlobalPorcentaje(
-                                Number(e.target.value)
-                              )
+                          <div className="flex-1">
+                            <Label
+                              htmlFor="descuento-global"
+                              className="text-xs text-orange-700"
+                            >
+                              Porcentaje de descuento (%)
+                            </Label>
+                            <Input
+                              id="descuento-global"
+                              type="number"
+                              min="0"
+                              max="100"
+                              step="0.1"
+                              value={descuentoGlobalPorcentaje || ''}
+                              onChange={(e) =>
+                                setDescuentoGlobalPorcentaje(
+                                  parseFloat(e.target.value) || 0
+                                )
+                              }
+                              placeholder="Ej: 10 para 10%"
+                              className="text-sm"
+                            />
+                          </div>
+                          <Button
+                            type="button"
+                            size="sm"
+                            onClick={aplicarDescuentoATodos}
+                            disabled={
+                              !descuentoGlobalPorcentaje ||
+                              descuentoGlobalPorcentaje <= 0
                             }
-                            className="w-32"
-                            min="0"
-                            max="100"
-                          />
-                          <span className="text-sm text-gray-500">%</span>
+                            className="mt-4 bg-orange-600 hover:bg-orange-700"
+                          >
+                            <Calculator className="mr-1 h-3 w-3" />
+                            Aplicar
+                          </Button>
                         </div>
-                      </div>
-                    )}
+
+                        <div className="rounded-md bg-orange-100 p-2">
+                          <p className="text-xs text-orange-800">
+                            💡 <strong>Cómo funciona:</strong> Ingresa el
+                            porcentaje de descuento (ej: 10 para 10%) y presiona
+                            &quot;Aplicar&quot; para aplicarlo a todos los
+                            servicios.
+                          </p>
+                          {descuentoGlobalPorcentaje > 0 && (
+                            <p className="mt-1 text-xs font-medium text-orange-900">
+                              Se aplicará {descuentoGlobalPorcentaje}% de
+                              descuento a cada servicio
+                            </p>
+                          )}
+                        </div>
+
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          onClick={limpiarDescuentos}
+                          className="w-full border-orange-300 text-xs text-orange-700 hover:bg-orange-100"
+                        >
+                          Limpiar Descuentos
+                        </Button>
+                      </CardContent>
+                    </Card>
                   </CardContent>
                 </Card>
 

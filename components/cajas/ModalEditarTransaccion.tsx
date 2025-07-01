@@ -52,7 +52,7 @@ export default function ModalEditarTransaccion({
   >('efectivo');
   const [vendedor, setVendedor] = useState('');
   const [estado, setEstado] = useState<
-    'pendiente' | 'completado' | 'cancelado'
+    'pendiente' | 'completado' | 'validado' | 'cancelado'
   >('pendiente');
   const [observaciones, setObservaciones] = useState('');
   const [loading, setLoading] = useState(false);

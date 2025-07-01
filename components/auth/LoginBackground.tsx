@@ -13,11 +13,10 @@ export default function LoginBackground({}: LoginBackgroundProps) {
       <Image
         src={mainImageUrl}
         alt="Fondo decorativo del portal de Mery García"
-        layout="fill"
-        objectFit="cover"
+        fill
         quality={90}
         priority
-        className="scale-105 blur-sm"
+        className="scale-105 object-cover blur-sm"
       />
       <div className="absolute inset-0 bg-gradient-to-br from-[#f9bbc4]/60 via-[#fcdce3]/40 to-[#ec9cab]/70"></div>
       <div className="absolute inset-0 bg-gradient-to-t from-[#f9bbc4]/30 via-transparent to-[#fcdce3]/20"></div>

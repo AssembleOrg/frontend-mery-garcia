@@ -71,7 +71,7 @@ export default function AccionesComanda({
     estado: EstadoComandaNegocio
   ): 'pendiente' | 'completado' | 'cancelado' => {
     switch (estado) {
-      case 'completo':
+      case 'completado':
         return 'completado';
       case 'incompleto':
         return 'cancelado';

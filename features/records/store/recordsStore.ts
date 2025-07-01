@@ -1,6 +1,25 @@
+'use client';
+
 import { create } from 'zustand';
-import { persist, devtools } from 'zustand/middleware';
+import { persist, devtools, createJSONStorage } from 'zustand/middleware';
 import { TraspasoInfo, HistorialCambio } from '@/types/caja';
+
+// Storage helper para evitar acceso a localStorage en SSR
+const safeJSONStorage = createJSONStorage(() => {
+  if (typeof window !== 'undefined') {
+    return window.localStorage;
+  }
+  const memoryStore = new Map<string, string>();
+  return {
+    getItem: (key: string) => memoryStore.get(key) ?? null,
+    setItem: (key: string, value: string) => {
+      memoryStore.set(key, value);
+    },
+    removeItem: (key: string) => {
+      memoryStore.delete(key);
+    },
+  } as Storage;
+});
 
 // Registro diario completo de Caja 1
 export interface RegistroDiario {
@@ -261,11 +280,7 @@ export const useRecordsStore = create<RecordsState>()(
       }),
       {
         name: 'records-store',
-        partialize: (state) => ({
-          registrosDiarios: state.registrosDiarios,
-          traspasos: state.traspasos,
-          historialCambios: state.historialCambios,
-        }),
+        storage: safeJSONStorage,
       }
     ),
     {

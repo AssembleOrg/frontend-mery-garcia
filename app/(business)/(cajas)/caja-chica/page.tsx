@@ -32,9 +32,9 @@ export default function CajaChicaMenuPage() {
   const { resumen } = useResumenCaja();
 
   const formatAmount = (monto: number) => {
-    return new Intl.NumberFormat('es-ES', {
+    return new Intl.NumberFormat('es-AR', {
       style: 'currency',
-      currency: 'USD',
+      currency: 'ARS',
     }).format(monto);
   };
 

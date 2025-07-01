@@ -212,46 +212,39 @@ export function useOutgoingTransactions(dateRange?: DateRange) {
 
     // Actions
     handleEdit: (id: string) => {
-      logger.info(`📝 Editando transacción de egreso: ${id}`);
+      logger.debug('Edit outgoing transaction:', id);
       // TODO: Implement edit functionality
-      console.log('Edit outgoing transaction:', id);
     },
 
     handleDelete: (id: string) => {
-      logger.info(`🗑️ Eliminando transacción de egreso: ${id}`);
+      logger.debug('Delete outgoing transaction:', id);
       // TODO: Implement delete functionality
-      console.log('Delete outgoing transaction:', id);
     },
 
     handleView: (id: string) => {
-      logger.info(`👁️ Viendo detalles de transacción de egreso: ${id}`);
+      logger.debug('View outgoing transaction:', id);
       // TODO: Implement view functionality
-      console.log('View outgoing transaction:', id);
     },
 
     handleChangeStatus: (id: string) => {
-      logger.info(`🔄 Cambiando estado de transacción de egreso: ${id}`);
+      logger.debug('Change status outgoing transaction:', id);
       // TODO: Implement status change functionality
-      console.log('Change status outgoing transaction:', id);
     },
 
     // Export functions
     exportToPDF: () => {
-      logger.info('📄 Exportando egresos a PDF');
+      logger.debug('Export outgoing transactions to PDF');
       // TODO: Implement PDF export
-      console.log('Export outgoing transactions to PDF');
     },
 
     exportToExcel: () => {
-      logger.info('📊 Exportando egresos a Excel');
+      logger.debug('Export outgoing transactions to Excel');
       // TODO: Implement Excel export
-      console.log('Export outgoing transactions to Excel');
     },
 
     exportToCSV: () => {
-      logger.info('📋 Exportando egresos a CSV');
+      logger.debug('Export outgoing transactions to CSV');
       // TODO: Implement CSV export
-      console.log('Export outgoing transactions to CSV');
     },
   };
 }

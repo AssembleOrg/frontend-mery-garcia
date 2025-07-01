@@ -103,9 +103,12 @@ export interface Comanda {
   totalSeña: number;
   totalFinal: number;
   comisiones: Comision[];
-  estado: 'pendiente' | 'completado' | 'cancelado';
+  estado: 'pendiente' | 'completado' | 'validado' | 'cancelado';
   observaciones?: string;
   tipo: 'ingreso' | 'egreso';
+  // Campos para validación
+  estadoNegocio?: EstadoComandaNegocio;
+  estadoValidacion?: EstadoValidacion;
 }
 
 // Configuración de recargos por método de pago
@@ -189,7 +192,7 @@ export interface Encomienda {
   metodoPago: string; // legacy: string simple
   observaciones?: string;
   vendedor: string; // legacy: nombre del personal
-  estado: 'pendiente' | 'completado' | 'cancelado';
+  estado: 'pendiente' | 'completado' | 'validado' | 'cancelado';
   tipo: 'ingreso' | 'egreso';
   // Nuevos campos para validación
   estadoNegocio?: EstadoComandaNegocio;
@@ -220,7 +223,7 @@ export interface UploadConfig {
 }
 
 // Estados de la comanda por vendedor (nuevos estados específicos)
-export type EstadoComandaNegocio = 'pendiente' | 'completo' | 'incompleto';
+export type EstadoComandaNegocio = 'pendiente' | 'completado' | 'incompleto';
 
 // Estados de validación por admin
 export type EstadoValidacion = 'no_validado' | 'validado';

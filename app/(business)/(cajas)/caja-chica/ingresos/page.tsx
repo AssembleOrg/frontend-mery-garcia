@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import MainLayout from '@/components/layout/MainLayout';
 import StandardPageBanner from '@/components/common/StandardPageBanner';
 import StandardBreadcrumbs from '@/components/common/StandardBreadcrumbs';
@@ -18,6 +18,8 @@ import { useIncomingTransactions } from '@/features/comandas/hooks/useIncomingTr
 import { Pagination } from '@/components/ui/pagination';
 import { DateRangePicker } from '@/components/ui/date-range-picker';
 import { DateRange } from 'react-day-picker';
+import ClientOnly from '@/components/common/ClientOnly';
+import Spinner from '@/components/common/Spinner';
 
 const breadcrumbItems = [
   { label: 'Inicio', href: '/' },
@@ -85,6 +87,20 @@ const initialColumns: ColumnaCaja[] = [
     width: '120px',
   },
   {
+    key: 'estadoNegocio',
+    label: 'Estado Negocio',
+    visible: false, // Oculto para vista de usuario estándar
+    sortable: true,
+    width: '130px',
+  },
+  {
+    key: 'estadoValidacion',
+    label: 'Validación',
+    visible: false, // Oculto para vista de usuario estándar
+    sortable: true,
+    width: '120px',
+  },
+  {
     key: 'acciones',
     label: 'Acciones',
     visible: true,
@@ -99,9 +115,6 @@ export default function IngresosPage() {
 
   // Date range filter state
   const [dateRange, setDateRange] = useState<DateRange | undefined>();
-
-  // Client-side hydration state
-  const [isClient, setIsClient] = useState(false);
 
   // Use clean hook for incoming transactions
   const {
@@ -131,13 +144,6 @@ export default function IngresosPage() {
   // Get the selected transaction for the modal
   const selectedTransaction = data.find((t) => t.id === selectedTransactionId);
 
-  // Mark as hydrated and wait for store initialization
-  useEffect(() => {
-    if (isInitialized) {
-      setIsClient(true);
-    }
-  }, [isInitialized]);
-
   // Handle status change
   const onChangeStatus = (id: string) => {
     setSelectedTransactionId(id);
@@ -163,17 +169,15 @@ export default function IngresosPage() {
     setModalMode(mode);
   };
 
-  // Don't render until client-side and store is initialized
-  if (!isClient || !isInitialized) {
+  // Mostrar spinner hasta que el store esté listo
+  if (!isInitialized) {
     return (
       <MainLayout>
         <div className="min-h-screen bg-gradient-to-br from-[#f9bbc4]/10 via-[#e8b4c6]/8 to-[#d4a7ca]/6">
           <StandardPageBanner title="Transacciones de Ingreso - Caja Chica" />
           <div className="flex items-center justify-center py-12">
-            <div className="text-center">
-              <div className="mx-auto mb-4 h-8 w-8 animate-spin rounded-full border-4 border-[#f9bbc4] border-t-transparent"></div>
-              <p className="text-[#6b4c57]">Cargando transacciones...</p>
-            </div>
+            <Spinner />
+            <p className="ml-2 text-[#6b4c57]">Cargando transacciones...</p>
           </div>
         </div>
       </MainLayout>
@@ -188,11 +192,11 @@ export default function IngresosPage() {
 
         <div className="relative -mt-12 h-12 bg-gradient-to-b from-transparent to-[#f9bbc4]/8" />
 
-        {/* Breadcrumbs */}
-        <StandardBreadcrumbs items={breadcrumbItems} />
+        {/* Breadcrumbs y contenido sólo en cliente */}
+        <ClientOnly>
+          <StandardBreadcrumbs items={breadcrumbItems} />
 
-        <div className="bg-gradient-to-b from-[#f9bbc4]/5 via-[#e8b4c6]/3 to-[#d4a7ca]/5">
-          <div className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
+          <div className="bg-gradient-to-b from-[#f9bbc4]/5 via-[#e8b4c6]/3 to-[#d4a7ca]/5">
             {/* Header with statistics */}
             <div className="mb-6">
               <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
@@ -316,7 +320,7 @@ export default function IngresosPage() {
               </Card>
             </div>
           </div>
-        </div>
+        </ClientOnly>
 
         {/* Modals */}
         <ModalAgregarComanda

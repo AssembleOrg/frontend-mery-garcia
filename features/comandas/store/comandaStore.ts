@@ -1,5 +1,6 @@
+'use client';
 import { create } from 'zustand';
-import { persist, devtools } from 'zustand/middleware';
+import { persist, devtools, createJSONStorage } from 'zustand/middleware';
 import { logger } from '@/lib/utils';
 import {
   Comanda,
@@ -107,6 +108,26 @@ interface ComandaState {
 
   // === FUNCIÓN PARA LIMPIAR DUPLICADOS ===
   limpiarDuplicados: () => void;
+
+  // === FUNCIÓN PARA MIGRAR DATOS EXISTENTES ===
+  migrarDatosValidacion: () => void;
+
+  // Actualizar estado de comanda (simplificado - solo un campo estado)
+  actualizarEstadoComanda: (
+    comandaId: string,
+    nuevoEstado: 'pendiente' | 'completado' | 'validado' | 'cancelado'
+  ) => void;
+
+  // === OPERACIONES MASIVAS ===
+  validarComandasRango: (fechaDesde: Date, fechaHasta: Date) => number;
+  obtenerResumenRango: (
+    fechaDesde: Date,
+    fechaHasta: Date
+  ) => {
+    totalCompletados: number;
+    totalPendientes: number;
+    montoNeto: number;
+  };
 }
 
 // Personal simple convertido del personal mock
@@ -143,6 +164,24 @@ const estadoInicial = {
   configuracionRecargos: configuracionRecargosMock,
 };
 
+// Storage helper que evita acceder a localStorage durante el render en servidor
+const safeJSONStorage = createJSONStorage(() => {
+  if (typeof window !== 'undefined') {
+    return window.localStorage;
+  }
+  // Dummy in-memory storage compatible with Storage interface
+  const memoryStore = new Map<string, string>();
+  return {
+    getItem: (key: string) => memoryStore.get(key) ?? null,
+    setItem: (key: string, value: string) => {
+      memoryStore.set(key, value);
+    },
+    removeItem: (key: string) => {
+      memoryStore.delete(key);
+    },
+  } as Storage;
+});
+
 export const useComandaStore = create<ComandaState>()(
   devtools(
     persist(
@@ -172,9 +211,22 @@ export const useComandaStore = create<ComandaState>()(
           comandaActualizada: Partial<Comanda>
         ) => {
           set((state) => ({
-            comandas: state.comandas.map((c) =>
-              c.id === id ? { ...c, ...comandaActualizada } : c
-            ),
+            comandas: state.comandas.map((c) => {
+              if (c.id !== id) return c;
+
+              // Si viene una actualización de 'estado', reflejarla en estadoNegocio para compatibilidad
+              let actualizada = { ...c, ...comandaActualizada };
+
+              if (comandaActualizada.estado) {
+                actualizada = {
+                  ...actualizada,
+                  estadoNegocio:
+                    comandaActualizada.estado as EstadoComandaNegocio,
+                };
+              }
+
+              return actualizada;
+            }),
           }));
         },
 
@@ -339,21 +391,36 @@ export const useComandaStore = create<ComandaState>()(
         },
 
         obtenerProximoNumero: (tipo: 'ingreso' | 'egreso') => {
-          const comandas = get().comandas;
-          const prefijo = tipo === 'ingreso' ? 'ING' : 'EGR';
+          const { comandas } = get();
 
-          const numerosMismoTipo = comandas
-            .filter((c) => c.tipo === tipo)
+          // Filtrar comandas por tipo
+          const comandasTipo = comandas.filter((c) => c.tipo === tipo);
+
+          // Obtener el prefijo según el tipo
+          const prefix = tipo === 'ingreso' ? '01' : '02';
+
+          // Filtrar solo las comandas con el prefijo correcto
+          const comandasConPrefijo = comandasTipo.filter(
+            (c) => c.numero && c.numero.startsWith(prefix)
+          );
+
+          // Si no hay comandas de este tipo, empezar desde 1
+          if (comandasConPrefijo.length === 0) {
+            return `${prefix}-0001`;
+          }
+
+          // Extraer números y encontrar el máximo
+          const numeros = comandasConPrefijo
             .map((c) => {
-              const match = c.numero.match(new RegExp(`${prefijo}-(\\d+)`));
-              return match ? parseInt(match[1], 10) : 0;
+              const match = c.numero.match(/\d+$/);
+              return match ? parseInt(match[0], 10) : 0;
             })
-            .filter((num) => !isNaN(num));
+            .filter((n) => !isNaN(n));
 
-          const ultimoNumero =
-            numerosMismoTipo.length > 0 ? Math.max(...numerosMismoTipo) : 0;
+          const numeroMaximo = Math.max(...numeros, 0);
+          const siguienteNumero = numeroMaximo + 1;
 
-          return `${prefijo}-${String(ultimoNumero + 1).padStart(3, '0')}`;
+          return `${prefix}-${siguienteNumero.toString().padStart(4, '0')}`;
         },
 
         // === DATOS DE REFERENCIA ===
@@ -618,6 +685,8 @@ export const useComandaStore = create<ComandaState>()(
         inicializar: () => {
           // Esta función puede ser llamada para inicializar datos por defecto
           logger.info('Store inicializado manualmente');
+          // Ejecutar migración de datos de validación
+          get().migrarDatosValidacion();
         },
 
         reiniciar: () => {
@@ -669,9 +738,128 @@ export const useComandaStore = create<ComandaState>()(
             logger.info(`✅ No se encontraron duplicados`);
           }
         },
+
+        // === FUNCIÓN PARA MIGRAR DATOS EXISTENTES ===
+        migrarDatosValidacion: () => {
+          const { comandas } = get();
+
+          if (comandas.length === 0) {
+            logger.info('🔍 No hay comandas para migrar');
+            return;
+          }
+
+          logger.info(
+            `🔄 Verificando migración de validación en ${comandas.length} comandas`
+          );
+
+          let comandasMigradas = 0;
+
+          const comandasActualizadas = comandas.map((comanda) => {
+            const necesitaMigracion =
+              !comanda.estadoNegocio ||
+              !comanda.estadoValidacion ||
+              (comanda.estadoNegocio as unknown as string) === 'completo';
+
+            if (necesitaMigracion) {
+              comandasMigradas++;
+              return {
+                ...comanda,
+                estadoNegocio:
+                  (comanda.estadoNegocio as unknown as string) === 'completo'
+                    ? 'completado'
+                    : comanda.estadoNegocio || 'pendiente',
+                estadoValidacion: comanda.estadoValidacion || 'no_validado',
+              };
+            }
+
+            return comanda;
+          });
+
+          if (comandasMigradas > 0) {
+            set({ comandas: comandasActualizadas });
+            logger.info(
+              `✅ Migradas ${comandasMigradas} comandas con propiedades de validación`
+            );
+          } else {
+            logger.info(
+              '✅ Todas las comandas ya tienen propiedades de validación'
+            );
+          }
+        },
+
+        // Actualizar estado de comanda (simplificado - solo un campo estado)
+        actualizarEstadoComanda: (
+          comandaId: string,
+          nuevoEstado: 'pendiente' | 'completado' | 'validado' | 'cancelado'
+        ) => {
+          set((state) => ({
+            comandas: state.comandas.map((comanda) =>
+              comanda.id === comandaId
+                ? { ...comanda, estado: nuevoEstado }
+                : comanda
+            ),
+          }));
+        },
+
+        // === OPERACIONES MASIVAS ===
+        validarComandasRango: (fechaDesde: Date, fechaHasta: Date) => {
+          const { comandas } = get();
+          const desde = new Date(fechaDesde);
+          const hasta = new Date(fechaHasta);
+
+          const idsAValidar: string[] = [];
+
+          const comandasActualizadas = comandas.map((c) => {
+            const f = new Date(c.fecha);
+            if (
+              f >= desde &&
+              f <= hasta &&
+              c.estado === 'completado' &&
+              c.estadoValidacion !== 'validado'
+            ) {
+              idsAValidar.push(c.id);
+              return { ...c, estadoValidacion: 'validado' as const };
+            }
+            return c;
+          });
+
+          if (idsAValidar.length > 0) {
+            set({ comandas: comandasActualizadas });
+            logger.success(
+              `✅ Validadas ${idsAValidar.length} comandas en rango`
+            );
+          }
+
+          return idsAValidar.length;
+        },
+
+        obtenerResumenRango: (fechaDesde: Date, fechaHasta: Date) => {
+          const { comandas } = get();
+          const desde = new Date(fechaDesde);
+          const hasta = new Date(fechaHasta);
+
+          let totalCompletados = 0;
+          let totalPendientes = 0;
+          let montoNeto = 0;
+
+          comandas.forEach((c) => {
+            const f = new Date(c.fecha);
+            if (f >= desde && f <= hasta) {
+              if (c.estado === 'completado') {
+                totalCompletados += 1;
+                montoNeto += c.totalFinal * (c.tipo === 'ingreso' ? 1 : -1);
+              } else {
+                totalPendientes += 1;
+              }
+            }
+          });
+
+          return { totalCompletados, totalPendientes, montoNeto };
+        },
       }),
       {
         name: 'comanda-store',
+        storage: safeJSONStorage,
         partialize: (state) => ({
           comandas: state.comandas,
           tipoCambio: state.tipoCambio,
@@ -684,6 +872,14 @@ export const useComandaStore = create<ComandaState>()(
     }
   )
 );
+
+// Ejecutar migración automática al cargar el store
+if (typeof window !== 'undefined') {
+  // Solo ejecutar en el cliente
+  setTimeout(() => {
+    useComandaStore.getState().migrarDatosValidacion();
+  }, 100);
+}
 
 // Hooks especializados para casos de uso específicos
 export const useComandas = () => {

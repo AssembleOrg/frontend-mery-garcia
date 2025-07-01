@@ -11,11 +11,10 @@ export default function StandardPageBanner({ title }: StandardPageBannerProps) {
       <Image
         src="/png/imagen2portal.png"
         alt={`Banner ${title}`}
-        layout="fill"
-        objectFit="cover"
+        fill
         quality={95}
         priority
-        className="transform object-center transition-all duration-1000 ease-out group-hover:scale-105"
+        className="transform object-cover object-center transition-all duration-1000 ease-out group-hover:scale-105"
       />
 
       <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/25 to-transparent" />

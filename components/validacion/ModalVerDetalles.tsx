@@ -34,7 +34,7 @@ const ESTADOS_CONFIG = {
     color: 'bg-yellow-100 text-yellow-800 border-yellow-200',
     icon: Clock,
   },
-  completo: {
+  completado: {
     label: 'Completo',
     color: 'bg-green-100 text-green-800 border-green-200',
     icon: CheckCircle,

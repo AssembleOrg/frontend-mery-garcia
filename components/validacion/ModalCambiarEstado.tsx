@@ -17,13 +17,14 @@ import { useComandaStore } from '@/features/comandas/store/comandaStore';
 import { toast } from 'sonner';
 
 // Tipo simplificado para estados de tabla
-type EstadoSimple = 'pendiente' | 'completado' | 'cancelado';
+type EstadoSimple = 'pendiente' | 'completado' | 'validado' | 'cancelado';
 
 interface ModalCambiarEstadoProps {
   isOpen: boolean;
   onClose: () => void;
   comandaId: string;
   estadoActual: EstadoSimple;
+  onSuccess?: () => void;
 }
 
 const ESTADOS_OPCIONES = [
@@ -44,6 +45,14 @@ const ESTADOS_OPCIONES = [
     emoji: '✅',
   },
   {
+    value: 'validado' as EstadoSimple,
+    label: 'Validado',
+    description: 'Transacción validada por administrador',
+    icon: CheckCircle,
+    color: 'text-blue-600',
+    emoji: '🔒',
+  },
+  {
     value: 'cancelado' as EstadoSimple,
     label: 'Cancelado',
     description: 'Transacción cancelada',
@@ -58,6 +67,7 @@ export default function ModalCambiarEstado({
   onClose,
   comandaId,
   estadoActual,
+  onSuccess,
 }: ModalCambiarEstadoProps) {
   const [nuevoEstado, setNuevoEstado] = useState<EstadoSimple>(estadoActual);
   const [observaciones, setObservaciones] = useState('');
@@ -82,6 +92,7 @@ export default function ModalCambiarEstado({
 
       toast.success(`Estado cambiado a "${nuevoEstado}" exitosamente`);
       onClose();
+      onSuccess?.();
       // Reset form
       setObservaciones('');
       setNuevoEstado(estadoActual);

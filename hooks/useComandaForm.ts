@@ -218,21 +218,28 @@ export function useComandaForm() {
     setMetodosPago(metodosPago.filter((_, i) => i !== index));
   };
 
-  // Aplicar descuento global
+  // Función para aplicar descuento a todos los items
   const aplicarDescuentoATodos = () => {
-    if (descuentoGlobalPorcentaje > 0) {
-      const itemsConDescuento = items.map((item) => {
-        const descuentoMonto =
-          (item.precio * item.cantidad * descuentoGlobalPorcentaje) / 100;
+    if (!descuentoGlobalPorcentaje || descuentoGlobalPorcentaje <= 0) return;
+
+    setItems((prevItems) =>
+      prevItems.map((item) => {
+        // Calcular descuento como porcentaje del precio unitario
+        const descuentoCalculado =
+          (item.precio * descuentoGlobalPorcentaje) / 100;
+        const nuevoSubtotal =
+          (item.precio - descuentoCalculado) * item.cantidad;
+
         return {
           ...item,
-          descuento: descuentoMonto,
-          subtotal: item.precio * item.cantidad - descuentoMonto,
+          descuento: descuentoCalculado,
+          subtotal: nuevoSubtotal,
         };
-      });
-      setItems(itemsConDescuento);
-      setAplicarDescuentoGlobal(true);
-    }
+      })
+    );
+
+    // Limpiar el valor del descuento global después de aplicar
+    setDescuentoGlobalPorcentaje(0);
   };
 
   const limpiarDescuentos = () => {

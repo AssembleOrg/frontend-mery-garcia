@@ -43,7 +43,7 @@ export function useValidacionComandas() {
 
       try {
         // Simular validación de negocio
-        if (payload.nuevoEstado === 'completo' && !payload.observaciones) {
+        if (payload.nuevoEstado === 'completado' && !payload.observaciones) {
           return {
             exito: false,
             mensaje: 'Se requieren observaciones para marcar como completo',

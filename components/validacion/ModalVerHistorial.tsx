@@ -55,7 +55,7 @@ const ACCIONES_CONFIG = {
 
 const ESTADOS_CONFIG = {
   pendiente: { label: 'Pendiente', icon: Clock },
-  completo: { label: 'Completo', icon: CheckCircle },
+  completado: { label: 'Completo', icon: CheckCircle },
   incompleto: { label: 'Incompleto', icon: XCircle },
   no_validado: { label: 'Sin Validar', icon: Clock },
   validado: { label: 'Validado', icon: Shield },

@@ -52,11 +52,14 @@ export const cambiarEstadoComanda = async (
     await mockDelay();
 
     // Validaciones de negocio
-    if (payload.nuevoEstado === 'completo' && !payload.observaciones?.trim()) {
+    if (
+      payload.nuevoEstado === 'completado' &&
+      !payload.observaciones?.trim()
+    ) {
       return {
         exito: false,
-        mensaje: 'Se requieren observaciones para marcar como completo',
-        errores: ['Observaciones requeridas para estado completo'],
+        mensaje: 'Se requieren observaciones para marcar como completado',
+        errores: ['Observaciones requeridas para estado completado'],
       };
     }
 
@@ -197,7 +200,7 @@ export const obtenerHistorialComanda = async (
         usuario: 'user-1',
         accion: 'cambio_estado',
         estadoAnterior: { estado: 'pendiente' },
-        estadoNuevo: { estado: 'completo' },
+        estadoNuevo: { estado: 'completado' },
         fecha: new Date(Date.now() - 3600000).toISOString(), // Hace 1 hora
         observaciones: 'Servicio completado, pago recibido',
       },

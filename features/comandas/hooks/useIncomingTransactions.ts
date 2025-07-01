@@ -67,8 +67,8 @@ export function useIncomingTransactions(dateRange?: DateRange) {
         vendedor: staffName,
         estado: comanda.estado,
         tipo: comanda.tipo,
-        estadoNegocio: 'pendiente',
-        estadoValidacion: 'no_validado',
+        estadoNegocio: comanda.estadoNegocio || 'pendiente',
+        estadoValidacion: comanda.estadoValidacion || 'no_validado',
       };
     });
   }, [incomingTransactions]);
@@ -213,44 +213,44 @@ export function useIncomingTransactions(dateRange?: DateRange) {
     handleEdit: (id: string) => {
       logger.info(`📝 Editando transacción de ingreso: ${id}`);
       // TODO: Implement edit functionality
-      console.log('Edit incoming transaction:', id);
+      logger.debug('Edit incoming transaction:', id);
     },
 
     handleDelete: (id: string) => {
       logger.info(`🗑️ Eliminando transacción de ingreso: ${id}`);
       // TODO: Implement delete functionality
-      console.log('Delete incoming transaction:', id);
+      logger.debug('Delete incoming transaction:', id);
     },
 
     handleView: (id: string) => {
       logger.info(`👁️ Viendo detalles de transacción de ingreso: ${id}`);
       // TODO: Implement view functionality
-      console.log('View incoming transaction:', id);
+      logger.debug('View incoming transaction:', id);
     },
 
     handleChangeStatus: (id: string) => {
       logger.info(`🔄 Cambiando estado de transacción de ingreso: ${id}`);
       // TODO: Implement status change functionality
-      console.log('Change status incoming transaction:', id);
+      logger.debug('Change status incoming transaction:', id);
     },
 
     // Export functions
     exportToPDF: () => {
       logger.info('📄 Exportando ingresos a PDF');
       // TODO: Implement PDF export
-      console.log('Export incoming transactions to PDF');
+      logger.debug('Export incoming transactions to PDF');
     },
 
     exportToExcel: () => {
       logger.info('📊 Exportando ingresos a Excel');
       // TODO: Implement Excel export
-      console.log('Export incoming transactions to Excel');
+      logger.debug('Export incoming transactions to Excel');
     },
 
     exportToCSV: () => {
       logger.info('📋 Exportando ingresos a CSV');
       // TODO: Implement CSV export
-      console.log('Export incoming transactions to CSV');
+      logger.debug('Export incoming transactions to CSV');
     },
   };
 }

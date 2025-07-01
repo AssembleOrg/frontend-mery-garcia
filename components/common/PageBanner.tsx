@@ -21,11 +21,10 @@ export default function PageBanner({
       <Image
         src={imageUrl}
         alt={altText}
-        layout="fill"
-        objectFit="cover"
+        fill
         quality={95}
         priority
-        className={`transform transition-all duration-1000 ease-out group-hover:scale-105 ${imagePosition}`}
+        className={`transform object-cover transition-all duration-1000 ease-out group-hover:scale-105 ${imagePosition}`}
       />
 
       <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/25 to-transparent" />

@@ -25,6 +25,7 @@ import {
   Trash2,
   Eye,
   RefreshCw,
+  Lock,
 } from 'lucide-react';
 import { Encomienda, ColumnaCaja } from '@/types/caja';
 
@@ -84,21 +85,33 @@ export default function TransactionsTable({
   };
 
   const getStatusBadge = (status: string) => {
-    const styles = {
-      pendiente: 'bg-yellow-100 text-yellow-800 border-yellow-200',
-      completado: 'bg-green-100 text-green-800 border-green-200',
-      cancelado: 'bg-red-100 text-red-800 border-red-200',
-    };
-    return styles[status as keyof typeof styles] || styles.pendiente;
+    switch (status) {
+      case 'pendiente':
+        return 'bg-yellow-100 text-yellow-800 border-yellow-300';
+      case 'completado':
+        return 'bg-green-100 text-green-800 border-green-300';
+      case 'validado':
+        return 'bg-blue-100 text-blue-800 border-blue-300';
+      case 'cancelado':
+        return 'bg-red-100 text-red-800 border-red-300';
+      default:
+        return 'bg-gray-100 text-gray-800 border-gray-300';
+    }
   };
 
   const getStatusLabel = (status: string) => {
-    const labels = {
-      pendiente: '⏳ Pendiente',
-      completado: '✅ Completado',
-      cancelado: '❌ Cancelado',
-    };
-    return labels[status as keyof typeof labels] || `�� ${status}`;
+    switch (status) {
+      case 'pendiente':
+        return '⏳ Pendiente';
+      case 'completado':
+        return '✅ Completado';
+      case 'validado':
+        return '🔒 Validado';
+      case 'cancelado':
+        return '❌ Cancelado';
+      default:
+        return status;
+    }
   };
 
   const renderCellContent = (transaction: Encomienda, column: ColumnaCaja) => {
@@ -191,11 +204,16 @@ export default function TransactionsTable({
               return 'bg-gray-100 text-gray-800 border-gray-300 font-medium';
           }
         };
+
+        // Para mostrar método mixto, verificamos si tiene información adicional
+        // Por ahora usamos el campo metodoPago existente del tipo Encomienda
+        const metodoPrincipal = transaction.metodoPago || 'efectivo';
+
         return (
           <Badge
-            className={`capitalize ${getPaymentMethodStyle(transaction.metodoPago)}`}
+            className={`capitalize ${getPaymentMethodStyle(metodoPrincipal)}`}
           >
-            💳 {transaction.metodoPago.replace('_', ' ')}
+            💳 {metodoPrincipal.replace('_', ' ')}
           </Badge>
         );
       case 'vendedor':
@@ -207,13 +225,12 @@ export default function TransactionsTable({
         );
       case 'estado':
         return (
-          <div className="flex items-center gap-2">
-            <Badge className={getStatusBadge(transaction.estado)}>
-              {getStatusLabel(transaction.estado)}
-            </Badge>
-          </div>
+          <Badge className={getStatusBadge(transaction.estado)}>
+            {getStatusLabel(transaction.estado)}
+          </Badge>
         );
       case 'acciones':
+        const isTransactionValidated = transaction.estado === 'validado';
         return (
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
@@ -236,7 +253,7 @@ export default function TransactionsTable({
                 <Eye className="mr-2 h-4 w-4" />
                 Ver Detalles
               </DropdownMenuItem>
-              {onChangeStatus && (
+              {onChangeStatus && !isTransactionValidated && (
                 <DropdownMenuItem
                   onClick={(e) => {
                     e.stopPropagation();
@@ -248,26 +265,38 @@ export default function TransactionsTable({
                   Cambiar Estado
                 </DropdownMenuItem>
               )}
-              <DropdownMenuItem
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onEdit(transaction.id);
-                }}
-                className="cursor-pointer"
-              >
-                <Edit className="mr-2 h-4 w-4" />
-                Editar
-              </DropdownMenuItem>
-              <DropdownMenuItem
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onDelete(transaction.id);
-                }}
-                className="cursor-pointer text-red-600"
-              >
-                <Trash2 className="mr-2 h-4 w-4" />
-                Eliminar
-              </DropdownMenuItem>
+              {!isTransactionValidated ? (
+                <>
+                  <DropdownMenuItem
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onEdit(transaction.id);
+                    }}
+                    className="cursor-pointer"
+                  >
+                    <Edit className="mr-2 h-4 w-4" />
+                    Editar
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onDelete(transaction.id);
+                    }}
+                    className="cursor-pointer text-red-600"
+                  >
+                    <Trash2 className="mr-2 h-4 w-4" />
+                    Eliminar
+                  </DropdownMenuItem>
+                </>
+              ) : (
+                <DropdownMenuItem
+                  disabled
+                  className="cursor-not-allowed text-gray-400"
+                >
+                  <Lock className="mr-2 h-4 w-4" />
+                  Transacción Validada
+                </DropdownMenuItem>
+              )}
             </DropdownMenuContent>
           </DropdownMenu>
         );
@@ -286,7 +315,7 @@ export default function TransactionsTable({
       </div>
 
       {/* Table */}
-      <div className="rounded-lg border border-gray-200 bg-white shadow-sm">
+      <div className="table-container">
         <Table>
           <TableHeader>
             <TableRow
@@ -315,10 +344,13 @@ export default function TransactionsTable({
                   Array.isArray(transaction.servicios)
               )
               .map((transaction) => {
+                const isValidated =
+                  (transaction as Encomienda & { estadoValidacion?: string })
+                    .estadoValidacion === 'validado';
                 return (
                   <React.Fragment key={transaction.id}>
                     <TableRow
-                      className="cursor-pointer transition-colors hover:bg-gray-50"
+                      className={`table-row-hover cursor-pointer ${isValidated ? 'comanda-validada' : ''}`}
                       onClick={() => toggleRow(transaction.id)}
                     >
                       {columns
@@ -348,8 +380,8 @@ export default function TransactionsTable({
                                   (servicio) => servicio && servicio.nombre
                                 )
                                 .map((servicio, index) => {
-                                  // Create a stable, unique key combining multiple fields
-                                  const serviceKey = `${transaction.id}-service-${index}-${servicio.productoServicioId || servicio.servicioId || 'no-id'}-${servicio.nombre?.replace(/\s+/g, '-').toLowerCase() || 'unnamed'}-${servicio.cantidad || 0}-${servicio.precio || 0}`;
+                                  // Create a stable, unique key combining multiple fields with timestamp
+                                  const serviceKey = `${transaction.id}-service-${index}-${servicio.productoServicioId || servicio.servicioId || 'no-id'}-${servicio.nombre?.replace(/\s+/g, '-').toLowerCase() || 'unnamed'}-${servicio.cantidad || 0}-${servicio.precio || 0}-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
 
                                   return (
                                     <div
