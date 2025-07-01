@@ -256,12 +256,21 @@ export default function ModalAgregarComanda({
                             <SelectValue placeholder="Seleccionar personal" />
                           </SelectTrigger>
                           <SelectContent className="z-[10001]">
-                            {personalDisponible.map((personal: Personal) => (
-                              <SelectItem key={personal.id} value={personal.id}>
-                                {personal.nombre} ({personal.comisionPorcentaje}
-                                %)
-                              </SelectItem>
-                            ))}
+                            {personalDisponible.length === 0 ? (
+                              <div className="p-4 text-sm text-gray-500">
+                                No hay personal disponible.
+                              </div>
+                            ) : (
+                              personalDisponible.map((personal: Personal) => (
+                                <SelectItem
+                                  key={personal.id}
+                                  value={personal.id}
+                                >
+                                  {personal.nombre} (
+                                  {personal.comisionPorcentaje}% )
+                                </SelectItem>
+                              ))
+                            )}
                           </SelectContent>
                         </Select>
                       </div>

@@ -1,0 +1,2366 @@
+{
+  "openapi": "3.0.0",
+  "paths": {
+    "/api": {
+      "get": {
+        "operationId": "AppController_getHello",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "App"
+        ]
+      }
+    },
+    "/api/comandas": {
+      "post": {
+        "description": "Crea una nueva comanda con sus items, cliente, personal y métodos de pago",
+        "operationId": "ComandaController_crearComanda",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CrearComandaDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Comanda creada exitosamente",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "comanda": {
+                      "type": "object"
+                    },
+                    "totalItems": {
+                      "type": "number"
+                    },
+                    "totalCalculado": {
+                      "type": "number"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Datos inválidos o comanda duplicada"
+          },
+          "403": {
+            "description": "Acceso denegado"
+          },
+          "404": {
+            "description": "Cliente o personal no encontrado"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Crear una nueva comanda",
+        "tags": [
+          "comandas"
+        ]
+      },
+      "get": {
+        "description": "Obtiene una lista paginada de comandas con filtros opcionales",
+        "operationId": "ComandaController_obtenerComandas",
+        "parameters": [
+          {
+            "name": "numero",
+            "required": false,
+            "in": "query",
+            "description": "Número de comanda para búsqueda exacta",
+            "schema": {
+              "example": "CMD-2024-001",
+              "type": "string"
+            }
+          },
+          {
+            "name": "fechaInicio",
+            "required": false,
+            "in": "query",
+            "description": "Fecha de inicio para filtrar comandas",
+            "schema": {
+              "example": "2024-01-01T00:00:00Z",
+              "type": "string"
+            }
+          },
+          {
+            "name": "fechaFin",
+            "required": false,
+            "in": "query",
+            "description": "Fecha de fin para filtrar comandas",
+            "schema": {
+              "example": "2024-12-31T23:59:59Z",
+              "type": "string"
+            }
+          },
+          {
+            "name": "unidadNegocio",
+            "required": false,
+            "in": "query",
+            "description": "Unidad de negocio",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "tattoo",
+                "estilismo",
+                "formacion"
+              ]
+            }
+          },
+          {
+            "name": "enCaja",
+            "required": false,
+            "in": "query",
+            "description": "Caja asignada",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "caja_1",
+                "caja_2"
+              ]
+            }
+          },
+          {
+            "name": "clienteId",
+            "required": false,
+            "in": "query",
+            "description": "ID del cliente",
+            "schema": {
+              "example": "uuid-del-cliente",
+              "type": "string"
+            }
+          },
+          {
+            "name": "personalPrincipalId",
+            "required": false,
+            "in": "query",
+            "description": "ID del personal principal",
+            "schema": {
+              "example": "uuid-del-personal",
+              "type": "string"
+            }
+          },
+          {
+            "name": "estado",
+            "required": false,
+            "in": "query",
+            "description": "Estado de la comanda",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "pendiente",
+                "en_proceso",
+                "completado",
+                "cancelado"
+              ]
+            }
+          },
+          {
+            "name": "tipoId",
+            "required": false,
+            "in": "query",
+            "description": "ID del tipo de comanda",
+            "schema": {
+              "example": "uuid-del-tipo-comanda",
+              "type": "string"
+            }
+          },
+          {
+            "name": "tipoItemId",
+            "required": false,
+            "in": "query",
+            "description": "ID del tipo de item de comanda",
+            "schema": {
+              "example": "uuid-del-tipo-item",
+              "type": "string"
+            }
+          },
+          {
+            "name": "montoMinimo",
+            "required": false,
+            "in": "query",
+            "description": "Monto mínimo para filtrar por total final",
+            "schema": {
+              "minimum": 0,
+              "example": 100,
+              "type": "number"
+            }
+          },
+          {
+            "name": "montoMaximo",
+            "required": false,
+            "in": "query",
+            "description": "Monto máximo para filtrar por total final",
+            "schema": {
+              "minimum": 0,
+              "example": 1000,
+              "type": "number"
+            }
+          },
+          {
+            "name": "observaciones",
+            "required": false,
+            "in": "query",
+            "description": "Término de búsqueda en observaciones",
+            "schema": {
+              "example": "especial",
+              "type": "string"
+            }
+          },
+          {
+            "name": "page",
+            "required": false,
+            "in": "query",
+            "description": "Número de página",
+            "schema": {
+              "minimum": 1,
+              "default": 1,
+              "example": 1,
+              "type": "number"
+            }
+          },
+          {
+            "name": "limit",
+            "required": false,
+            "in": "query",
+            "description": "Cantidad de elementos por página",
+            "schema": {
+              "minimum": 1,
+              "maximum": 100,
+              "default": 20,
+              "example": 20,
+              "type": "number"
+            }
+          },
+          {
+            "name": "orderBy",
+            "required": false,
+            "in": "query",
+            "description": "Campo para ordenar",
+            "schema": {
+              "example": "fecha",
+              "type": "string",
+              "enum": [
+                "fecha",
+                "numero",
+                "totalFinal",
+                "estado",
+                "createdAt"
+              ]
+            }
+          },
+          {
+            "name": "orderDirection",
+            "required": false,
+            "in": "query",
+            "description": "Dirección del ordenamiento",
+            "schema": {
+              "example": "DESC",
+              "type": "string",
+              "enum": [
+                "ASC",
+                "DESC"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Comandas obtenidas exitosamente",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "comandas": {
+                      "type": "array"
+                    },
+                    "total": {
+                      "type": "number"
+                    },
+                    "page": {
+                      "type": "number"
+                    },
+                    "limit": {
+                      "type": "number"
+                    },
+                    "totalPages": {
+                      "type": "number"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Acceso denegado"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Obtener comandas con filtros",
+        "tags": [
+          "comandas"
+        ]
+      }
+    },
+    "/api/comandas/{id}": {
+      "get": {
+        "description": "Obtiene una comanda específica con todas sus relaciones",
+        "operationId": "ComandaController_obtenerComanda",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "description": "ID de la comanda",
+            "schema": {
+              "example": "uuid-de-la-comanda",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Comanda obtenida exitosamente"
+          },
+          "403": {
+            "description": "Acceso denegado"
+          },
+          "404": {
+            "description": "Comanda no encontrada"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Obtener comanda por ID",
+        "tags": [
+          "comandas"
+        ]
+      },
+      "put": {
+        "description": "Actualiza una comanda existente con los datos proporcionados",
+        "operationId": "ComandaController_actualizarComanda",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "description": "ID de la comanda",
+            "schema": {
+              "example": "uuid-de-la-comanda",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ActualizarComandaDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Comanda actualizada exitosamente"
+          },
+          "400": {
+            "description": "Datos inválidos o comanda duplicada"
+          },
+          "403": {
+            "description": "Acceso denegado"
+          },
+          "404": {
+            "description": "Comanda no encontrada"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Actualizar comanda",
+        "tags": [
+          "comandas"
+        ]
+      },
+      "delete": {
+        "description": "Elimina una comanda de forma lógica (soft delete)",
+        "operationId": "ComandaController_eliminarComanda",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "description": "ID de la comanda",
+            "schema": {
+              "example": "uuid-de-la-comanda",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Comanda eliminada exitosamente"
+          },
+          "403": {
+            "description": "Acceso denegado"
+          },
+          "404": {
+            "description": "Comanda no encontrada"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Eliminar comanda (soft delete)",
+        "tags": [
+          "comandas"
+        ]
+      }
+    },
+    "/api/comandas/numero/{numero}": {
+      "get": {
+        "description": "Obtiene una comanda específica por su número único",
+        "operationId": "ComandaController_obtenerComandaPorNumero",
+        "parameters": [
+          {
+            "name": "numero",
+            "required": true,
+            "in": "path",
+            "description": "Número de la comanda",
+            "schema": {
+              "example": "CMD-2024-001",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Comanda obtenida exitosamente"
+          },
+          "403": {
+            "description": "Acceso denegado"
+          },
+          "404": {
+            "description": "Comanda no encontrada"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Obtener comanda por número",
+        "tags": [
+          "comandas"
+        ]
+      }
+    },
+    "/api/comandas/{id}/restaurar": {
+      "post": {
+        "description": "Restaura una comanda que fue eliminada (soft delete)",
+        "operationId": "ComandaController_restaurarComanda",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "description": "ID de la comanda",
+            "schema": {
+              "example": "uuid-de-la-comanda",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Comanda restaurada exitosamente"
+          },
+          "400": {
+            "description": "La comanda no está eliminada"
+          },
+          "403": {
+            "description": "Acceso denegado"
+          },
+          "404": {
+            "description": "Comanda no encontrada"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Restaurar comanda eliminada",
+        "tags": [
+          "comandas"
+        ]
+      }
+    },
+    "/api/comandas/{id}/estado": {
+      "put": {
+        "description": "Cambia el estado de una comanda (pendiente, en_proceso, completado, cancelado)",
+        "operationId": "ComandaController_cambiarEstadoComanda",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "description": "ID de la comanda",
+            "schema": {
+              "example": "uuid-de-la-comanda",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Estado de comanda cambiado exitosamente"
+          },
+          "403": {
+            "description": "Acceso denegado"
+          },
+          "404": {
+            "description": "Comanda no encontrada"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Cambiar estado de comanda",
+        "tags": [
+          "comandas"
+        ]
+      }
+    },
+    "/api/comandas/estadisticas/resumen": {
+      "get": {
+        "description": "Obtiene un resumen estadístico de las comandas",
+        "operationId": "ComandaController_obtenerEstadisticas",
+        "parameters": [
+          {
+            "name": "fechaInicio",
+            "required": false,
+            "in": "query",
+            "description": "Fecha de inicio (YYYY-MM-DD)",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "fechaFin",
+            "required": false,
+            "in": "query",
+            "description": "Fecha de fin (YYYY-MM-DD)",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Estadísticas obtenidas exitosamente"
+          },
+          "403": {
+            "description": "Acceso denegado"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Obtener estadísticas de comandas",
+        "tags": [
+          "comandas"
+        ]
+      }
+    },
+    "/api/comandas/exportar": {
+      "get": {
+        "description": "Exporta las comandas filtradas en formato CSV, PDF o Excel",
+        "operationId": "ComandaController_exportarComandas",
+        "parameters": [
+          {
+            "name": "estado",
+            "required": false,
+            "in": "query",
+            "description": "Filtrar por estado de comanda",
+            "schema": {
+              "enum": [
+                "pendiente",
+                "en_proceso",
+                "completado",
+                "cancelado"
+              ],
+              "type": "string"
+            }
+          },
+          {
+            "name": "fechaInicio",
+            "required": false,
+            "in": "query",
+            "description": "Fecha de inicio (YYYY-MM-DD)",
+            "schema": {
+              "example": "2024-01-01",
+              "type": "string"
+            }
+          },
+          {
+            "name": "fechaFin",
+            "required": false,
+            "in": "query",
+            "description": "Fecha de fin (YYYY-MM-DD)",
+            "schema": {
+              "example": "2024-12-31",
+              "type": "string"
+            }
+          },
+          {
+            "name": "clienteId",
+            "required": false,
+            "in": "query",
+            "description": "Filtrar por ID de cliente",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "personalId",
+            "required": false,
+            "in": "query",
+            "description": "Filtrar por ID de personal",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "unidadNegocio",
+            "required": false,
+            "in": "query",
+            "description": "Filtrar por unidad de negocio",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "tipoId",
+            "required": false,
+            "in": "query",
+            "description": "Filtrar por ID de tipo",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "tipoItemId",
+            "required": false,
+            "in": "query",
+            "description": "Filtrar por ID de tipo de item",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "formato",
+            "required": false,
+            "in": "query",
+            "description": "Formato de exportación (default: csv)",
+            "schema": {
+              "enum": [
+                "csv",
+                "pdf",
+                "excel"
+              ],
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Archivo exportado exitosamente"
+          },
+          "400": {
+            "description": "Formato de exportación no válido"
+          },
+          "403": {
+            "description": "Acceso denegado"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Exportar comandas",
+        "tags": [
+          "comandas"
+        ]
+      }
+    },
+    "/api/tipos-comanda": {
+      "post": {
+        "operationId": "TipoComandaController_crear",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CrearTipoComandaDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Tipo de comanda creado exitosamente",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TipoComanda"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Datos inválidos"
+          },
+          "409": {
+            "description": "Ya existe un tipo con ese nombre"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Crear un nuevo tipo de comanda",
+        "tags": [
+          "Tipos de Comanda"
+        ]
+      },
+      "get": {
+        "operationId": "TipoComandaController_findAll",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Lista de tipos de comanda obtenida exitosamente",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/TipoComanda"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Obtener todos los tipos de comanda activos",
+        "tags": [
+          "Tipos de Comanda"
+        ]
+      }
+    },
+    "/api/tipos-comanda/{id}": {
+      "get": {
+        "operationId": "TipoComandaController_findOne",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Tipo de comanda encontrado exitosamente",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TipoComanda"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Tipo de comanda no encontrado"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Obtener un tipo de comanda por ID",
+        "tags": [
+          "Tipos de Comanda"
+        ]
+      },
+      "patch": {
+        "operationId": "TipoComandaController_actualizar",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ActualizarTipoComandaDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Tipo de comanda actualizado exitosamente",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TipoComanda"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Tipo de comanda no encontrado"
+          },
+          "409": {
+            "description": "Ya existe un tipo con ese nombre"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Actualizar un tipo de comanda",
+        "tags": [
+          "Tipos de Comanda"
+        ]
+      },
+      "delete": {
+        "operationId": "TipoComandaController_eliminar",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Tipo de comanda eliminado exitosamente"
+          },
+          "404": {
+            "description": "Tipo de comanda no encontrado"
+          },
+          "409": {
+            "description": "No se puede eliminar porque está en uso"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Eliminar lógicamente un tipo de comanda",
+        "tags": [
+          "Tipos de Comanda"
+        ]
+      }
+    },
+    "/api/tipos-comanda/{id}/restaurar": {
+      "post": {
+        "operationId": "TipoComandaController_restaurar",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Tipo de comanda restaurado exitosamente",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TipoComanda"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Tipo de comanda no encontrado"
+          },
+          "409": {
+            "description": "El tipo de comanda no está eliminado"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Restaurar un tipo de comanda eliminado",
+        "tags": [
+          "Tipos de Comanda"
+        ]
+      }
+    },
+    "/api/tipos-item": {
+      "post": {
+        "operationId": "TipoItemController_crear",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CrearTipoItemDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Tipo de item creado exitosamente",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TipoItem"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Datos inválidos"
+          },
+          "409": {
+            "description": "Ya existe un tipo con ese nombre"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Crear un nuevo tipo de item",
+        "tags": [
+          "Tipos de Item"
+        ]
+      },
+      "get": {
+        "operationId": "TipoItemController_findAll",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Lista de tipos de item obtenida exitosamente",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/TipoItem"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Obtener todos los tipos de item activos",
+        "tags": [
+          "Tipos de Item"
+        ]
+      }
+    },
+    "/api/tipos-item/{id}": {
+      "get": {
+        "operationId": "TipoItemController_findOne",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Tipo de item encontrado exitosamente",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TipoItem"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Tipo de item no encontrado"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Obtener un tipo de item por ID",
+        "tags": [
+          "Tipos de Item"
+        ]
+      },
+      "patch": {
+        "operationId": "TipoItemController_actualizar",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ActualizarTipoItemDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Tipo de item actualizado exitosamente",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TipoItem"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Tipo de item no encontrado"
+          },
+          "409": {
+            "description": "Ya existe un tipo con ese nombre"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Actualizar un tipo de item",
+        "tags": [
+          "Tipos de Item"
+        ]
+      },
+      "delete": {
+        "operationId": "TipoItemController_eliminar",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Tipo de item eliminado exitosamente"
+          },
+          "404": {
+            "description": "Tipo de item no encontrado"
+          },
+          "409": {
+            "description": "No se puede eliminar porque está en uso"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Eliminar lógicamente un tipo de item",
+        "tags": [
+          "Tipos de Item"
+        ]
+      }
+    },
+    "/api/tipos-item/{id}/restaurar": {
+      "post": {
+        "operationId": "TipoItemController_restaurar",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Tipo de item restaurado exitosamente",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TipoItem"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Tipo de item no encontrado"
+          },
+          "409": {
+            "description": "El tipo de item no está eliminado"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Restaurar un tipo de item eliminado",
+        "tags": [
+          "Tipos de Item"
+        ]
+      }
+    },
+    "/api/auditoria": {
+      "get": {
+        "operationId": "AuditoriaController_obtenerAuditoria",
+        "parameters": [
+          {
+            "name": "modulo",
+            "required": true,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "tipoAccion",
+            "required": true,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "usuarioId",
+            "required": true,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "fechaInicio",
+            "required": true,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "fechaFin",
+            "required": true,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "limit",
+            "required": true,
+            "in": "query",
+            "schema": {
+              "type": "number"
+            }
+          },
+          {
+            "name": "offset",
+            "required": true,
+            "in": "query",
+            "schema": {
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Auditoria"
+        ]
+      }
+    },
+    "/api/auditoria/usuario/{usuarioId}": {
+      "get": {
+        "operationId": "AuditoriaController_obtenerAuditoriaPorUsuario",
+        "parameters": [
+          {
+            "name": "usuarioId",
+            "required": true,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "limit",
+            "required": true,
+            "in": "query",
+            "schema": {
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Auditoria"
+        ]
+      }
+    },
+    "/api/auditoria/modulo/{modulo}": {
+      "get": {
+        "operationId": "AuditoriaController_obtenerAuditoriaPorModulo",
+        "parameters": [
+          {
+            "name": "modulo",
+            "required": true,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "limit",
+            "required": true,
+            "in": "query",
+            "schema": {
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Auditoria"
+        ]
+      }
+    },
+    "/api/auth/login": {
+      "post": {
+        "operationId": "AuthController_login",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LoginDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Login exitoso"
+          },
+          "401": {
+            "description": "Credenciales inválidas"
+          }
+        },
+        "summary": "Iniciar sesión",
+        "tags": [
+          "auth"
+        ]
+      }
+    },
+    "/api/auth/register": {
+      "post": {
+        "operationId": "AuthController_register",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RegisterDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Usuario registrado exitosamente"
+          },
+          "403": {
+            "description": "Acceso denegado"
+          },
+          "409": {
+            "description": "Email ya registrado"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Registrar nuevo usuario (solo administradores)",
+        "tags": [
+          "auth"
+        ]
+      }
+    },
+    "/api/auth/profile": {
+      "get": {
+        "operationId": "AuthController_getProfile",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Perfil obtenido exitosamente"
+          },
+          "401": {
+            "description": "No autorizado"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Obtener perfil del usuario autenticado",
+        "tags": [
+          "auth"
+        ]
+      }
+    },
+    "/api/cajas/balance/{caja}": {
+      "get": {
+        "operationId": "CajaController_obtenerBalanceCaja",
+        "parameters": [
+          {
+            "name": "caja",
+            "required": true,
+            "in": "path",
+            "description": "Caja a consultar",
+            "schema": {
+              "enum": [
+                "caja_1",
+                "caja_2"
+              ],
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Balance obtenido exitosamente"
+          },
+          "403": {
+            "description": "Acceso denegado"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Obtener balance de una caja",
+        "tags": [
+          "cajas"
+        ]
+      }
+    },
+    "/api/cajas/movimiento": {
+      "post": {
+        "operationId": "CajaController_crearMovimiento",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CrearMovimientoCajaDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Movimiento creado exitosamente"
+          },
+          "400": {
+            "description": "Error en el movimiento"
+          },
+          "403": {
+            "description": "Acceso denegado"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Crear un movimiento de caja (ingreso/egreso/ajuste)",
+        "tags": [
+          "cajas"
+        ]
+      }
+    },
+    "/api/cajas/movimientos": {
+      "get": {
+        "operationId": "CajaController_obtenerMovimientos",
+        "parameters": [
+          {
+            "name": "caja",
+            "required": false,
+            "in": "query",
+            "description": "Filtrar por caja",
+            "schema": {
+              "enum": [
+                "caja_1",
+                "caja_2"
+              ],
+              "type": "string"
+            }
+          },
+          {
+            "name": "tipoMovimiento",
+            "required": false,
+            "in": "query",
+            "description": "Filtrar por tipo de movimiento",
+            "schema": {
+              "enum": [
+                "ingreso",
+                "egreso",
+                "transferencia_entrada",
+                "transferencia_salida",
+                "ajuste"
+              ],
+              "type": "string"
+            }
+          },
+          {
+            "name": "fechaInicio",
+            "required": false,
+            "in": "query",
+            "description": "Fecha de inicio (YYYY-MM-DD)",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "fechaFin",
+            "required": false,
+            "in": "query",
+            "description": "Fecha de fin (YYYY-MM-DD)",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "limit",
+            "required": false,
+            "in": "query",
+            "description": "Límite de resultados",
+            "schema": {
+              "type": "number"
+            }
+          },
+          {
+            "name": "offset",
+            "required": false,
+            "in": "query",
+            "description": "Offset para paginación",
+            "schema": {
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Movimientos obtenidos exitosamente"
+          },
+          "403": {
+            "description": "Acceso denegado"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Obtener movimientos de caja con filtros",
+        "tags": [
+          "cajas"
+        ]
+      }
+    },
+    "/api/cajas/transferir": {
+      "post": {
+        "operationId": "CajaController_transferirEntreCajas",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TransferirCajaDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Transferencia exitosa"
+          },
+          "400": {
+            "description": "Error en la transferencia"
+          },
+          "403": {
+            "description": "Acceso denegado"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Transferir comandas entre cajas",
+        "tags": [
+          "cajas"
+        ]
+      }
+    },
+    "/api/cajas/balance-todas": {
+      "get": {
+        "operationId": "CajaController_obtenerBalanceTodasLasCajas",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Balances obtenidos exitosamente"
+          },
+          "403": {
+            "description": "Acceso denegado"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Obtener balance de todas las cajas",
+        "tags": [
+          "cajas"
+        ]
+      }
+    },
+    "/api/dolar/cotizacion": {
+      "get": {
+        "operationId": "DolarController_obtenerCotizacion",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Cotización del dólar obtenida exitosamente",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "compra": {
+                      "type": "number",
+                      "example": 1190
+                    },
+                    "venta": {
+                      "type": "number",
+                      "example": 1210
+                    },
+                    "casa": {
+                      "type": "string",
+                      "example": "blue"
+                    },
+                    "nombre": {
+                      "type": "string",
+                      "example": "Blue"
+                    },
+                    "moneda": {
+                      "type": "string",
+                      "example": "USD"
+                    },
+                    "fechaActualizacion": {
+                      "type": "string",
+                      "example": "2025-06-29T20:57:00.000Z"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Error interno del servidor"
+          }
+        },
+        "summary": "Obtener cotización actual del dólar blue",
+        "tags": [
+          "Dólar"
+        ]
+      }
+    },
+    "/api/dolar/historial": {
+      "get": {
+        "operationId": "DolarController_obtenerHistorial",
+        "parameters": [
+          {
+            "name": "limit",
+            "required": false,
+            "in": "query",
+            "description": "Número máximo de registros a retornar (default: 10)",
+            "schema": {
+              "example": 10,
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Historial de cotizaciones obtenido exitosamente",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "compra": {
+                        "type": "number",
+                        "example": 1190
+                      },
+                      "venta": {
+                        "type": "number",
+                        "example": 1210
+                      },
+                      "casa": {
+                        "type": "string",
+                        "example": "blue"
+                      },
+                      "nombre": {
+                        "type": "string",
+                        "example": "Blue"
+                      },
+                      "moneda": {
+                        "type": "string",
+                        "example": "USD"
+                      },
+                      "fechaActualizacion": {
+                        "type": "string",
+                        "example": "2025-06-29T20:57:00.000Z"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Error interno del servidor"
+          }
+        },
+        "summary": "Obtener historial de cotizaciones del dólar",
+        "tags": [
+          "Dólar"
+        ]
+      }
+    }
+  },
+  "info": {
+    "title": "Garcia 2025 API",
+    "description": "Endpoints to manage Comandas, pagos, etc.",
+    "version": "1.0",
+    "contact": {}
+  },
+  "tags": [],
+  "servers": [],
+  "components": {
+    "securitySchemes": {
+      "access-token": {
+        "scheme": "bearer",
+        "bearerFormat": "JWT",
+        "type": "http"
+      }
+    },
+    "schemas": {
+      "CrearItemComandaDto": {
+        "type": "object",
+        "properties": {
+          "productoServicioId": {
+            "type": "string",
+            "description": "ID del producto o servicio",
+            "example": "uuid-del-producto"
+          },
+          "nombre": {
+            "type": "string",
+            "description": "Nombre del producto o servicio",
+            "example": "Servicio de consultoría",
+            "maxLength": 150
+          },
+          "tipoId": {
+            "type": "string",
+            "description": "ID del tipo de item",
+            "example": "uuid-del-tipo-item"
+          },
+          "precio": {
+            "type": "number",
+            "description": "Precio unitario",
+            "example": 100.5,
+            "minimum": 0
+          },
+          "cantidad": {
+            "type": "number",
+            "description": "Cantidad",
+            "example": 2,
+            "minimum": 1
+          },
+          "descuento": {
+            "type": "number",
+            "description": "Descuento aplicado",
+            "example": 10,
+            "minimum": 0,
+            "default": 0
+          },
+          "personalId": {
+            "type": "string",
+            "description": "ID del personal asignado",
+            "example": "uuid-del-personal"
+          }
+        },
+        "required": [
+          "productoServicioId",
+          "nombre",
+          "tipoId",
+          "precio",
+          "cantidad",
+          "personalId"
+        ]
+      },
+      "CrearComandaDto": {
+        "type": "object",
+        "properties": {
+          "numero": {
+            "type": "string",
+            "description": "Número de comanda",
+            "maxLength": 50,
+            "example": "CMD-2024-001"
+          },
+          "fecha": {
+            "type": "string",
+            "description": "Fecha de la comanda",
+            "example": "2024-01-15T10:30:00Z"
+          },
+          "unidadNegocio": {
+            "type": "string",
+            "description": "Unidad de negocio",
+            "enum": [
+              "tattoo",
+              "estilismo",
+              "formacion"
+            ],
+            "example": "tattoo"
+          },
+          "enCaja": {
+            "type": "string",
+            "description": "Caja asignada",
+            "enum": [
+              "caja_1",
+              "caja_2"
+            ],
+            "default": "caja_1",
+            "example": "caja_1"
+          },
+          "clienteId": {
+            "type": "string",
+            "description": "ID del cliente",
+            "example": "uuid-del-cliente"
+          },
+          "personalPrincipalId": {
+            "type": "string",
+            "description": "ID del personal principal",
+            "example": "uuid-del-personal-principal"
+          },
+          "items": {
+            "description": "Items de la comanda",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CrearItemComandaDto"
+            }
+          },
+          "metodosPagoIds": {
+            "description": "IDs de métodos de pago",
+            "example": [
+              "uuid-metodo-1",
+              "uuid-metodo-2"
+            ],
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "prepagoId": {
+            "type": "string",
+            "description": "ID del prepago asociado",
+            "example": "uuid-del-prepago"
+          },
+          "subtotal": {
+            "type": "number",
+            "description": "Subtotal",
+            "minimum": 0,
+            "example": 1000
+          },
+          "totalDescuentos": {
+            "type": "number",
+            "description": "Total de descuentos",
+            "minimum": 0,
+            "example": 100
+          },
+          "totalRecargos": {
+            "type": "number",
+            "description": "Total de recargos",
+            "minimum": 0,
+            "example": 50
+          },
+          "totalPrepago": {
+            "type": "number",
+            "description": "Total prepago",
+            "minimum": 0,
+            "example": 200
+          },
+          "totalFinal": {
+            "type": "number",
+            "description": "Total final",
+            "minimum": 0,
+            "example": 950
+          },
+          "estado": {
+            "type": "string",
+            "description": "Estado de la comanda",
+            "enum": [
+              "pendiente",
+              "en_proceso",
+              "completado",
+              "cancelado"
+            ],
+            "default": "pendiente",
+            "example": "pendiente"
+          },
+          "tipoId": {
+            "type": "string",
+            "description": "ID del tipo de comanda",
+            "example": "uuid-del-tipo-comanda"
+          },
+          "observaciones": {
+            "type": "string",
+            "description": "Observaciones",
+            "maxLength": 500,
+            "example": "Cliente solicita atención especial"
+          }
+        },
+        "required": [
+          "numero",
+          "fecha",
+          "unidadNegocio",
+          "clienteId",
+          "personalPrincipalId",
+          "items",
+          "tipoId"
+        ]
+      },
+      "ActualizarItemComandaDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "ID del item (para actualizar existente)"
+          },
+          "productoServicioId": {
+            "type": "string",
+            "description": "ID del producto o servicio"
+          },
+          "nombre": {
+            "type": "string",
+            "description": "Nombre del producto o servicio",
+            "maxLength": 150
+          },
+          "tipoId": {
+            "type": "string",
+            "description": "ID del tipo de item",
+            "example": "uuid-del-tipo-item"
+          },
+          "precio": {
+            "type": "number",
+            "description": "Precio unitario",
+            "minimum": 0
+          },
+          "cantidad": {
+            "type": "number",
+            "description": "Cantidad",
+            "minimum": 1
+          },
+          "descuento": {
+            "type": "number",
+            "description": "Descuento aplicado",
+            "minimum": 0
+          },
+          "personalId": {
+            "type": "string",
+            "description": "ID del personal que realiza el trabajo"
+          }
+        }
+      },
+      "ActualizarComandaDto": {
+        "type": "object",
+        "properties": {
+          "numero": {
+            "type": "string",
+            "description": "Número de comanda",
+            "maxLength": 50
+          },
+          "fecha": {
+            "type": "string",
+            "description": "Fecha de la comanda"
+          },
+          "unidadNegocio": {
+            "type": "string",
+            "description": "Unidad de negocio",
+            "enum": [
+              "tattoo",
+              "estilismo",
+              "formacion"
+            ]
+          },
+          "enCaja": {
+            "type": "string",
+            "description": "Caja asignada",
+            "enum": [
+              "caja_1",
+              "caja_2"
+            ]
+          },
+          "clienteId": {
+            "type": "string",
+            "description": "ID del cliente"
+          },
+          "personalPrincipalId": {
+            "type": "string",
+            "description": "ID del personal principal"
+          },
+          "items": {
+            "description": "Items de la comanda",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ActualizarItemComandaDto"
+            }
+          },
+          "metodosPagoIds": {
+            "description": "IDs de métodos de pago",
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "prepagoId": {
+            "type": "string",
+            "description": "ID del prepago asociado"
+          },
+          "subtotal": {
+            "type": "number",
+            "description": "Subtotal",
+            "minimum": 0
+          },
+          "totalDescuentos": {
+            "type": "number",
+            "description": "Total de descuentos",
+            "minimum": 0
+          },
+          "totalRecargos": {
+            "type": "number",
+            "description": "Total de recargos",
+            "minimum": 0
+          },
+          "totalPrepago": {
+            "type": "number",
+            "description": "Total prepago",
+            "minimum": 0
+          },
+          "totalFinal": {
+            "type": "number",
+            "description": "Total final",
+            "minimum": 0
+          },
+          "estado": {
+            "type": "string",
+            "description": "Estado de la comanda",
+            "enum": [
+              "pendiente",
+              "en_proceso",
+              "completado",
+              "cancelado"
+            ]
+          },
+          "tipoId": {
+            "type": "string",
+            "description": "ID del tipo de comanda",
+            "example": "uuid-del-tipo-comanda"
+          },
+          "observaciones": {
+            "type": "string",
+            "description": "Observaciones",
+            "maxLength": 500
+          }
+        }
+      },
+      "CrearTipoComandaDto": {
+        "type": "object",
+        "properties": {
+          "nombre": {
+            "type": "string",
+            "description": "Nombre del tipo de comanda",
+            "example": "Ingreso",
+            "maxLength": 100
+          },
+          "descripcion": {
+            "type": "string",
+            "description": "Descripción del tipo de comanda",
+            "example": "Comandas de ingreso de dinero",
+            "maxLength": 255
+          },
+          "orden": {
+            "type": "number",
+            "description": "Orden de visualización",
+            "example": 1,
+            "default": 0
+          },
+          "activo": {
+            "type": "boolean",
+            "description": "Si el tipo está activo",
+            "example": true,
+            "default": true
+          }
+        },
+        "required": [
+          "nombre"
+        ]
+      },
+      "TipoComanda": {
+        "type": "object",
+        "properties": {}
+      },
+      "ActualizarTipoComandaDto": {
+        "type": "object",
+        "properties": {
+          "nombre": {
+            "type": "string",
+            "description": "Nombre del tipo de comanda",
+            "example": "Ingreso",
+            "maxLength": 100
+          },
+          "descripcion": {
+            "type": "string",
+            "description": "Descripción del tipo de comanda",
+            "example": "Comandas de ingreso de dinero",
+            "maxLength": 255
+          },
+          "orden": {
+            "type": "number",
+            "description": "Orden de visualización",
+            "example": 1
+          },
+          "activo": {
+            "type": "boolean",
+            "description": "Si el tipo está activo",
+            "example": true
+          }
+        }
+      },
+      "CrearTipoItemDto": {
+        "type": "object",
+        "properties": {
+          "nombre": {
+            "type": "string",
+            "description": "Nombre del tipo de item",
+            "example": "Producto",
+            "maxLength": 100
+          },
+          "descripcion": {
+            "type": "string",
+            "description": "Descripción del tipo de item",
+            "example": "Productos físicos",
+            "maxLength": 255
+          },
+          "orden": {
+            "type": "number",
+            "description": "Orden de visualización",
+            "example": 1,
+            "default": 0
+          },
+          "activo": {
+            "type": "boolean",
+            "description": "Si el tipo está activo",
+            "example": true,
+            "default": true
+          }
+        },
+        "required": [
+          "nombre"
+        ]
+      },
+      "TipoItem": {
+        "type": "object",
+        "properties": {}
+      },
+      "ActualizarTipoItemDto": {
+        "type": "object",
+        "properties": {
+          "nombre": {
+            "type": "string",
+            "description": "Nombre del tipo de item",
+            "example": "Producto",
+            "maxLength": 100
+          },
+          "descripcion": {
+            "type": "string",
+            "description": "Descripción del tipo de item",
+            "example": "Productos físicos",
+            "maxLength": 255
+          },
+          "orden": {
+            "type": "number",
+            "description": "Orden de visualización",
+            "example": 1
+          },
+          "activo": {
+            "type": "boolean",
+            "description": "Si el tipo está activo",
+            "example": true
+          }
+        }
+      },
+      "LoginDto": {
+        "type": "object",
+        "properties": {
+          "email": {
+            "type": "string",
+            "description": "Email del usuario",
+            "example": "usuario@ejemplo.com"
+          },
+          "password": {
+            "type": "string",
+            "description": "Contraseña del usuario",
+            "example": "password123",
+            "minLength": 6
+          }
+        },
+        "required": [
+          "email",
+          "password"
+        ]
+      },
+      "RegisterDto": {
+        "type": "object",
+        "properties": {
+          "nombre": {
+            "type": "string",
+            "description": "Nombre completo del usuario",
+            "example": "Juan Pérez"
+          },
+          "email": {
+            "type": "string",
+            "description": "Email del usuario",
+            "example": "juan.perez@ejemplo.com"
+          },
+          "password": {
+            "type": "string",
+            "description": "Contraseña del usuario",
+            "example": "password123",
+            "minLength": 6
+          },
+          "comisionPorcentaje": {
+            "type": "number",
+            "description": "Porcentaje de comisión",
+            "example": 15.5
+          },
+          "activo": {
+            "type": "boolean",
+            "description": "Si el usuario está activo",
+            "example": true
+          },
+          "rol": {
+            "type": "string",
+            "description": "Rol del usuario",
+            "enum": [
+              "admin",
+              "user",
+              "encargado"
+            ],
+            "example": "user"
+          },
+          "unidadesDisponibles": {
+            "type": "array",
+            "description": "Unidades de negocio disponibles",
+            "example": [
+              "tattoo",
+              "estilismo"
+            ],
+            "items": {
+              "type": "string",
+              "enum": [
+                "tattoo",
+                "estilismo",
+                "formacion"
+              ]
+            }
+          },
+          "telefono": {
+            "type": "string",
+            "description": "Número de teléfono",
+            "example": "+54 11 1234-5678"
+          },
+          "fechaIngreso": {
+            "format": "date-time",
+            "type": "string",
+            "description": "Fecha de ingreso",
+            "example": "2024-01-15T00:00:00.000Z"
+          }
+        },
+        "required": [
+          "nombre",
+          "email",
+          "password",
+          "fechaIngreso"
+        ]
+      },
+      "CrearMovimientoCajaDto": {
+        "type": "object",
+        "properties": {}
+      },
+      "TransferirCajaDto": {
+        "type": "object",
+        "properties": {
+          "cajaOrigen": {
+            "type": "string",
+            "description": "Caja de origen",
+            "enum": [
+              "caja_1",
+              "caja_2"
+            ],
+            "example": "caja_1"
+          },
+          "cajaDestino": {
+            "type": "string",
+            "description": "Caja de destino",
+            "enum": [
+              "caja_1",
+              "caja_2"
+            ],
+            "example": "caja_2"
+          },
+          "monto": {
+            "type": "number",
+            "description": "Monto a transferir",
+            "example": 15000.5,
+            "minimum": 0.01
+          },
+          "observaciones": {
+            "type": "string",
+            "description": "Observaciones de la transferencia",
+            "example": "Transferencia de cierre de día"
+          }
+        },
+        "required": [
+          "cajaOrigen",
+          "cajaDestino",
+          "monto"
+        ]
+      }
+    }
+  }
+}

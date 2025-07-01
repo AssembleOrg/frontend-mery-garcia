@@ -36,3 +36,47 @@ export const logger = {
     }
   },
 };
+
+// ======================
+// Helpers de Formateo  📅💰
+// ======================
+
+/**
+ * Formatea una fecha al estilo dd/mm/yyyy (por defecto es-ES).
+ * Acepta Date, string o número timestamp.
+ */
+export function formatDate(date: Date | string | number, locale = 'es-ES') {
+  const d =
+    typeof date === 'string' || typeof date === 'number'
+      ? new Date(date)
+      : date;
+  return new Intl.DateTimeFormat(locale, {
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+  }).format(d);
+}
+
+/**
+ * Formatea números como moneda ARS usando convención es-AR.
+ */
+export function formatCurrencyArs(amount: number) {
+  return new Intl.NumberFormat('es-AR', {
+    style: 'currency',
+    currency: 'ARS',
+    maximumFractionDigits: 2,
+  }).format(amount);
+}
+
+/**
+ * Formatea una cantidad en USD calculando a partir de un tipo de cambio.
+ * @param amount   Cantidad en ARS
+ * @param exchangeRate  Tipo de cambio ARS→USD (por defecto 1000)
+ */
+export function formatCurrencyUsd(amount: number, exchangeRate = 1000) {
+  return new Intl.NumberFormat('en-US', {
+    style: 'currency',
+    currency: 'USD',
+    maximumFractionDigits: 2,
+  }).format(amount / exchangeRate);
+}

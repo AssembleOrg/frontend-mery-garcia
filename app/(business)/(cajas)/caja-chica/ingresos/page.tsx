@@ -5,7 +5,7 @@ import MainLayout from '@/components/layout/MainLayout';
 import StandardPageBanner from '@/components/common/StandardPageBanner';
 import StandardBreadcrumbs from '@/components/common/StandardBreadcrumbs';
 import TableFilters from '@/components/cajas/TableFilters';
-import TransactionsTable from '@/components/cajas/TransactionsTable';
+import TransactionsTable from '@/components/cajas/TransactionsTableTanStack';
 import ModalCambiarEstado from '@/components/validacion/ModalCambiarEstado';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -87,20 +87,6 @@ const initialColumns: ColumnaCaja[] = [
     width: '120px',
   },
   {
-    key: 'estadoNegocio',
-    label: 'Estado Negocio',
-    visible: false, // Oculto para vista de usuario estándar
-    sortable: true,
-    width: '130px',
-  },
-  {
-    key: 'estadoValidacion',
-    label: 'Validación',
-    visible: false, // Oculto para vista de usuario estándar
-    sortable: true,
-    width: '120px',
-  },
-  {
     key: 'acciones',
     label: 'Acciones',
     visible: true,
@@ -169,6 +155,9 @@ export default function IngresosPage() {
     setModalMode(mode);
   };
 
+  // Derivar columnas ocultas para TanStack
+  const hiddenColumns = columns.filter((c) => !c.visible).map((c) => c.key);
+
   // Mostrar spinner hasta que el store esté listo
   if (!isInitialized) {
     return (
@@ -197,127 +186,129 @@ export default function IngresosPage() {
           <StandardBreadcrumbs items={breadcrumbItems} />
 
           <div className="bg-gradient-to-b from-[#f9bbc4]/5 via-[#e8b4c6]/3 to-[#d4a7ca]/5">
-            {/* Header with statistics */}
-            <div className="mb-6">
-              <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-                {/* Title and statistics */}
-                <div className="flex flex-col gap-2">
-                  <h1 className="text-2xl font-bold text-[#4a3540]">
-                    ✨ Gestión de Transacciones de Ingreso
-                  </h1>
-                  <div className="flex flex-wrap items-center gap-6 text-sm text-[#6b4c57]">
-                    <div className="flex items-center gap-2">
-                      <DollarSign className="h-4 w-4 text-green-600" />
-                      <span className="font-medium">Total:</span>
-                      <span className="font-bold text-green-600">
-                        {formatAmount(statistics.totalIncoming)}
-                      </span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <TrendingUp className="h-4 w-4 text-[#f9bbc4]" />
-                      <span className="font-medium">Transacciones:</span>
-                      <span className="font-bold">
-                        {statistics.transactionCount}
-                      </span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <Users className="h-4 w-4 text-[#f9bbc4]" />
-                      <span className="font-medium">Clientes:</span>
-                      <span className="font-bold">
-                        {statistics.clientCount}
-                      </span>
+            <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+              {/* Header with statistics */}
+              <div className="mb-6">
+                <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+                  {/* Title and statistics */}
+                  <div className="flex flex-col gap-2">
+                    <h1 className="text-2xl font-bold text-[#4a3540]">
+                      ✨ Gestión de Transacciones de Ingreso
+                    </h1>
+                    <div className="flex flex-wrap items-center gap-6 text-sm text-[#6b4c57]">
+                      <div className="flex items-center gap-2">
+                        <DollarSign className="h-4 w-4 text-green-600" />
+                        <span className="font-medium">Total:</span>
+                        <span className="font-bold text-green-600">
+                          {formatAmount(statistics.totalIncoming)}
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <TrendingUp className="h-4 w-4 text-[#f9bbc4]" />
+                        <span className="font-medium">Transacciones:</span>
+                        <span className="font-bold">
+                          {statistics.transactionCount}
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <Users className="h-4 w-4 text-[#f9bbc4]" />
+                        <span className="font-medium">Clientes:</span>
+                        <span className="font-bold">
+                          {statistics.clientCount}
+                        </span>
+                      </div>
                     </div>
                   </div>
+
+                  {/* Add transaction button */}
+                  <Button
+                    onClick={() => setShowAddModal(true)}
+                    className="rounded-lg bg-gradient-to-r from-[#f9bbc4] to-[#e292a3] px-6 py-2 font-semibold text-white shadow-md transition-all duration-200 hover:scale-105 hover:from-[#e292a3] hover:to-[#d4a7ca] hover:shadow-lg"
+                  >
+                    <Plus className="mr-2 h-4 w-4" />
+                    Nueva Transacción
+                  </Button>
                 </div>
-
-                {/* Add transaction button */}
-                <Button
-                  onClick={() => setShowAddModal(true)}
-                  className="rounded-lg bg-gradient-to-r from-[#f9bbc4] to-[#e292a3] px-6 py-2 font-semibold text-white shadow-md transition-all duration-200 hover:scale-105 hover:from-[#e292a3] hover:to-[#d4a7ca] hover:shadow-lg"
-                >
-                  <Plus className="mr-2 h-4 w-4" />
-                  Nueva Transacción
-                </Button>
               </div>
-            </div>
 
-            {/* Filters and tools */}
-            <div className="mb-6">
-              <Card className="border border-[#f9bbc4]/20 bg-white/80 shadow-sm">
-                <CardContent className="p-4">
-                  <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-                    {/* Date filter */}
-                    <div className="max-w-xs flex-1">
-                      <DateRangePicker
-                        dateRange={dateRange}
-                        onDateRangeChange={setDateRange}
-                        placeholder="Filtrar por fecha"
-                        accentColor="#f9bbc4"
-                      />
+              {/* Filters and tools */}
+              <div className="mb-6">
+                <Card className="border border-[#f9bbc4]/20 bg-white/80 shadow-sm">
+                  <CardContent className="p-4">
+                    <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+                      {/* Date filter */}
+                      <div className="max-w-xs flex-1">
+                        <DateRangePicker
+                          dateRange={dateRange}
+                          onDateRangeChange={setDateRange}
+                          placeholder="Filtrar por fecha"
+                          accentColor="#f9bbc4"
+                        />
+                      </div>
+
+                      {/* Table tools */}
+                      <div className="flex items-center gap-3">
+                        <TableFilters
+                          filters={filters}
+                          onFiltersChange={updateFilters}
+                          columns={columns}
+                          onColumnsChange={setColumns}
+                          exportToPDF={exportToPDF}
+                          exportToExcel={exportToExcel}
+                          exportToCSV={exportToCSV}
+                        />
+                      </div>
                     </div>
 
-                    {/* Table tools */}
-                    <div className="flex items-center gap-3">
-                      <TableFilters
-                        filters={filters}
-                        onFiltersChange={updateFilters}
-                        columns={columns}
-                        onColumnsChange={setColumns}
-                        exportToPDF={exportToPDF}
-                        exportToExcel={exportToExcel}
-                        exportToCSV={exportToCSV}
-                      />
-                    </div>
-                  </div>
+                    {/* Active filter indicator */}
+                    {dateRange && (
+                      <div className="mt-3 flex items-center gap-2 text-xs text-[#6b4c57]">
+                        <div className="h-2 w-2 rounded-full bg-[#f9bbc4]"></div>
+                        <span>
+                          Filtrando desde{' '}
+                          {dateRange.from?.toLocaleDateString('es-ES')}
+                          {dateRange.to &&
+                            ` hasta ${dateRange.to.toLocaleDateString('es-ES')}`}
+                        </span>
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+              </div>
 
-                  {/* Active filter indicator */}
-                  {dateRange && (
-                    <div className="mt-3 flex items-center gap-2 text-xs text-[#6b4c57]">
-                      <div className="h-2 w-2 rounded-full bg-[#f9bbc4]"></div>
-                      <span>
-                        Filtrando desde{' '}
-                        {dateRange.from?.toLocaleDateString('es-ES')}
-                        {dateRange.to &&
-                          ` hasta ${dateRange.to.toLocaleDateString('es-ES')}`}
-                      </span>
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
-            </div>
-
-            {/* Transactions table */}
-            <div className="mb-6">
-              <Card className="border border-[#f9bbc4]/20 bg-white/80 shadow-sm">
-                <CardContent className="p-4">
-                  <TransactionsTable
-                    data={data}
-                    columns={columns}
-                    onEdit={onEditTransaction}
-                    onDelete={handleDelete}
-                    onView={onViewTransaction}
-                    onChangeStatus={onChangeStatus}
-                    title="📈 Transacciones de Ingreso"
-                    accentColor="#f9bbc4"
-                  />
-
-                  {/* Pagination */}
-                  <div className="mt-6">
-                    <Pagination
-                      paginaActual={pagination.paginaActual}
-                      totalPaginas={pagination.totalPaginas}
-                      totalItems={pagination.totalItems}
-                      itemsPorPagina={pagination.itemsPorPagina}
-                      itemInicio={pagination.itemInicio}
-                      itemFin={pagination.itemFin}
-                      onCambiarPagina={pagination.irAPagina}
-                      onCambiarItemsPorPagina={pagination.cambiarItemsPorPagina}
-                      hayPaginaAnterior={pagination.hayPaginaAnterior}
-                      hayPaginaSiguiente={pagination.hayPaginaSiguiente}
+              {/* Transactions table */}
+              <div className="mb-6">
+                <Card className="border border-[#f9bbc4]/20 bg-white/80 shadow-sm">
+                  <CardContent className="p-4">
+                    <TransactionsTable
+                      data={data}
+                      onEdit={onEditTransaction}
+                      onDelete={handleDelete}
+                      onView={onViewTransaction}
+                      onChangeStatus={onChangeStatus}
+                      hiddenColumns={hiddenColumns}
                     />
-                  </div>
-                </CardContent>
-              </Card>
+
+                    {/* Pagination */}
+                    <div className="mt-6">
+                      <Pagination
+                        paginaActual={pagination.paginaActual}
+                        totalPaginas={pagination.totalPaginas}
+                        totalItems={pagination.totalItems}
+                        itemsPorPagina={pagination.itemsPorPagina}
+                        itemInicio={pagination.itemInicio}
+                        itemFin={pagination.itemFin}
+                        onCambiarPagina={pagination.irAPagina}
+                        onCambiarItemsPorPagina={
+                          pagination.cambiarItemsPorPagina
+                        }
+                        hayPaginaAnterior={pagination.hayPaginaAnterior}
+                        hayPaginaSiguiente={pagination.hayPaginaSiguiente}
+                      />
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
             </div>
           </div>
         </ClientOnly>

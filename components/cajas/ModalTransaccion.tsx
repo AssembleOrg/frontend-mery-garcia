@@ -144,6 +144,9 @@ export default function ModalTransaccion({
     return subtotal - descuentoTotal;
   }, [subtotal, descuentoTotal]);
 
+  // Detalle de métodos de pago (para mostrar en view)
+  const metodosPagoDetalle = transaccion?.metodosPago || [];
+
   // Formatear montos
   const formatAmount = (amount: number) => {
     return new Intl.NumberFormat('es-UY', {
@@ -728,6 +731,31 @@ export default function ModalTransaccion({
                         )}
                       </span>
                     </div>
+
+                    {/* Detalle de pagos cuando es mixto */}
+                    {metodosPagoDetalle.length > 1 && (
+                      <div className="space-y-2 text-sm">
+                        <Separator />
+                        <span className="font-medium">Detalle de Pagos:</span>
+                        {metodosPagoDetalle.map((mp, idx) => (
+                          <div
+                            key={idx}
+                            className="flex justify-between rounded-md bg-gray-50 px-3 py-1"
+                          >
+                            <span>
+                              {mp.tipo === 'efectivo'
+                                ? '💰 Efectivo'
+                                : mp.tipo === 'tarjeta'
+                                  ? '💳 Tarjeta'
+                                  : '🏦 Transferencia'}
+                            </span>
+                            <span>
+                              {formatAmount(mp.montoFinal || mp.monto)}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    )}
                   </CardContent>
                 </Card>
               </div>

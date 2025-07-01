@@ -11,18 +11,10 @@ import {
   ProductoServicio,
   TipoCambio,
   ConfiguracionRecargo,
-  UnidadNegocio,
   EstadoComandaNegocio,
   EstadoValidacion,
+  UnidadNegocio,
 } from '@/types/caja';
-import {
-  personalMock,
-  productosServiciosMock,
-  tipoCambioMock,
-  configuracionRecargosMock,
-  getPersonalPorUnidad,
-  buscarProductosServicios,
-} from '@/data/mockData';
 
 interface ComandaState {
   // Estados principales
@@ -55,10 +47,10 @@ interface ComandaState {
 
   // Acciones - Datos de referencia
   actualizarTipoCambio: (tipoCambio: TipoCambio) => void;
-  obtenerPersonalPorUnidad: (unidad: string) => Personal[];
+  obtenerPersonalPorUnidad: (unidad?: UnidadNegocio) => Personal[];
   buscarProductosServicios: (
-    termino: string,
-    unidad?: string
+    query?: string,
+    unidad?: UnidadNegocio
   ) => ProductoServicio[];
 
   // Acciones - Productos/Servicios CRUD
@@ -68,7 +60,7 @@ interface ComandaState {
     producto: Partial<ProductoServicio>
   ) => void;
   eliminarProductoServicio: (id: string) => void;
-  obtenerProductoServicioPorId: (id: string) => ProductoServicio | undefined;
+  obtenerProductoServicioPorId: () => ProductoServicio | undefined;
 
   // Acciones - Personal Simple CRUD
   agregarPersonalSimple: (personal: Omit<PersonalSimple, 'id'>) => void;
@@ -77,7 +69,7 @@ interface ComandaState {
     personal: Partial<PersonalSimple>
   ) => void;
   eliminarPersonalSimple: (id: string) => void;
-  obtenerPersonalSimplePorId: (id: string) => PersonalSimple | undefined;
+  obtenerPersonalSimplePorId: () => PersonalSimple | undefined;
 
   // Acciones - Validación
   cambiarEstadoComanda: (
@@ -128,40 +120,36 @@ interface ComandaState {
     totalPendientes: number;
     montoNeto: number;
   };
-}
 
-// Personal simple convertido del personal mock
-const personalSimpleMock: PersonalSimple[] = [
-  {
-    id: '1',
-    nombre: 'Ana Pérez',
-    comision: 10,
-    rol: 'vendedor',
-  },
-  {
-    id: '2',
-    nombre: 'María García',
-    comision: 10,
-    rol: 'admin',
-  },
-  {
-    id: '3',
-    nombre: 'Carmen López',
-    comision: 10,
-    rol: 'vendedor',
-  },
-];
+  /**
+   * Obtiene un resumen de comandas directamente del backend utilizando el
+   * endpoint /api/comandas/estadisticas/resumen.
+   */
+  obtenerResumenCajaRango: (
+    fechaDesde: Date,
+    fechaHasta: Date
+  ) => Promise<{
+    totalCompletados: number;
+    totalPendientes: number;
+    montoNeto: number;
+  }>;
+}
 
 const estadoInicial = {
   comandas: [],
   filters: {},
   cargando: false,
   error: null,
-  personal: personalMock,
-  personalSimple: personalSimpleMock,
-  productosServicios: productosServiciosMock,
-  tipoCambio: tipoCambioMock,
-  configuracionRecargos: configuracionRecargosMock,
+  personal: [],
+  personalSimple: [],
+  productosServicios: [],
+  tipoCambio: {
+    valorCompra: 0,
+    valorVenta: 0,
+    fecha: new Date(),
+    fuente: 'manual',
+  } as TipoCambio,
+  configuracionRecargos: [],
 };
 
 // Storage helper que evita acceder a localStorage durante el render en servidor
@@ -428,15 +416,47 @@ export const useComandaStore = create<ComandaState>()(
           set({ tipoCambio });
         },
 
-        obtenerPersonalPorUnidad: (unidad: string) => {
-          return getPersonalPorUnidad(unidad as UnidadNegocio);
+        /**
+         * Devuelve la lista de personal filtrada por unidad de negocio.
+         * Si no se pasa unidad, devuelve todo el personal.
+         */
+        obtenerPersonalPorUnidad: (unidad?: UnidadNegocio) => {
+          // Ahora todos los miembros del personal son globales; la variable se mantiene para compatibilidad.
+
+          void unidad; // Marcar como usada para evitar advertencia de lint
+
+          const { personal, personalSimple } = get();
+
+          // Si la lista completa está vacía pero existe simple, convertirla
+          if (personal.length === 0 && personalSimple.length > 0) {
+            return personalSimple.map((ps) => ({
+              id: ps.id,
+              nombre: ps.nombre,
+              comisionPorcentaje: ps.comision,
+              activo: true,
+              unidadesDisponibles: ['tattoo', 'estilismo', 'formacion'],
+              fechaIngreso: new Date(),
+            }));
+          }
+
+          return personal;
         },
 
-        buscarProductosServicios: (termino: string, unidad?: string) => {
-          return buscarProductosServicios(
-            termino,
-            unidad as UnidadNegocio | undefined
-          );
+        /**
+         * Devuelve productos y servicios filtrados por búsqueda y unidad.
+         * Actualmente realiza un filtrado simple en memoria sobre el estado.
+         * En el futuro se debería reemplazar por una consulta al backend.
+         */
+        buscarProductosServicios: (query = '', unidad?: UnidadNegocio) => {
+          const { productosServicios } = get();
+
+          const texto = query.trim().toLowerCase();
+
+          return productosServicios.filter((ps) => {
+            const coincideTexto = ps.nombre.toLowerCase().includes(texto);
+            const coincideUnidad = unidad ? ps.businessUnit === unidad : true;
+            return coincideTexto && coincideUnidad && ps.activo;
+          });
         },
 
         // === PRODUCTOS/SERVICIOS CRUD ===
@@ -479,35 +499,66 @@ export const useComandaStore = create<ComandaState>()(
           console.log('✅ [MOCK] Producto/Servicio eliminado:', id);
         },
 
-        obtenerProductoServicioPorId: (id: string) => {
-          return get().productosServicios.find((p) => p.id === id);
-        },
+        obtenerProductoServicioPorId: () => undefined,
 
         // === PERSONAL SIMPLE CRUD ===
         agregarPersonalSimple: (personal: Omit<PersonalSimple, 'id'>) => {
-          const nuevoPersonal: PersonalSimple = {
+          const idGenerado = `personal-${Date.now()}-${Math.random()
+            .toString(36)
+            .substr(2, 9)}`;
+
+          // Versión simplificada
+          const nuevoPersonalSimple: PersonalSimple = {
             ...personal,
-            id: `personal-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+            id: idGenerado,
+          };
+
+          // Versión completa para otras partes de la app
+          const nuevoPersonalCompleto: Personal = {
+            id: idGenerado,
+            nombre: personal.nombre,
+            comisionPorcentaje: personal.comision,
+            activo: true,
+            unidadesDisponibles: ['tattoo', 'estilismo', 'formacion'],
+            fechaIngreso: new Date(),
           };
 
           set((state) => ({
-            personalSimple: [...state.personalSimple, nuevoPersonal],
+            personalSimple: [...state.personalSimple, nuevoPersonalSimple],
+            personal: [...state.personal, nuevoPersonalCompleto],
           }));
 
-          console.log('✅ [MOCK] Personal creado:', nuevoPersonal);
+          console.log('✅ Personal creado:', nuevoPersonalSimple);
         },
 
         actualizarPersonalSimple: (
           id: string,
           personalActualizado: Partial<PersonalSimple>
         ) => {
-          set((state) => ({
-            personalSimple: state.personalSimple.map((p) =>
+          set((state) => {
+            // Actualizar arrays simples y completos
+            const personalSimpleActualizado = state.personalSimple.map((p) =>
               p.id === id ? { ...p, ...personalActualizado } : p
-            ),
-          }));
+            );
 
-          console.log('✅ [MOCK] Personal actualizado:', {
+            const personalActualizadoCompleto = state.personal.map((p) =>
+              p.id === id
+                ? {
+                    ...p,
+                    nombre: personalActualizado.nombre || p.nombre,
+                    comisionPorcentaje:
+                      personalActualizado.comision ?? p.comisionPorcentaje,
+                  }
+                : p
+            );
+
+            return {
+              personalSimple: personalSimpleActualizado,
+              personal: personalActualizadoCompleto,
+            };
+          });
+
+          console.log('✅ Personal actualizado:', {
             id,
             ...personalActualizado,
           });
@@ -516,14 +567,13 @@ export const useComandaStore = create<ComandaState>()(
         eliminarPersonalSimple: (id: string) => {
           set((state) => ({
             personalSimple: state.personalSimple.filter((p) => p.id !== id),
+            personal: state.personal.filter((p) => p.id !== id),
           }));
 
-          console.log('✅ [MOCK] Personal eliminado:', id);
+          console.log('✅ Personal eliminado:', id);
         },
 
-        obtenerPersonalSimplePorId: (id: string) => {
-          return get().personalSimple.find((p) => p.id === id);
-        },
+        obtenerPersonalSimplePorId: () => undefined,
 
         // === VALIDACIÓN ===
         cambiarEstadoComanda: async (
@@ -855,6 +905,28 @@ export const useComandaStore = create<ComandaState>()(
           });
 
           return { totalCompletados, totalPendientes, montoNeto };
+        },
+
+        // === CONSULTA REMOTA DE RESUMEN ===
+        obtenerResumenCajaRango: async (fechaDesde: Date, fechaHasta: Date) => {
+          const { apiFetch } = await import('@/lib/apiClient');
+
+          const toIso = (d: Date) => d.toISOString().split('T')[0];
+          const query = new URLSearchParams({
+            fechaInicio: toIso(fechaDesde),
+            fechaFin: toIso(fechaHasta),
+          }).toString();
+
+          try {
+            return await apiFetch<{
+              totalCompletados: number;
+              totalPendientes: number;
+              montoNeto: number;
+            }>(`/api/comandas/estadisticas/resumen?${query}`);
+          } catch (error) {
+            logger.error('Error al obtener resumen remoto', error);
+            throw error;
+          }
         },
       }),
       {

@@ -63,6 +63,7 @@ export function useIncomingTransactions(dateRange?: DateRange) {
           comanda.metodosPago.length === 1
             ? comanda.metodosPago[0].tipo
             : 'mixto',
+        metodosPago: comanda.metodosPago,
         observaciones: comanda.observaciones || '',
         vendedor: staffName,
         estado: comanda.estado,

@@ -5,7 +5,7 @@ import MainLayout from '@/components/layout/MainLayout';
 import StandardPageBanner from '@/components/common/StandardPageBanner';
 import StandardBreadcrumbs from '@/components/common/StandardBreadcrumbs';
 import TableFilters from '@/components/cajas/TableFilters';
-import TransactionsTable from '@/components/cajas/TransactionsTable';
+import TransactionsTable from '@/components/cajas/TransactionsTableTanStack';
 import ModalCambiarEstado from '@/components/validacion/ModalCambiarEstado';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -119,6 +119,7 @@ export default function EgresosPage() {
 
   // Local UI state
   const [columns, setColumns] = useState<ColumnaCaja[]>(initialColumns);
+  const hiddenColumns = columns.filter((c) => !c.visible).map((c) => c.key);
   const [showAddModal, setShowAddModal] = useState(false);
   const [showChangeStatusModal, setShowChangeStatusModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
@@ -264,13 +265,11 @@ export default function EgresosPage() {
                   <CardContent className="p-4">
                     <TransactionsTable
                       data={data}
-                      columns={columns}
                       onEdit={onEditTransaction}
                       onDelete={handleDelete}
                       onView={handleView}
                       onChangeStatus={onChangeStatus}
-                      title="📉 Transacciones de Egreso"
-                      accentColor="#f9bbc4"
+                      hiddenColumns={hiddenColumns}
                     />
 
                     {/* Pagination */}

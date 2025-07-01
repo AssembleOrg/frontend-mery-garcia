@@ -197,6 +197,8 @@ export interface Encomienda {
   // Nuevos campos para validación
   estadoNegocio?: EstadoComandaNegocio;
   estadoValidacion?: EstadoValidacion;
+  /** Detalle completo de métodos de pago (si fue mixto) */
+  metodosPago?: MetodoPago[];
 }
 
 // Nuevo tipo para archivos adjuntos

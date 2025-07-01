@@ -28,6 +28,11 @@ import {
   Lock,
 } from 'lucide-react';
 import { Encomienda, ColumnaCaja } from '@/types/caja';
+import {
+  formatDate as formatDateEs,
+  formatCurrencyArs,
+  formatCurrencyUsd,
+} from '@/lib/utils';
 
 interface TransactionsTableProps {
   data: Encomienda[];
@@ -62,27 +67,9 @@ export default function TransactionsTable({
     setExpandedRows(newExpanded);
   };
 
-  const formatDate = (date: Date) => {
-    return new Intl.DateTimeFormat('es-ES', {
-      day: '2-digit',
-      month: '2-digit',
-      year: 'numeric',
-    }).format(new Date(date));
-  };
-
-  const formatAmount = (amount: number) => {
-    return new Intl.NumberFormat('es-AR', {
-      style: 'currency',
-      currency: 'ARS',
-    }).format(amount);
-  };
-
-  const formatAmountUSD = (amount: number, exchangeRate: number = 1000) => {
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: 'USD',
-    }).format(amount / exchangeRate);
-  };
+  const formatDate = formatDateEs;
+  const formatAmount = formatCurrencyArs;
+  const formatAmountUSD = formatCurrencyUsd;
 
   const getStatusBadge = (status: string) => {
     switch (status) {

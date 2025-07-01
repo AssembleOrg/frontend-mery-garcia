@@ -52,21 +52,14 @@ export function useComandaForm() {
   // Personal disponible según unidad de negocio
   const [personalDisponible, setPersonalDisponible] = useState<Personal[]>([]);
 
-  // Actualizar personal disponible cuando cambia la unidad de negocio
+  // Actualizar personal disponible global
   useEffect(() => {
-    if (unidadNegocio) {
-      const personalFiltrado = obtenerPersonalPorUnidad(unidadNegocio);
-      setPersonalDisponible(personalFiltrado);
-      if (personalFiltrado.length === 1) {
-        setPersonalPrincipal(personalFiltrado[0]);
-      } else {
-        setPersonalPrincipal(null);
-      }
-    } else {
-      setPersonalDisponible([]);
-      setPersonalPrincipal(null);
+    const todos = obtenerPersonalPorUnidad(); // devuelve lista global
+    setPersonalDisponible(todos);
+    if (todos.length === 1) {
+      setPersonalPrincipal(todos[0]);
     }
-  }, [unidadNegocio, obtenerPersonalPorUnidad]);
+  }, [obtenerPersonalPorUnidad]);
 
   // Actualizar items disponibles para búsqueda
   useEffect(() => {
@@ -288,10 +281,12 @@ export function useComandaForm() {
         metodosPago.reduce((sum, mp) => sum + mp.monto, 0) - saldoPendiente
       ) < 0.01; // Tolerancia para decimales
 
+    const personalRequerido = personalDisponible.length > 0;
+
     return !!(
       numeroComanda &&
       unidadNegocio &&
-      personalPrincipal &&
+      (!personalRequerido || personalPrincipal) &&
       cliente.nombre &&
       tieneItemsConMetodosPago &&
       montosPagoCoinciden

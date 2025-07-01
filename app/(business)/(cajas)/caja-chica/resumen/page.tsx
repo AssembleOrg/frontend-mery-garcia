@@ -12,6 +12,7 @@ import { CheckCircle, AlertTriangle } from 'lucide-react';
 import { useComandaStore } from '@/features/comandas/store/comandaStore';
 import Spinner from '@/components/common/Spinner';
 import ClientOnly from '@/components/common/ClientOnly';
+import SummaryCard from '@/components/common/SummaryCard';
 
 const breadcrumbItems = [
   { label: 'Inicio', href: '/' },
@@ -70,28 +71,24 @@ export default function ResumenCajaChicaPage() {
                     accentColor="#f9bbc4"
                   />
                   {resumen && (
-                    <div className="grid grid-cols-1 gap-4 text-center md:grid-cols-3">
-                      <div>
-                        <p className="text-sm text-[#6b4c57]">Completadas</p>
-                        <p className="text-2xl font-bold text-green-700">
-                          {resumen.totalCompletados}
-                        </p>
-                      </div>
-                      <div>
-                        <p className="text-sm text-[#6b4c57]">Pendientes</p>
-                        <p className="text-2xl font-bold text-yellow-600">
-                          {resumen.totalPendientes}
-                        </p>
-                      </div>
-                      <div>
-                        <p className="text-sm text-[#6b4c57]">Monto Neto ARS</p>
-                        <p className="text-2xl font-bold text-[#4a3540]">
-                          {new Intl.NumberFormat('es-AR', {
-                            style: 'currency',
-                            currency: 'ARS',
-                          }).format(resumen.montoNeto)}
-                        </p>
-                      </div>
+                    <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+                      <SummaryCard
+                        title="Completadas"
+                        value={resumen.totalCompletados}
+                        format="number"
+                        valueClassName="text-green-700"
+                      />
+                      <SummaryCard
+                        title="Pendientes"
+                        value={resumen.totalPendientes}
+                        format="number"
+                        valueClassName="text-yellow-600"
+                      />
+                      <SummaryCard
+                        title="Monto Neto ARS"
+                        value={resumen.montoNeto}
+                        format="currency"
+                      />
                     </div>
                   )}
                   <Button
