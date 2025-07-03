@@ -368,27 +368,34 @@ export default function ModalEditarTransaccion({
                             <Input
                               type="number"
                               placeholder="Precio"
-                              value={servicio.precio || ''}
+                              value={
+                                servicio.precio === 0 ? '' : servicio.precio
+                              }
                               onChange={(e) =>
                                 actualizarServicio(
                                   index,
                                   'precio',
-                                  Number(e.target.value)
+                                  e.target.value === ''
+                                    ? 0
+                                    : Number(e.target.value)
                                 )
                               }
                             />
                             <Input
                               type="number"
                               placeholder="Cant."
-                              value={servicio.cantidad || 1}
+                              value={
+                                servicio.cantidad === 0 ? '' : servicio.cantidad
+                              }
                               onChange={(e) =>
                                 actualizarServicio(
                                   index,
                                   'cantidad',
-                                  Number(e.target.value)
+                                  e.target.value === ''
+                                    ? 0
+                                    : Number(e.target.value)
                                 )
                               }
-                              min="1"
                             />
                           </div>
                           <Button
@@ -428,7 +435,7 @@ export default function ModalEditarTransaccion({
               </div>
 
               {/* Columna Lateral - 1/3 */}
-              <div className="space-y-6">
+              <div className="sticky top-4 space-y-6 self-start">
                 {/* Configuración */}
                 <Card>
                   <CardHeader className="pb-4">

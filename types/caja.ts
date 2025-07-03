@@ -52,6 +52,8 @@ export interface ItemComanda {
   tipo: 'producto' | 'servicio';
   precio: number;
   cantidad: number;
+  /** Porcentaje de descuento aplicado (0-100). Mantiene la intención de la UI. */
+  descuentoPorcentaje?: number;
   descuento: number;
   subtotal: number;
   personalId?: string; // quien realizó el servicio/vendió

@@ -7,9 +7,10 @@ import StandardBreadcrumbs from '@/components/common/StandardBreadcrumbs';
 import TableFilters from '@/components/cajas/TableFilters';
 import TransactionsTable from '@/components/cajas/TransactionsTableTanStack';
 import ModalCambiarEstado from '@/components/validacion/ModalCambiarEstado';
+import ModalVerDetalles from '@/components/validacion/ModalVerDetalles';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { DollarSign, TrendingDown, Users, Plus } from 'lucide-react';
+import { Plus } from 'lucide-react';
 import { ColumnaCaja } from '@/types/caja';
 import ModalAgregarEgreso from '@/components/cajas/ModalAgregarEgreso';
 import ModalEditarTransaccion from '@/components/cajas/ModalEditarTransaccion';
@@ -20,6 +21,7 @@ import { DateRangePicker } from '@/components/ui/date-range-picker';
 import { DateRange } from 'react-day-picker';
 import ClientOnly from '@/components/common/ClientOnly';
 import Spinner from '@/components/common/Spinner';
+import SummaryCard from '@/components/common/SummaryCard';
 
 const breadcrumbItems = [
   { label: 'Inicio', href: '/' },
@@ -109,9 +111,7 @@ export default function EgresosPage() {
     pagination,
     filters,
     updateFilters,
-    formatAmount,
     handleDelete,
-    handleView,
     exportToPDF,
     exportToExcel,
     exportToCSV,
@@ -123,6 +123,7 @@ export default function EgresosPage() {
   const [showAddModal, setShowAddModal] = useState(false);
   const [showChangeStatusModal, setShowChangeStatusModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
+  const [showViewModal, setShowViewModal] = useState(false);
   const [selectedTransactionId, setSelectedTransactionId] =
     useState<string>('');
 
@@ -139,6 +140,12 @@ export default function EgresosPage() {
   const onEditTransaction = (id: string) => {
     setSelectedTransactionId(id);
     setShowEditModal(true);
+  };
+
+  // Handle view transaction details
+  const onViewTransaction = (id: string) => {
+    setSelectedTransactionId(id);
+    setShowViewModal(true);
   };
 
   // Don't render until client-side and store is initialized
@@ -178,28 +185,23 @@ export default function EgresosPage() {
                     <h1 className="text-2xl font-bold text-[#4a3540]">
                       ✨ Gestión de Transacciones de Egreso
                     </h1>
-                    <div className="flex flex-wrap items-center gap-6 text-sm text-[#6b4c57]">
-                      <div className="flex items-center gap-2">
-                        <DollarSign className="h-4 w-4 text-red-600" />
-                        <span className="font-medium">Total:</span>
-                        <span className="font-bold text-red-600">
-                          {formatAmount(statistics.totalOutgoing)}
-                        </span>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <TrendingDown className="h-4 w-4 text-[#f9bbc4]" />
-                        <span className="font-medium">Transacciones:</span>
-                        <span className="font-bold">
-                          {statistics.transactionCount}
-                        </span>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <Users className="h-4 w-4 text-[#f9bbc4]" />
-                        <span className="font-medium">Proveedores:</span>
-                        <span className="font-bold">
-                          {statistics.providerCount}
-                        </span>
-                      </div>
+                    <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+                      <SummaryCard
+                        title="Total Egresos"
+                        value={statistics.totalOutgoing}
+                        format="currency"
+                        valueClassName="text-red-600"
+                      />
+                      <SummaryCard
+                        title="Transacciones"
+                        value={statistics.transactionCount}
+                        format="number"
+                      />
+                      <SummaryCard
+                        title="Proveedores"
+                        value={statistics.providerCount}
+                        format="number"
+                      />
                     </div>
                   </div>
 
@@ -267,7 +269,7 @@ export default function EgresosPage() {
                       data={data}
                       onEdit={onEditTransaction}
                       onDelete={handleDelete}
-                      onView={handleView}
+                      onView={onViewTransaction}
                       onChangeStatus={onChangeStatus}
                       hiddenColumns={hiddenColumns}
                     />
@@ -323,6 +325,15 @@ export default function EgresosPage() {
             setSelectedTransactionId('');
           }}
           transactionId={selectedTransactionId}
+        />
+
+        <ModalVerDetalles
+          isOpen={showViewModal}
+          onClose={() => {
+            setShowViewModal(false);
+            setSelectedTransactionId('');
+          }}
+          comandaId={selectedTransactionId}
         />
       </div>
     </MainLayout>

@@ -4,17 +4,14 @@ import StandardPageBanner from '@/components/common/StandardPageBanner';
 import StandardBreadcrumbs from '@/components/common/StandardBreadcrumbs';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import Link from 'next/link';
-import {
-  TrendingUp,
-  TrendingDown,
-  BarChart3,
-  ArrowRight,
-  DollarSign,
-  Users,
-  Clock,
-} from 'lucide-react';
+import { TrendingUp, TrendingDown, BarChart3, ArrowRight } from 'lucide-react';
 import { useInitializeComandaStore } from '@/hooks/useInitializeComandaStore';
-import { useResumenCaja } from '@/features/comandas/store/comandaStore';
+import {
+  useResumenCaja,
+  useComandaStore,
+} from '@/features/comandas/store/comandaStore';
+import SummaryCard from '@/components/common/SummaryCard';
+import ClientOnly from '@/components/common/ClientOnly';
 
 const breadcrumbItems = [
   { label: 'Inicio', href: '/' },
@@ -25,11 +22,11 @@ const breadcrumbItems = [
 // menuOptions se definirá dentro del componente
 
 export default function CajaChicaMenuPage() {
-  // Inicializar el store con datos de ejemplo
+  // Inicializa el store de comandas una única vez
   useInitializeComandaStore();
-
-  // Obtener resumen del store
+  // Obtener resumen del store y todas las comandas
   const { resumen } = useResumenCaja();
+  const { comandas } = useComandaStore();
 
   const formatAmount = (monto: number) => {
     return new Intl.NumberFormat('es-AR', {
@@ -38,15 +35,43 @@ export default function CajaChicaMenuPage() {
     }).format(monto);
   };
 
-  // Calcular datos adicionales para el resumen
+  // Calcular servicio más vendido del día
+  const today = new Date().toISOString().split('T')[0];
+  const ventasPorServicio: Record<
+    string,
+    { nombre: string; cantidad: number }
+  > = {};
+  comandas.forEach((c) => {
+    if (c.tipo !== 'ingreso') return;
+    const fechaObj =
+      typeof c.fecha === 'string' ? new Date(c.fecha) : (c.fecha as Date);
+    const fechaStr = fechaObj.toISOString().split('T')[0];
+    if (fechaStr !== today) return;
+    c.items.forEach((item) => {
+      if (!ventasPorServicio[item.nombre])
+        ventasPorServicio[item.nombre] = { nombre: item.nombre, cantidad: 0 };
+      ventasPorServicio[item.nombre].cantidad += item.cantidad;
+    });
+  });
+  const servicioMasVendido = Object.values(ventasPorServicio).sort(
+    (a, b) => b.cantidad - a.cantidad
+  )[0]?.nombre;
+
+  const cantidadEgresos = comandas.filter((c) => {
+    if (c.tipo !== 'egreso') return false;
+    const fechaObj =
+      typeof c.fecha === 'string' ? new Date(c.fecha) : (c.fecha as Date);
+    return fechaObj.toISOString().split('T')[0] === today;
+  }).length;
+
   const resumenDelDia = {
     totalIncoming: resumen.totalIncoming,
     totalOutgoing: resumen.totalOutgoing,
     saldo: resumen.saldo,
-    cantidadIngresos: resumen.cantidadComandas, // Simplificado por ahora
-    cantidadEgresos: 0, // Se calculará cuando tengamos más datos
-    clientesAtendidos: Math.floor(resumen.cantidadComandas * 0.8), // Estimación
-    servicioMasVendido: 'Corte y Peinado', // Placeholder
+    cantidadIngresos: resumen.cantidadComandas,
+    cantidadEgresos,
+    clientesAtendidos: Math.floor(resumen.cantidadComandas * 0.8),
+    servicioMasVendido: servicioMasVendido || 'N/A',
   };
 
   const menuOptions = [
@@ -111,118 +136,103 @@ export default function CajaChicaMenuPage() {
             </div>
 
             {/* Resumen Rápido del Día */}
-            <div className="mb-8 grid grid-cols-1 gap-6 md:grid-cols-4">
-              <Card className="border-2 border-[#f9bbc4]/20 bg-gradient-to-br from-white/95 to-[#f9bbc4]/5">
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium text-[#6b4c57]">
-                    Saldo Actual
-                  </CardTitle>
-                  <DollarSign className="h-4 w-4 text-[#f9bbc4]" />
-                </CardHeader>
-                <CardContent>
-                  <div
-                    className={`text-2xl font-bold ${resumenDelDia.saldo >= 0 ? 'text-green-600' : 'text-red-600'}`}
-                  >
-                    {formatAmount(resumenDelDia.saldo)}
-                  </div>
-                  <p className="text-xs text-[#8b6b75]">Balance del día</p>
-                </CardContent>
-              </Card>
+            <ClientOnly>
+              <div className="mb-8 grid grid-cols-1 gap-6 md:grid-cols-4">
+                {/* Saldo Actual */}
+                <SummaryCard
+                  title="Saldo Actual"
+                  value={resumenDelDia.saldo}
+                  format="currency"
+                  valueClassName={
+                    resumenDelDia.saldo >= 0 ? 'text-green-600' : 'text-red-600'
+                  }
+                />
 
-              <Card className="border-2 border-[#f9bbc4]/20 bg-gradient-to-br from-white/95 to-[#f9bbc4]/5">
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium text-[#6b4c57]">
-                    Clientes Hoy
-                  </CardTitle>
-                  <Users className="h-4 w-4 text-[#f9bbc4]" />
-                </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-bold text-[#4a3540]">
-                    {resumenDelDia.clientesAtendidos}
-                  </div>
-                  <p className="text-xs text-[#8b6b75]">Personas atendidas</p>
-                </CardContent>
-              </Card>
+                {/* Clientes Hoy */}
+                <SummaryCard
+                  title="Clientes Hoy"
+                  value={resumenDelDia.clientesAtendidos}
+                  format="number"
+                />
 
-              <Card className="border-2 border-[#f9bbc4]/20 bg-gradient-to-br from-white/95 to-[#f9bbc4]/5">
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium text-[#6b4c57]">
-                    Transacciones
-                  </CardTitle>
-                  <Clock className="h-4 w-4 text-[#f9bbc4]" />
-                </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-bold text-[#4a3540]">
-                    {resumenDelDia.cantidadIngresos +
-                      resumenDelDia.cantidadEgresos}
-                  </div>
-                  <p className="text-xs text-[#8b6b75]">Movimientos totales</p>
-                </CardContent>
-              </Card>
+                {/* Transacciones */}
+                <SummaryCard
+                  title="Transacciones"
+                  value={
+                    resumenDelDia.cantidadIngresos +
+                    resumenDelDia.cantidadEgresos
+                  }
+                  format="number"
+                />
 
-              <Card className="border-2 border-[#f9bbc4]/20 bg-gradient-to-br from-white/95 to-[#f9bbc4]/5">
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium text-[#6b4c57]">
-                    Más Vendido
-                  </CardTitle>
-                  <TrendingUp className="h-4 w-4 text-green-600" />
-                </CardHeader>
-                <CardContent>
-                  <div className="text-lg font-bold text-[#4a3540]">
-                    {resumenDelDia.servicioMasVendido}
-                  </div>
-                  <p className="text-xs text-[#8b6b75]">Servicio popular</p>
-                </CardContent>
-              </Card>
-            </div>
+                <Card className="border-2 border-[#f9bbc4]/20 bg-gradient-to-br from-white/95 to-[#f9bbc4]/5">
+                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                    <CardTitle className="text-sm font-medium text-[#6b4c57]">
+                      Más Vendido
+                    </CardTitle>
+                    <TrendingUp className="h-4 w-4 text-green-600" />
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-lg font-bold text-[#4a3540]">
+                      {resumenDelDia.servicioMasVendido}
+                    </div>
+                    <p className="text-xs text-[#8b6b75]">Servicio popular</p>
+                  </CardContent>
+                </Card>
+              </div>
+            </ClientOnly>
 
             {/* Opciones del Menú Principal */}
-            <div className="grid grid-cols-1 gap-8 md:grid-cols-3">
-              {menuOptions.map((option) => (
-                <Link key={option.title} href={option.href}>
-                  <Card
-                    className="group h-full cursor-pointer border-2 bg-gradient-to-br from-white/95 via-[#f9bbc4]/5 to-white/90 shadow-xl shadow-[#f9bbc4]/20 backdrop-blur-sm transition-all duration-300 hover:-translate-y-3 hover:shadow-2xl"
-                    style={{
-                      borderColor: `${option.accentColor}80`,
-                      boxShadow: `0 8px 30px -6px ${option.accentColor}35, 0 4px 15px -3px rgba(0,0,0,0.15)`,
-                    }}
-                  >
-                    <CardHeader className="pb-4">
-                      <div className="flex items-center justify-between">
-                        <div
-                          className={`inline-flex items-center justify-center rounded-xl bg-gradient-to-br ${option.gradientFrom} ${option.gradientTo} p-4 text-white shadow-xl transition-all duration-300 group-hover:scale-110 group-hover:rotate-3`}
-                          style={{
-                            boxShadow: `0 12px 35px -10px ${option.accentColor}60, 0 6px 20px -5px ${option.accentColor}40`,
-                          }}
-                        >
-                          {option.icon}
+            <ClientOnly>
+              <div className="grid grid-cols-1 gap-8 md:grid-cols-3">
+                {menuOptions.map((option) => (
+                  <Link key={option.title} href={option.href}>
+                    <Card
+                      className="group h-full cursor-pointer border-2 bg-gradient-to-br from-white/95 via-[#f9bbc4]/5 to-white/90 shadow-xl shadow-[#f9bbc4]/20 backdrop-blur-sm transition-all duration-300 hover:-translate-y-3 hover:shadow-2xl"
+                      style={{
+                        borderColor: `${option.accentColor}80`,
+                        boxShadow: `0 8px 30px -6px ${option.accentColor}35, 0 4px 15px -3px rgba(0,0,0,0.15)`,
+                      }}
+                    >
+                      <CardHeader className="pb-4">
+                        <div className="flex items-center justify-between">
+                          <div
+                            className={`inline-flex items-center justify-center rounded-xl bg-gradient-to-br ${option.gradientFrom} ${option.gradientTo} p-4 text-white shadow-xl transition-all duration-300 group-hover:scale-110 group-hover:rotate-3`}
+                            style={{
+                              boxShadow: `0 12px 35px -10px ${option.accentColor}60, 0 6px 20px -5px ${option.accentColor}40`,
+                            }}
+                          >
+                            {option.icon}
+                          </div>
+                          <ArrowRight
+                            className="h-6 w-6 transition-all duration-300 group-hover:translate-x-1 group-hover:scale-110"
+                            style={{ color: option.accentColor }}
+                          />
                         </div>
-                        <ArrowRight
-                          className="h-6 w-6 transition-all duration-300 group-hover:translate-x-1 group-hover:scale-110"
-                          style={{ color: option.accentColor }}
-                        />
-                      </div>
-                      <CardTitle className="text-xl font-bold text-[#4a3540] transition-colors group-hover:text-[#3d2b35]">
-                        {option.title}
-                      </CardTitle>
-                    </CardHeader>
-                    <CardContent className="flex-1">
-                      <p className="mb-4 text-[#5a4550] transition-colors group-hover:text-[#4a3540]">
-                        {option.description}
-                      </p>
-                      <div className="space-y-2">
-                        <div
-                          className={`text-2xl font-bold ${option.isBalance && option.amount >= 0 ? 'text-green-600' : option.isBalance && option.amount < 0 ? 'text-red-600' : 'text-[#4a3540]'}`}
-                        >
-                          {formatAmount(option.amount)}
+                        <CardTitle className="text-xl font-bold text-[#4a3540] transition-colors group-hover:text-[#3d2b35]">
+                          {option.title}
+                        </CardTitle>
+                      </CardHeader>
+                      <CardContent className="flex-1">
+                        <p className="mb-4 text-[#5a4550] transition-colors group-hover:text-[#4a3540]">
+                          {option.description}
+                        </p>
+                        <div className="space-y-2">
+                          <div
+                            className={`text-2xl font-bold ${option.isBalance && option.amount >= 0 ? 'text-green-600' : option.isBalance && option.amount < 0 ? 'text-red-600' : 'text-[#4a3540]'}`}
+                          >
+                            {formatAmount(option.amount)}
+                          </div>
+                          <p className="text-sm text-[#8b6b75]">
+                            {option.stats}
+                          </p>
                         </div>
-                        <p className="text-sm text-[#8b6b75]">{option.stats}</p>
-                      </div>
-                    </CardContent>
-                  </Card>
-                </Link>
-              ))}
-            </div>
+                      </CardContent>
+                    </Card>
+                  </Link>
+                ))}
+              </div>
+            </ClientOnly>
           </div>
         </div>
       </div>

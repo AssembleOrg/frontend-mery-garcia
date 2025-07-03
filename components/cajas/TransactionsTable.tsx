@@ -395,6 +395,49 @@ export default function TransactionsTable({
                                   );
                                 })}
                             </div>
+
+                            {/* Resumen de montos */}
+                            <div className="mt-4 rounded-lg bg-white p-4 shadow-sm">
+                              <h5 className="mb-2 text-sm font-semibold text-[#4a3540]">
+                                Resumen
+                              </h5>
+                              {(() => {
+                                const subtotal = transaction.subtotal;
+                                const descuentos =
+                                  transaction.descuentoTotal || 0;
+                                const base = subtotal - descuentos;
+                                const recargo = Math.max(
+                                  transaction.total - base,
+                                  0
+                                );
+                                return (
+                                  <div className="space-y-1 text-sm">
+                                    <div className="flex justify-between">
+                                      <span>Subtotal:</span>
+                                      <span>{formatAmount(subtotal)}</span>
+                                    </div>
+                                    {descuentos > 0 && (
+                                      <div className="flex justify-between text-red-600">
+                                        <span>Descuentos:</span>
+                                        <span>-{formatAmount(descuentos)}</span>
+                                      </div>
+                                    )}
+                                    {recargo > 0 && (
+                                      <div className="flex justify-between text-orange-600">
+                                        <span>Recargos:</span>
+                                        <span>+{formatAmount(recargo)}</span>
+                                      </div>
+                                    )}
+                                    <div className="flex justify-between font-medium">
+                                      <span>Total:</span>
+                                      <span>
+                                        {formatAmount(transaction.total)}
+                                      </span>
+                                    </div>
+                                  </div>
+                                );
+                              })()}
+                            </div>
                           </div>
                         </TableCell>
                       </TableRow>

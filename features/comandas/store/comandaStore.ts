@@ -119,6 +119,8 @@ interface ComandaState {
     totalCompletados: number;
     totalPendientes: number;
     montoNeto: number;
+    totalIngresos: number;
+    totalEgresos: number;
   };
 
   /**
@@ -891,20 +893,34 @@ export const useComandaStore = create<ComandaState>()(
           let totalCompletados = 0;
           let totalPendientes = 0;
           let montoNeto = 0;
+          let totalIngresos = 0;
+          let totalEgresos = 0;
 
           comandas.forEach((c) => {
             const f = new Date(c.fecha);
             if (f >= desde && f <= hasta) {
               if (c.estado === 'completado') {
                 totalCompletados += 1;
-                montoNeto += c.totalFinal * (c.tipo === 'ingreso' ? 1 : -1);
+                if (c.tipo === 'ingreso') {
+                  totalIngresos += c.totalFinal;
+                  montoNeto += c.totalFinal;
+                } else {
+                  totalEgresos += c.totalFinal;
+                  montoNeto -= c.totalFinal;
+                }
               } else {
                 totalPendientes += 1;
               }
             }
           });
 
-          return { totalCompletados, totalPendientes, montoNeto };
+          return {
+            totalCompletados,
+            totalPendientes,
+            montoNeto,
+            totalIngresos,
+            totalEgresos,
+          };
         },
 
         // === CONSULTA REMOTA DE RESUMEN ===

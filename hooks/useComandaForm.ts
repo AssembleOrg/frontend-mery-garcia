@@ -74,12 +74,13 @@ export function useComandaForm() {
   useEffect(() => {
     if (aplicarDescuentoGlobal && descuentoGlobalPorcentaje > 0) {
       const itemsConDescuento = items.map((item) => {
-        const descuentoMonto =
+        const descuentoCalculado =
           (item.precio * item.cantidad * descuentoGlobalPorcentaje) / 100;
         return {
           ...item,
-          descuento: descuentoMonto,
-          subtotal: item.precio * item.cantidad - descuentoMonto,
+          descuentoPorcentaje: descuentoGlobalPorcentaje,
+          descuento: descuentoCalculado,
+          subtotal: item.precio * item.cantidad - descuentoCalculado,
         };
       });
       setItems(itemsConDescuento);
@@ -121,6 +122,7 @@ export function useComandaForm() {
       precio: productoServicio.precio,
       cantidad: 1,
       descuento: 0,
+      descuentoPorcentaje: 0,
       subtotal: productoServicio.precio,
     };
 
@@ -137,10 +139,21 @@ export function useComandaForm() {
     const nuevosItems = [...items];
     nuevosItems[index] = { ...nuevosItems[index], [campo]: valor };
 
-    // Recalcular subtotal
-    if (campo === 'cantidad' || campo === 'precio' || campo === 'descuento') {
+    // Recalcular subtotal y monto de descuento si cambia alguna dependencia
+    if (
+      campo === 'cantidad' ||
+      campo === 'precio' ||
+      campo === 'descuentoPorcentaje'
+    ) {
       const item = nuevosItems[index];
-      item.subtotal = item.precio * item.cantidad - item.descuento;
+
+      // Asegurar que el porcentaje sea un número válido entre 0 y 100
+      const porcentaje = item.descuentoPorcentaje ?? 0;
+      const descuentoCalculado =
+        (item.precio * item.cantidad * porcentaje) / 100;
+
+      item.descuento = descuentoCalculado;
+      item.subtotal = item.precio * item.cantidad - descuentoCalculado;
     }
 
     setItems(nuevosItems);
@@ -217,14 +230,13 @@ export function useComandaForm() {
 
     setItems((prevItems) =>
       prevItems.map((item) => {
-        // Calcular descuento como porcentaje del precio unitario
         const descuentoCalculado =
-          (item.precio * descuentoGlobalPorcentaje) / 100;
-        const nuevoSubtotal =
-          (item.precio - descuentoCalculado) * item.cantidad;
+          (item.precio * item.cantidad * descuentoGlobalPorcentaje) / 100;
+        const nuevoSubtotal = item.precio * item.cantidad - descuentoCalculado;
 
         return {
           ...item,
+          descuentoPorcentaje: descuentoGlobalPorcentaje,
           descuento: descuentoCalculado,
           subtotal: nuevoSubtotal,
         };
@@ -238,6 +250,7 @@ export function useComandaForm() {
   const limpiarDescuentos = () => {
     const itemsSinDescuento = items.map((item) => ({
       ...item,
+      descuentoPorcentaje: 0,
       descuento: 0,
       subtotal: item.precio * item.cantidad,
     }));
