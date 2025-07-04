@@ -16,17 +16,20 @@ import {
   setManualRate,
   ExchangeRate,
 } from '@/services/exchangeRate.service';
+import Spinner from '@/components/common/Spinner';
 
 export default function TipoCambioPage() {
   const [rate, setRate] = useState<ExchangeRate | null>(null);
   const [historial, setHistorial] = useState<ExchangeRate[]>([]);
   const [internalRate, setInternalRate] = useState('');
   const [saving, setSaving] = useState(false);
+  const [loading, setLoading] = useState(true);
 
   // Obtenemos acción para actualizar el tipo de cambio global
   const { actualizarTipoCambio } = useDatosReferencia();
 
   const fetchData = useCallback(async () => {
+    setLoading(true);
     try {
       const current = await getCotizacion();
       if (current) {
@@ -46,6 +49,8 @@ export default function TipoCambioPage() {
     } catch (err) {
       console.error(err);
       toast.error('No se pudo obtener la cotización');
+    } finally {
+      setLoading(false);
     }
   }, [actualizarTipoCambio]);
 
@@ -87,6 +92,16 @@ export default function TipoCambioPage() {
 
     setSaving(false);
   };
+
+  if (loading) {
+    return (
+      <MainLayout>
+        <div className="flex h-screen items-center justify-center">
+          <Spinner size={10} />
+        </div>
+      </MainLayout>
+    );
+  }
 
   return (
     <MainLayout>

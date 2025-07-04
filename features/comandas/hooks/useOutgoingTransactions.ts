@@ -214,38 +214,38 @@ export function useOutgoingTransactions(dateRange?: DateRange) {
     // Actions
     handleEdit: (id: string) => {
       logger.debug('Edit outgoing transaction:', id);
-      // TODO: Implement edit functionality
+      // TODO(issue-caja-exports): Implement edit functionality
     },
 
     handleDelete: (id: string) => {
       logger.debug('Delete outgoing transaction:', id);
-      // TODO: Implement delete functionality
+      // TODO(issue-caja-exports): Implement delete functionality
     },
 
     handleView: (id: string) => {
       logger.debug('View outgoing transaction:', id);
-      // TODO: Implement view functionality
+      // TODO(issue-caja-exports): Implement view functionality
     },
 
     handleChangeStatus: (id: string) => {
       logger.debug('Change status outgoing transaction:', id);
-      // TODO: Implement status change functionality
+      // TODO(issue-caja-exports): Implement status change functionality
     },
 
     // Export functions
     exportToPDF: () => {
       logger.debug('Export outgoing transactions to PDF');
-      // TODO: Implement PDF export
+      // TODO(issue-caja-exports): Implement PDF export
     },
 
     exportToExcel: () => {
       logger.debug('Export outgoing transactions to Excel');
-      // TODO: Implement Excel export
+      // TODO(issue-caja-exports): Implement Excel export
     },
 
     exportToCSV: () => {
       logger.debug('Export outgoing transactions to CSV');
-      // TODO: Implement CSV export
+      // TODO(issue-caja-exports): Implement CSV export
     },
   };
 }
