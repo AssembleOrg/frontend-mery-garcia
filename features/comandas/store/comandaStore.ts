@@ -150,6 +150,7 @@ const estadoInicial = {
     valorVenta: 0,
     fecha: new Date(),
     fuente: 'manual',
+    modoManual: false, // Por defecto, permite sobrescribir con API
   } as TipoCambio,
   configuracionRecargos: [],
 };

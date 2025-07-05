@@ -126,6 +126,8 @@ export interface TipoCambio {
   valorVenta: number;
   fecha: Date;
   fuente: string; // 'manual' | 'dolarOK'
+  /** Si true, el usuario prefiere valor manual y no se debe sobrescribir con API */
+  modoManual: boolean;
 }
 
 // Filtros para búsquedas

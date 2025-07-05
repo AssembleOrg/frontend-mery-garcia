@@ -11,6 +11,7 @@ import {
   Comanda,
 } from '@/types/caja';
 import { useDatosReferencia } from '@/features/comandas/store/comandaStore';
+import { useCurrencyConverter } from '@/hooks/useCurrencyConverter';
 
 export function useComandaForm() {
   // Datos del store
@@ -21,6 +22,8 @@ export function useComandaForm() {
     obtenerPersonalPorUnidad,
     buscarProductosServicios,
   } = useDatosReferencia();
+
+  const { arsToUsd, usdToArs, formatDual } = useCurrencyConverter();
 
   // Estados del formulario
   const [numeroComanda, setNumeroComanda] = useState('');
@@ -95,7 +98,7 @@ export function useComandaForm() {
   // Seña siempre convertida a pesos
   const montoSeña = seña
     ? seña.moneda === 'dolares'
-      ? seña.monto * tipoCambio.valorVenta
+      ? usdToArs(seña.monto)
       : seña.monto
     : 0;
 
@@ -110,8 +113,8 @@ export function useComandaForm() {
   const totalFinal = saldoPendiente + totalRecargos;
 
   // Equivalentes en USD para mostrar
-  const subtotalUSD = subtotal / tipoCambio.valorVenta;
-  const totalFinalUSD = totalFinal / tipoCambio.valorVenta;
+  const subtotalUSD = arsToUsd(subtotal);
+  const totalFinalUSD = arsToUsd(totalFinal);
 
   // Acciones
   const agregarItem = (productoServicio: ProductoServicio) => {
@@ -343,21 +346,7 @@ export function useComandaForm() {
   };
 
   const formatearMonto = (monto: number, mostrarUSD = false) => {
-    const montoEnPesos = new Intl.NumberFormat('es-AR', {
-      style: 'currency',
-      currency: 'ARS',
-    }).format(monto);
-
-    if (mostrarUSD) {
-      const montoEnUSD = new Intl.NumberFormat('en-US', {
-        style: 'currency',
-        currency: 'USD',
-      }).format(monto / tipoCambio.valorVenta);
-
-      return `${montoEnPesos} (≈ ${montoEnUSD})`;
-    }
-
-    return montoEnPesos;
+    return formatDual(monto, mostrarUSD);
   };
 
   return {

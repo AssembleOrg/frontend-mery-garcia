@@ -180,6 +180,7 @@ export const tipoCambioMock: TipoCambio = {
   valorVenta: 1000, // Precio de venta del dólar (usado para conversiones)
   fecha: new Date(),
   fuente: 'manual',
+  modoManual: false,
 };
 
 // Función para obtener personal por unidad de negocio

@@ -26,33 +26,32 @@ export default function TipoCambioPage() {
   const [loading, setLoading] = useState(true);
 
   // Obtenemos acción para actualizar el tipo de cambio global
-  const { actualizarTipoCambio } = useDatosReferencia();
+  const { actualizarTipoCambio, tipoCambio } = useDatosReferencia();
 
+  // SIMPLIFICADO: Solo cargar datos informativos de la API una vez
   const fetchData = useCallback(async () => {
     setLoading(true);
     try {
+      // Cargar cotización pública solo para mostrar (informativa)
       const current = await getCotizacion();
       if (current) {
         setRate(current);
-        setInternalRate(current.venta.toString());
-
-        // Sincronizar con el store global
-        actualizarTipoCambio({
-          valorCompra: current.compra,
-          valorVenta: current.venta,
-          fecha: new Date(current.fechaActualizacion),
-          fuente: 'public',
-        });
       }
+
+      // Cargar historial
       const h = await getHistorial(10);
       if (h) setHistorial(h);
+
+      // Usar valor del store como valor interno
+      setInternalRate(tipoCambio.valorVenta.toString());
     } catch (err) {
-      console.error(err);
-      toast.error('No se pudo obtener la cotización');
+      console.error('Error cargando datos informativos:', err);
+      // No mostrar error, solo usar valor del store
+      setInternalRate(tipoCambio.valorVenta.toString());
     } finally {
       setLoading(false);
     }
-  }, [actualizarTipoCambio]);
+  }, [tipoCambio.valorVenta]); // Solo depende del valor del store
 
   useEffect(() => {
     void fetchData();
@@ -61,36 +60,40 @@ export default function TipoCambioPage() {
   const handleSave = async () => {
     const valueNum = parseFloat(internalRate);
     if (isNaN(valueNum) || valueNum <= 0) {
-      toast.error('Valor inválido');
+      toast.error('Valor inválido. Debe ser un número mayor a 0.');
       return;
     }
 
-    const actualizar = async () => {
-      // 1) Optimistic store update
+    setSaving(true);
+
+    try {
+      // 1) Actualizar inmediatamente en el store local
       actualizarTipoCambio({
-        valorCompra: valueNum,
+        valorCompra: rate?.compra ?? valueNum,
         valorVenta: valueNum,
         fecha: new Date(),
         fuente: 'manual',
+        modoManual: true,
       });
 
-      // 2) Persistir en backend
-      await setManualRate(valueNum, valueNum);
-
-      // 3) Obtener confirmación y refrescar
-      await fetchData();
-    };
-
-    setSaving(true);
-
-    await toast.promise(actualizar(), {
-      loading: 'Propagando nuevo tipo de cambio...',
-      success: 'Tasa actualizada en toda la app',
-      error: 'Error al actualizar la tasa',
-      dismissible: false,
-    });
-
-    setSaving(false);
+      // 2) Intentar sincronizar con backend (opcional)
+      try {
+        await setManualRate({
+          compra: rate?.compra,
+          venta: valueNum,
+        });
+        toast.success('Tipo de cambio actualizado correctamente');
+      } catch (error) {
+        // Si falla el backend, el valor local ya está guardado
+        console.warn('Backend no disponible, usando valor local:', error);
+        toast.warning('Guardado localmente. Backend no disponible.');
+      }
+    } catch (error: unknown) {
+      const errorMessage = (error as Error)?.message || 'Error desconocido';
+      toast.error(`Error: ${errorMessage}`);
+    } finally {
+      setSaving(false);
+    }
   };
 
   if (loading) {
@@ -117,7 +120,7 @@ export default function TipoCambioPage() {
         />
         <div className="bg-gradient-to-b from-[#f9bbc4]/8 via-[#e8b4c6]/6 to-[#d4a7ca]/8 py-10">
           <div className="mx-auto max-w-4xl space-y-8 px-4 sm:px-6 lg:px-8">
-            {/* Cotización pública */}
+            {/* Cotización pública (solo informativa) */}
             {rate && (
               <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                 <SummaryCard
@@ -127,50 +130,56 @@ export default function TipoCambioPage() {
                 />
                 <SummaryCard
                   title="Venta (informativa)"
-                  value={rate.venta}
+                  value={rate.venta ?? rate.compra}
                   format="currency"
                 />
               </div>
             )}
 
-            {/* Valor interno editable */}
-            {rate && (
-              <Card className="border border-[#f9bbc4]/30 bg-white/90">
-                <CardHeader>
-                  <CardTitle>Valor interno ARS/USD</CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <div className="flex items-center gap-3">
-                    <Input
-                      type="number"
-                      value={internalRate}
-                      onChange={(e) => setInternalRate(e.target.value)}
-                      className="max-w-xs"
-                    />
-                    <Button
-                      onClick={handleSave}
-                      disabled={saving}
-                      className="bg-gradient-to-r from-[#f9bbc4] to-[#e292a3] text-white"
-                    >
-                      {saving ? 'Guardando...' : 'Guardar'}
-                    </Button>
-                  </div>
-                  <div className="text-xs text-gray-500">
-                    Última actualización:{' '}
-                    {new Date(rate.fechaActualizacion).toLocaleString('es-ES')}
-                  </div>
-                </CardContent>
-              </Card>
-            )}
+            {/* Valor interno actual */}
+            <SummaryCard
+              title="Valor interno vigente (ARS/USD)"
+              value={tipoCambio.valorVenta}
+              format="currency"
+            />
 
-            {/* Historial */}
+            {/* Editor de valor interno */}
+            <Card className="border border-[#f9bbc4]/30 bg-white/90">
+              <CardHeader>
+                <CardTitle>Establecer Valor Interno ARS/USD</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="flex items-center gap-3">
+                  <Input
+                    type="number"
+                    value={internalRate}
+                    onChange={(e) => setInternalRate(e.target.value)}
+                    className="max-w-xs"
+                    placeholder="Ej: 1200"
+                  />
+                  <Button
+                    onClick={handleSave}
+                    disabled={saving}
+                    className="bg-gradient-to-r from-[#f9bbc4] to-[#e292a3] text-white"
+                  >
+                    {saving ? 'Guardando...' : 'Guardar'}
+                  </Button>
+                </div>
+                <div className="text-xs text-gray-500">
+                  Este valor se usará para todas las conversiones ARS ↔ USD en
+                  la aplicación.
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Historial (solo informativo) */}
             {historial.length > 0 && (
               <Card className="border border-[#f9bbc4]/30 bg-white/90">
                 <CardHeader>
-                  <CardTitle>Historial reciente</CardTitle>
+                  <CardTitle>Historial de cotizaciones (informativo)</CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-2">
-                  {historial.map((h, idx) => (
+                  {historial.slice(0, 5).map((h, idx) => (
                     <div
                       key={idx}
                       className="flex items-center justify-between text-sm"
@@ -179,7 +188,7 @@ export default function TipoCambioPage() {
                         {new Date(h.fechaActualizacion).toLocaleString('es-ES')}
                       </span>
                       <span>
-                        Compra: {h.compra} | Venta: {h.venta}
+                        Compra: {h.compra} | Venta: {h.venta ?? h.compra}
                       </span>
                     </div>
                   ))}
