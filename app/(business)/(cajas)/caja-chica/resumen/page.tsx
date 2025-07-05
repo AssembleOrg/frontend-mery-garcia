@@ -85,6 +85,18 @@ export default function ResumenCajaChicaPage() {
                         valueClassName="text-yellow-600"
                       />
                       <SummaryCard
+                        title="Total Ingresos ARS"
+                        value={resumen.totalIngresos}
+                        format="currency"
+                        valueClassName="text-green-700"
+                      />
+                      <SummaryCard
+                        title="Total Egresos ARS"
+                        value={resumen.totalEgresos}
+                        format="currency"
+                        valueClassName="text-red-700"
+                      />
+                      <SummaryCard
                         title="Monto Neto ARS"
                         value={resumen.montoNeto}
                         format="currency"

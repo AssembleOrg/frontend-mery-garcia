@@ -161,12 +161,15 @@ export default function ModalProductoServicio({
       currency: 'ARS',
     }).format(monto);
 
-    const montoUSD = new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: 'USD',
-    }).format(monto / tipoCambio.valorVenta);
+    let montoUSDFormatted = '—';
+    if (tipoCambio.valorVenta > 0) {
+      montoUSDFormatted = new Intl.NumberFormat('en-US', {
+        style: 'currency',
+        currency: 'USD',
+      }).format(monto / tipoCambio.valorVenta);
+    }
 
-    return { ars: montoARS, usd: montoUSD };
+    return { ars: montoARS, usd: montoUSDFormatted };
   };
 
   const obtenerIconoUnidad = (unidad: UnidadNegocio) => {

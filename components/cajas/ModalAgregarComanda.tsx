@@ -191,10 +191,10 @@ export default function ModalAgregarComanda({
 
         {/* Content */}
         <div className="flex-1 overflow-hidden">
-          <div className="h-full overflow-y-auto p-6">
+          <div className="h-full p-6">
             <div className="grid h-full grid-cols-1 gap-6 lg:grid-cols-4">
               {/* Columna Principal - 3/4 */}
-              <div className="space-y-6 lg:col-span-3">
+              <div className="max-h-full space-y-6 overflow-y-auto pr-3 lg:col-span-3">
                 {/* Información Básica */}
                 <Card>
                   <CardHeader className="pb-4">
@@ -416,28 +416,37 @@ export default function ModalAgregarComanda({
                             <Input
                               type="number"
                               placeholder="Cant."
-                              value={item.cantidad || 1}
+                              value={item.cantidad === 0 ? '' : item.cantidad}
                               onChange={(e) =>
                                 actualizarItem(
                                   index,
                                   'cantidad',
-                                  Number(e.target.value)
+                                  e.target.value === ''
+                                    ? 0
+                                    : Number(e.target.value)
                                 )
                               }
-                              min="1"
                             />
                             <Input
                               type="number"
-                              placeholder="Desc."
-                              value={item.descuento || ''}
+                              placeholder="Desc. %"
+                              value={
+                                item.descuentoPorcentaje === undefined ||
+                                item.descuentoPorcentaje === 0
+                                  ? ''
+                                  : item.descuentoPorcentaje
+                              }
                               onChange={(e) =>
                                 actualizarItem(
                                   index,
-                                  'descuento',
-                                  Number(e.target.value)
+                                  'descuentoPorcentaje',
+                                  e.target.value === ''
+                                    ? undefined
+                                    : Number(e.target.value)
                                 )
                               }
                               min="0"
+                              max="100"
                             />
                             <div className="flex items-center justify-center rounded border bg-gray-50 px-2 py-1 text-sm font-medium">
                               {formatearMonto(item.subtotal)}
@@ -559,8 +568,8 @@ export default function ModalAgregarComanda({
                 </Card>
               </div>
 
-              {/* Columna Lateral - 1/4 */}
-              <div className="space-y-6">
+              {/* Columna Lateral */}
+              <div className="max-h-[80vh] w-full space-y-6 self-start overflow-y-auto lg:col-span-1 lg:max-w-sm">
                 {/* Resumen */}
                 <Card>
                   <CardHeader className="pb-4">
@@ -690,7 +699,7 @@ export default function ModalAgregarComanda({
                             </Button>
                           </div>
 
-                          <div className="grid grid-cols-2 gap-2">
+                          <div className="grid grid-cols-3 gap-2">
                             <div>
                               <Label className="text-xs">Monto</Label>
                               <Input
@@ -722,6 +731,14 @@ export default function ModalAgregarComanda({
                                 }
                                 className="mt-1"
                               />
+                            </div>
+                            <div className="flex flex-col">
+                              <Label className="text-xs">Recargo ARS</Label>
+                              <div className="mt-1 rounded border bg-gray-100 px-2 py-1 text-xs">
+                                {formatearMonto(
+                                  Math.max(metodo.montoFinal - metodo.monto, 0)
+                                )}
+                              </div>
                             </div>
                           </div>
 

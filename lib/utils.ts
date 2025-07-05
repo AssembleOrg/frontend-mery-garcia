@@ -80,3 +80,72 @@ export function formatCurrencyUsd(amount: number, exchangeRate = 1000) {
     maximumFractionDigits: 2,
   }).format(amount / exchangeRate);
 }
+
+/**
+ * Convierte pesos argentinos a dólares usando el tipo de cambio especificado
+ * @param amountARS Cantidad en pesos argentinos
+ * @param exchangeRate Tipo de cambio (ARS por USD)
+ * @returns Cantidad en dólares
+ */
+export function convertARStoUSD(
+  amountARS: number,
+  exchangeRate: number
+): number {
+  if (exchangeRate <= 0) {
+    console.warn('Tipo de cambio inválido, usando valor por defecto de 1000');
+    return amountARS / 1000;
+  }
+  return amountARS / exchangeRate;
+}
+
+/**
+ * Convierte dólares a pesos argentinos usando el tipo de cambio especificado
+ * @param amountUSD Cantidad en dólares
+ * @param exchangeRate Tipo de cambio (ARS por USD)
+ * @returns Cantidad en pesos argentinos
+ */
+export function convertUSDtoARS(
+  amountUSD: number,
+  exchangeRate: number
+): number {
+  if (exchangeRate <= 0) {
+    console.warn('Tipo de cambio inválido, usando valor por defecto de 1000');
+    return amountUSD * 1000;
+  }
+  return amountUSD * exchangeRate;
+}
+
+/**
+ * Formatea un monto mostrando tanto ARS como USD
+ * @param amountARS Cantidad en pesos argentinos
+ * @param exchangeRate Tipo de cambio (ARS por USD)
+ * @param showUSD Si mostrar o no la conversión a USD
+ * @returns String formateado con ambas monedas
+ */
+export function formatDualCurrency(
+  amountARS: number,
+  exchangeRate: number,
+  showUSD: boolean = true
+): string {
+  const arsFormatted = formatCurrencyArs(amountARS);
+
+  if (!showUSD) {
+    return arsFormatted;
+  }
+
+  const usdFormatted = formatCurrencyUsd(amountARS, exchangeRate);
+  return `${arsFormatted} (≈ ${usdFormatted})`;
+}
+
+/**
+ * Valida que un tipo de cambio sea válido
+ * @param exchangeRate Tipo de cambio a validar
+ * @returns true si es válido, false si no
+ */
+export function isValidExchangeRate(exchangeRate: number): boolean {
+  return (
+    typeof exchangeRate === 'number' &&
+    exchangeRate > 0 &&
+    isFinite(exchangeRate)
+  );
+}

@@ -44,6 +44,11 @@ export async function apiFetch<T = unknown>(
     ...init,
   });
 
+  // Status 204 (No Content) or 304 (Not Modified) – nothing que parsear
+  if (response.status === 204 || response.status === 304) {
+    return undefined as T;
+  }
+
   if (!response.ok) {
     // Intentar parsear mensaje de error JSON
     let message: string | undefined;
@@ -57,6 +62,5 @@ export async function apiFetch<T = unknown>(
   }
 
   // Intentar devolver JSON; si no hay cuerpo, devolver void 0
-  if (response.status === 204) return undefined as T;
   return (await response.json()) as T;
 }

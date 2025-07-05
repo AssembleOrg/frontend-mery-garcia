@@ -9,7 +9,7 @@ import TransactionsTable from '@/components/cajas/TransactionsTableTanStack';
 import ModalCambiarEstado from '@/components/validacion/ModalCambiarEstado';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { DollarSign, TrendingUp, Users, Plus } from 'lucide-react';
+import { Plus } from 'lucide-react';
 import { ColumnaCaja } from '@/types/caja';
 import ModalAgregarComanda from '@/components/cajas/ModalAgregarComanda';
 import ModalTransaccion from '@/components/cajas/ModalTransaccion';
@@ -20,6 +20,7 @@ import { DateRangePicker } from '@/components/ui/date-range-picker';
 import { DateRange } from 'react-day-picker';
 import ClientOnly from '@/components/common/ClientOnly';
 import Spinner from '@/components/common/Spinner';
+import SummaryCard from '@/components/common/SummaryCard';
 
 const breadcrumbItems = [
   { label: 'Inicio', href: '/' },
@@ -109,7 +110,6 @@ export default function IngresosPage() {
     pagination,
     filters,
     updateFilters,
-    formatAmount,
     handleDelete,
     exportToPDF,
     exportToExcel,
@@ -195,28 +195,23 @@ export default function IngresosPage() {
                     <h1 className="text-2xl font-bold text-[#4a3540]">
                       ✨ Gestión de Transacciones de Ingreso
                     </h1>
-                    <div className="flex flex-wrap items-center gap-6 text-sm text-[#6b4c57]">
-                      <div className="flex items-center gap-2">
-                        <DollarSign className="h-4 w-4 text-green-600" />
-                        <span className="font-medium">Total:</span>
-                        <span className="font-bold text-green-600">
-                          {formatAmount(statistics.totalIncoming)}
-                        </span>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <TrendingUp className="h-4 w-4 text-[#f9bbc4]" />
-                        <span className="font-medium">Transacciones:</span>
-                        <span className="font-bold">
-                          {statistics.transactionCount}
-                        </span>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <Users className="h-4 w-4 text-[#f9bbc4]" />
-                        <span className="font-medium">Clientes:</span>
-                        <span className="font-bold">
-                          {statistics.clientCount}
-                        </span>
-                      </div>
+                    <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+                      <SummaryCard
+                        title="Total Ingresos"
+                        value={statistics.totalIncoming}
+                        format="currency"
+                        valueClassName="text-green-600"
+                      />
+                      <SummaryCard
+                        title="Transacciones"
+                        value={statistics.transactionCount}
+                        format="number"
+                      />
+                      <SummaryCard
+                        title="Clientes"
+                        value={statistics.clientCount}
+                        format="number"
+                      />
                     </div>
                   </div>
 

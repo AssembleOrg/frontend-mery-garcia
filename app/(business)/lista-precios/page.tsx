@@ -53,6 +53,7 @@ import {
 } from 'lucide-react';
 import { UnidadNegocio, ProductoServicio } from '@/types/caja';
 import { useDatosReferencia } from '@/features/comandas/store/comandaStore';
+import { useCurrencyConverter } from '@/hooks/useCurrencyConverter';
 import ModalProductoServicio from '@/components/lista-precios/ModalProductoServicio';
 
 const breadcrumbItems = [
@@ -91,8 +92,9 @@ const tiposProducto = [
 ];
 
 export default function ListaPreciosPage() {
-  const { productosServicios, tipoCambio, eliminarProductoServicio } =
-    useDatosReferencia();
+  const { productosServicios, eliminarProductoServicio } = useDatosReferencia();
+
+  const { formatARS, formatUSD } = useCurrencyConverter();
 
   // Estados para filters
   const [busqueda, setBusqueda] = useState('');
@@ -129,17 +131,10 @@ export default function ListaPreciosPage() {
   });
 
   const formatAmount = (monto: number) => {
-    const montoARS = new Intl.NumberFormat('es-AR', {
-      style: 'currency',
-      currency: 'ARS',
-    }).format(monto);
-
-    const montoUSD = new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: 'USD',
-    }).format(monto / tipoCambio.valorVenta);
-
-    return { ars: montoARS, usd: montoUSD };
+    return {
+      ars: formatARS(monto),
+      usd: formatUSD(monto),
+    };
   };
 
   const obtenerIconoUnidad = (unidad: UnidadNegocio) => {

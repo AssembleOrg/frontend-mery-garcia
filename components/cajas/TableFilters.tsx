@@ -31,6 +31,7 @@ import {
 } from 'lucide-react';
 import { FiltrosEncomienda, ColumnaCaja, Personal } from '@/types/caja';
 import { useDatosReferencia } from '@/features/comandas/store/comandaStore';
+import { useHasMounted } from '@/hooks/useHasMounted';
 
 interface TableFiltersProps {
   filters: FiltrosEncomienda;
@@ -82,7 +83,9 @@ export default function TableFilters({
       filters[key as keyof FiltrosEncomienda] !== undefined
   ).length;
 
-  return (
+  const mounted = useHasMounted();
+
+  return mounted ? (
     <div className="space-y-4">
       {/* Main filters bar */}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
@@ -364,5 +367,5 @@ export default function TableFilters({
         </div>
       )}
     </div>
-  );
+  ) : null;
 }

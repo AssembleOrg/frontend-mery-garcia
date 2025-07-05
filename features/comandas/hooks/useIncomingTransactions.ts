@@ -213,44 +213,44 @@ export function useIncomingTransactions(dateRange?: DateRange) {
     // Actions
     handleEdit: (id: string) => {
       logger.info(`📝 Editando transacción de ingreso: ${id}`);
-      // TODO: Implement edit functionality
+      // TODO(issue-caja-exports): Implement edit functionality
       logger.debug('Edit incoming transaction:', id);
     },
 
     handleDelete: (id: string) => {
       logger.info(`🗑️ Eliminando transacción de ingreso: ${id}`);
-      // TODO: Implement delete functionality
+      // TODO(issue-caja-exports): Implement delete functionality
       logger.debug('Delete incoming transaction:', id);
     },
 
     handleView: (id: string) => {
       logger.info(`👁️ Viendo detalles de transacción de ingreso: ${id}`);
-      // TODO: Implement view functionality
+      // TODO(issue-caja-exports): Implement view functionality
       logger.debug('View incoming transaction:', id);
     },
 
     handleChangeStatus: (id: string) => {
       logger.info(`🔄 Cambiando estado de transacción de ingreso: ${id}`);
-      // TODO: Implement status change functionality
+      // TODO(issue-caja-exports): Implement status change functionality
       logger.debug('Change status incoming transaction:', id);
     },
 
     // Export functions
     exportToPDF: () => {
       logger.info('📄 Exportando ingresos a PDF');
-      // TODO: Implement PDF export
+      // TODO(issue-caja-exports): Implement PDF export
       logger.debug('Export incoming transactions to PDF');
     },
 
     exportToExcel: () => {
       logger.info('📊 Exportando ingresos a Excel');
-      // TODO: Implement Excel export
+      // TODO(issue-caja-exports): Implement Excel export
       logger.debug('Export incoming transactions to Excel');
     },
 
     exportToCSV: () => {
       logger.info('📋 Exportando ingresos a CSV');
-      // TODO: Implement CSV export
+      // TODO(issue-caja-exports): Implement CSV export
       logger.debug('Export incoming transactions to CSV');
     },
   };
