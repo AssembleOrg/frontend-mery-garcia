@@ -11,7 +11,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Plus } from 'lucide-react';
 import { ColumnaCaja } from '@/types/caja';
-import ModalAgregarComanda from '@/components/cajas/ModalAgregarComanda';
+import ModalTransaccionUnificado from '@/components/cajas/ModalTransaccionUnificado';
 import ModalTransaccion from '@/components/cajas/ModalTransaccion';
 import { useInitializeComandaStore } from '@/hooks/useInitializeComandaStore';
 import { useIncomingTransactions } from '@/features/comandas/hooks/useIncomingTransactions';
@@ -309,9 +309,14 @@ export default function IngresosPage() {
         </ClientOnly>
 
         {/* Modals */}
-        <ModalAgregarComanda
+        <ModalTransaccionUnificado
           isOpen={showAddModal}
           onClose={() => setShowAddModal(false)}
+          tipo="ingreso"
+          onSuccess={() => {
+            // Callback opcional para refrescar datos
+            // Ingreso agregado exitosamente
+          }}
         />
 
         <ModalCambiarEstado

@@ -11,8 +11,11 @@ import {
   formatDate as formatDateEs,
   formatCurrencyArs,
   formatCurrencyUsd,
+  resolverMetodoPagoPrincipal,
+  formatearDetalleMetodosPago,
 } from '@/lib/utils';
 import { MoreHorizontal, Edit, Eye, Trash2, Lock } from 'lucide-react';
+import { ESTADO_LABELS, ESTADO_COLORS } from '@/lib/constants';
 import { ColumnDef, createColumnHelper } from '@tanstack/react-table';
 
 interface Props {
@@ -90,7 +93,15 @@ export default function TransactionsTableTanStack({
     c.accessor('metodoPago', {
       header: 'Método',
       cell: (info) => {
-        const val: string = info.getValue() as string;
+        const row = info.row.original;
+        // Resolver método principal (fix bug tarjeta → mixto)
+        const metodoPrincipal =
+          row.metodosPago && row.metodosPago.length > 0
+            ? resolverMetodoPagoPrincipal(
+                row.metodosPago.map((m) => ({ tipo: m.tipo, monto: m.monto }))
+              )
+            : (info.getValue() as string);
+
         const style = (method: string): string => {
           switch (method.toLowerCase()) {
             case 'efectivo':
@@ -99,15 +110,24 @@ export default function TransactionsTableTanStack({
               return 'bg-blue-100 text-blue-800';
             case 'transferencia':
               return 'bg-purple-100 text-purple-800';
+            case 'mixto':
+              return 'bg-orange-100 text-orange-800';
             default:
               return 'bg-gray-100 text-gray-800';
           }
         };
+
+        const detalleTooltip =
+          row.metodosPago && row.metodosPago.length > 0
+            ? formatearDetalleMetodosPago(row.metodosPago)
+            : metodoPrincipal;
+
         return (
           <span
-            className={`rounded-md px-2 py-1 text-xs font-medium ${style(val)}`}
+            className={`rounded-md px-2 py-1 text-xs font-medium ${style(metodoPrincipal)} cursor-help`}
+            title={detalleTooltip}
           >
-            {val}
+            {metodoPrincipal}
           </span>
         );
       },
@@ -116,17 +136,17 @@ export default function TransactionsTableTanStack({
       header: 'Estado',
       cell: (info) => {
         const estado = info.getValue();
-        const map: Record<string, string> = {
-          pendiente: 'bg-yellow-100 text-yellow-800',
-          completado: 'bg-green-100 text-green-800',
-          validado: 'bg-blue-100 text-blue-800',
-          cancelado: 'bg-red-100 text-red-800',
-        };
+        const colorClass =
+          ESTADO_COLORS[estado as keyof typeof ESTADO_COLORS] ||
+          'bg-gray-100 text-gray-800';
+        const label =
+          ESTADO_LABELS[estado as keyof typeof ESTADO_LABELS] || estado;
+
         return (
           <span
-            className={`rounded-md px-2 py-1 text-xs font-medium ${map[estado] || 'bg-gray-100 text-gray-800'}`}
+            className={`rounded-md px-2 py-1 text-xs font-medium ${colorClass}`}
           >
-            {estado}
+            {label}
           </span>
         );
       },
@@ -174,7 +194,7 @@ export default function TransactionsTableTanStack({
       data={data}
       columns={columnsRaw}
       hiddenColumns={hiddenColumns}
-      enableSearch
+      enableSearch={false}
       enablePagination
       pageSize={10}
     />

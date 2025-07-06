@@ -36,7 +36,7 @@ export default function ModalPersonal({
 
   // Estados de validación
   const [errores, setErrores] = useState<Record<string, string>>({});
-  const [guardando, setGuardando] = useState(false);
+  const [loading, setLoading] = useState(false);
 
   const esEdicion = !!personal;
 
@@ -81,7 +81,7 @@ export default function ModalPersonal({
   const handleGuardar = async () => {
     if (!validateForm()) return;
 
-    setGuardando(true);
+    setLoading(true);
 
     try {
       const personalData: Omit<PersonalSimple, 'id'> = {
@@ -97,7 +97,7 @@ export default function ModalPersonal({
     } catch (error) {
       console.error('Error al guardar:', error);
     } finally {
-      setGuardando(false);
+      setLoading(false);
     }
   };
 
@@ -236,15 +236,15 @@ export default function ModalPersonal({
 
           {/* Footer */}
           <div className="flex justify-end gap-3 border-t p-6">
-            <Button variant="outline" onClick={onClose} disabled={guardando}>
+            <Button variant="outline" onClick={onClose} disabled={loading}>
               Cancelar
             </Button>
             <Button
               onClick={handleGuardar}
-              disabled={guardando}
+              disabled={loading}
               className="bg-[#f9bbc4] text-white hover:bg-[#e292a3]"
             >
-              {guardando ? 'Guardando...' : esEdicion ? 'Actualizar' : 'Crear'}
+              {loading ? 'Guardando...' : esEdicion ? 'Actualizar' : 'Crear'}
             </Button>
           </div>
         </div>

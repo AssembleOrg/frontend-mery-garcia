@@ -82,6 +82,25 @@ export function formatCurrencyUsd(amount: number, exchangeRate = 1000) {
 }
 
 /**
+ * Formatea números como moneda UYU usando convención es-UY.
+ */
+export function formatCurrencyUyu(amount: number) {
+  return new Intl.NumberFormat('es-UY', {
+    style: 'currency',
+    currency: 'UYU',
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 0,
+  }).format(amount);
+}
+
+/**
+ * Formatea números sin símbolo de moneda (genérico)
+ */
+export function formatNumber(amount: number) {
+  return new Intl.NumberFormat('es-AR').format(amount);
+}
+
+/**
  * Convierte pesos argentinos a dólares usando el tipo de cambio especificado
  * @param amountARS Cantidad en pesos argentinos
  * @param exchangeRate Tipo de cambio (ARS por USD)
@@ -148,4 +167,67 @@ export function isValidExchangeRate(exchangeRate: number): boolean {
     exchangeRate > 0 &&
     isFinite(exchangeRate)
   );
+}
+
+/**
+ * Determina el método de pago principal para mostrar en la tabla
+ * Resuelve el bug: tarjeta con recargo → "Mixto"
+ */
+export function resolverMetodoPagoPrincipal(
+  metodosPago: Array<{ tipo: string; monto: number }>
+): string {
+  if (!metodosPago || metodosPago.length === 0) {
+    return 'efectivo';
+  }
+
+  // Si hay solo un método, retornar ese
+  if (metodosPago.length === 1) {
+    return metodosPago[0].tipo;
+  }
+
+  // Si hay múltiples métodos, buscar el de mayor monto
+  const metodoPrincipal = metodosPago.reduce((prev, current) =>
+    current.monto > prev.monto ? current : prev
+  );
+
+  // Si hay múltiples métodos con montos similares, es realmente mixto
+  const totalMonto = metodosPago.reduce((sum, m) => sum + m.monto, 0);
+  const porcentajePrincipal = (metodoPrincipal.monto / totalMonto) * 100;
+
+  // Si el método principal representa menos del 80%, es mixto
+  if (porcentajePrincipal < 80) {
+    return 'mixto';
+  }
+
+  return metodoPrincipal.tipo;
+}
+
+/**
+ * Formatea el detalle de métodos de pago para mostrar en tooltips o detalles
+ */
+export function formatearDetalleMetodosPago(
+  metodosPago: Array<{ tipo: string; monto: number; montoFinal?: number }>
+): string {
+  if (!metodosPago || metodosPago.length === 0) {
+    return 'Sin métodos de pago';
+  }
+
+  if (metodosPago.length === 1) {
+    const metodo = metodosPago[0];
+    const montoFinal = metodo.montoFinal || metodo.monto;
+    if (montoFinal > metodo.monto) {
+      return `${metodo.tipo} $${metodo.monto.toFixed(2)} (+recargo: $${montoFinal.toFixed(2)})`;
+    }
+    return `${metodo.tipo} $${metodo.monto.toFixed(2)}`;
+  }
+
+  return metodosPago
+    .map((m) => {
+      const montoFinal = m.montoFinal || m.monto;
+      if (montoFinal > m.monto) {
+        return `${m.tipo} $${m.monto.toFixed(2)} (+recargo)`;
+      }
+      return `${m.tipo} $${m.monto.toFixed(2)}`;
+    })
+    .join(', ');
 }

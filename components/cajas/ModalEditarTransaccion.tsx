@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect, useMemo } from 'react';
 import { useComandaStore } from '@/features/comandas/store/comandaStore';
+import { useModalScrollLock } from '@/hooks/useModalScrollLock';
 import { ItemComanda } from '@/types/caja';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -43,6 +44,9 @@ export default function ModalEditarTransaccion({
   const { actualizarComanda, obtenerComandaPorId, personalSimple } =
     useComandaStore();
 
+  // Hook para bloquear scroll del body
+  useModalScrollLock(isOpen);
+
   // Estados del formulario
   const [cliente, setCliente] = useState('');
   const [telefono, setTelefono] = useState('');
@@ -63,28 +67,7 @@ export default function ModalEditarTransaccion({
     return obtenerComandaPorId(transactionId);
   }, [transactionId, obtenerComandaPorId]);
 
-  // Bloquear scroll del body cuando el modal está abierto
-  useEffect(() => {
-    if (isOpen) {
-      // Guardar el scroll actual
-      const scrollY = window.scrollY;
-
-      // Bloquear scroll
-      document.body.style.position = 'fixed';
-      document.body.style.top = `-${scrollY}px`;
-      document.body.style.width = '100%';
-      document.body.style.overflow = 'hidden';
-
-      return () => {
-        // Restaurar scroll cuando se cierre
-        document.body.style.position = '';
-        document.body.style.top = '';
-        document.body.style.width = '';
-        document.body.style.overflow = '';
-        window.scrollTo(0, scrollY);
-      };
-    }
-  }, [isOpen]);
+  // Scroll lock manejado por el hook useModalScrollLock
 
   // Cargar datos iniciales cuando se abre el modal
   useEffect(() => {

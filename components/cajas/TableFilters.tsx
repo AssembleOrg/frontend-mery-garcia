@@ -31,6 +31,7 @@ import {
 } from 'lucide-react';
 import { FiltrosEncomienda, ColumnaCaja, Personal } from '@/types/caja';
 import { useDatosReferencia } from '@/features/comandas/store/comandaStore';
+import { ESTADO_LABELS } from '@/lib/constants';
 import { useHasMounted } from '@/hooks/useHasMounted';
 
 interface TableFiltersProps {
@@ -276,9 +277,18 @@ export default function TableFilters({
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="todos">Todos los Estados</SelectItem>
-                  <SelectItem value="pendiente">⏳ Pendiente</SelectItem>
-                  <SelectItem value="completado">✅ Completado</SelectItem>
-                  <SelectItem value="cancelado">❌ Cancelado</SelectItem>
+                  <SelectItem value="pendiente">
+                    {ESTADO_LABELS.pendiente}
+                  </SelectItem>
+                  <SelectItem value="completado">
+                    {ESTADO_LABELS.completado}
+                  </SelectItem>
+                  <SelectItem value="validado">
+                    {ESTADO_LABELS.validado}
+                  </SelectItem>
+                  <SelectItem value="cancelado">
+                    {ESTADO_LABELS.cancelado}
+                  </SelectItem>
                 </SelectContent>
               </Select>
             </div>

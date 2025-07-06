@@ -12,7 +12,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Plus } from 'lucide-react';
 import { ColumnaCaja } from '@/types/caja';
-import ModalAgregarEgreso from '@/components/cajas/ModalAgregarEgreso';
+import ModalTransaccionUnificado from '@/components/cajas/ModalTransaccionUnificado';
 import ModalEditarTransaccion from '@/components/cajas/ModalEditarTransaccion';
 import { useInitializeComandaStore } from '@/hooks/useInitializeComandaStore';
 import { useOutgoingTransactions } from '@/features/comandas/hooks/useOutgoingTransactions';
@@ -299,12 +299,13 @@ export default function EgresosPage() {
         </ClientOnly>
 
         {/* Modals */}
-        <ModalAgregarEgreso
+        <ModalTransaccionUnificado
           isOpen={showAddModal}
           onClose={() => setShowAddModal(false)}
+          tipo="egreso"
           onSuccess={() => {
             // Refresh data after successful creation
-            window.location.reload();
+            // Egreso agregado exitosamente
           }}
         />
 

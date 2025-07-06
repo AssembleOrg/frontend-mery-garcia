@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect, useMemo } from 'react';
 import { useComandaStore } from '@/features/comandas/store/comandaStore';
+import { useModalScrollLock } from '@/hooks/useModalScrollLock';
 import { ItemComanda } from '@/types/caja';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -52,6 +53,9 @@ export default function ModalTransaccion({
   const { actualizarComanda, obtenerComandaPorId, personalSimple } =
     useComandaStore();
 
+  // Hook para bloquear scroll del body
+  useModalScrollLock(isOpen);
+
   // Estados del formulario
   const [cliente, setCliente] = useState('');
   const [telefono, setTelefono] = useState('');
@@ -72,25 +76,7 @@ export default function ModalTransaccion({
     return obtenerComandaPorId(transactionId);
   }, [transactionId, obtenerComandaPorId, mode]);
 
-  // Bloquear scroll del body cuando el modal está abierto
-  useEffect(() => {
-    if (isOpen) {
-      const scrollY = window.scrollY;
-
-      document.body.style.position = 'fixed';
-      document.body.style.top = `-${scrollY}px`;
-      document.body.style.width = '100%';
-      document.body.style.overflow = 'hidden';
-
-      return () => {
-        document.body.style.position = '';
-        document.body.style.top = '';
-        document.body.style.width = '';
-        document.body.style.overflow = '';
-        window.scrollTo(0, scrollY);
-      };
-    }
-  }, [isOpen]);
+  // Scroll lock manejado por el hook useModalScrollLock
 
   // Cargar datos iniciales cuando se abre el modal
   useEffect(() => {
@@ -147,7 +133,7 @@ export default function ModalTransaccion({
   // Detalle de métodos de pago (para mostrar en view)
   const metodosPagoDetalle = transaccion?.metodosPago || [];
 
-  // Formatear montos
+  // Formatear montos usando utilidad centralizada
   const formatAmount = (amount: number) => {
     return new Intl.NumberFormat('es-UY', {
       style: 'currency',
