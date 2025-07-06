@@ -224,7 +224,7 @@ export default function ModalTransaccion({
           items: servicios,
           subtotal,
           totalDescuentos: descuentoTotal,
-          totalFinal: metodoPago === 'tarjeta' ? total * 1.35 : total,
+          totalFinal: total, // El total ya incluye los recargos calculados
           estado,
           observaciones: observaciones.trim() || undefined,
         };

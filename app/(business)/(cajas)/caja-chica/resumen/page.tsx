@@ -71,7 +71,7 @@ export default function ResumenCajaChicaPage() {
                     accentColor="#f9bbc4"
                   />
                   {resumen && (
-                    <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+                    <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
                       <SummaryCard
                         title="Completadas"
                         value={resumen.totalCompletados}
@@ -85,21 +85,26 @@ export default function ResumenCajaChicaPage() {
                         valueClassName="text-yellow-600"
                       />
                       <SummaryCard
-                        title="Total Ingresos ARS"
+                        title="Total Ingresos"
                         value={resumen.totalIngresos}
                         format="currency"
                         valueClassName="text-green-700"
                       />
                       <SummaryCard
-                        title="Total Egresos ARS"
+                        title="Total Egresos"
                         value={resumen.totalEgresos}
                         format="currency"
                         valueClassName="text-red-700"
                       />
                       <SummaryCard
-                        title="Monto Neto ARS"
+                        title="Balance Neto"
                         value={resumen.montoNeto}
                         format="currency"
+                        valueClassName={
+                          resumen.montoNeto >= 0
+                            ? 'text-green-700'
+                            : 'text-red-700'
+                        }
                       />
                     </div>
                   )}

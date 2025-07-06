@@ -283,9 +283,6 @@ export default function TableFilters({
                   <SelectItem value="completado">
                     {ESTADO_LABELS.completado}
                   </SelectItem>
-                  <SelectItem value="validado">
-                    {ESTADO_LABELS.validado}
-                  </SelectItem>
                   <SelectItem value="cancelado">
                     {ESTADO_LABELS.cancelado}
                   </SelectItem>

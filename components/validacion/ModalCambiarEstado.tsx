@@ -17,7 +17,7 @@ import { useComandaStore } from '@/features/comandas/store/comandaStore';
 import { toast } from 'sonner';
 
 // Tipo simplificado para estados de tabla
-type EstadoSimple = 'pendiente' | 'completado' | 'validado' | 'cancelado';
+type EstadoSimple = 'pendiente' | 'completado' | 'cancelado';
 
 interface ModalCambiarEstadoProps {
   isOpen: boolean;
@@ -43,14 +43,6 @@ const ESTADOS_OPCIONES = [
     icon: CheckCircle,
     color: 'text-green-600',
     emoji: '✅',
-  },
-  {
-    value: 'validado' as EstadoSimple,
-    label: 'Validado',
-    description: 'Transacción validada por administrador',
-    icon: CheckCircle,
-    color: 'text-blue-600',
-    emoji: '🔒',
   },
   {
     value: 'cancelado' as EstadoSimple,

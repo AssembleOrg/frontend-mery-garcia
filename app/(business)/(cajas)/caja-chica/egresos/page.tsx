@@ -13,7 +13,8 @@ import { Button } from '@/components/ui/button';
 import { Plus } from 'lucide-react';
 import { ColumnaCaja } from '@/types/caja';
 import ModalTransaccionUnificado from '@/components/cajas/ModalTransaccionUnificado';
-import ModalEditarTransaccion from '@/components/cajas/ModalEditarTransaccion';
+import ModalTransaccion from '@/components/cajas/ModalTransaccion';
+
 import { useInitializeComandaStore } from '@/hooks/useInitializeComandaStore';
 import { useOutgoingTransactions } from '@/features/comandas/hooks/useOutgoingTransactions';
 import { Pagination } from '@/components/ui/pagination';
@@ -316,16 +317,21 @@ export default function EgresosPage() {
             setSelectedTransactionId('');
           }}
           comandaId={selectedTransactionId}
-          estadoActual={selectedTransaction?.estado || 'pendiente'}
+          estadoActual={
+            (selectedTransaction?.estado === 'validado'
+              ? 'completado'
+              : selectedTransaction?.estado) || 'pendiente'
+          }
         />
 
-        <ModalEditarTransaccion
+        <ModalTransaccion
           isOpen={showEditModal}
           onClose={() => {
             setShowEditModal(false);
             setSelectedTransactionId('');
           }}
           transactionId={selectedTransactionId}
+          mode="edit"
         />
 
         <ModalVerDetalles

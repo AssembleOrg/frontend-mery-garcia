@@ -685,8 +685,13 @@ export default function ComandasPage() {
           }}
           comandaId={comandaSeleccionada}
           estadoActual={
-            comandas.find((c) => c.id === comandaSeleccionada)?.estado ||
-            'pendiente'
+            ((comandas.find((c) => c.id === comandaSeleccionada)?.estado ===
+            'validado'
+              ? 'completado'
+              : comandas.find((c) => c.id === comandaSeleccionada)?.estado) as
+              | 'pendiente'
+              | 'completado'
+              | 'cancelado') || 'pendiente'
           }
           onSuccess={handleCambioEstadoExitoso}
         />

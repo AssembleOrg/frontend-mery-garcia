@@ -326,7 +326,11 @@ export default function IngresosPage() {
             setSelectedTransactionId('');
           }}
           comandaId={selectedTransactionId}
-          estadoActual={selectedTransaction?.estado || 'pendiente'}
+          estadoActual={
+            (selectedTransaction?.estado === 'validado'
+              ? 'completado'
+              : selectedTransaction?.estado) || 'pendiente'
+          }
         />
 
         <ModalTransaccion

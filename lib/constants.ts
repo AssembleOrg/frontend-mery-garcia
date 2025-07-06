@@ -2,7 +2,6 @@
 export const ESTADOS_COMANDA = {
   PENDIENTE: 'pendiente',
   COMPLETADO: 'completado',
-  VALIDADO: 'validado',
   CANCELADO: 'cancelado',
 } as const;
 
@@ -32,7 +31,6 @@ export type MetodoPago = (typeof METODOS_PAGO)[keyof typeof METODOS_PAGO];
 export const ESTADO_LABELS = {
   [ESTADOS_COMANDA.PENDIENTE]: '⏳ Pendiente',
   [ESTADOS_COMANDA.COMPLETADO]: '✅ Completado',
-  [ESTADOS_COMANDA.VALIDADO]: '🔒 Validado',
   [ESTADOS_COMANDA.CANCELADO]: '❌ Cancelado',
 } as const;
 
@@ -52,7 +50,6 @@ export const METODO_PAGO_LABELS = {
 export const ESTADO_COLORS = {
   [ESTADOS_COMANDA.PENDIENTE]: 'bg-yellow-100 text-yellow-800',
   [ESTADOS_COMANDA.COMPLETADO]: 'bg-green-100 text-green-800',
-  [ESTADOS_COMANDA.VALIDADO]: 'bg-blue-100 text-blue-800',
   [ESTADOS_COMANDA.CANCELADO]: 'bg-red-100 text-red-800',
 } as const;
 
