@@ -10,9 +10,11 @@ import { DateRangePicker } from '@/components/ui/date-range-picker';
 import { DateRange } from 'react-day-picker';
 import { CheckCircle, AlertTriangle } from 'lucide-react';
 import { useComandaStore } from '@/features/comandas/store/comandaStore';
+import { useRecordsStore } from '@/features/records/store/recordsStore';
 import Spinner from '@/components/common/Spinner';
 import ClientOnly from '@/components/common/ClientOnly';
 import SummaryCard from '@/components/common/SummaryCard';
+import { toast } from 'sonner';
 
 const breadcrumbItems = [
   { label: 'Inicio', href: '/' },
@@ -23,6 +25,7 @@ const breadcrumbItems = [
 
 export default function ResumenCajaChicaPage() {
   const { validarComandasRango, obtenerResumenRango } = useComandaStore();
+  const { registrarTraspaso } = useRecordsStore();
   const [dateRange, setDateRange] = useState<DateRange | undefined>();
   const [loading, setLoading] = useState(false);
   const [mensaje, setMensaje] = useState<{
@@ -30,21 +33,51 @@ export default function ResumenCajaChicaPage() {
     texto: string;
   } | null>(null);
 
-  const handleTrasladar = () => {
+  const handleTrasladar = async () => {
     if (!dateRange?.from) return;
 
     setLoading(true);
-    setTimeout(() => {
-      const count = validarComandasRango(
-        dateRange.from!,
-        dateRange.to ?? dateRange.from!
+    try {
+      // Pasar objetos Date directamente
+      await validarComandasRango(
+        dateRange.from,
+        dateRange.to ?? dateRange.from
       );
+
+      // Para el registro del traspaso, usar la estructura correcta
+      const fechaInicio = dateRange.from.toISOString().split('T')[0];
+      const fechaFin = (dateRange.to ?? dateRange.from)
+        .toISOString()
+        .split('T')[0];
+
+      // Registrar el traspaso con la estructura correcta de TraspasoInfo
+      registrarTraspaso({
+        fechaTraspaso: new Date().toISOString().split('T')[0],
+        adminQueTraspaso: 'admin-actual', // Reemplazar con el usuario actual
+        comandasTraspasadas: [], // IDs de comandas trasladadas
+        montoTotal: resumen?.montoNeto || 0,
+        rangoFechas: {
+          desde: fechaInicio,
+          hasta: fechaFin,
+        },
+        observaciones: `Traspaso de comandas validadas del ${fechaInicio} al ${fechaFin}`,
+      });
+
+      toast.success('Comandas trasladadas exitosamente a Caja Grande');
       setMensaje({
         tipo: 'success',
-        texto: `Trasladadas ${count} comandas completadas a Caja 2`,
+        texto: 'Comandas trasladadas exitosamente a Caja Grande',
       });
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    } catch (error) {
+      toast.error('Error al realizar el traspaso');
+      setMensaje({
+        tipo: 'info',
+        texto: 'Error al realizar el traspaso',
+      });
+    } finally {
       setLoading(false);
-    }, 300); // simulamos espera
+    }
   };
 
   const resumen = dateRange?.from
