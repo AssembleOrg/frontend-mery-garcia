@@ -44,6 +44,7 @@ import {
   generateUniqueId,
 } from '@/hooks/useInitializeComandaStore';
 import { logger, formatCurrencyArs } from '@/lib/utils';
+import { DiscountControls } from './DiscountControls';
 
 interface ModalTransaccionUnificadoProps {
   isOpen: boolean;
@@ -58,6 +59,8 @@ interface ItemTransaccion {
   nombre: string;
   precio: number;
   cantidad: number;
+  descuentoPorcentaje: number;
+  descuento: number;
   subtotal: number;
   descripcion?: string;
 }
@@ -103,6 +106,7 @@ export default function ModalTransaccionUnificado({
   const [metodosPago, setMetodosPago] = useState<MetodoPagoForm[]>([
     { tipo: 'efectivo', monto: 0, recargoPorcentaje: 0, montoFinal: 0 },
   ]);
+  const [descuentoGlobalPorcentaje, setDescuentoGlobalPorcentaje] = useState(0);
 
   // UI state
   const [guardando, setGuardando] = useState(false);
@@ -151,6 +155,8 @@ export default function ModalTransaccionUnificado({
       nombre: '',
       precio: 0,
       cantidad: 1,
+      descuentoPorcentaje: 0,
+      descuento: 0,
       subtotal: 0,
       descripcion: '',
     };
@@ -165,6 +171,8 @@ export default function ModalTransaccionUnificado({
       nombre: producto.nombre,
       precio: producto.precio,
       cantidad: 1,
+      descuentoPorcentaje: 0,
+      descuento: 0,
       subtotal: producto.precio,
       descripcion: producto.descripcion || '',
     };
@@ -189,9 +197,22 @@ export default function ModalTransaccionUnificado({
         if (item.id === id) {
           const updatedItem = { ...item, [campo]: valor };
 
-          // Recalcular subtotal
-          if (campo === 'cantidad' || campo === 'precio') {
-            updatedItem.subtotal = updatedItem.precio * updatedItem.cantidad;
+          // Recalcular subtotal y descuento
+          if (
+            campo === 'cantidad' ||
+            campo === 'precio' ||
+            campo === 'descuentoPorcentaje'
+          ) {
+            const precioBase = updatedItem.precio * updatedItem.cantidad;
+            const porcentaje = Math.max(
+              0,
+              Math.min(100, updatedItem.descuentoPorcentaje)
+            );
+            const descuentoCalculado = (precioBase * porcentaje) / 100;
+
+            updatedItem.descuentoPorcentaje = porcentaje;
+            updatedItem.descuento = descuentoCalculado;
+            updatedItem.subtotal = precioBase - descuentoCalculado;
           }
 
           return updatedItem;
@@ -199,6 +220,77 @@ export default function ModalTransaccionUnificado({
         return item;
       })
     );
+  };
+
+  // Aplicar descuento a un ítem específico
+  const aplicarDescuentoItem = (id: string, porcentaje: number) => {
+    setItems(
+      items.map((item) => {
+        if (item.id === id) {
+          const precioBase = item.precio * item.cantidad;
+          const descuentoCalculado = (precioBase * porcentaje) / 100;
+
+          return {
+            ...item,
+            descuentoPorcentaje: porcentaje,
+            descuento: descuentoCalculado,
+            subtotal: precioBase - descuentoCalculado,
+          };
+        }
+        return item;
+      })
+    );
+  };
+
+  // Eliminar descuento de un ítem específico
+  const eliminarDescuentoItem = (id: string) => {
+    setItems(
+      items.map((item) => {
+        if (item.id === id) {
+          const precioBase = item.precio * item.cantidad;
+
+          return {
+            ...item,
+            descuentoPorcentaje: 0,
+            descuento: 0,
+            subtotal: precioBase,
+          };
+        }
+        return item;
+      })
+    );
+  };
+
+  // Aplicar descuento global
+  const aplicarDescuentoGlobal = (porcentaje: number) => {
+    if (porcentaje <= 0 || items.length === 0) return;
+
+    const itemsConDescuento = items.map((item) => {
+      const precioBase = item.precio * item.cantidad;
+      const descuentoCalculado = (precioBase * porcentaje) / 100;
+
+      return {
+        ...item,
+        descuentoPorcentaje: porcentaje,
+        descuento: descuentoCalculado,
+        subtotal: precioBase - descuentoCalculado,
+      };
+    });
+
+    setItems(itemsConDescuento);
+    setDescuentoGlobalPorcentaje(0);
+  };
+
+  // Limpiar todos los descuentos
+  const limpiarDescuentos = () => {
+    const itemsSinDescuento = items.map((item) => ({
+      ...item,
+      descuentoPorcentaje: 0,
+      descuento: 0,
+      subtotal: item.precio * item.cantidad,
+    }));
+    setItems(itemsSinDescuento);
+    setDescuentoGlobalPorcentaje(0);
   };
 
   // Add payment method
@@ -255,7 +347,15 @@ export default function ModalTransaccionUnificado({
   };
 
   const calcularTotales = () => {
-    const subtotal = items.reduce((sum, item) => sum + item.subtotal, 0);
+    const subtotalBase = items.reduce(
+      (sum, item) => sum + item.precio * item.cantidad,
+      0
+    );
+    const totalDescuentos = items.reduce(
+      (sum, item) => sum + item.descuento,
+      0
+    );
+    const subtotal = subtotalBase - totalDescuentos;
 
     const totalRecargos = metodosPago.reduce(
       (sum, m) => sum + (m.monto * m.recargoPorcentaje) / 100,
@@ -269,6 +369,8 @@ export default function ModalTransaccionUnificado({
     const diferencia = totalConRecargos - (subtotal + totalRecargos);
 
     return {
+      subtotalBase,
+      totalDescuentos,
       subtotal,
       totalRecargos,
       totalFinal: subtotal + totalRecargos,
@@ -309,7 +411,6 @@ export default function ModalTransaccionUnificado({
     });
 
     const totales = calcularTotales();
-    // Verificar que el total de pagos (con recargos) coincida con el subtotal
     if (Math.abs(totales.diferencia) > 0.01) {
       nuevosErrores.pagos =
         totales.diferencia > 0
@@ -384,7 +485,7 @@ export default function ModalTransaccionUnificado({
         items: itemsComanda,
         metodosPago: metodosPagoComanda,
         subtotal: totales.subtotal,
-        totalDescuentos: 0,
+        totalDescuentos: totales.totalDescuentos,
         totalRecargos: totales.totalRecargos,
         totalSeña: 0,
         totalFinal: totales.totalFinal,
@@ -421,6 +522,7 @@ export default function ModalTransaccionUnificado({
     setMetodosPago([
       { tipo: 'efectivo', monto: 0, recargoPorcentaje: 0, montoFinal: 0 },
     ]);
+    setDescuentoGlobalPorcentaje(0);
     setErrores({});
     setMostrarBuscador(false);
     setBusqueda('');
@@ -651,6 +753,40 @@ export default function ModalTransaccionUnificado({
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-4">
+                  {/* Descuento Global */}
+                  {items.length > 0 && (
+                    <div className="mb-6 rounded-lg bg-gray-50 p-4">
+                      <div className="mb-4 flex items-center justify-between">
+                        <h4 className="font-medium text-gray-900">
+                          Descuento Global
+                        </h4>
+                        {totales.totalDescuentos > 0 && (
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            onClick={limpiarDescuentos}
+                            className="text-red-600 hover:text-red-700"
+                          >
+                            <X className="mr-1 h-4 w-4" />
+                            Limpiar todos
+                          </Button>
+                        )}
+                      </div>
+                      <DiscountControls
+                        descuentoPorcentaje={descuentoGlobalPorcentaje}
+                        montoDescuento={0}
+                        precioBase={totales.subtotalBase}
+                        onAplicarDescuento={aplicarDescuentoGlobal}
+                        onEliminarDescuento={() =>
+                          setDescuentoGlobalPorcentaje(0)
+                        }
+                        label="Aplicar descuento a todos los items"
+                        maxDescuento={50}
+                      />
+                    </div>
+                  )}
+
                   {items.length === 0 ? (
                     <div className="rounded-lg border-2 border-dashed border-gray-300 p-8 text-center">
                       <Calculator className="mx-auto h-12 w-12 text-gray-400" />
@@ -664,123 +800,147 @@ export default function ModalTransaccionUnificado({
                       </p>
                     </div>
                   ) : (
-                    items.map((item, index) => (
-                      <div
-                        key={item.id}
-                        className="rounded-lg border border-gray-200 p-4"
-                      >
-                        <div className="mb-3 flex items-center justify-between">
-                          <Badge variant="outline" className="text-gray-700">
-                            {tipo === 'ingreso' ? 'Servicio' : 'Concepto'} #
-                            {index + 1}
-                          </Badge>
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => eliminarItem(item.id)}
-                            className="text-gray-500 hover:bg-gray-100 hover:text-gray-700"
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
-                        </div>
+                    items.map((item, index) => {
+                      const precioBase = item.precio * item.cantidad;
 
-                        <div className="grid grid-cols-1 gap-3 md:grid-cols-4">
-                          <div>
-                            <Label className="text-gray-700">Nombre *</Label>
-                            <Input
-                              value={item.nombre}
-                              onChange={(e) =>
-                                actualizarItem(
-                                  item.id,
-                                  'nombre',
-                                  e.target.value
-                                )
-                              }
-                              placeholder="Nombre del item"
-                              className={
-                                errores[`item-${index}-nombre`]
-                                  ? 'border-red-500'
-                                  : 'border-gray-300'
-                              }
-                            />
-                            {errores[`item-${index}-nombre`] && (
-                              <p className="mt-1 text-xs text-red-600">
-                                {errores[`item-${index}-nombre`]}
-                              </p>
-                            )}
+                      return (
+                        <div
+                          key={item.id}
+                          className="rounded-lg border border-gray-200 p-4"
+                        >
+                          <div className="mb-3 flex items-center justify-between">
+                            <Badge variant="outline" className="text-gray-700">
+                              {tipo === 'ingreso' ? 'Servicio' : 'Concepto'} #
+                              {index + 1}
+                            </Badge>
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => eliminarItem(item.id)}
+                              className="text-gray-500 hover:bg-gray-100 hover:text-gray-700"
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
                           </div>
 
-                          <div>
-                            <Label className="text-gray-700">Precio *</Label>
-                            <Input
-                              type="number"
-                              min="0"
-                              step="0.01"
-                              value={item.precio || ''}
-                              onChange={(e) =>
-                                actualizarItem(
-                                  item.id,
-                                  'precio',
-                                  parseFloat(e.target.value) || 0
-                                )
-                              }
-                              placeholder="0.00"
-                              className={
-                                errores[`item-${index}-precio`]
-                                  ? 'border-red-500'
-                                  : 'border-gray-300'
-                              }
-                            />
-                            {errores[`item-${index}-precio`] && (
-                              <p className="mt-1 text-xs text-red-600">
-                                {errores[`item-${index}-precio`]}
-                              </p>
-                            )}
-                          </div>
-
-                          <div>
-                            <Label className="text-gray-700">Cantidad *</Label>
-                            <Input
-                              type="number"
-                              min="1"
-                              value={item.cantidad || ''}
-                              onChange={(e) =>
-                                actualizarItem(
-                                  item.id,
-                                  'cantidad',
-                                  parseInt(e.target.value) || 1
-                                )
-                              }
-                              className={
-                                errores[`item-${index}-cantidad`]
-                                  ? 'border-red-500'
-                                  : 'border-gray-300'
-                              }
-                            />
-                            {errores[`item-${index}-cantidad`] && (
-                              <p className="mt-1 text-xs text-red-600">
-                                {errores[`item-${index}-cantidad`]}
-                              </p>
-                            )}
-                          </div>
-
-                          <div>
-                            <Label className="text-gray-700">Subtotal</Label>
-                            <div className="flex h-10 items-center justify-between rounded-md border border-gray-300 bg-gray-50 px-3">
-                              <span className="text-sm font-medium text-gray-900">
-                                {formatCurrencyArs(item.subtotal)}
-                              </span>
-                              {isExchangeRateValid && item.subtotal > 0 && (
-                                <span className="text-xs text-gray-600">
-                                  {formatUSD(item.subtotal)}
-                                </span>
+                          <div className="grid grid-cols-1 gap-3 md:grid-cols-4">
+                            <div>
+                              <Label className="text-gray-700">Nombre *</Label>
+                              <Input
+                                value={item.nombre}
+                                onChange={(e) =>
+                                  actualizarItem(
+                                    item.id,
+                                    'nombre',
+                                    e.target.value
+                                  )
+                                }
+                                placeholder="Nombre del item"
+                                className={
+                                  errores[`item-${index}-nombre`]
+                                    ? 'border-red-500'
+                                    : 'border-gray-300'
+                                }
+                              />
+                              {errores[`item-${index}-nombre`] && (
+                                <p className="mt-1 text-xs text-red-600">
+                                  {errores[`item-${index}-nombre`]}
+                                </p>
                               )}
                             </div>
+
+                            <div>
+                              <Label className="text-gray-700">Precio *</Label>
+                              <Input
+                                type="number"
+                                min="0"
+                                step="0.01"
+                                value={item.precio || ''}
+                                onChange={(e) =>
+                                  actualizarItem(
+                                    item.id,
+                                    'precio',
+                                    parseFloat(e.target.value) || 0
+                                  )
+                                }
+                                placeholder="0.00"
+                                className={
+                                  errores[`item-${index}-precio`]
+                                    ? 'border-red-500'
+                                    : 'border-gray-300'
+                                }
+                              />
+                              {errores[`item-${index}-precio`] && (
+                                <p className="mt-1 text-xs text-red-600">
+                                  {errores[`item-${index}-precio`]}
+                                </p>
+                              )}
+                            </div>
+
+                            <div>
+                              <Label className="text-gray-700">
+                                Cantidad *
+                              </Label>
+                              <Input
+                                type="number"
+                                min="1"
+                                value={item.cantidad || ''}
+                                onChange={(e) =>
+                                  actualizarItem(
+                                    item.id,
+                                    'cantidad',
+                                    parseInt(e.target.value) || 1
+                                  )
+                                }
+                                className={
+                                  errores[`item-${index}-cantidad`]
+                                    ? 'border-red-500'
+                                    : 'border-gray-300'
+                                }
+                              />
+                              {errores[`item-${index}-cantidad`] && (
+                                <p className="mt-1 text-xs text-red-600">
+                                  {errores[`item-${index}-cantidad`]}
+                                </p>
+                              )}
+                            </div>
+
+                            <div>
+                              <Label className="text-gray-700">Subtotal</Label>
+                              <div className="flex h-10 items-center justify-between rounded-md border border-gray-300 bg-gray-50 px-3">
+                                <span className="text-sm font-medium text-gray-900">
+                                  {formatCurrencyArs(item.subtotal)}
+                                </span>
+                                {isExchangeRateValid && item.subtotal > 0 && (
+                                  <span className="text-xs text-gray-600">
+                                    {formatUSD(item.subtotal)}
+                                  </span>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+
+                          {/* Descuento por Item */}
+                          <div className="mt-4 border-t pt-4">
+                            <DiscountControls
+                              descuentoPorcentaje={item.descuentoPorcentaje}
+                              montoDescuento={item.descuento}
+                              precioBase={precioBase}
+                              onAplicarDescuento={(porcentaje) =>
+                                aplicarDescuentoItem(item.id, porcentaje)
+                              }
+                              onEliminarDescuento={() =>
+                                eliminarDescuentoItem(item.id)
+                              }
+                              label="Descuento individual"
+                              size="sm"
+                              maxDescuento={50}
+                            />
                           </div>
                         </div>
-                      </div>
-                    ))
+                      );
+                    })
                   )}
 
                   {errores.items && (
@@ -936,6 +1096,41 @@ export default function ModalTransaccionUnificado({
                   </CardHeader>
                   <CardContent className="space-y-4">
                     <div className="space-y-3">
+                      <div className="flex items-center justify-between rounded-lg bg-gray-50 p-3">
+                        <div className="text-sm text-gray-700">
+                          Subtotal base
+                        </div>
+                        <div className="text-right">
+                          <div className="text-lg font-semibold text-gray-900">
+                            {formatCurrencyArs(totales.subtotalBase)}
+                          </div>
+                          {isExchangeRateValid && totales.subtotalBase > 0 && (
+                            <div className="text-xs text-gray-600">
+                              {formatUSD(totales.subtotalBase)}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+
+                      {totales.totalDescuentos > 0 && (
+                        <div className="flex items-center justify-between rounded-lg bg-green-50 p-3">
+                          <div className="text-sm text-green-700">
+                            Descuentos
+                          </div>
+                          <div className="text-right">
+                            <div className="text-lg font-semibold text-green-700">
+                              -{formatCurrencyArs(totales.totalDescuentos)}
+                            </div>
+                            {isExchangeRateValid &&
+                              totales.totalDescuentos > 0 && (
+                                <div className="text-xs text-green-600">
+                                  -{formatUSD(totales.totalDescuentos)}
+                                </div>
+                              )}
+                          </div>
+                        </div>
+                      )}
+
                       <div className="flex items-center justify-between rounded-lg bg-gray-50 p-3">
                         <div className="text-sm text-gray-700">Subtotal</div>
                         <div className="text-right">

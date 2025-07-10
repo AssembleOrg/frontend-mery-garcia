@@ -43,7 +43,6 @@ export function useComandaForm() {
 
   // Estados para descuentos globales
   const [descuentoGlobalPorcentaje, setDescuentoGlobalPorcentaje] = useState(0);
-  const [aplicarDescuentoGlobal, setAplicarDescuentoGlobal] = useState(false);
 
   // Estados para selección de productos/servicios
   const [mostrarSelectorItems, setMostrarSelectorItems] = useState(false);
@@ -73,27 +72,16 @@ export function useComandaForm() {
     setItemsDisponibles(items);
   }, [busquedaItems, unidadNegocio, buscarProductosServicios]);
 
-  // Aplicar descuento global cuando se activa
-  useEffect(() => {
-    if (aplicarDescuentoGlobal && descuentoGlobalPorcentaje > 0) {
-      const itemsConDescuento = items.map((item) => {
-        const descuentoCalculado =
-          (item.precio * item.cantidad * descuentoGlobalPorcentaje) / 100;
-        return {
-          ...item,
-          descuentoPorcentaje: descuentoGlobalPorcentaje,
-          descuento: descuentoCalculado,
-          subtotal: item.precio * item.cantidad - descuentoCalculado,
-        };
-      });
-      setItems(itemsConDescuento);
-    }
-  }, [aplicarDescuentoGlobal, descuentoGlobalPorcentaje, items]);
-
   // Cálculos en PESOS (moneda base)
-  const subtotal = items.reduce((sum, item) => sum + item.subtotal, 0);
-  const totalDescuentos = items.reduce((sum, item) => sum + item.descuento, 0);
-  const totalSinSeña = subtotal - totalDescuentos;
+  const subtotal = items.reduce(
+    (sum, item) => sum + item.precio * item.cantidad,
+    0
+  );
+  const totalDescuentos = items.reduce(
+    (sum, item) => sum + (item.descuento || 0),
+    0
+  );
+  const subtotalConDescuentos = subtotal - totalDescuentos;
 
   // Seña siempre convertida a pesos
   const montoSeña = seña
@@ -102,16 +90,16 @@ export function useComandaForm() {
       : seña.monto
     : 0;
 
-  const saldoPendiente = totalSinSeña - montoSeña;
+  const saldoPendiente = subtotalConDescuentos - montoSeña;
 
-  // Calcular recargos por métodos de pago - CORREGIDO
+  // Calcular recargos por métodos de pago
   const totalRecargos = metodosPago.reduce(
     (sum, mp) => sum + (mp.monto * mp.recargoPorcentaje) / 100,
     0
   );
 
-  // CORRECCIÓN: El total final debe incluir el subtotal base más los recargos
-  const totalFinal = subtotal + totalRecargos - totalDescuentos - montoSeña;
+  // Total final correcto
+  const totalFinal = subtotalConDescuentos + totalRecargos - montoSeña;
 
   // Equivalentes en USD para mostrar
   const subtotalUSD = arsToUsd(subtotal);
@@ -150,15 +138,52 @@ export function useComandaForm() {
       campo === 'descuentoPorcentaje'
     ) {
       const item = nuevosItems[index];
+      const precioBase = item.precio * item.cantidad;
 
       // Asegurar que el porcentaje sea un número válido entre 0 y 100
-      const porcentaje = item.descuentoPorcentaje ?? 0;
-      const descuentoCalculado =
-        (item.precio * item.cantidad * porcentaje) / 100;
+      const porcentaje = Math.max(
+        0,
+        Math.min(100, item.descuentoPorcentaje ?? 0)
+      );
+      const descuentoCalculado = (precioBase * porcentaje) / 100;
 
+      item.descuentoPorcentaje = porcentaje;
       item.descuento = descuentoCalculado;
-      item.subtotal = item.precio * item.cantidad - descuentoCalculado;
+      item.subtotal = precioBase - descuentoCalculado;
     }
+
+    setItems(nuevosItems);
+  };
+
+  // Nueva función para aplicar descuento a un ítem específico
+  const aplicarDescuentoItem = (index: number, porcentaje: number) => {
+    const nuevosItems = [...items];
+    const item = nuevosItems[index];
+    const precioBase = item.precio * item.cantidad;
+    const descuentoCalculado = (precioBase * porcentaje) / 100;
+
+    nuevosItems[index] = {
+      ...item,
+      descuentoPorcentaje: porcentaje,
+      descuento: descuentoCalculado,
+      subtotal: precioBase - descuentoCalculado,
+    };
+
+    setItems(nuevosItems);
+  };
+
+  // Nueva función para eliminar descuento de un ítem específico
+  const eliminarDescuentoItem = (index: number) => {
+    const nuevosItems = [...items];
+    const item = nuevosItems[index];
+    const precioBase = item.precio * item.cantidad;
+
+    nuevosItems[index] = {
+      ...item,
+      descuentoPorcentaje: 0,
+      descuento: 0,
+      subtotal: precioBase,
+    };
 
     setItems(nuevosItems);
   };
@@ -228,27 +253,29 @@ export function useComandaForm() {
     setMetodosPago(metodosPago.filter((_, i) => i !== index));
   };
 
-  // Función para aplicar descuento a todos los items
+  // Función mejorada para aplicar descuento global
+  const aplicarDescuentoGlobal = (porcentaje: number) => {
+    if (porcentaje <= 0 || items.length === 0) return;
+
+    const itemsConDescuento = items.map((item) => {
+      const precioBase = item.precio * item.cantidad;
+      const descuentoCalculado = (precioBase * porcentaje) / 100;
+
+      return {
+        ...item,
+        descuentoPorcentaje: porcentaje,
+        descuento: descuentoCalculado,
+        subtotal: precioBase - descuentoCalculado,
+      };
+    });
+
+    setItems(itemsConDescuento);
+    setDescuentoGlobalPorcentaje(0); // Limpiar el input
+  };
+
+  // Función para aplicar descuento a todos los items (legacy)
   const aplicarDescuentoATodos = () => {
-    if (!descuentoGlobalPorcentaje || descuentoGlobalPorcentaje <= 0) return;
-
-    setItems((prevItems) =>
-      prevItems.map((item) => {
-        const descuentoCalculado =
-          (item.precio * item.cantidad * descuentoGlobalPorcentaje) / 100;
-        const nuevoSubtotal = item.precio * item.cantidad - descuentoCalculado;
-
-        return {
-          ...item,
-          descuentoPorcentaje: descuentoGlobalPorcentaje,
-          descuento: descuentoCalculado,
-          subtotal: nuevoSubtotal,
-        };
-      })
-    );
-
-    // Limpiar el valor del descuento global después de aplicar
-    setDescuentoGlobalPorcentaje(0);
+    aplicarDescuentoGlobal(descuentoGlobalPorcentaje);
   };
 
   const limpiarDescuentos = () => {
@@ -259,7 +286,6 @@ export function useComandaForm() {
       subtotal: item.precio * item.cantidad,
     }));
     setItems(itemsSinDescuento);
-    setAplicarDescuentoGlobal(false);
     setDescuentoGlobalPorcentaje(0);
   };
 
@@ -323,11 +349,11 @@ export function useComandaForm() {
       metodosPago,
       observaciones,
       estado: 'pendiente',
-      subtotal: subtotal, // Subtotal SIN recargos
+      subtotal: subtotal,
       totalDescuentos,
-      totalRecargos, // Recargos calculados correctamente
+      totalRecargos,
       totalSeña: montoSeña,
-      totalFinal: subtotal + totalRecargos - totalDescuentos - montoSeña, // Total CORRECTO
+      totalFinal: totalFinal,
       comisiones: calcularComisiones(),
       tipo: 'ingreso',
     };
@@ -343,7 +369,6 @@ export function useComandaForm() {
     setMetodosPago([]);
     setObservaciones('');
     setDescuentoGlobalPorcentaje(0);
-    setAplicarDescuentoGlobal(false);
   };
 
   const formatearMonto = (monto: number, mostrarUSD = false) => {
@@ -367,12 +392,11 @@ export function useComandaForm() {
     tipoCambio,
     configuracionRecargos,
     descuentoGlobalPorcentaje,
-    aplicarDescuentoGlobal,
 
     // Cálculos en PESOS
     subtotal,
     totalDescuentos,
-    totalSinSeña,
+    subtotalConDescuentos,
     montoSeña,
     saldoPendiente,
     totalRecargos,
@@ -391,18 +415,20 @@ export function useComandaForm() {
     setMostrarSelectorItems,
     setBusquedaItems,
     setDescuentoGlobalPorcentaje,
-    setAplicarDescuentoGlobal,
 
     // Acciones
     agregarItem,
     actualizarItem,
     eliminarItem,
+    aplicarDescuentoItem,
+    eliminarDescuentoItem,
     agregarSeña,
     eliminarSeña,
     actualizarSeña,
     agregarMetodoPago,
     actualizarMetodoPago,
     eliminarMetodoPago,
+    aplicarDescuentoGlobal,
     aplicarDescuentoATodos,
     limpiarDescuentos,
     validarFormulario,

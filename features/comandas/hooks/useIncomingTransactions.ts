@@ -9,7 +9,6 @@ import {
   exportComandasToPDF,
   exportComandasToExcel,
 } from '@/lib/exportUtils';
-import { Comanda, FiltrosComanda } from '@/types/caja';
 
 export function useIncomingTransactions(dateRange?: DateRange) {
   const { comandas } = useComandas();
