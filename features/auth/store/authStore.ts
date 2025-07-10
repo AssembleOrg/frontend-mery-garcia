@@ -2,6 +2,7 @@ import { create } from 'zustand';
 import { authService, UserProfile } from '@/services/auth.service';
 import { components } from '@/types/backend';
 import { toast } from 'sonner';
+import { UnidadNegocio } from '@/types/caja';
 
 // ✅ Tipos extraídos de components.schemas
 type LoginDto = components['schemas']['LoginDto'];
@@ -44,9 +45,13 @@ export const useAuthStore = create<AuthState & AuthActions>((set, get) => ({
       set({
         user: {
           ...response.data.user,
+          unidadesDisponibles: response.data.user
+            .unidadesDisponibles as UnidadNegocio[],
+          comisionPorcentaje:
+            parseFloat(response.data.user.comisionPorcentaje) || 0,
           fechaIngreso:
             response.data.user.fechaIngreso || new Date().toISOString(),
-          activo: true, // ✅ Agregar propiedad activo requerida
+          activo: true,
         },
         token: response.data.access_token,
         isAuthenticated: true,
@@ -77,8 +82,12 @@ export const useAuthStore = create<AuthState & AuthActions>((set, get) => ({
       set({
         user: {
           ...response.data.user,
+          unidadesDisponibles: response.data.user
+            .unidadesDisponibles as UnidadNegocio[],
+          comisionPorcentaje:
+            parseFloat(response.data.user.comisionPorcentaje) || 0,
           fechaIngreso: userData.fechaIngreso || new Date().toISOString(),
-          activo: true, // ✅ Agregar propiedad activo requerida
+          activo: true,
         },
         token: response.data.access_token,
         isAuthenticated: true,
@@ -99,27 +108,37 @@ export const useAuthStore = create<AuthState & AuthActions>((set, get) => ({
     }
   },
 
-  logout: () => {
-    authService.logout();
-    set({
-      user: null,
-      token: null,
-      isAuthenticated: false,
-      error: null,
-    });
-    toast.info('Sesión cerrada correctamente');
-  },
-
   getProfile: async () => {
-    set({ isLoading: true });
+    set({ isLoading: true, error: null });
     try {
       const profile = await authService.getProfile();
       localStorage.setItem('user', JSON.stringify(profile));
       set({ user: profile, isLoading: false });
     } catch (error) {
       console.error('Error obteniendo perfil:', error);
-      get().logout();
+      // ✅ Limpiar estado correctamente y quitar loading
+      authService.logout();
+      set({
+        user: null,
+        token: null,
+        isAuthenticated: false,
+        isLoading: false,
+        error: 'Sesión expirada. Por favor, inicia sesión nuevamente.',
+      });
+      toast.error('Sesión expirada. Por favor, inicia sesión nuevamente.');
     }
+  },
+
+  logout: () => {
+    authService.logout();
+    set({
+      user: null,
+      token: null,
+      isAuthenticated: false,
+      isLoading: false,
+      error: null,
+    });
+    toast.info('Sesión cerrada correctamente');
   },
 
   initializeAuth: () => {
@@ -128,29 +147,55 @@ export const useAuthStore = create<AuthState & AuthActions>((set, get) => ({
       const user = authService.getStoredUser();
 
       if (token && user) {
+        try {
+          const payload = JSON.parse(atob(token.split('.')[1]));
+          const now = Date.now() / 1000;
+
+          if (payload.exp && payload.exp < now) {
+            // Token expirado, limpiar
+            authService.logout();
+            set({
+              user: null,
+              token: null,
+              isAuthenticated: false,
+              isLoading: false,
+            });
+            return;
+          }
+        } catch {
+          // Token malformado, limpiar
+          authService.logout();
+          set({
+            user: null,
+            token: null,
+            isAuthenticated: false,
+            isLoading: false,
+          });
+          return;
+        }
+
         set({
           token,
           user,
           isAuthenticated: true,
         });
-        // Verificar que el token siga siendo válido
         get().getProfile();
       } else {
-        // Si no hay datos válidos, asegurar estado limpio
         set({
           user: null,
           token: null,
           isAuthenticated: false,
+          isLoading: false,
         });
       }
     } catch (error) {
       console.error('Error inicializando autenticación:', error);
-      // Limpiar todo si hay error
       authService.logout();
       set({
         user: null,
         token: null,
         isAuthenticated: false,
+        isLoading: false, // ✅ Crítico
         error: 'Error al cargar datos de sesión',
       });
     }

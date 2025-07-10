@@ -25,9 +25,14 @@ import {
   Download,
   FileText,
   Printer,
-  Columns,
-  X,
   ChevronDown,
+  Package,
+  Banknote,
+  CreditCard,
+  Smartphone,
+  DollarSign,
+  X,
+  Columns,
 } from 'lucide-react';
 import { FiltrosEncomienda, ColumnaCaja, Personal } from '@/types/caja';
 import { useDatosReferencia } from '@/features/comandas/store/comandaStore';
@@ -40,9 +45,7 @@ interface TableFiltersProps {
   columns: ColumnaCaja[];
   onColumnsChange: (columns: ColumnaCaja[]) => void;
   accentColor?: string;
-  // Export functions
   exportToPDF?: () => void;
-  exportToExcel?: () => void;
   exportToCSV?: () => void;
 }
 
@@ -53,7 +56,6 @@ export default function TableFilters({
   onColumnsChange,
   accentColor = '#f9bbc4',
   exportToPDF,
-  exportToExcel,
   exportToCSV,
 }: TableFiltersProps) {
   const [showAdvancedFilters, setShowAdvancedFilters] = useState(false);
@@ -233,13 +235,7 @@ export default function TableFilters({
                 <FileText className="mr-2 h-4 w-4" />
                 Exportar PDF
               </DropdownMenuItem>
-              <DropdownMenuItem
-                onClick={exportToExcel}
-                disabled={!exportToExcel}
-              >
-                <FileText className="mr-2 h-4 w-4" />
-                Exportar Excel
-              </DropdownMenuItem>
+
               <DropdownMenuItem onClick={exportToCSV} disabled={!exportToCSV}>
                 <FileText className="mr-2 h-4 w-4" />
                 Exportar CSV
@@ -308,11 +304,36 @@ export default function TableFilters({
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="todos">Todos los Métodos</SelectItem>
-                  <SelectItem value="efectivo">Efectivo</SelectItem>
-                  <SelectItem value="tarjeta">Tarjeta</SelectItem>
-                  <SelectItem value="transferencia">Transferencia</SelectItem>
-                  <SelectItem value="mixto">Mixto</SelectItem>
+                  <SelectItem value="todos">
+                    <div className="flex items-center gap-2">
+                      <Package className="h-4 w-4" />
+                      Todos los Métodos
+                    </div>
+                  </SelectItem>
+                  <SelectItem value="efectivo">
+                    <div className="flex items-center gap-2">
+                      <Banknote className="h-4 w-4 text-green-600" />
+                      <span className="font-medium">Efectivo</span>
+                    </div>
+                  </SelectItem>
+                  <SelectItem value="tarjeta">
+                    <div className="flex items-center gap-2">
+                      <CreditCard className="h-4 w-4 text-blue-600" />
+                      <span className="font-medium">Tarjeta</span>
+                    </div>
+                  </SelectItem>
+                  <SelectItem value="transferencia">
+                    <div className="flex items-center gap-2">
+                      <Smartphone className="h-4 w-4 text-purple-600" />
+                      <span className="font-medium">Transferencia</span>
+                    </div>
+                  </SelectItem>
+                  <SelectItem value="mixto">
+                    <div className="flex items-center gap-2">
+                      <DollarSign className="h-4 w-4 text-orange-600" />
+                      <span className="font-medium">Mixto</span>
+                    </div>
+                  </SelectItem>
                 </SelectContent>
               </Select>
             </div>

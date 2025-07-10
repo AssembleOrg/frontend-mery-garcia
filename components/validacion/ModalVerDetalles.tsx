@@ -348,7 +348,7 @@ export default function ModalVerDetalles({
                 <CardContent>
                   <div className="space-y-2">
                     <div className="flex justify-between">
-                      <span>Subtotal:</span>
+                      <span>Subtotal (sin recargos):</span>
                       <span>{formatAmount(comanda.subtotal)}</span>
                     </div>
                     <div className="flex justify-between text-red-600">
@@ -369,6 +369,13 @@ export default function ModalVerDetalles({
                     <div className="flex justify-between text-lg font-bold">
                       <span>Total Final:</span>
                       <span>{formatAmount(comanda.totalFinal)}</span>
+                    </div>
+                    <div className="mt-2 text-xs text-gray-500">
+                      Cálculo: {formatAmount(comanda.subtotal)} +{' '}
+                      {formatAmount(comanda.totalRecargos)} -{' '}
+                      {formatAmount(comanda.totalDescuentos)} -{' '}
+                      {formatAmount(comanda.totalSeña || 0)} ={' '}
+                      {formatAmount(comanda.totalFinal)}
                     </div>
                   </div>
                 </CardContent>

@@ -1,6 +1,5 @@
 'use client';
 
-import { useAuth } from '@/features/auth/hooks/useAuth';
 import MainLayout from '@/components/layout/MainLayout';
 import StandardPageBanner from '@/components/common/StandardPageBanner';
 import StandardBreadcrumbs from '@/components/common/StandardBreadcrumbs';
@@ -8,7 +7,7 @@ import AdminOnly from '@/components/auth/AdminOnly';
 import SummaryCard from '@/components/common/SummaryCard';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import ClientOnly from '@/components/common/ClientOnly';
-
+import ManagerOrAdminOnly from '@/components/auth/ManagerOrAdminOnly';
 import { useComandaStore } from '@/features/comandas/store/comandaStore';
 import { useRecordsStore } from '@/features/records/store/recordsStore';
 
@@ -19,16 +18,6 @@ const breadcrumbItems = [
 ];
 
 export default function CajaGrandePage() {
-  const { user, isAdmin, isAuthenticated } = useAuth();
-
-  //DEBUG
-  console.log('🔍 DEBUG Caja Grande:');
-  console.log('- isAuthenticated:', isAuthenticated);
-  console.log('- user:', user);
-  console.log('- user.rol:', user?.rol);
-  console.log('- isAdmin:', isAdmin);
-  console.log('- localStorage user:', localStorage.getItem('user'));
-
   const { comandas } = useComandaStore();
   const { traspasos } = useRecordsStore();
 
@@ -52,60 +41,64 @@ export default function CajaGrandePage() {
   resumenCaja.saldoNeto = resumenCaja.totalIngresos - resumenCaja.totalEgresos;
 
   return (
-    <MainLayout>
-      <AdminOnly>
-        <div className="space-y-6">
-          <StandardPageBanner title="Caja Grande" />
-          <StandardBreadcrumbs items={breadcrumbItems} />
+    <ManagerOrAdminOnly excludeCaja2={true}>
+      <MainLayout>
+        <AdminOnly>
+          <div className="min-h-screen bg-gradient-to-br from-[#f9bbc4]/10 via-[#e8b4c6]/8 to-[#d4a7ca]/6">
+            <StandardPageBanner title="Caja Grande" />
+            <div className="relative -mt-12 h-12 bg-gradient-to-b from-transparent to-[#f9bbc4]/8" />
+            <StandardBreadcrumbs items={breadcrumbItems} />
 
-          <ClientOnly>
-            <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
-              <SummaryCard
-                title="Balance Actual"
-                value={resumenCaja.saldoNeto}
-                format="currency"
-                valueClassName="text-[#4a3540]"
-              />
+            <ClientOnly>
+              <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
+                <div className="space-y-6">
+                  <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
+                    <SummaryCard
+                      title="Balance Actual"
+                      value={resumenCaja.saldoNeto}
+                      format="currency"
+                      valueClassName="text-[#4a3540]"
+                    />
+                    <SummaryCard
+                      title="Ingresos del Día"
+                      value={resumenCaja.totalIngresos}
+                      format="currency"
+                      valueClassName="text-green-700"
+                    />
+                    <SummaryCard
+                      title="Egresos del Día"
+                      value={resumenCaja.totalEgresos}
+                      format="currency"
+                      valueClassName="text-red-700"
+                    />
+                  </div>
 
-              <SummaryCard
-                title="Ingresos del Día"
-                value={resumenCaja.totalIngresos}
-                format="currency"
-                valueClassName="text-green-700"
-              />
-
-              <SummaryCard
-                title="Egresos del Día"
-                value={resumenCaja.totalEgresos}
-                format="currency"
-                valueClassName="text-red-700"
-              />
-            </div>
-
-            <Card>
-              <CardHeader>
-                <CardTitle>Gestión de Caja Grande</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-4">
-                  <p className="text-gray-600">
-                    Comandas validadas: {resumenCaja.totalComandas}
-                  </p>
-                  {resumenCaja.ultimoTraspaso && (
-                    <p className="text-sm text-gray-500">
-                      Último traspaso:{' '}
-                      {new Date(
-                        resumenCaja.ultimoTraspaso
-                      ).toLocaleDateString()}
-                    </p>
-                  )}
-                  {/* Aquí irán las funcionalidades específicas de Caja Grande */}
+                  <Card className="border border-[#f9bbc4]/30 bg-white/90">
+                    <CardHeader>
+                      <CardTitle>Gestión de Caja Grande</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="space-y-4">
+                        <p className="text-gray-600">
+                          Comandas validadas: {resumenCaja.totalComandas}
+                        </p>
+                        {resumenCaja.ultimoTraspaso && (
+                          <p className="text-sm text-gray-500">
+                            Último traspaso:{' '}
+                            {new Date(
+                              resumenCaja.ultimoTraspaso
+                            ).toLocaleDateString()}
+                          </p>
+                        )}
+                      </div>
+                    </CardContent>
+                  </Card>
                 </div>
-              </CardContent>
-            </Card>
-          </ClientOnly>
-        </div>
-      </AdminOnly>
-    </MainLayout>
+              </div>
+            </ClientOnly>
+          </div>
+        </AdminOnly>
+      </MainLayout>
+    </ManagerOrAdminOnly>
   );
 }

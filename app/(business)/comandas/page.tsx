@@ -4,6 +4,7 @@ import { useState, useMemo } from 'react';
 import MainLayout from '@/components/layout/MainLayout';
 import StandardPageBanner from '@/components/common/StandardPageBanner';
 import StandardBreadcrumbs from '@/components/common/StandardBreadcrumbs';
+import ManagerOrAdminOnly from '@/components/auth/ManagerOrAdminOnly';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -248,15 +249,17 @@ export default function ComandasPage() {
 
   if (!isInitialized) {
     return (
-      <MainLayout>
-        <div className="min-h-screen bg-gradient-to-br from-[#f9bbc4]/10 via-[#e8b4c6]/8 to-[#d4a7ca]/6">
-          <StandardPageBanner title="Validación de Comandas" />
-          <div className="flex items-center justify-center py-12">
-            <Spinner />
-            <p className="ml-2 text-[#6b4c57]">Cargando comandas...</p>
+      <ManagerOrAdminOnly>
+        <MainLayout>
+          <div className="min-h-screen bg-gradient-to-br from-[#f9bbc4]/15 via-[#e8b4c6]/12 to-[#d4a7ca]/10">
+            <StandardPageBanner title="Validación de Comandas" />
+            <div className="flex items-center justify-center py-12">
+              <Spinner />
+              <p className="ml-2 text-[#6b4c57]">Cargando comandas...</p>
+            </div>
           </div>
-        </div>
-      </MainLayout>
+        </MainLayout>
+      </ManagerOrAdminOnly>
     );
   }
 

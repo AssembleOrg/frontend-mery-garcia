@@ -1,4 +1,5 @@
-import { Encomienda } from '@/types/caja';
+import React from 'react';
+import { Comanda } from '@/types/caja';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -19,7 +20,7 @@ import { ESTADO_LABELS, ESTADO_COLORS } from '@/lib/constants';
 import { ColumnDef, createColumnHelper } from '@tanstack/react-table';
 
 interface Props {
-  data: Encomienda[];
+  data: Comanda[];
   onEdit: (id: string) => void;
   onDelete: (id: string) => void;
   onView: (id: string) => void;
@@ -35,7 +36,7 @@ export default function TransactionsTableTanStack({
   onChangeStatus,
   hiddenColumns = [],
 }: Props) {
-  const c = createColumnHelper<Encomienda>();
+  const c = createColumnHelper<Comanda>();
 
   const columnsRaw = [
     c.accessor('fecha', {
@@ -45,23 +46,23 @@ export default function TransactionsTableTanStack({
     c.accessor('numero', {
       header: 'Número',
     }),
-    c.accessor('cliente', {
+    c.accessor('cliente.nombre', {
       header: 'Cliente',
+      cell: (info) => info.getValue(),
     }),
-    c.accessor('vendedor', {
+    c.accessor('mainStaff.nombre', {
       header: 'Vendedor',
       cell: (info) => info.getValue(),
     }),
-    c.accessor('servicios', {
+    c.accessor('items', {
       id: 'servicios',
       header: 'Servicios',
       cell: (info) => {
-        const row = info.row;
         const count = info.getValue().length;
         return (
           <button
             className="cursor-pointer text-[#4a3540] underline decoration-dotted hover:decoration-solid"
-            onClick={() => onView(row.original.id)}
+            onClick={() => onView(info.row.original.id)}
           >
             {count} {count === 1 ? 'item' : 'items'}
           </button>
@@ -82,7 +83,7 @@ export default function TransactionsTableTanStack({
         </div>
       ),
     }),
-    c.accessor('total', {
+    c.accessor('totalFinal', {
       header: 'Total',
       cell: (info) => (
         <div className="text-right font-semibold text-[#4a3540]">
@@ -90,17 +91,18 @@ export default function TransactionsTableTanStack({
         </div>
       ),
     }),
-    c.accessor('metodoPago', {
+    c.accessor('metodosPago', {
       header: 'Método',
       cell: (info) => {
-        const row = info.row.original;
-        // Resolver método principal (fix bug tarjeta → mixto)
+        const metodosPago = info.getValue();
+
+        // Resolver método principal
         const metodoPrincipal =
-          row.metodosPago && row.metodosPago.length > 0
+          metodosPago && metodosPago.length > 0
             ? resolverMetodoPagoPrincipal(
-                row.metodosPago.map((m) => ({ tipo: m.tipo, monto: m.monto }))
+                metodosPago.map((m) => ({ tipo: m.tipo, monto: m.monto }))
               )
-            : (info.getValue() as string);
+            : 'efectivo';
 
         const style = (method: string): string => {
           switch (method.toLowerCase()) {
@@ -118,8 +120,8 @@ export default function TransactionsTableTanStack({
         };
 
         const detalleTooltip =
-          row.metodosPago && row.metodosPago.length > 0
-            ? formatearDetalleMetodosPago(row.metodosPago)
+          metodosPago && metodosPago.length > 0
+            ? formatearDetalleMetodosPago(metodosPago)
             : metodoPrincipal;
 
         return (
@@ -187,10 +189,10 @@ export default function TransactionsTableTanStack({
       },
       enableSorting: false,
     }),
-  ] as ColumnDef<Encomienda, unknown>[];
+  ] as ColumnDef<Comanda, unknown>[];
 
   return (
-    <DataTable<Encomienda>
+    <DataTable<Comanda>
       data={data}
       columns={columnsRaw}
       hiddenColumns={hiddenColumns}

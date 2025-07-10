@@ -6,11 +6,8 @@ import { useRouter, usePathname } from 'next/navigation';
 interface AuthProviderProps {
   children: ReactNode;
 }
+const PUBLIC_ROUTES = ['/'];
 
-// Rutas que no requieren autenticación
-const PUBLIC_ROUTES = ['/login', '/'];
-
-// Componente de loading separado para mejor composición
 const LoadingSpinner = () => (
   <div className="flex min-h-screen items-center justify-center">
     <div className="text-center">
@@ -25,31 +22,34 @@ export function AuthProvider({ children }: AuthProviderProps) {
   const router = useRouter();
   const pathname = usePathname();
 
-  // ✅ Inicialización explícita una sola vez
   useEffect(() => {
     initializeAuth();
   }, [initializeAuth]);
 
-  // ✅ Lógica de redirección explícita y clara
   useEffect(() => {
     if (isLoading) return;
 
     const isPublicRoute = PUBLIC_ROUTES.includes(pathname);
 
-    // Redirección para usuarios no autenticados
+    // Redirección para usuarios no autenticados en rutas protegidas
     if (!isAuthenticated && !isPublicRoute) {
-      router.push('/login');
+      router.push('/');
       return;
     }
 
-    // Redirección para usuarios autenticados en login
-    if (isAuthenticated && pathname === '/login') {
+    // Redirección para usuarios autenticados desde la página de login
+    if (isAuthenticated && pathname === '/') {
       router.push('/dashboard');
     }
   }, [isAuthenticated, isLoading, pathname, router]);
 
-  // ✅ Componente separado para mejor legibilidad
+  // ✅ Mostrar loading mientras se procesa la autenticación
   if (isLoading) {
+    return <LoadingSpinner />;
+  }
+
+  // ✅ Para usuarios autenticados en la ruta raíz, mostrar loading hasta redirección
+  if (isAuthenticated && pathname === '/') {
     return <LoadingSpinner />;
   }
 

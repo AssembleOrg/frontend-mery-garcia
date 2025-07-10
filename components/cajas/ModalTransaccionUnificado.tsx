@@ -231,13 +231,17 @@ export default function ModalTransaccionUnificado({
     // Calcular recargo automáticamente solo si no se está editando manualmente
     if (campo === 'tipo' || campo === 'monto') {
       const metodo = nuevosMetodos[index];
-      const configuracion = configuracionRecargos.find(
+      const configRecargo = configuracionRecargos.find(
         (c) => c.metodoPago === metodo.tipo && c.activo
       );
 
-      metodo.recargoPorcentaje = configuracion?.porcentaje || 0;
-      metodo.montoFinal =
-        metodo.monto + (metodo.monto * metodo.recargoPorcentaje) / 100;
+      if (configRecargo && metodo.tipo !== 'efectivo') {
+        metodo.recargoPorcentaje = configRecargo.porcentaje;
+        metodo.montoFinal = metodo.monto * (1 + configRecargo.porcentaje / 100);
+      } else {
+        metodo.recargoPorcentaje = 0;
+        metodo.montoFinal = metodo.monto;
+      }
     }
 
     // Recalcular monto final si se edita el recargo manualmente
@@ -250,22 +254,25 @@ export default function ModalTransaccionUnificado({
     setMetodosPago(nuevosMetodos);
   };
 
-  // Calculate totals
   const calcularTotales = () => {
     const subtotal = items.reduce((sum, item) => sum + item.subtotal, 0);
-    const totalPagos = metodosPago.reduce((sum, m) => sum + m.montoFinal, 0); // Usar montoFinal que incluye recargos
+
     const totalRecargos = metodosPago.reduce(
       (sum, m) => sum + (m.monto * m.recargoPorcentaje) / 100,
       0
     );
-    const totalEsperado = subtotal + totalRecargos; // Total que esperamos recibir
-    const diferencia = totalEsperado - totalPagos;
+    const totalConRecargos = metodosPago.reduce(
+      (sum, m) => sum + m.montoFinal,
+      0
+    );
+
+    const diferencia = totalConRecargos - (subtotal + totalRecargos);
 
     return {
       subtotal,
       totalRecargos,
-      totalFinal: totalEsperado, // El total real esperado (servicios + recargos)
-      totalPagos,
+      totalFinal: subtotal + totalRecargos,
+      totalPagos: totalConRecargos,
       diferencia,
     };
   };
@@ -302,8 +309,12 @@ export default function ModalTransaccionUnificado({
     });
 
     const totales = calcularTotales();
+    // Verificar que el total de pagos (con recargos) coincida con el subtotal
     if (Math.abs(totales.diferencia) > 0.01) {
-      nuevosErrores.pagos = 'Los métodos de pago no coinciden con el total';
+      nuevosErrores.pagos =
+        totales.diferencia > 0
+          ? `Se está pagando $${totales.diferencia.toFixed(2)} de más`
+          : `Faltan $${Math.abs(totales.diferencia).toFixed(2)} por pagar`;
     }
 
     setErrores(nuevosErrores);

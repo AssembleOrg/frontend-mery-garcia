@@ -953,6 +953,9 @@ export const useComandaStore = create<ComandaState>()(
           comandas: state.comandas,
           tipoCambio: state.tipoCambio,
           configuracionRecargos: state.configuracionRecargos,
+          personal: state.personal,
+          personalSimple: state.personalSimple,
+          productosServicios: state.productosServicios,
         }),
       }
     ),
@@ -1039,6 +1042,7 @@ export const useValidacionComandas = () => {
     obtenerPermisosComanda: store.obtenerPermisosComanda,
 
     // Utilidades
-    limpiarError: () => store.reiniciar(), // Temporal, en producción sería más específico
+    limpiarError: () =>
+      useComandaStore.setState({ error: null, cargando: false }),
   };
 };

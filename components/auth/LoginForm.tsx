@@ -7,11 +7,9 @@ import { motion } from 'framer-motion';
 import { useAuth } from '@/features/auth/hooks/useAuth';
 import { useFormValidation } from '@/hooks/useFormValidation';
 import { useState } from 'react';
-import { useRouter } from 'next/navigation';
 
 export default function LoginForm() {
   const { login, isLoading, error, clearError } = useAuth();
-  const router = useRouter();
   const [formData, setFormData] = useState({ email: '', password: '' });
 
   const { errors, validateField, validateForm } = useFormValidation({
@@ -33,10 +31,7 @@ export default function LoginForm() {
 
     if (!validateForm(formData)) return;
 
-    const success = await login(formData);
-    if (success) {
-      router.push('/dashboard');
-    }
+    await login(formData);
   };
 
   const handleInputChange = (field: string, value: string) => {
@@ -49,7 +44,7 @@ export default function LoginForm() {
       initial={{ opacity: 0, y: 20, scale: 0.9 }}
       animate={{ opacity: 1, y: 0, scale: 1 }}
       transition={{ duration: 0.6, ease: 'easeOut' }}
-      className="relative w-full max-w-md space-y-8 rounded-2xl border-2 border-[#f9bbc4]/40 bg-white/95 p-10 shadow-2xl backdrop-blur-md dark:border-[#f9bbc4]/50 dark:bg-gray-900/95"
+      className="relative w-full max-w-md space-y-6 rounded-2xl border-2 border-[#f9bbc4]/40 bg-white/95 p-8 shadow-2xl backdrop-blur-md dark:border-[#f9bbc4]/50 dark:bg-gray-900/95"
       style={{
         background:
           'linear-gradient(135deg, rgba(249, 187, 196, 0.12) 0%, rgba(255, 255, 255, 0.98) 15%, rgba(255, 255, 255, 0.98) 85%, rgba(249, 187, 196, 0.12) 100%)',

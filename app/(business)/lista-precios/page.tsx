@@ -54,6 +54,7 @@ import {
 import { UnidadNegocio, ProductoServicio } from '@/types/caja';
 import { useDatosReferencia } from '@/features/comandas/store/comandaStore';
 import { useCurrencyConverter } from '@/hooks/useCurrencyConverter';
+import ManagerOrAdminOnly from '@/components/auth/ManagerOrAdminOnly';
 import ModalProductoServicio from '@/components/lista-precios/ModalProductoServicio';
 
 const breadcrumbItems = [
@@ -191,286 +192,293 @@ export default function ListaPreciosPage() {
   };
 
   return (
-    <MainLayout>
-      <div className="min-h-screen bg-gradient-to-br from-[#f9bbc4]/15 via-[#e8b4c6]/12 to-[#d4a7ca]/10">
-        <StandardPageBanner title="Lista de Precios" />
+    <ManagerOrAdminOnly>
+      <MainLayout>
+        <div className="min-h-screen bg-gradient-to-br from-[#f9bbc4]/15 via-[#e8b4c6]/12 to-[#d4a7ca]/10">
+          <StandardPageBanner title="Lista de Precios" />
 
-        <div className="relative -mt-12 h-12 bg-gradient-to-b from-transparent to-[#f9bbc4]/8" />
+          <div className="relative -mt-12 h-12 bg-gradient-to-b from-transparent to-[#f9bbc4]/8" />
 
-        <StandardBreadcrumbs items={breadcrumbItems} />
+          <StandardBreadcrumbs items={breadcrumbItems} />
 
-        <div className="bg-gradient-to-b from-[#f9bbc4]/8 via-[#e8b4c6]/6 to-[#d4a7ca]/8">
-          <div className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
-            {/* Header simplificado */}
-            <div className="mb-4 text-center">
-              <h1 className="mb-2 text-2xl font-bold text-[#4a3540]">
-                Lista de Precios
-              </h1>
-              <p className="text-[#6b4c57]">
-                Gestiona tu catálogo de productos y servicios
-              </p>
-            </div>
+          <div className="bg-gradient-to-b from-[#f9bbc4]/8 via-[#e8b4c6]/6 to-[#d4a7ca]/8">
+            <div className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
+              {/* Header simplificado */}
+              <div className="mb-4 text-center">
+                <h1 className="mb-2 text-2xl font-bold text-[#4a3540]">
+                  Lista de Precios
+                </h1>
+                <p className="text-[#6b4c57]">
+                  Gestiona tu catálogo de productos y servicios
+                </p>
+              </div>
 
-            {/* Filtros y acciones */}
-            <Card className="mb-4 border-2 border-[#f9bbc4]/20 bg-gradient-to-br from-white/95 to-[#f9bbc4]/5">
-              <CardHeader>
-                <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-                  <CardTitle className="flex items-center gap-2">
-                    <Filter className="h-5 w-5" />
-                    Filtros y Búsqueda
-                  </CardTitle>
-                  <Button
-                    onClick={handleNuevoProducto}
-                    className="bg-[#f9bbc4] text-white hover:bg-[#e292a3]"
-                  >
-                    <Plus className="mr-2 h-4 w-4" />
-                    Nuevo Producto/Servicio
-                  </Button>
-                </div>
-              </CardHeader>
-              <CardContent>
-                <div className="grid grid-cols-1 gap-4 md:grid-cols-5">
-                  {/* Búsqueda */}
-                  <div className="relative md:col-span-2">
-                    <Search className="absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-gray-400" />
-                    <Input
-                      placeholder="Buscar por nombre o descripción..."
-                      value={busqueda}
-                      onChange={(e) => setBusqueda(e.target.value)}
-                      className="pl-10"
-                    />
-                  </div>
-
-                  {/* Unidad de Negocio */}
-                  <Select
-                    value={unidadSeleccionada}
-                    onValueChange={(value) =>
-                      setUnidadSeleccionada(value as UnidadNegocio | 'todas')
-                    }
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Unidad de negocio" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {unidadesNegocio.map((unidad) => (
-                        <SelectItem key={unidad.value} value={unidad.value}>
-                          <div className="flex items-center gap-2">
-                            {unidad.icon}
-                            {unidad.label}
-                          </div>
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-
-                  {/* Tipo */}
-                  <Select
-                    value={tipoSeleccionado}
-                    onValueChange={(value) =>
-                      setTipoSeleccionado(
-                        value as 'todos' | 'producto' | 'servicio'
-                      )
-                    }
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Tipo" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {tiposProducto.map((tipo) => (
-                        <SelectItem key={tipo.value} value={tipo.value}>
-                          {tipo.label}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-
-                  {/* Acciones */}
-                  <div className="flex gap-2">
+              {/* Filtros y acciones */}
+              <Card className="mb-4 border-2 border-[#f9bbc4]/20 bg-gradient-to-br from-white/95 to-[#f9bbc4]/5">
+                <CardHeader>
+                  <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+                    <CardTitle className="flex items-center gap-2">
+                      <Filter className="h-5 w-5" />
+                      Filtros y Búsqueda
+                    </CardTitle>
                     <Button
-                      variant="outline"
-                      onClick={limpiarFiltros}
-                      className="flex-1"
+                      onClick={handleNuevoProducto}
+                      className="bg-[#f9bbc4] text-white hover:bg-[#e292a3]"
                     >
-                      Limpiar
+                      <Plus className="mr-2 h-4 w-4" />
+                      Nuevo Producto/Servicio
                     </Button>
                   </div>
-                </div>
-              </CardContent>
-            </Card>
+                </CardHeader>
+                <CardContent>
+                  <div className="grid grid-cols-1 gap-4 md:grid-cols-5">
+                    {/* Búsqueda */}
+                    <div className="relative md:col-span-2">
+                      <Search className="absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-gray-400" />
+                      <Input
+                        placeholder="Buscar por nombre o descripción..."
+                        value={busqueda}
+                        onChange={(e) => setBusqueda(e.target.value)}
+                        className="pl-10"
+                      />
+                    </div>
 
-            {/* Tabla de productos/servicios */}
-            <Card className="border-2 border-[#f9bbc4]/20 bg-gradient-to-br from-white/95 to-[#f9bbc4]/5">
-              <CardHeader className="pb-4">
-                <CardTitle className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <Package className="h-5 w-5" />
-                    Catálogo
-                  </div>
-                  <Badge variant="secondary">
-                    {productosFiltrados.length} elementos
-                  </Badge>
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="overflow-x-auto">
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>Nombre</TableHead>
-                        <TableHead>Tipo</TableHead>
-                        <TableHead>Unidad</TableHead>
-                        <TableHead>Precio</TableHead>
-                        <TableHead>Detalles</TableHead>
-                        <TableHead className="text-right">Acciones</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {productosFiltrados.map((item) => {
-                        const precios = formatAmount(item.precio);
-                        return (
-                          <TableRow
-                            key={item.id}
-                            className="hover:bg-[#f9bbc4]/5"
-                          >
-                            <TableCell>
-                              <div>
-                                <div className="font-medium">{item.nombre}</div>
-                                {item.descripcion && (
-                                  <div className="text-sm text-gray-500">
-                                    {item.descripcion}
-                                  </div>
-                                )}
-                              </div>
-                            </TableCell>
-                            <TableCell>
-                              <Badge
-                                variant={
-                                  item.tipo === 'servicio'
-                                    ? 'default'
-                                    : 'secondary'
-                                }
-                                className="capitalize"
-                              >
-                                {item.tipo}
-                              </Badge>
-                            </TableCell>
-                            <TableCell>
-                              <Badge
-                                className={`capitalize ${obtenerColorUnidad(item.businessUnit)}`}
-                              >
-                                <div className="flex items-center gap-1">
-                                  {obtenerIconoUnidad(item.businessUnit)}
-                                  {item.businessUnit}
-                                </div>
-                              </Badge>
-                            </TableCell>
-                            <TableCell>
-                              <div className="font-mono">
-                                <div className="font-semibold text-green-600">
-                                  {precios.ars}
-                                </div>
-                                <div className="text-sm text-gray-500">
-                                  {precios.usd}
-                                </div>
-                              </div>
-                            </TableCell>
-                            <TableCell>
-                              {item.tipo === 'servicio' && item.duracion && (
-                                <div className="flex items-center gap-1 text-sm text-gray-500">
-                                  <Clock className="h-3 w-3" />
-                                  {item.duracion} min
-                                </div>
-                              )}
-                            </TableCell>
-                            <TableCell className="text-right">
-                              <DropdownMenu>
-                                <DropdownMenuTrigger asChild>
-                                  <Button
-                                    variant="ghost"
-                                    className="h-8 w-8 p-0"
-                                  >
-                                    <MoreHorizontal className="h-4 w-4" />
-                                  </Button>
-                                </DropdownMenuTrigger>
-                                <DropdownMenuContent align="end">
-                                  <DropdownMenuItem
-                                    onClick={() => handleEditarProducto(item)}
-                                  >
-                                    <Edit className="mr-2 h-4 w-4" />
-                                    Editar
-                                  </DropdownMenuItem>
-                                  <DropdownMenuItem
-                                    onClick={() => handleEliminarProducto(item)}
-                                    className="text-red-600"
-                                  >
-                                    <Trash2 className="mr-2 h-4 w-4" />
-                                    Eliminar
-                                  </DropdownMenuItem>
-                                </DropdownMenuContent>
-                              </DropdownMenu>
-                            </TableCell>
-                          </TableRow>
-                        );
-                      })}
-                    </TableBody>
-                  </Table>
+                    {/* Unidad de Negocio */}
+                    <Select
+                      value={unidadSeleccionada}
+                      onValueChange={(value) =>
+                        setUnidadSeleccionada(value as UnidadNegocio | 'todas')
+                      }
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Unidad de negocio" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {unidadesNegocio.map((unidad) => (
+                          <SelectItem key={unidad.value} value={unidad.value}>
+                            <div className="flex items-center gap-2">
+                              {unidad.icon}
+                              {unidad.label}
+                            </div>
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
 
-                  {productosFiltrados.length === 0 && (
-                    <div className="py-12 text-center">
-                      <Package className="mx-auto mb-4 h-12 w-12 text-gray-300" />
-                      <p className="text-lg font-medium text-gray-500">
-                        No se encontraron productos o servicios
-                      </p>
-                      <p className="mt-2 text-sm text-gray-400">
-                        Intenta ajustar los filters o crea un nuevo elemento
-                      </p>
+                    {/* Tipo */}
+                    <Select
+                      value={tipoSeleccionado}
+                      onValueChange={(value) =>
+                        setTipoSeleccionado(
+                          value as 'todos' | 'producto' | 'servicio'
+                        )
+                      }
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Tipo" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {tiposProducto.map((tipo) => (
+                          <SelectItem key={tipo.value} value={tipo.value}>
+                            {tipo.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+
+                    {/* Acciones */}
+                    <div className="flex gap-2">
                       <Button
-                        onClick={handleNuevoProducto}
-                        className="mt-4 bg-[#f9bbc4] text-white hover:bg-[#e292a3]"
+                        variant="outline"
+                        onClick={limpiarFiltros}
+                        className="flex-1"
                       >
-                        <Plus className="mr-2 h-4 w-4" />
-                        Crear Primer Elemento
+                        Limpiar
                       </Button>
                     </div>
-                  )}
-                </div>
-              </CardContent>
-            </Card>
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Tabla de productos/servicios */}
+              <Card className="border-2 border-[#f9bbc4]/20 bg-gradient-to-br from-white/95 to-[#f9bbc4]/5">
+                <CardHeader className="pb-4">
+                  <CardTitle className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <Package className="h-5 w-5" />
+                      Catálogo
+                    </div>
+                    <Badge variant="secondary">
+                      {productosFiltrados.length} elementos
+                    </Badge>
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="overflow-x-auto">
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Nombre</TableHead>
+                          <TableHead>Tipo</TableHead>
+                          <TableHead>Unidad</TableHead>
+                          <TableHead>Precio</TableHead>
+                          <TableHead>Detalles</TableHead>
+                          <TableHead className="text-right">Acciones</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {productosFiltrados.map((item) => {
+                          const precios = formatAmount(item.precio);
+                          return (
+                            <TableRow
+                              key={item.id}
+                              className="hover:bg-[#f9bbc4]/5"
+                            >
+                              <TableCell>
+                                <div>
+                                  <div className="font-medium">
+                                    {item.nombre}
+                                  </div>
+                                  {item.descripcion && (
+                                    <div className="text-sm text-gray-500">
+                                      {item.descripcion}
+                                    </div>
+                                  )}
+                                </div>
+                              </TableCell>
+                              <TableCell>
+                                <Badge
+                                  variant={
+                                    item.tipo === 'servicio'
+                                      ? 'default'
+                                      : 'secondary'
+                                  }
+                                  className="capitalize"
+                                >
+                                  {item.tipo}
+                                </Badge>
+                              </TableCell>
+                              <TableCell>
+                                <Badge
+                                  className={`capitalize ${obtenerColorUnidad(item.businessUnit)}`}
+                                >
+                                  <div className="flex items-center gap-1">
+                                    {obtenerIconoUnidad(item.businessUnit)}
+                                    {item.businessUnit}
+                                  </div>
+                                </Badge>
+                              </TableCell>
+                              <TableCell>
+                                <div className="font-mono">
+                                  <div className="font-semibold text-green-600">
+                                    {precios.ars}
+                                  </div>
+                                  <div className="text-sm text-gray-500">
+                                    {precios.usd}
+                                  </div>
+                                </div>
+                              </TableCell>
+                              <TableCell>
+                                {item.tipo === 'servicio' && item.duracion && (
+                                  <div className="flex items-center gap-1 text-sm text-gray-500">
+                                    <Clock className="h-3 w-3" />
+                                    {item.duracion} min
+                                  </div>
+                                )}
+                              </TableCell>
+                              <TableCell className="text-right">
+                                <DropdownMenu>
+                                  <DropdownMenuTrigger asChild>
+                                    <Button
+                                      variant="ghost"
+                                      className="h-8 w-8 p-0"
+                                    >
+                                      <MoreHorizontal className="h-4 w-4" />
+                                    </Button>
+                                  </DropdownMenuTrigger>
+                                  <DropdownMenuContent align="end">
+                                    <DropdownMenuItem
+                                      onClick={() => handleEditarProducto(item)}
+                                    >
+                                      <Edit className="mr-2 h-4 w-4" />
+                                      Editar
+                                    </DropdownMenuItem>
+                                    <DropdownMenuItem
+                                      onClick={() =>
+                                        handleEliminarProducto(item)
+                                      }
+                                      className="text-red-600"
+                                    >
+                                      <Trash2 className="mr-2 h-4 w-4" />
+                                      Eliminar
+                                    </DropdownMenuItem>
+                                  </DropdownMenuContent>
+                                </DropdownMenu>
+                              </TableCell>
+                            </TableRow>
+                          );
+                        })}
+                      </TableBody>
+                    </Table>
+
+                    {productosFiltrados.length === 0 && (
+                      <div className="py-12 text-center">
+                        <Package className="mx-auto mb-4 h-12 w-12 text-gray-300" />
+                        <p className="text-lg font-medium text-gray-500">
+                          No se encontraron productos o servicios
+                        </p>
+                        <p className="mt-2 text-sm text-gray-400">
+                          Intenta ajustar los filters o crea un nuevo elemento
+                        </p>
+                        <Button
+                          onClick={handleNuevoProducto}
+                          className="mt-4 bg-[#f9bbc4] text-white hover:bg-[#e292a3]"
+                        >
+                          <Plus className="mr-2 h-4 w-4" />
+                          Crear Primer Elemento
+                        </Button>
+                      </div>
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
           </div>
         </div>
-      </div>
 
-      {/* Modal para crear/editar producto/servicio */}
-      <ModalProductoServicio
-        isOpen={modalAbierto}
-        onClose={() => setModalAbierto(false)}
-        producto={productoEditando}
-      />
+        {/* Modal para crear/editar producto/servicio */}
+        <ModalProductoServicio
+          isOpen={modalAbierto}
+          onClose={() => setModalAbierto(false)}
+          producto={productoEditando}
+        />
 
-      {/* Alert Dialog para eliminar */}
-      <AlertDialog
-        open={!!alertaEliminar}
-        onOpenChange={() => setAlertaEliminar(null)}
-      >
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>¿Eliminar elemento?</AlertDialogTitle>
-            <AlertDialogDescription>
-              Esta acción eliminará permanentemente &quot;
-              {alertaEliminar?.nombre}&quot;. Esta acción no se puede deshacer.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancelar</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={confirmarEliminar}
-              className="bg-red-600 hover:bg-red-700"
-            >
-              Eliminar
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
-    </MainLayout>
+        {/* Alert Dialog para eliminar */}
+        <AlertDialog
+          open={!!alertaEliminar}
+          onOpenChange={() => setAlertaEliminar(null)}
+        >
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>¿Eliminar elemento?</AlertDialogTitle>
+              <AlertDialogDescription>
+                Esta acción eliminará permanentemente &quot;
+                {alertaEliminar?.nombre}&quot;. Esta acción no se puede
+                deshacer.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Cancelar</AlertDialogCancel>
+              <AlertDialogAction
+                onClick={confirmarEliminar}
+                className="bg-red-600 hover:bg-red-700"
+              >
+                Eliminar
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+      </MainLayout>
+    </ManagerOrAdminOnly>
   );
 }

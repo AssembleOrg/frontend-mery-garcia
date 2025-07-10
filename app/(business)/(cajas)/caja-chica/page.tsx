@@ -12,6 +12,7 @@ import {
 } from '@/features/comandas/store/comandaStore';
 import SummaryCard from '@/components/common/SummaryCard';
 import ClientOnly from '@/components/common/ClientOnly';
+import ManagerOrAdminOnly from '@/components/auth/ManagerOrAdminOnly';
 
 const breadcrumbItems = [
   { label: 'Inicio', href: '/' },
@@ -112,130 +113,134 @@ export default function CajaChicaMenuPage() {
   ];
 
   return (
-    <MainLayout>
-      <div className="min-h-screen bg-gradient-to-br from-[#f9bbc4]/15 via-[#e8b4c6]/12 to-[#d4a7ca]/10">
-        <StandardPageBanner title="Caja 1 - Caja Chica" />
+    <ManagerOrAdminOnly>
+      <MainLayout>
+        <div className="min-h-screen bg-gradient-to-br from-[#f9bbc4]/15 via-[#e8b4c6]/12 to-[#d4a7ca]/10">
+          <StandardPageBanner title="Caja 1 - Caja Chica" />
 
-        <div className="relative -mt-12 h-12 bg-gradient-to-b from-transparent to-[#f9bbc4]/8" />
+          <div className="relative -mt-12 h-12 bg-gradient-to-b from-transparent to-[#f9bbc4]/8" />
 
-        <StandardBreadcrumbs items={breadcrumbItems} />
+          <StandardBreadcrumbs items={breadcrumbItems} />
 
-        <div className="bg-gradient-to-b from-[#f9bbc4]/8 via-[#e8b4c6]/6 to-[#d4a7ca]/8">
-          <div className="mx-auto max-w-7xl px-4 py-12 sm:px-6 lg:px-8">
-            {/* Header */}
-            <div className="mb-12 text-center">
-              <div className="mb-4 inline-flex items-center gap-2 rounded-full border-2 border-[#f9bbc4]/30 bg-gradient-to-r from-[#f9bbc4]/10 via-white/80 to-[#f9bbc4]/10 px-8 py-4 shadow-lg backdrop-blur-sm">
-                <span className="bg-gradient-to-r from-[#8b5a6b] to-[#a66b7a] bg-clip-text text-lg font-semibold text-transparent">
-                  Gestión de Caja Chica
-                </span>
+          <div className="bg-gradient-to-b from-[#f9bbc4]/8 via-[#e8b4c6]/6 to-[#d4a7ca]/8">
+            <div className="mx-auto max-w-7xl px-4 py-12 sm:px-6 lg:px-8">
+              {/* Header */}
+              <div className="mb-12 text-center">
+                <div className="mb-4 inline-flex items-center gap-2 rounded-full border-2 border-[#f9bbc4]/30 bg-gradient-to-r from-[#f9bbc4]/10 via-white/80 to-[#f9bbc4]/10 px-8 py-4 shadow-lg backdrop-blur-sm">
+                  <span className="bg-gradient-to-r from-[#8b5a6b] to-[#a66b7a] bg-clip-text text-lg font-semibold text-transparent">
+                    Gestión de Caja Chica
+                  </span>
+                </div>
+                <p className="mx-auto max-w-2xl text-lg font-medium text-[#6b4c57]">
+                  Administra los ingresos, egresos y resumen diario de tu caja
+                  chica
+                </p>
               </div>
-              <p className="mx-auto max-w-2xl text-lg font-medium text-[#6b4c57]">
-                Administra los ingresos, egresos y resumen diario de tu caja
-                chica
-              </p>
-            </div>
 
-            {/* Resumen Rápido del Día */}
-            <ClientOnly>
-              <div className="mb-8 grid grid-cols-1 gap-6 md:grid-cols-4">
-                {/* Saldo Actual */}
-                <SummaryCard
-                  title="Saldo Actual"
-                  value={resumenDelDia.saldo}
-                  format="currency"
-                  valueClassName={
-                    resumenDelDia.saldo >= 0 ? 'text-green-600' : 'text-red-600'
-                  }
-                />
+              {/* Resumen Rápido del Día */}
+              <ClientOnly>
+                <div className="mb-8 grid grid-cols-1 gap-6 md:grid-cols-4">
+                  {/* Saldo Actual */}
+                  <SummaryCard
+                    title="Saldo Actual"
+                    value={resumenDelDia.saldo}
+                    format="currency"
+                    valueClassName={
+                      resumenDelDia.saldo >= 0
+                        ? 'text-green-600'
+                        : 'text-red-600'
+                    }
+                  />
 
-                {/* Clientes Hoy */}
-                <SummaryCard
-                  title="Clientes Hoy"
-                  value={resumenDelDia.clientesAtendidos}
-                  format="number"
-                />
+                  {/* Clientes Hoy */}
+                  <SummaryCard
+                    title="Clientes Hoy"
+                    value={resumenDelDia.clientesAtendidos}
+                    format="number"
+                  />
 
-                {/* Transacciones */}
-                <SummaryCard
-                  title="Transacciones"
-                  value={
-                    resumenDelDia.cantidadIngresos +
-                    resumenDelDia.cantidadEgresos
-                  }
-                  format="number"
-                />
+                  {/* Transacciones */}
+                  <SummaryCard
+                    title="Transacciones"
+                    value={
+                      resumenDelDia.cantidadIngresos +
+                      resumenDelDia.cantidadEgresos
+                    }
+                    format="number"
+                  />
 
-                <Card className="border-2 border-[#f9bbc4]/20 bg-gradient-to-br from-white/95 to-[#f9bbc4]/5">
-                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                    <CardTitle className="text-sm font-medium text-[#6b4c57]">
-                      Más Vendido
-                    </CardTitle>
-                    <TrendingUp className="h-4 w-4 text-green-600" />
-                  </CardHeader>
-                  <CardContent>
-                    <div className="text-lg font-bold text-[#4a3540]">
-                      {resumenDelDia.servicioMasVendido}
-                    </div>
-                    <p className="text-xs text-[#8b6b75]">Servicio popular</p>
-                  </CardContent>
-                </Card>
-              </div>
-            </ClientOnly>
+                  <Card className="border-2 border-[#f9bbc4]/20 bg-gradient-to-br from-white/95 to-[#f9bbc4]/5">
+                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                      <CardTitle className="text-sm font-medium text-[#6b4c57]">
+                        Más Vendido
+                      </CardTitle>
+                      <TrendingUp className="h-4 w-4 text-green-600" />
+                    </CardHeader>
+                    <CardContent>
+                      <div className="text-lg font-bold text-[#4a3540]">
+                        {resumenDelDia.servicioMasVendido}
+                      </div>
+                      <p className="text-xs text-[#8b6b75]">Servicio popular</p>
+                    </CardContent>
+                  </Card>
+                </div>
+              </ClientOnly>
 
-            {/* Opciones del Menú Principal */}
-            <ClientOnly>
-              <div className="grid grid-cols-1 gap-8 md:grid-cols-3">
-                {menuOptions.map((option) => (
-                  <Link key={option.title} href={option.href}>
-                    <Card
-                      className="group h-full cursor-pointer border-2 bg-gradient-to-br from-white/95 via-[#f9bbc4]/5 to-white/90 shadow-xl shadow-[#f9bbc4]/20 backdrop-blur-sm transition-all duration-300 hover:-translate-y-3 hover:shadow-2xl"
-                      style={{
-                        borderColor: `${option.accentColor}80`,
-                        boxShadow: `0 8px 30px -6px ${option.accentColor}35, 0 4px 15px -3px rgba(0,0,0,0.15)`,
-                      }}
-                    >
-                      <CardHeader className="pb-4">
-                        <div className="flex items-center justify-between">
-                          <div
-                            className={`inline-flex items-center justify-center rounded-xl bg-gradient-to-br ${option.gradientFrom} ${option.gradientTo} p-4 text-white shadow-xl transition-all duration-300 group-hover:scale-110 group-hover:rotate-3`}
-                            style={{
-                              boxShadow: `0 12px 35px -10px ${option.accentColor}60, 0 6px 20px -5px ${option.accentColor}40`,
-                            }}
-                          >
-                            {option.icon}
+              {/* Opciones del Menú Principal */}
+              <ClientOnly>
+                <div className="grid grid-cols-1 gap-8 md:grid-cols-3">
+                  {menuOptions.map((option) => (
+                    <Link key={option.title} href={option.href}>
+                      <Card
+                        className="group h-full cursor-pointer border-2 bg-gradient-to-br from-white/95 via-[#f9bbc4]/5 to-white/90 shadow-xl shadow-[#f9bbc4]/20 backdrop-blur-sm transition-all duration-300 hover:-translate-y-3 hover:shadow-2xl"
+                        style={{
+                          borderColor: `${option.accentColor}80`,
+                          boxShadow: `0 8px 30px -6px ${option.accentColor}35, 0 4px 15px -3px rgba(0,0,0,0.15)`,
+                        }}
+                      >
+                        <CardHeader className="pb-4">
+                          <div className="flex items-center justify-between">
+                            <div
+                              className={`inline-flex items-center justify-center rounded-xl bg-gradient-to-br ${option.gradientFrom} ${option.gradientTo} p-4 text-white shadow-xl transition-all duration-300 group-hover:scale-110 group-hover:rotate-3`}
+                              style={{
+                                boxShadow: `0 12px 35px -10px ${option.accentColor}60, 0 6px 20px -5px ${option.accentColor}40`,
+                              }}
+                            >
+                              {option.icon}
+                            </div>
+                            <ArrowRight
+                              className="h-6 w-6 transition-all duration-300 group-hover:translate-x-1 group-hover:scale-110"
+                              style={{ color: option.accentColor }}
+                            />
                           </div>
-                          <ArrowRight
-                            className="h-6 w-6 transition-all duration-300 group-hover:translate-x-1 group-hover:scale-110"
-                            style={{ color: option.accentColor }}
-                          />
-                        </div>
-                        <CardTitle className="text-xl font-bold text-[#4a3540] transition-colors group-hover:text-[#3d2b35]">
-                          {option.title}
-                        </CardTitle>
-                      </CardHeader>
-                      <CardContent className="flex-1">
-                        <p className="mb-4 text-[#5a4550] transition-colors group-hover:text-[#4a3540]">
-                          {option.description}
-                        </p>
-                        <div className="space-y-2">
-                          <div
-                            className={`text-2xl font-bold ${option.isBalance && option.amount >= 0 ? 'text-green-600' : option.isBalance && option.amount < 0 ? 'text-red-600' : 'text-[#4a3540]'}`}
-                          >
-                            {formatAmount(option.amount)}
-                          </div>
-                          <p className="text-sm text-[#8b6b75]">
-                            {option.stats}
+                          <CardTitle className="text-xl font-bold text-[#4a3540] transition-colors group-hover:text-[#3d2b35]">
+                            {option.title}
+                          </CardTitle>
+                        </CardHeader>
+                        <CardContent className="flex-1">
+                          <p className="mb-4 text-[#5a4550] transition-colors group-hover:text-[#4a3540]">
+                            {option.description}
                           </p>
-                        </div>
-                      </CardContent>
-                    </Card>
-                  </Link>
-                ))}
-              </div>
-            </ClientOnly>
+                          <div className="space-y-2">
+                            <div
+                              className={`text-2xl font-bold ${option.isBalance && option.amount >= 0 ? 'text-green-600' : option.isBalance && option.amount < 0 ? 'text-red-600' : 'text-[#4a3540]'}`}
+                            >
+                              {formatAmount(option.amount)}
+                            </div>
+                            <p className="text-sm text-[#8b6b75]">
+                              {option.stats}
+                            </p>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    </Link>
+                  ))}
+                </div>
+              </ClientOnly>
+            </div>
           </div>
         </div>
-      </div>
-    </MainLayout>
+      </MainLayout>
+    </ManagerOrAdminOnly>
   );
 }

@@ -31,6 +31,7 @@ export interface Cliente {
 }
 
 // Productos y Servicios
+// Actualizar la interfaz ProductoServicio para incluir tipoItemId
 export interface ProductoServicio {
   id: string;
   nombre: string;
