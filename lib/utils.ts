@@ -6,14 +6,16 @@ export function cn(...inputs: ClassValue[]) {
 }
 
 // Sistema de logging condicional para evitar logs en producción
+const isDevelopment = process.env.NODE_ENV === 'development';
+
 export const logger = {
   info: (message: string, ...args: unknown[]) => {
-    if (process.env.NODE_ENV === 'development') {
+    if (isDevelopment) {
       console.log(`ℹ️ ${message}`, ...args);
     }
   },
   success: (message: string, ...args: unknown[]) => {
-    if (process.env.NODE_ENV === 'development') {
+    if (isDevelopment) {
       console.log(`✅ ${message}`, ...args);
     }
   },

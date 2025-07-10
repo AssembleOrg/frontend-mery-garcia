@@ -104,13 +104,14 @@ export function useComandaForm() {
 
   const saldoPendiente = totalSinSeña - montoSeña;
 
-  // Calcular recargos por métodos de pago
+  // Calcular recargos por métodos de pago - CORREGIDO
   const totalRecargos = metodosPago.reduce(
-    (sum, mp) => sum + (mp.montoFinal - mp.monto),
+    (sum, mp) => sum + (mp.monto * mp.recargoPorcentaje) / 100,
     0
   );
 
-  const totalFinal = saldoPendiente + totalRecargos;
+  // CORRECCIÓN: El total final debe incluir el subtotal base más los recargos
+  const totalFinal = subtotal + totalRecargos - totalDescuentos - montoSeña;
 
   // Equivalentes en USD para mostrar
   const subtotalUSD = arsToUsd(subtotal);
@@ -322,11 +323,11 @@ export function useComandaForm() {
       metodosPago,
       observaciones,
       estado: 'pendiente',
-      subtotal,
+      subtotal: subtotal, // Subtotal SIN recargos
       totalDescuentos,
-      totalRecargos,
+      totalRecargos, // Recargos calculados correctamente
       totalSeña: montoSeña,
-      totalFinal,
+      totalFinal: subtotal + totalRecargos - totalDescuentos - montoSeña, // Total CORRECTO
       comisiones: calcularComisiones(),
       tipo: 'ingreso',
     };

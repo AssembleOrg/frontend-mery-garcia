@@ -112,7 +112,6 @@ export default function IngresosPage() {
     updateFilters,
     handleDelete,
     exportToPDF,
-    exportToExcel,
     exportToCSV,
   } = useIncomingTransactions(dateRange);
 
@@ -249,8 +248,8 @@ export default function IngresosPage() {
                           columns={columns}
                           onColumnsChange={setColumns}
                           exportToPDF={exportToPDF}
-                          exportToExcel={exportToExcel}
                           exportToCSV={exportToCSV}
+                          // Eliminar: exportToExcel={exportToExcel}
                         />
                       </div>
                     </div>

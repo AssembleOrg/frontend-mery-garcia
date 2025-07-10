@@ -1,15 +1,15 @@
 import { useMemo } from 'react';
-import { useComandas, useFiltrosComanda } from '../store/comandaStore';
-import { Encomienda } from '@/types/caja';
-import { usePaginacion } from './usePaginacion';
 import { DateRange } from 'react-day-picker';
+import { useComandas } from '@/features/comandas/store/comandaStore';
+import { useFiltrosComanda } from '@/features/comandas/store/comandaStore';
+import { usePaginacion } from './usePaginacion';
 import { logger } from '@/lib/utils';
-
-// Currency formatter
-const currencyFormatter = new Intl.NumberFormat('es-AR', {
-  style: 'currency',
-  currency: 'ARS',
-});
+import {
+  exportComandasToCSV,
+  exportComandasToPDF,
+  exportComandasToExcel,
+} from '@/lib/exportUtils';
+import { Comanda, FiltrosComanda } from '@/types/caja';
 
 export function useIncomingTransactions(dateRange?: DateRange) {
   const { comandas } = useComandas();
@@ -26,232 +26,144 @@ export function useIncomingTransactions(dateRange?: DateRange) {
         ? new Date(dateRange.to)
         : new Date(dateRange.from);
 
-      // Normalize dates for comparison
-      transactionDate.setHours(0, 0, 0, 0);
-      startDate.setHours(0, 0, 0, 0);
-      endDate.setHours(23, 59, 59, 999);
-
       return transactionDate >= startDate && transactionDate <= endDate;
     };
   }, [dateRange]);
 
   // Filter incoming transactions
-  const incomingTransactions = useMemo(() => {
-    return comandas.filter(
-      (comanda) => comanda.tipo === 'ingreso' && isDateInRange(comanda.fecha)
-    );
-  }, [comandas, isDateInRange]);
-
-  // Convert to legacy format for compatibility
-  const transactionsData = useMemo((): Encomienda[] => {
-    return incomingTransactions.map((comanda) => {
-      // Ensure consistent staff mapping
-      const staffName = comanda.mainStaff?.nombre || 'Sin asignar';
-
-      return {
-        id: comanda.id,
-        fecha: comanda.fecha,
-        numero: comanda.numero,
-        cliente: comanda.cliente.nombre,
-        telefono: comanda.cliente.telefono,
-        servicios: comanda.items,
-        subtotal: comanda.subtotal,
-        descuentoTotal: comanda.totalDescuentos,
-        iva: Math.round(comanda.totalFinal * 0.13 * 100) / 100,
-        total: comanda.totalFinal,
-        metodoPago:
-          comanda.metodosPago.length === 1
-            ? comanda.metodosPago[0].tipo
-            : 'mixto',
-        metodosPago: comanda.metodosPago,
-        observaciones: comanda.observaciones || '',
-        vendedor: staffName,
-        estado: comanda.estado,
-        tipo: comanda.tipo,
-        estadoNegocio: comanda.estadoNegocio || 'pendiente',
-        estadoValidacion: comanda.estadoValidacion || 'no_validado',
-      };
-    });
-  }, [incomingTransactions]);
-
-  // Apply filters to the data
   const filteredData = useMemo(() => {
-    let filtered = transactionsData;
+    return comandas.filter((comanda) => {
+      // Filter by type
+      if (comanda.tipo !== 'ingreso') return false;
 
-    // Apply search/text filters
-    if (filters.busqueda) {
-      const searchTerm = filters.busqueda.toLowerCase();
-      filtered = filtered.filter(
-        (item) =>
-          item.cliente.toLowerCase().includes(searchTerm) ||
-          item.numero.toLowerCase().includes(searchTerm) ||
-          item.vendedor.toLowerCase().includes(searchTerm) ||
-          item.servicios.some((servicio) =>
-            servicio.nombre.toLowerCase().includes(searchTerm)
-          )
-      );
-    }
+      // Filter by date range
+      if (!isDateInRange(comanda.fecha)) return false;
 
-    // Apply staff filter (vendedor)
-    if (filters.vendedor && filters.vendedor !== 'todos') {
-      filtered = filtered.filter((item) => {
-        if (filters.vendedor === 'sin-asignar') {
-          return item.vendedor === 'Sin asignar';
-        }
-        return item.vendedor === filters.vendedor;
-      });
-    }
+      // Apply other filters
+      if (
+        filters.cliente &&
+        !comanda.cliente?.nombre
+          ?.toLowerCase()
+          .includes(filters.cliente.toLowerCase())
+      ) {
+        return false;
+      }
 
-    // Apply payment method filter
-    if (filters.metodoPago && filters.metodoPago !== 'todos') {
-      filtered = filtered.filter(
-        (item) => item.metodoPago === filters.metodoPago
-      );
-    }
+      if (filters.personalId && comanda.mainStaff?.id !== filters.personalId) {
+        return false;
+      }
 
-    // Apply status filter
-    if (filters.estado && filters.estado !== 'todos') {
-      filtered = filtered.filter((item) => item.estado === filters.estado);
-    }
+      if (
+        filters.businessUnit &&
+        comanda.businessUnit !== filters.businessUnit
+      ) {
+        return false;
+      }
 
-    return filtered;
-  }, [transactionsData, filters]);
+      if (filters.estado && comanda.estado !== filters.estado) {
+        return false;
+      }
 
-  // Calculate statistics
-  const statistics = useMemo(() => {
-    const transactionCount = filteredData.length;
-    const clientCount = new Set(filteredData.map((item) => item.cliente)).size;
-
-    // Calculate top service
-    const serviceCounts = filteredData.reduce(
-      (acc, item) => {
-        item.servicios.forEach((servicio) => {
-          const key = servicio.nombre;
-          acc[key] = (acc[key] || 0) + (servicio.cantidad || 1);
-        });
-        return acc;
-      },
-      {} as Record<string, number>
-    );
-
-    const topService = Object.entries(serviceCounts).reduce(
-      (a, b) => (a[1] > b[1] ? a : b),
-      ['No services', 0]
-    );
-
-    // Calculate staff performance
-    const staffStats = filteredData.reduce(
-      (acc, item) => {
-        const staff = item.vendedor;
-        if (!acc[staff]) {
-          acc[staff] = { count: 0, total: 0 };
-        }
-        acc[staff].count += 1;
-        acc[staff].total += item.total;
-        return acc;
-      },
-      {} as Record<string, { count: number; total: number }>
-    );
-
-    const topStaff = Object.entries(staffStats).reduce(
-      (a, b) => (a[1].total > b[1].total ? a : b),
-      ['Sin datos', { count: 0, total: 0 }]
-    );
-
-    return {
-      totalIncoming: filteredData.reduce((sum, item) => sum + item.total, 0),
-      transactionCount,
-      clientCount,
-      topService: {
-        name: topService[0],
-        count: topService[1],
-      },
-      topStaff: {
-        name: topStaff[0],
-        transactions: topStaff[1].count,
-        total: topStaff[1].total,
-      },
-    };
-  }, [filteredData]);
-
-  // Format amount utility
-  const formatAmount = useMemo(() => {
-    return (amount: number) => currencyFormatter.format(amount);
-  }, []);
-
-  // Sort by date (newest first)
-  const sortedData = useMemo(() => {
-    return [...filteredData].sort((a, b) => {
-      const dateA = new Date(a.fecha).getTime();
-      const dateB = new Date(b.fecha).getTime();
-      return dateB - dateA;
+      return true;
     });
-  }, [filteredData]);
+  }, [comandas, filters, isDateInRange]);
 
-  // Pagination
+  // Use pagination hook
   const pagination = usePaginacion({
-    data: sortedData,
+    data: filteredData,
     itemsPorPagina: 10,
   });
 
+  // Calculate statistics with correct property names
+  const statistics = useMemo(() => {
+    const totalIncoming = filteredData.reduce(
+      (sum, comanda) => sum + comanda.totalFinal,
+      0
+    );
+    const transactionCount = filteredData.length;
+    const clientCount = new Set(
+      filteredData.map((c) => c.cliente?.nombre).filter(Boolean)
+    ).size;
+    const average = transactionCount > 0 ? totalIncoming / transactionCount : 0;
+
+    return {
+      total: totalIncoming,
+      count: transactionCount,
+      average,
+      totalIncoming,
+      transactionCount,
+      clientCount,
+    };
+  }, [filteredData]);
+
   return {
-    // Data
     data: pagination.datosPaginados,
-    allData: sortedData, // For exports or other uses
     statistics,
-
-    // Pagination
     pagination,
-
-    // Filters
     filters,
     updateFilters,
 
-    // Utilities
-    formatAmount,
-
     // Actions
-    handleEdit: (id: string) => {
-      logger.info(`📝 Editando transacción de ingreso: ${id}`);
-      // TODO(issue-caja-exports): Implement edit functionality
-      logger.debug('Edit incoming transaction:', id);
-    },
-
     handleDelete: (id: string) => {
-      logger.info(`🗑️ Eliminando transacción de ingreso: ${id}`);
-      // TODO(issue-caja-exports): Implement delete functionality
       logger.debug('Delete incoming transaction:', id);
+      // TODO: Implement delete functionality
     },
 
     handleView: (id: string) => {
-      logger.info(`👁️ Viendo detalles de transacción de ingreso: ${id}`);
-      // TODO(issue-caja-exports): Implement view functionality
       logger.debug('View incoming transaction:', id);
-    },
-
-    handleChangeStatus: (id: string) => {
-      logger.info(`🔄 Cambiando estado de transacción de ingreso: ${id}`);
-      // TODO(issue-caja-exports): Implement status change functionality
-      logger.debug('Change status incoming transaction:', id);
+      // TODO: Implement view functionality
     },
 
     // Export functions
     exportToPDF: () => {
-      logger.info('📄 Exportando ingresos a PDF');
-      // TODO(issue-caja-exports): Implement PDF export
       logger.debug('Export incoming transactions to PDF');
+      const validDateRange =
+        dateRange?.from && dateRange?.to
+          ? {
+              from: dateRange.from,
+              to: dateRange.to,
+            }
+          : undefined;
+
+      exportComandasToPDF(filteredData, {
+        filename: `ingresos_${new Date().toISOString().split('T')[0]}`,
+        dateRange: validDateRange,
+        filters,
+      });
     },
 
     exportToExcel: () => {
-      logger.info('📊 Exportando ingresos a Excel');
-      // TODO(issue-caja-exports): Implement Excel export
       logger.debug('Export incoming transactions to Excel');
+      const validDateRange =
+        dateRange?.from && dateRange?.to
+          ? {
+              from: dateRange.from,
+              to: dateRange.to,
+            }
+          : undefined;
+
+      exportComandasToExcel(filteredData, {
+        filename: `ingresos_${new Date().toISOString().split('T')[0]}`,
+        dateRange: validDateRange,
+        filters,
+      });
     },
 
     exportToCSV: () => {
-      logger.info('📋 Exportando ingresos a CSV');
-      // TODO(issue-caja-exports): Implement CSV export
       logger.debug('Export incoming transactions to CSV');
+      const validDateRange =
+        dateRange?.from && dateRange?.to
+          ? {
+              from: dateRange.from,
+              to: dateRange.to,
+            }
+          : undefined;
+
+      exportComandasToCSV(filteredData, {
+        filename: `ingresos_${new Date().toISOString().split('T')[0]}`,
+        dateRange: validDateRange,
+        filters,
+      });
     },
   };
 }
