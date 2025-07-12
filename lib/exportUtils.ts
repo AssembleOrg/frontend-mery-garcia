@@ -2,7 +2,10 @@ import Papa from 'papaparse';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { Comanda, FiltrosComanda } from '@/types/caja';
-import { formatCurrencyArs } from '@/lib/utils';
+import {
+  formatARS as formatARSUtil,
+  formatUSD as formatUSDUtil,
+} from '@/lib/utils';
 
 export interface ExportOptions {
   filename?: string;
@@ -47,10 +50,17 @@ export const exportComandasToCSV = (
 /**
  * Exporta comandas a formato PDF
  */
+const createCurrencyFormatter = (exchangeRate: number) => ({
+  formatUSD: (amount: number) => formatUSDUtil(amount),
+  formatARS: (amount: number) => formatARSUtil(amount, exchangeRate),
+});
+
 export const exportComandasToPDF = (
   comandas: Comanda[],
+  exchangeRate: number,
   options: ExportOptions = {}
 ) => {
+  const { formatUSD } = createCurrencyFormatter(exchangeRate);
   const timestamp = new Date().toISOString().split('T')[0];
   const filename = options.filename || `comandas_${timestamp}`;
 
@@ -96,7 +106,7 @@ export const exportComandasToPDF = (
     comanda.mainStaff?.nombre || 'N/A',
     comanda.businessUnit,
     comanda.tipo,
-    formatCurrencyArs(comanda.totalFinal),
+    formatUSD(comanda.totalFinal), // Ahora usa el exchangeRate actual
     comanda.estado,
   ]);
 
@@ -148,18 +158,10 @@ export const exportComandasToPDF = (
 
   doc.setFontSize(10);
   doc.setTextColor(40, 40, 40);
+  doc.text(`Total Ingresos: ${formatUSD(totalIngresos)}`, 20, finalY + 15);
+  doc.text(`Total Egresos: ${formatUSD(totalEgresos)}`, 20, finalY + 25);
   doc.text(
-    `Total Ingresos: ${formatCurrencyArs(totalIngresos)}`,
-    20,
-    finalY + 15
-  );
-  doc.text(
-    `Total Egresos: ${formatCurrencyArs(totalEgresos)}`,
-    20,
-    finalY + 25
-  );
-  doc.text(
-    `Saldo Neto: ${formatCurrencyArs(totalIngresos - totalEgresos)}`,
+    `Saldo Neto: ${formatUSD(totalIngresos - totalEgresos)}`,
     20,
     finalY + 35
   );

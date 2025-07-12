@@ -371,10 +371,10 @@ export default function ListaPreciosPage() {
                               <TableCell>
                                 <div className="font-mono">
                                   <div className="font-semibold text-green-600">
-                                    {precios.ars}
+                                    {precios.usd}
                                   </div>
                                   <div className="text-sm text-gray-500">
-                                    {precios.usd}
+                                    {precios.ars}
                                   </div>
                                 </div>
                               </TableCell>

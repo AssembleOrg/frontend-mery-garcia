@@ -107,15 +107,18 @@ export function useComandaForm() {
 
   // Acciones
   const agregarItem = (productoServicio: ProductoServicio) => {
+    const precioEnARS = usdToArs(productoServicio.precio);
+
     const nuevoItem: ItemComanda = {
       productoServicioId: productoServicio.id,
       nombre: productoServicio.nombre,
       tipo: productoServicio.tipo,
-      precio: productoServicio.precio,
+      precio: precioEnARS,
+      precioOriginalUSD: productoServicio.precio,
       cantidad: 1,
       descuento: 0,
       descuentoPorcentaje: 0,
-      subtotal: productoServicio.precio,
+      subtotal: precioEnARS,
     };
 
     setItems([...items, nuevoItem]);

@@ -3,8 +3,8 @@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Comanda, TraspasoInfo } from '@/types/caja';
-import { formatCurrencyArs } from '@/lib/utils';
 import { Calendar, Users, TrendingUp } from 'lucide-react';
+import { useCurrencyConverter } from '@/hooks/useCurrencyConverter';
 
 interface ResumenCajaGrandeProps {
   comandasValidadas: Comanda[];
@@ -15,6 +15,8 @@ export default function ResumenCajaGrande({
   comandasValidadas,
   traspasos,
 }: ResumenCajaGrandeProps) {
+  const { formatUSD } = useCurrencyConverter();
+
   // Estadísticas por unidad de negocio
   const estadisticasPorUnidad = comandasValidadas.reduce(
     (acc, comanda) => {
@@ -91,7 +93,7 @@ export default function ResumenCajaGrande({
                   </div>
                   <div className="text-right">
                     <p className="font-medium">
-                      {formatCurrencyArs(traspaso.montoTotal)}
+                      {formatUSD(traspaso.montoTotal)}
                     </p>
                     <Badge variant="outline" className="text-xs">
                       {traspaso.rangoFechas.desde} -{' '}
@@ -126,13 +128,13 @@ export default function ResumenCajaGrande({
                   <div className="flex justify-between text-green-600">
                     <span>Ingresos:</span>
                     <span className="font-medium">
-                      {formatCurrencyArs(stats.ingresos)}
+                      {formatUSD(stats.ingresos)}
                     </span>
                   </div>
                   <div className="flex justify-between text-red-600">
                     <span>Egresos:</span>
                     <span className="font-medium">
-                      {formatCurrencyArs(stats.egresos)}
+                      {formatUSD(stats.egresos)}
                     </span>
                   </div>
                   <div className="flex justify-between border-t pt-1">
@@ -144,7 +146,7 @@ export default function ResumenCajaGrande({
                           : 'text-red-600'
                       }`}
                     >
-                      {formatCurrencyArs(stats.ingresos - stats.egresos)}
+                      {formatUSD(stats.ingresos - stats.egresos)}
                     </span>
                   </div>
                 </div>
@@ -174,7 +176,7 @@ export default function ResumenCajaGrande({
                   {personalMasActivo[1].cantidad} comandas
                 </p>
                 <p className="text-sm text-gray-600">
-                  {formatCurrencyArs(personalMasActivo[1].total)}
+                  {formatUSD(personalMasActivo[1].total)}
                 </p>
               </div>
             </div>

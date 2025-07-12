@@ -156,20 +156,20 @@ export default function ModalProductoServicio({
   const formatAmount = (monto: number) => {
     if (monto === 0) return { ars: '$0', usd: '$0' };
 
-    const montoARS = new Intl.NumberFormat('es-AR', {
+    const montoUSD = new Intl.NumberFormat('en-US', {
       style: 'currency',
-      currency: 'ARS',
+      currency: 'USD',
     }).format(monto);
 
-    let montoUSDFormatted = '—';
+    let montoARSFormatted = '—';
     if (tipoCambio.valorVenta > 0) {
-      montoUSDFormatted = new Intl.NumberFormat('en-US', {
+      montoARSFormatted = new Intl.NumberFormat('es-AR', {
         style: 'currency',
-        currency: 'USD',
-      }).format(monto / tipoCambio.valorVenta);
+        currency: 'ARS',
+      }).format(monto * tipoCambio.valorVenta);
     }
 
-    return { ars: montoARS, usd: montoUSDFormatted };
+    return { ars: montoARSFormatted, usd: montoUSD };
   };
 
   const obtenerIconoUnidad = (unidad: UnidadNegocio) => {
@@ -328,7 +328,7 @@ export default function ModalProductoServicio({
                 <CardContent className="space-y-4">
                   <div>
                     <Label htmlFor="precio">
-                      Precio (ARS) *
+                      Precio (USD) *
                       {errores.precio && (
                         <span className="ml-1 text-xs text-red-500">
                           ({errores.precio})
@@ -350,7 +350,7 @@ export default function ModalProductoServicio({
                     </div>
                     {precio > 0 && (
                       <p className="mt-1 text-sm text-gray-500">
-                        Equivalente: {precios.usd}
+                        Equivalente: {precios.ars}
                       </p>
                     )}
                   </div>
@@ -428,10 +428,10 @@ export default function ModalProductoServicio({
                       </div>
                       <div className="text-right">
                         <div className="font-semibold text-green-600">
-                          {precios.ars}
+                          {precios.usd}
                         </div>
                         <div className="text-sm text-gray-500">
-                          {precios.usd}
+                          {precios.ars}
                         </div>
                       </div>
                     </div>

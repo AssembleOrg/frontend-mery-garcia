@@ -12,6 +12,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import {
@@ -31,6 +32,7 @@ import {
 } from 'lucide-react';
 import { useComandaStore } from '@/features/comandas/store/comandaStore';
 import { useModalScrollLock } from '@/hooks/useModalScrollLock';
+import { logger } from '@/lib/utils';
 import { useCurrencyConverter } from '@/hooks/useCurrencyConverter';
 import {
   Comanda,
@@ -43,7 +45,6 @@ import {
   useInitializeComandaStore,
   generateUniqueId,
 } from '@/hooks/useInitializeComandaStore';
-import { logger, formatCurrencyArs } from '@/lib/utils';
 import { DiscountControls } from './DiscountControls';
 
 interface ModalTransaccionUnificadoProps {
@@ -89,7 +90,7 @@ export default function ModalTransaccionUnificado({
   } = useComandaStore();
 
   // Currency converter hook
-  const { formatUSD, exchangeRate, isExchangeRateValid } =
+  const { exchangeRate, isExchangeRateValid, formatARS, formatUSD } =
     useCurrencyConverter();
 
   // Ensure the comanda store is initialized
@@ -114,7 +115,6 @@ export default function ModalTransaccionUnificado({
   const [mostrarBuscador, setMostrarBuscador] = useState(false);
   const [busqueda, setBusqueda] = useState('');
 
-  // Bloquear scroll del body cuando el modal está abierto
   useModalScrollLock(isOpen);
 
   // Manejar ESC para cerrar modal
@@ -423,7 +423,7 @@ export default function ModalTransaccionUnificado({
   };
 
   // Save transaction
-  const handleGuardar = async () => {
+  const handleSave = async () => {
     if (!validarFormulario()) return;
 
     setGuardando(true);
@@ -432,11 +432,14 @@ export default function ModalTransaccionUnificado({
       const totales = calcularTotales();
       const numeroTransaccion = obtenerProximoNumero(tipo);
 
+      const { tipoCambio } = useComandaStore.getState();
+
       const itemsComanda: ItemComanda[] = items.map((item) => ({
         productoServicioId: item.productoServicioId,
         nombre: item.nombre,
         tipo: tipo === 'ingreso' ? 'servicio' : 'producto',
         precio: item.precio,
+        precioOriginalUSD: item.precio,
         cantidad: item.cantidad,
         descuento: 0,
         subtotal: item.subtotal,
@@ -494,6 +497,13 @@ export default function ModalTransaccionUnificado({
         observaciones: observaciones || undefined,
         estadoNegocio: 'pendiente',
         estadoValidacion: 'no_validado',
+        tipoCambioAlCrear: {
+          valorCompra: tipoCambio.valorCompra,
+          valorVenta: tipoCambio.valorVenta,
+          fecha: tipoCambio.fecha,
+          fuente: tipoCambio.fuente,
+          modoManual: tipoCambio.modoManual,
+        },
       };
 
       logger.info(`Guardando ${tipo}:`, nuevaComanda);
@@ -585,7 +595,7 @@ export default function ModalTransaccionUnificado({
                 <div className="flex items-center gap-2 rounded-lg bg-gray-50 px-3 py-2">
                   <TrendingUp className="h-4 w-4 text-gray-600" />
                   <span className="text-sm font-medium text-gray-800">
-                    USD: {formatCurrencyArs(exchangeRate)}
+                    USD: {formatUSD(exchangeRate)}
                   </span>
                 </div>
               )}
@@ -909,12 +919,12 @@ export default function ModalTransaccionUnificado({
                             <div>
                               <Label className="text-gray-700">Subtotal</Label>
                               <div className="flex h-10 items-center justify-between rounded-md border border-gray-300 bg-gray-50 px-3">
-                                <span className="text-sm font-medium text-gray-900">
-                                  {formatCurrencyArs(item.subtotal)}
+                                <span className="text-sm font-medium text-green-600">
+                                  {formatUSD(item.subtotal)}
                                 </span>
                                 {isExchangeRateValid && item.subtotal > 0 && (
                                   <span className="text-xs text-gray-600">
-                                    {formatUSD(item.subtotal)}
+                                    {formatARS(item.subtotal)}
                                   </span>
                                 )}
                               </div>
@@ -1056,19 +1066,19 @@ export default function ModalTransaccionUnificado({
                         <div>
                           <Label className="text-gray-700">Total</Label>
                           <div className="flex h-10 items-center justify-between rounded-md border border-gray-300 bg-gray-50 px-3">
-                            <span className="text-sm font-medium text-gray-900">
-                              {formatCurrencyArs(metodo.montoFinal)}
+                            <span className="text-sm font-medium text-green-600">
+                              {formatUSD(metodo.montoFinal)}
                             </span>
                             {isExchangeRateValid && metodo.montoFinal > 0 && (
                               <span className="text-xs text-gray-600">
-                                {formatUSD(metodo.montoFinal)}
+                                {formatARS(metodo.montoFinal)}
                               </span>
                             )}
                           </div>
                           {metodo.recargoPorcentaje > 0 && (
                             <div className="mt-1 text-xs text-gray-600">
-                              Base: {formatCurrencyArs(metodo.monto)} + Recargo:{' '}
-                              {formatCurrencyArs(
+                              Base: {formatUSD(metodo.monto)} + Recargo:{' '}
+                              {formatUSD(
                                 (metodo.monto * metodo.recargoPorcentaje) / 100
                               )}
                             </div>
@@ -1101,12 +1111,12 @@ export default function ModalTransaccionUnificado({
                           Subtotal base
                         </div>
                         <div className="text-right">
-                          <div className="text-lg font-semibold text-gray-900">
-                            {formatCurrencyArs(totales.subtotalBase)}
+                          <div className="text-lg font-semibold text-green-600">
+                            {formatUSD(totales.subtotalBase)}
                           </div>
                           {isExchangeRateValid && totales.subtotalBase > 0 && (
                             <div className="text-xs text-gray-600">
-                              {formatUSD(totales.subtotalBase)}
+                              {formatARS(totales.subtotalBase)}
                             </div>
                           )}
                         </div>
@@ -1119,12 +1129,12 @@ export default function ModalTransaccionUnificado({
                           </div>
                           <div className="text-right">
                             <div className="text-lg font-semibold text-green-700">
-                              -{formatCurrencyArs(totales.totalDescuentos)}
+                              -{formatUSD(totales.totalDescuentos)}
                             </div>
                             {isExchangeRateValid &&
                               totales.totalDescuentos > 0 && (
                                 <div className="text-xs text-green-600">
-                                  -{formatUSD(totales.totalDescuentos)}
+                                  -{formatARS(totales.totalDescuentos)}
                                 </div>
                               )}
                           </div>
@@ -1134,12 +1144,12 @@ export default function ModalTransaccionUnificado({
                       <div className="flex items-center justify-between rounded-lg bg-gray-50 p-3">
                         <div className="text-sm text-gray-700">Subtotal</div>
                         <div className="text-right">
-                          <div className="text-lg font-semibold text-gray-900">
-                            {formatCurrencyArs(totales.subtotal)}
+                          <div className="text-lg font-semibold text-green-600">
+                            {formatUSD(totales.subtotal)}
                           </div>
                           {isExchangeRateValid && totales.subtotal > 0 && (
                             <div className="text-xs text-gray-600">
-                              {formatUSD(totales.subtotal)}
+                              {formatARS(totales.subtotal)}
                             </div>
                           )}
                         </div>
@@ -1148,12 +1158,12 @@ export default function ModalTransaccionUnificado({
                       <div className="flex items-center justify-between rounded-lg bg-gray-50 p-3">
                         <div className="text-sm text-gray-700">Recargos</div>
                         <div className="text-right">
-                          <div className="text-lg font-semibold text-gray-900">
-                            {formatCurrencyArs(totales.totalRecargos)}
+                          <div className="text-lg font-semibold text-green-600">
+                            {formatUSD(totales.totalRecargos)}
                           </div>
                           {isExchangeRateValid && totales.totalRecargos > 0 && (
                             <div className="text-xs text-gray-600">
-                              {formatUSD(totales.totalRecargos)}
+                              {formatARS(totales.totalRecargos)}
                             </div>
                           )}
                         </div>
@@ -1164,12 +1174,12 @@ export default function ModalTransaccionUnificado({
                           Total Final
                         </div>
                         <div className="text-right">
-                          <div className="text-xl font-bold text-gray-900">
-                            {formatCurrencyArs(totales.totalFinal)}
+                          <div className="text-xl font-bold text-green-600">
+                            {formatUSD(totales.totalFinal)}
                           </div>
                           {isExchangeRateValid && totales.totalFinal > 0 && (
                             <div className="text-sm text-gray-700">
-                              {formatUSD(totales.totalFinal)}
+                              {formatARS(totales.totalFinal)}
                             </div>
                           )}
                         </div>
@@ -1187,7 +1197,7 @@ export default function ModalTransaccionUnificado({
                           >
                             {Math.abs(totales.diferencia) < 0.01
                               ? '✓ Balanceado'
-                              : formatCurrencyArs(totales.diferencia)}
+                              : formatUSD(totales.diferencia)}
                           </div>
                         </div>
                       </div>
@@ -1200,7 +1210,7 @@ export default function ModalTransaccionUnificado({
                   <CardContent className="pt-6">
                     <div className="space-y-3">
                       <Button
-                        onClick={handleGuardar}
+                        onClick={handleSave}
                         disabled={guardando || cargando}
                         className="w-full bg-gradient-to-r from-[#f9bbc4] to-[#e292a3] font-medium text-white hover:from-[#e292a3] hover:to-[#d4a7ca]"
                       >
@@ -1280,7 +1290,7 @@ export default function ModalTransaccionUnificado({
                         {producto.nombre}
                       </div>
                       <div className="text-sm text-gray-600">
-                        {producto.tipo} - {formatCurrencyArs(producto.precio)}
+                        {producto.tipo} - {formatUSD(producto.precio)}
                       </div>
                     </div>
                     <Button

@@ -1,5 +1,6 @@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { cn } from '@/lib/utils';
+import { useCurrencyConverter } from '@/hooks/useCurrencyConverter';
 
 interface SummaryCardProps {
   title: string;
@@ -14,14 +15,11 @@ export default function SummaryCard({
   format = 'number',
   valueClassName,
 }: SummaryCardProps) {
+  const { formatUSD } = useCurrencyConverter();
+
   const formattedValue =
     format === 'currency'
-      ? new Intl.NumberFormat('es-AR', {
-          style: 'currency',
-          currency: 'ARS',
-          minimumFractionDigits: 0,
-          maximumFractionDigits: 2,
-        }).format(value)
+      ? formatUSD(value)
       : new Intl.NumberFormat('es-AR').format(value);
 
   return (

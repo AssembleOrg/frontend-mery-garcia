@@ -4,6 +4,7 @@ import { useComandas } from '@/features/comandas/store/comandaStore';
 import { useFiltrosComanda } from '@/features/comandas/store/comandaStore';
 import { usePaginacion } from './usePaginacion';
 import { logger } from '@/lib/utils';
+import { useCurrencyConverter } from '@/hooks/useCurrencyConverter'; // ← Agregar import
 import {
   exportComandasToCSV,
   exportComandasToPDF,
@@ -13,6 +14,7 @@ import {
 export function useIncomingTransactions(dateRange?: DateRange) {
   const { comandas } = useComandas();
   const { filters, updateFilters } = useFiltrosComanda();
+  const { exchangeRate } = useCurrencyConverter(); // ← Agregar hook
 
   // Check if date is in range
   const isDateInRange = useMemo(() => {
@@ -124,7 +126,8 @@ export function useIncomingTransactions(dateRange?: DateRange) {
             }
           : undefined;
 
-      exportComandasToPDF(filteredData, {
+      exportComandasToPDF(filteredData, exchangeRate, {
+        // ← Corregir llamada
         filename: `ingresos_${new Date().toISOString().split('T')[0]}`,
         dateRange: validDateRange,
         filters,

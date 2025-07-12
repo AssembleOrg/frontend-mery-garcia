@@ -90,7 +90,7 @@ export default function ModalVerDetalles({
   const formatAmount = (monto: number) => {
     return new Intl.NumberFormat('es-AR', {
       style: 'currency',
-      currency: 'ARS',
+      currency: 'USD',
     }).format(monto);
   };
 

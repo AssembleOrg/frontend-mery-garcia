@@ -247,7 +247,7 @@ export default function ResumenCajaChicaPage() {
                   <span className="font-semibold text-blue-700">
                     {new Intl.NumberFormat('es-AR', {
                       style: 'currency',
-                      currency: 'ARS',
+                      currency: 'USD',
                     }).format(resumen.montoNeto)}
                   </span>
                 </span>

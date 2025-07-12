@@ -52,15 +52,14 @@ export interface ItemComanda {
   nombre: string;
   tipo: 'producto' | 'servicio';
   precio: number;
+  precioOriginalUSD: number;
   cantidad: number;
-  /** Porcentaje de descuento aplicado (0-100). Mantiene la intención de la UI. */
   descuentoPorcentaje?: number;
   descuento: number;
   subtotal: number;
-  personalId?: string; // quien realizó el servicio/vendió
-  // Legacy compatibility
-  servicioId?: string; // mapea a productoServicioId
-  categoria?: string; // mapea a tipo o descripción
+  personalId?: string;
+  servicioId?: string;
+  categoria?: string;
 }
 
 // Seña
@@ -112,6 +111,7 @@ export interface Comanda {
   // Campos para validación
   estadoNegocio?: EstadoComandaNegocio;
   estadoValidacion?: EstadoValidacion;
+  tipoCambioAlCrear?: TipoCambio;
 }
 
 // Configuración de recargos por método de pago
@@ -126,8 +126,7 @@ export interface TipoCambio {
   valorCompra: number;
   valorVenta: number;
   fecha: Date;
-  fuente: string; // 'manual' | 'dolarOK'
-  /** Si true, el usuario prefiere valor manual y no se debe sobrescribir con API */
+  fuente: string;
   modoManual: boolean;
 }
 
@@ -246,13 +245,25 @@ export interface TrazabilidadComanda {
   observacionesValidacion?: string;
 }
 
-// Historial de cambios para auditoría
+export interface HistorialTipoCambio {
+  id: string;
+  valorCompra: number;
+  valorVenta: number;
+  fechaCreacion: Date;
+  creadoPor?: string;
+}
+
 export interface HistorialCambio {
   id: string;
   comandaId: string;
   usuario: string;
-  accion: 'creacion' | 'edicion' | 'validacion' | 'cambio_estado';
-  estadoAnterior?: Record<string, unknown>;
+  accion:
+    | 'creacion'
+    | 'cambio_estado'
+    | 'validacion'
+    | 'edicion'
+    | 'eliminacion';
+  estadoAnterior: Record<string, unknown>;
   estadoNuevo: Record<string, unknown>;
   fecha: string;
   observaciones?: string;

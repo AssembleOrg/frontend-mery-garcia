@@ -18,7 +18,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { formatCurrencyArs } from '@/lib/utils';
+import { formatUSD } from '@/lib/utils';
 
 interface MovimientoCaja {
   tipo: 'ingreso' | 'egreso';
@@ -110,7 +110,7 @@ export default function ModalMovimientoCaja({
             />
             {formData.monto > 0 && (
               <p className="text-sm text-gray-600">
-                {formatCurrencyArs(formData.monto)}
+                {formatUSD(formData.monto)}
               </p>
             )}
           </div>

@@ -10,11 +10,10 @@ import { Button } from '@/components/ui/button';
 import { DataTable } from '@/components/ui/data-table';
 import {
   formatDate as formatDateEs,
-  formatCurrencyArs,
-  formatCurrencyUsd,
   resolverMetodoPagoPrincipal,
   formatearDetalleMetodosPago,
 } from '@/lib/utils';
+import { useCurrencyConverter } from '@/hooks/useCurrencyConverter';
 import { MoreHorizontal, Edit, Eye, Trash2, Lock } from 'lucide-react';
 import { ESTADO_LABELS, ESTADO_COLORS } from '@/lib/constants';
 import { ColumnDef, createColumnHelper } from '@tanstack/react-table';
@@ -36,6 +35,7 @@ export default function TransactionsTableTanStack({
   onChangeStatus,
   hiddenColumns = [],
 }: Props) {
+  const { formatARS, formatUSD } = useCurrencyConverter();
   const c = createColumnHelper<Comanda>();
 
   const columnsRaw = [
@@ -74,11 +74,11 @@ export default function TransactionsTableTanStack({
       header: 'Subtotal',
       cell: (info) => (
         <div className="text-right">
-          <div className="font-medium">
-            {formatCurrencyArs(info.getValue())}
+          <div className="font-medium text-green-600">
+            {formatUSD(info.getValue())}
           </div>
           <div className="text-muted-foreground text-xs">
-            {formatCurrencyUsd(info.getValue())}
+            {formatARS(info.getValue())}
           </div>
         </div>
       ),
@@ -86,8 +86,8 @@ export default function TransactionsTableTanStack({
     c.accessor('totalFinal', {
       header: 'Total',
       cell: (info) => (
-        <div className="text-right font-semibold text-[#4a3540]">
-          {formatCurrencyArs(info.getValue())}
+        <div className="text-right font-semibold text-green-600">
+          {formatUSD(info.getValue())}
         </div>
       ),
     }),

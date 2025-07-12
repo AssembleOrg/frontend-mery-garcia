@@ -3,6 +3,7 @@ import localFont from 'next/font/local';
 import './globals.css';
 import { Toaster } from '@/components/ui/sonner';
 import { AuthProvider } from '@/features/auth/providers/AuthProvider';
+import { TipoCambioProvider } from '@/components/providers/TipoCambioProvider';
 
 // Usar la fuente existente
 const avantMedium = localFont({
@@ -24,7 +25,9 @@ export default function RootLayout({
   return (
     <html lang="es">
       <body className={`${avantMedium.variable} font-sans antialiased`}>
-        <AuthProvider>{children}</AuthProvider>
+        <AuthProvider>
+          <TipoCambioProvider>{children}</TipoCambioProvider>
+        </AuthProvider>
         <Toaster position="top-right" richColors />
       </body>
     </html>

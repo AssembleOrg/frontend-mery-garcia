@@ -18,6 +18,8 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Separator } from '@/components/ui/separator';
+import { formatARS, formatUSD } from '@/lib/utils';
+import { useCurrencyConverter } from '@/hooks/useCurrencyConverter';
 import {
   Edit,
   X,
@@ -54,8 +56,10 @@ export default function ModalTransaccion({
     useComandaStore();
 
   // Hook para bloquear scroll del body
+
   useModalScrollLock(isOpen);
 
+  const { isExchangeRateValid } = useCurrencyConverter();
   // Estados del formulario
   const [cliente, setCliente] = useState('');
   const [telefono, setTelefono] = useState('');
@@ -135,14 +139,60 @@ export default function ModalTransaccion({
 
   // Formatear montos usando utilidad centralizada
   const formatAmount = (amount: number) => {
-    return new Intl.NumberFormat('es-UY', {
-      style: 'currency',
-      currency: 'UYU',
-      minimumFractionDigits: 0,
-    }).format(amount);
+    return formatUSD(amount);
   };
 
-  // Agregar nuevo servicio (solo en edit/create)
+  <div className="flex justify-between text-sm">
+    <span>Subtotal:</span>
+    <div className="text-right">
+      <div className="font-medium text-green-600">{formatUSD(subtotal)}</div>
+      {isExchangeRateValid && subtotal > 0 && (
+        <div className="text-xs text-gray-600">{formatARS(subtotal)}</div>
+      )}
+    </div>
+  </div>;
+
+  <div className="flex justify-between text-lg font-semibold">
+    <span>Total:</span>
+    <div className="text-right">
+      <div className="text-green-600">
+        {formatUSD(metodoPago === 'tarjeta' ? total * 1.35 : total)}
+      </div>
+      {isExchangeRateValid && (
+        <div className="text-sm text-gray-600">
+          {formatARS(metodoPago === 'tarjeta' ? total * 1.35 : total)}
+        </div>
+      )}
+    </div>
+  </div>;
+
+  {
+    metodosPagoDetalle.map((mp, idx) => (
+      <div
+        key={idx}
+        className="flex justify-between rounded-md bg-gray-50 px-3 py-1"
+      >
+        <span>
+          {mp.tipo === 'efectivo'
+            ? '💰 Efectivo'
+            : mp.tipo === 'tarjeta'
+              ? '💳 Tarjeta'
+              : '🏦 Transferencia'}
+        </span>
+        <div className="text-right">
+          <div className="font-medium text-green-600">
+            {formatUSD(mp.montoFinal || mp.monto)}
+          </div>
+          {isExchangeRateValid && (
+            <div className="text-xs text-gray-600">
+              {formatARS(mp.montoFinal || mp.monto)}
+            </div>
+          )}
+        </div>
+      </div>
+    ));
+  }
+
   const agregarServicio = () => {
     if (mode === 'view') return;
 
@@ -151,6 +201,7 @@ export default function ModalTransaccion({
       nombre: '',
       tipo: 'servicio',
       precio: 0,
+      precioOriginalUSD: 0,
       cantidad: 1,
       descuento: 0,
       subtotal: 0,

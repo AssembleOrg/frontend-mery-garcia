@@ -14,7 +14,7 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { Comanda } from '@/types/caja';
-import { formatCurrencyArs } from '@/lib/utils';
+import { useCurrencyConverter } from '@/hooks/useCurrencyConverter';
 import { Eye, Search } from 'lucide-react';
 
 interface TablaComandasValidadasProps {
@@ -24,6 +24,7 @@ interface TablaComandasValidadasProps {
 export default function TablaComandasValidadas({
   comandas,
 }: TablaComandasValidadasProps) {
+  const { formatUSD } = useCurrencyConverter();
   const [filtro, setFiltro] = useState('');
   // const [comandaSeleccionada, setComandaSeleccionada] = useState<string | null>(null);
 
@@ -119,7 +120,7 @@ export default function TablaComandasValidadas({
                     <TableCell>{comanda.cliente.nombre}</TableCell>
                     <TableCell>{comanda.mainStaff.nombre}</TableCell>
                     <TableCell className="text-right font-medium">
-                      {formatCurrencyArs(comanda.totalFinal)}
+                      {formatUSD(comanda.totalFinal)}
                     </TableCell>
                     <TableCell>
                       <Badge className="bg-green-100 text-green-800">

@@ -22,7 +22,7 @@ import {
 } from 'lucide-react';
 import { MetodoPagoForm } from '@/hooks/useMetodosPago';
 import { METODOS_PAGO, METODO_PAGO_LABELS } from '@/lib/constants';
-import { formatCurrencyArs } from '@/lib/utils';
+import { formatUSD } from '@/lib/utils';
 
 interface MetodosPagoSectionProps {
   metodosPago: MetodoPagoForm[];
@@ -162,7 +162,7 @@ export default function MetodosPagoSection({
 
                 {/* Monto final */}
                 <div className="w-24 text-right text-sm font-medium">
-                  {formatCurrencyArs(metodo.montoFinal)}
+                  {formatUSD(metodo.montoFinal)}
                 </div>
 
                 {/* Botón eliminar */}
@@ -186,30 +186,30 @@ export default function MetodosPagoSection({
         <div className="space-y-2 rounded-lg border bg-blue-50 p-3">
           <div className="flex justify-between text-sm">
             <span>Subtotal pagado:</span>
-            <span>{formatCurrencyArs(totalPagado - totalRecargos)}</span>
+            <span>{formatUSD(totalPagado - totalRecargos)}</span>
           </div>
           {totalRecargos > 0 && (
             <div className="flex justify-between text-sm text-orange-600">
               <span>Recargos:</span>
-              <span>+{formatCurrencyArs(totalRecargos)}</span>
+              <span>+{formatUSD(totalRecargos)}</span>
             </div>
           )}
           <div className="flex justify-between border-t pt-2 font-medium">
             <span>Total pagado:</span>
             <span className={hayDiferencia ? 'text-red-600' : 'text-green-600'}>
-              {formatCurrencyArs(totalPagado)}
+              {formatUSD(totalPagado)}
             </span>
           </div>
           <div className="flex justify-between text-sm text-gray-600">
             <span>Monto total:</span>
-            <span>{formatCurrencyArs(montoTotal)}</span>
+            <span>{formatUSD(montoTotal)}</span>
           </div>
           {hayDiferencia && (
             <div className="flex justify-between text-sm font-medium text-red-600">
               <span>Diferencia:</span>
               <span>
                 {diferencia > 0 ? '+' : ''}
-                {formatCurrencyArs(diferencia)}
+                {formatUSD(diferencia)}
               </span>
             </div>
           )}
