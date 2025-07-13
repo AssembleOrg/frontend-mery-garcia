@@ -16,12 +16,17 @@ export interface ExchangeRate {
   moneda?: string;
 }
 
-// Cotización pública (GET)
 export async function getCotizacion(): Promise<ExchangeRate | undefined> {
   try {
-    const res = await apiFetch<
-      { status: string; data: ExchangeRate } | undefined
-    >('api/dolar/cotizacion', { cache: 'no-store' });
+    const manualRate = await getManualRate();
+    if (manualRate && manualRate.casa === 'Manual') {
+      return manualRate;
+    }
+
+    const res = await apiFetch<{ status: string; data: ExchangeRate }>(
+      'api/dolar/cotizacion',
+      { cache: 'no-store' }
+    );
     return res?.data;
   } catch (error) {
     console.error('Error obteniendo cotización:', error);
