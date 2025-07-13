@@ -949,15 +949,36 @@ export const useComandaStore = create<ComandaState>()(
           }
         },
 
-        // === CARGAR TIPO DE CAMBIO INICIAL ===
         cargarTipoCambioInicial: async () => {
           const { tipoCambioInicializado } = get();
 
-          // Evitar cargas múltiples
           if (tipoCambioInicializado) return;
 
           try {
-            // Importar dinámicamente para evitar dependencias circulares
+            const persistedState = safeJSONStorage?.getItem('comanda-store');
+            if (persistedState && typeof persistedState === 'string') {
+              const parsed = JSON.parse(persistedState);
+              if (
+                parsed?.state?.tipoCambio?.modoManual &&
+                parsed?.state?.tipoCambio?.valorVenta > 0
+              ) {
+                console.log(
+                  '✅ Usando tipo de cambio manual persistido:',
+                  `${parsed.state.tipoCambio.valorVenta} (local)`
+                );
+                set({
+                  tipoCambio: {
+                    ...parsed.state.tipoCambio,
+                    fecha: new Date(parsed.state.tipoCambio.fecha),
+                  },
+                  tipoCambioInicializado: true,
+                });
+                return;
+              }
+            }
+
+            // 2. FALLBACK: Solo si no hay valor local manual, consultar backend
+            console.log('🔍 No hay valor manual local, consultando backend...');
             const { getManualRate } = await import(
               '@/services/exchangeRate.service'
             );
@@ -969,23 +990,41 @@ export const useComandaStore = create<ComandaState>()(
                   valorCompra: manualRate.compra || 0,
                   valorVenta: manualRate.venta || 0,
                   fecha: new Date(manualRate.fechaActualizacion),
-                  fuente: 'manual',
-                  modoManual: true,
+                  fuente: 'backend',
+                  modoManual: false, // Marcar como no manual para permitir sobrescritura
                 },
                 tipoCambioInicializado: true,
               });
               console.log(
                 '✅ Tipo de cambio cargado desde backend:',
-                manualRate
+                `${manualRate.venta} (backend)`
               );
             } else {
-              // Solo marcar como inicializado sin cambiar valores por defecto
-              set({ tipoCambioInicializado: true });
-              console.log('ℹ️ No hay tipo de cambio manual previo');
+              // 3. ÚLTIMO RECURSO: Usar valores por defecto
+              set({
+                tipoCambioInicializado: true,
+                tipoCambio: {
+                  valorCompra: 0,
+                  valorVenta: 1200, // Valor por defecto
+                  fecha: new Date(),
+                  fuente: 'default',
+                  modoManual: false,
+                },
+              });
+              console.log('ℹ️ Usando tipo de cambio por defecto: 1200');
             }
           } catch (error) {
-            console.error('Error cargando tipo de cambio inicial:', error);
-            set({ tipoCambioInicializado: true }); // Marcar como inicializado para evitar reintentos
+            console.error('❌ Error cargando tipo de cambio inicial:', error);
+            set({
+              tipoCambioInicializado: true,
+              tipoCambio: {
+                valorCompra: 0,
+                valorVenta: 1200,
+                fecha: new Date(),
+                fuente: 'error',
+                modoManual: false,
+              },
+            });
           }
         },
       }),

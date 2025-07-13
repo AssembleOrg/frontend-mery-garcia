@@ -139,9 +139,25 @@ export const getPublicRate = async (): Promise<ExchangeRate | undefined> => {
 export const getManualRate = async (): Promise<ExchangeRate | undefined> => {
   try {
     const historial = await apiFetch<{ status: string; data: ExchangeRate[] }>(
-      'api/dolar/historial?limit=10'
+      'api/dolar/historial?limit=50'
     );
-    return historial?.data?.find((r) => r.casa === 'Manual');
+
+    if (!historial?.data || historial.data.length === 0) {
+      console.log('No hay historial de tipos de cambio');
+      return undefined;
+    }
+
+    // Buscar primero registros manuales
+    const manualRate = historial.data.find((r) => r.casa === 'Manual');
+    if (manualRate) {
+      console.log('Encontrado tipo de cambio manual:', manualRate);
+      return manualRate;
+    }
+
+    // Si no hay manual, usar el más reciente
+    const latestRate = historial.data[0];
+    console.log('Usando tipo de cambio más reciente:', latestRate);
+    return latestRate;
   } catch (error) {
     console.error('Error obteniendo valor manual:', error);
     return undefined;

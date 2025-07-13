@@ -32,13 +32,15 @@ export default function TipoCambioPage() {
   >([]);
   const [internalRate, setInternalRate] = useState('');
   const [saving, setSaving] = useState(false);
-  const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [canRefresh, setCanRefresh] = useState(true);
   const [nextRefreshTime, setNextRefreshTime] = useState<Date | null>(null);
   const [showHistorialInterno, setShowHistorialInterno] = useState(false);
 
   const { tipoCambio, actualizarTipoCambio } = useDatosReferencia();
+
+  // Agregar estado local para loading de fetch
+  const [fetching, setFetching] = useState(false);
 
   const loadHistorialInterno = useCallback(() => {
     const historial = historialTipoCambioService.getHistorial();
@@ -75,7 +77,7 @@ export default function TipoCambioPage() {
       if (isManualRefresh) {
         setRefreshing(true);
       } else {
-        setLoading(true);
+        setFetching(true); // ✅ Usar setFetching en lugar de setLoading
       }
 
       try {
@@ -109,7 +111,7 @@ export default function TipoCambioPage() {
         setInternalRate(tipoCambio.valorVenta.toString());
         loadHistorialInterno();
       } finally {
-        setLoading(false);
+        setFetching(false); // ✅ Usar setFetching
         setRefreshing(false);
       }
     },
@@ -133,9 +135,14 @@ export default function TipoCambioPage() {
   }, [canRefresh, nextRefreshTime, fetchData]);
 
   useEffect(() => {
+    console.log('🔍 Estado actual del tipoCambio:', tipoCambio);
+    console.log(
+      '🔍 localStorage tipo-cambio-store:',
+      localStorage.getItem('tipo-cambio-store')
+    );
     checkRefreshCooldown();
     void fetchData();
-  }, [fetchData, checkRefreshCooldown]);
+  }, [fetchData, checkRefreshCooldown, tipoCambio]);
 
   // Timer para actualizar el estado del cooldown
   useEffect(() => {
@@ -201,7 +208,8 @@ export default function TipoCambioPage() {
     toast.success('Historial interno limpiado');
   };
 
-  if (loading) {
+  if (fetching) {
+    // ✅ Verificar ambos estados
     return (
       <MainLayout>
         <div className="flex h-screen items-center justify-center">

@@ -1,6 +1,6 @@
 'use client';
-import { useDatosReferencia } from '@/features/comandas/store/comandaStore';
 import { useEffect } from 'react';
+import { useDatosReferencia } from '@/features/comandas/store/comandaStore';
 
 export function TipoCambioInitializer() {
   const { cargarTipoCambioInicial } = useDatosReferencia();
