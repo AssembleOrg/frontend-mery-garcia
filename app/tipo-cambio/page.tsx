@@ -21,31 +21,28 @@ import { HistorialTipoCambio } from '@/types/caja';
 import Spinner from '@/components/common/Spinner';
 import { RefreshCw, History, Trash2 } from 'lucide-react';
 
-const REFRESH_COOLDOWN = 60 * 60 * 1000; // 1 hora en milisegundos
+const REFRESH_COOLDOWN = 60 * 60 * 1000; // 1 hora
 const LAST_REFRESH_KEY = 'last_exchange_rate_refresh';
 
 export default function TipoCambioPage() {
-  const [rate, setRate] = useState<ExchangeRate | null>(null);
-  const [historial, setHistorial] = useState<ExchangeRate[]>([]);
+  // 🎯 SOLO estado para datos informativos de API (no operativos)
+  const [apiRate, setApiRate] = useState<ExchangeRate | null>(null);
+  const [apiHistorial, setApiHistorial] = useState<ExchangeRate[]>([]);
   const [historialInterno, setHistorialInterno] = useState<
     HistorialTipoCambio[]
   >([]);
-  const [internalRate, setInternalRate] = useState('');
+
+  // 🎯 Estado local SOLO para UI
+  const [inputValue, setInputValue] = useState('');
   const [saving, setSaving] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [canRefresh, setCanRefresh] = useState(true);
   const [nextRefreshTime, setNextRefreshTime] = useState<Date | null>(null);
   const [showHistorialInterno, setShowHistorialInterno] = useState(false);
+  const [loading, setLoading] = useState(true);
 
-  const { tipoCambio, actualizarTipoCambio } = useDatosReferencia();
-
-  // Agregar estado local para loading de fetch
-  const [fetching, setFetching] = useState(false);
-
-  const loadHistorialInterno = useCallback(() => {
-    const historial = historialTipoCambioService.getHistorial();
-    setHistorialInterno(historial);
-  }, []);
+  const { tipoCambio, actualizarTipoCambio, cargarTipoCambioInicial } =
+    useDatosReferencia();
 
   const checkRefreshCooldown = useCallback(() => {
     const lastRefresh = localStorage.getItem(LAST_REFRESH_KEY);
@@ -71,55 +68,80 @@ export default function TipoCambioPage() {
     }
   }, []);
 
-  // Cargar datos desde la API
-  const fetchData = useCallback(
+  const loadApiData = useCallback(
     async (isManualRefresh = false) => {
-      if (isManualRefresh) {
-        setRefreshing(true);
-      } else {
-        setFetching(true); // ✅ Usar setFetching en lugar de setLoading
-      }
+      if (isManualRefresh) setRefreshing(true);
 
       try {
-        // Cargar cotización pública
-        const current = await getCotizacion();
-        if (current) {
-          setRate(current);
-        }
+        const [current, historial] = await Promise.all([
+          getCotizacion(),
+          getHistorial(10),
+        ]);
 
-        // Cargar historial API
-        const h = await getHistorial(10);
-        if (h) setHistorial(h);
+        if (current) setApiRate(current);
+        if (historial) setApiHistorial(historial);
 
-        // Cargar historial interno
-        loadHistorialInterno();
-
-        // Si es refresh manual, actualizar timestamp
         if (isManualRefresh) {
           localStorage.setItem(LAST_REFRESH_KEY, new Date().toISOString());
           checkRefreshCooldown();
-          toast.success('Cotizaciones actualizadas desde la API');
+          toast.success('Cotizaciones API actualizadas');
         }
-
-        // Usar valor del store como valor interno
-        setInternalRate(tipoCambio.valorVenta.toString());
-      } catch (err) {
-        console.error('Error cargando datos:', err);
+      } catch (error) {
+        console.error('Error cargando datos API:', error);
         if (isManualRefresh) {
-          toast.error('Error al actualizar cotizaciones');
+          toast.error('Error al actualizar cotizaciones API');
         }
-        setInternalRate(tipoCambio.valorVenta.toString());
-        loadHistorialInterno();
       } finally {
-        setFetching(false); // ✅ Usar setFetching
         setRefreshing(false);
       }
     },
-    [tipoCambio.valorVenta, checkRefreshCooldown, loadHistorialInterno]
+    [checkRefreshCooldown]
   );
 
-  // Refresh manual
-  const handleRefresh = useCallback(() => {
+  // ✅ Estabilizar función con useCallback
+  const loadHistorialInterno = useCallback(() => {
+    const historial = historialTipoCambioService.getHistorial();
+    setHistorialInterno(historial);
+  }, []);
+
+  // 🎯 Carga inicial SIMPLE - sin bucles infinitos
+  useEffect(() => {
+    const initializeData = async () => {
+      setLoading(true);
+      try {
+        await cargarTipoCambioInicial();
+        await loadApiData();
+        loadHistorialInterno();
+        checkRefreshCooldown();
+      } catch (error) {
+        console.error('Error en carga inicial:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    initializeData();
+  }, [
+    cargarTipoCambioInicial,
+    loadApiData,
+    loadHistorialInterno,
+    checkRefreshCooldown,
+  ]);
+
+  // ✅ Separar la sincronización del input en un useEffect independiente
+  useEffect(() => {
+    setInputValue(tipoCambio.valorVenta.toString());
+  }, [tipoCambio.valorVenta]);
+
+  // 🎯 Timer para cooldown
+  useEffect(() => {
+    if (!canRefresh && nextRefreshTime) {
+      const interval = setInterval(checkRefreshCooldown, 60000);
+      return () => clearInterval(interval);
+    }
+  }, [canRefresh, nextRefreshTime, checkRefreshCooldown]);
+
+  const handleRefresh = () => {
     if (!canRefresh) {
       const timeLeft = nextRefreshTime
         ? Math.ceil(
@@ -131,32 +153,11 @@ export default function TipoCambioPage() {
       );
       return;
     }
-    fetchData(true);
-  }, [canRefresh, nextRefreshTime, fetchData]);
-
-  useEffect(() => {
-    console.log('🔍 Estado actual del tipoCambio:', tipoCambio);
-    console.log(
-      '🔍 localStorage tipo-cambio-store:',
-      localStorage.getItem('tipo-cambio-store')
-    );
-    checkRefreshCooldown();
-    void fetchData();
-  }, [fetchData, checkRefreshCooldown, tipoCambio]);
-
-  // Timer para actualizar el estado del cooldown
-  useEffect(() => {
-    if (!canRefresh && nextRefreshTime) {
-      const interval = setInterval(() => {
-        checkRefreshCooldown();
-      }, 60000); // Verificar cada minuto
-
-      return () => clearInterval(interval);
-    }
-  }, [canRefresh, nextRefreshTime, checkRefreshCooldown]);
+    loadApiData(true);
+  };
 
   const handleSave = async () => {
-    const valueNum = parseFloat(internalRate);
+    const valueNum = parseFloat(inputValue);
     if (isNaN(valueNum) || valueNum <= 0) {
       toast.error('Valor inválido. Debe ser un número mayor a 0.');
       return;
@@ -165,28 +166,26 @@ export default function TipoCambioPage() {
     setSaving(true);
 
     try {
-      // Actualizar en el store local
+      // 🎯 Actualizar en store (source of truth)
       actualizarTipoCambio({
-        valorCompra: rate?.compra ?? valueNum,
+        valorCompra: apiRate?.compra ?? valueNum,
         valorVenta: valueNum,
         fecha: new Date(),
         fuente: 'manual',
         modoManual: true,
       });
 
-      // **NUEVO**: Guardar en historial interno
+      // 🎯 Guardar en historial interno
       historialTipoCambioService.agregarRegistro({
-        valorCompra: rate?.compra ?? valueNum,
+        valorCompra: apiRate?.compra ?? valueNum,
         valorVenta: valueNum,
       });
-
-      // Recargar historial interno
       loadHistorialInterno();
 
-      // Intentar sincronizar con backend
+      // 🎯 Intentar sincronizar con backend
       try {
         await setManualRate({
-          compra: rate?.compra,
+          compra: apiRate?.compra || valueNum - 20,
           venta: valueNum,
         });
         toast.success('Tipo de cambio actualizado correctamente');
@@ -208,8 +207,7 @@ export default function TipoCambioPage() {
     toast.success('Historial interno limpiado');
   };
 
-  if (fetching) {
-    // ✅ Verificar ambos estados
+  if (loading) {
     return (
       <MainLayout>
         <div className="flex h-screen items-center justify-center">
@@ -260,40 +258,40 @@ export default function TipoCambioPage() {
               </div>
             )}
 
-            {/* Cotización pública (informativa) */}
-            {rate && (
+            {/* 🎯 Valor operativo actual (source of truth) */}
+            <SummaryCard
+              title="Valor Operativo Vigente (ARS/USD)"
+              value={tipoCambio.valorVenta}
+              format="currency"
+            />
+
+            {/* 🎯 Cotización API (solo informativa) */}
+            {apiRate && (
               <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                 <SummaryCard
-                  title="Compra (API)"
-                  value={rate.compra}
+                  title="Compra (API - Informativo)"
+                  value={apiRate.compra}
                   format="currency"
                 />
                 <SummaryCard
-                  title="Venta (API)"
-                  value={rate.venta ?? rate.compra}
+                  title="Venta (API - Informativo)"
+                  value={apiRate.venta ?? apiRate.compra}
                   format="currency"
                 />
               </div>
             )}
 
-            {/* Valor interno actual */}
-            <SummaryCard
-              title="Valor interno vigente (ARS/USD)"
-              value={tipoCambio.valorVenta}
-              format="currency"
-            />
-
-            {/* Editor de valor interno */}
+            {/* Editor de valor operativo */}
             <Card className="border border-[#f9bbc4]/30 bg-white/90">
               <CardHeader>
-                <CardTitle>Establecer Valor Interno ARS/USD</CardTitle>
+                <CardTitle>Establecer Valor Operativo ARS/USD</CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="flex items-center gap-3">
                   <Input
                     type="number"
-                    value={internalRate}
-                    onChange={(e) => setInternalRate(e.target.value)}
+                    value={inputValue}
+                    onChange={(e) => setInputValue(e.target.value)}
                     className="max-w-xs"
                     placeholder="Ej: 1200"
                   />
@@ -312,7 +310,7 @@ export default function TipoCambioPage() {
               </CardContent>
             </Card>
 
-            {/* **NUEVO**: Historial interno */}
+            {/* Historial interno */}
             <Card className="border border-[#f9bbc4]/30 bg-white/90">
               <CardHeader>
                 <div className="flex items-center justify-between">
@@ -369,7 +367,8 @@ export default function TipoCambioPage() {
                           )}
                         </span>
                         <span className="font-medium">
-                          Valor interno: ${registro.valorVenta.toLocaleString()}
+                          Valor operativo: $
+                          {registro.valorVenta.toLocaleString()}
                         </span>
                       </div>
                     ))}
@@ -384,13 +383,13 @@ export default function TipoCambioPage() {
             </Card>
 
             {/* Historial API (informativo) */}
-            {historial.length > 0 && (
+            {apiHistorial.length > 0 && (
               <Card className="border border-[#f9bbc4]/30 bg-white/90">
                 <CardHeader>
-                  <CardTitle>Historial de cotizaciones (API)</CardTitle>
+                  <CardTitle>Historial API (Informativo)</CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-2">
-                  {historial.slice(0, 5).map((h, idx) => (
+                  {apiHistorial.slice(0, 5).map((h, idx) => (
                     <div
                       key={idx}
                       className="flex items-center justify-between border-b pb-2 text-sm last:border-b-0"

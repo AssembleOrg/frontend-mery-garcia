@@ -177,58 +177,51 @@ export interface ResumenCaja {
   personalMasVentas?: string;
 }
 
-// Legacy types para compatibilidad (eliminar gradualmente)
 export type FiltrosEncomienda = FiltrosComanda;
 export type ColumnaCaja = ColumnaComanda;
 
-// Tipo legacy para compatibilidad con el código existente
 export interface Encomienda {
   id: string;
   fecha: Date;
   numero: string;
-  cliente: string; // legacy: solo nombre
+  cliente: string;
   telefono?: string;
-  servicios: ItemComanda[]; // legacy: items
+  servicios: ItemComanda[];
   subtotal: number;
   descuentoTotal: number;
   iva: number;
   total: number;
-  metodoPago: string; // legacy: string simple
+  metodoPago: string;
   observaciones?: string;
-  vendedor: string; // legacy: nombre del personal
+  vendedor: string;
   estado: 'pendiente' | 'completado' | 'validado' | 'cancelado';
   tipo: 'ingreso' | 'egreso';
-  // Nuevos campos para validación
+
   estadoNegocio?: EstadoComandaNegocio;
   estadoValidacion?: EstadoValidacion;
-  /** Detalle completo de métodos de pago (si fue mixto) */
   metodosPago?: MetodoPago[];
 }
 
-// Nuevo tipo para archivos adjuntos
 export interface ArchivoAdjunto {
   id: string;
   nombre: string;
   tipo: 'pdf' | 'imagen';
   url: string;
-  tamaño: number; // en bytes
+  tamaño: number;
   fechaSubida: Date;
   descripcion?: string;
 }
 
-// Agregar a la interfaz Comanda existente
 export interface ComandaConArchivos extends Comanda {
   archivosAdjuntos?: ArchivoAdjunto[];
 }
 
-// Tipos para el componente de upload
 export interface UploadConfig {
-  maxTamaño: number; // en MB
+  maxTamaño: number;
   tiposPermitidos: string[];
   maxArchivos: number;
 }
 
-// Estados de la comanda por vendedor (nuevos estados específicos)
 export type EstadoComandaNegocio = 'pendiente' | 'completado' | 'incompleto';
 
 // Estados de validación por admin
@@ -236,11 +229,11 @@ export type EstadoValidacion = 'no_validado' | 'validado';
 
 // Información de trazabilidad
 export interface TrazabilidadComanda {
-  creadoPor: string; // ID del usuario que creó
+  creadoPor: string;
   fechaCreacion: string;
-  modificadoPor?: string; // ID del último usuario que modificó
+  modificadoPor?: string;
   fechaModificacion?: string;
-  validadoPor?: string; // ID del admin que validó
+  validadoPor?: string;
   fechaValidacion?: string;
   observacionesValidacion?: string;
 }

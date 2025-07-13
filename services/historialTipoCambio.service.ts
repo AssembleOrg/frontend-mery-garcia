@@ -3,7 +3,6 @@ import { HistorialTipoCambio } from '@/types/caja';
 const STORAGE_KEY = 'historial_tipo_cambio';
 
 export const historialTipoCambioService = {
-  // Obtener historial desde localStorage
   getHistorial(): HistorialTipoCambio[] {
     try {
       const stored = localStorage.getItem(STORAGE_KEY);
@@ -13,7 +12,6 @@ export const historialTipoCambioService = {
     }
   },
 
-  // Agregar nuevo registro al historial
   agregarRegistro(tipoCambio: {
     valorCompra: number;
     valorVenta: number;
@@ -26,9 +24,8 @@ export const historialTipoCambioService = {
       fechaCreacion: new Date(),
     };
 
-    historial.unshift(nuevoRegistro); // Agregar al inicio
+    historial.unshift(nuevoRegistro);
 
-    // Mantener solo los últimos 50 registros
     const historialLimitado = historial.slice(0, 50);
 
     localStorage.setItem(STORAGE_KEY, JSON.stringify(historialLimitado));

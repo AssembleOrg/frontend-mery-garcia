@@ -163,7 +163,6 @@ export default function ModalTransaccionUnificado({
     setItems([...items, nuevoItem]);
   };
 
-  // Add item from product list
   const agregarDesdeProducto = (producto: ProductoServicio) => {
     const nuevoItem: ItemTransaccion = {
       id: `temp-${Date.now()}`,
@@ -281,7 +280,6 @@ export default function ModalTransaccionUnificado({
     setDescuentoGlobalPorcentaje(0);
   };
 
-  // Limpiar todos los descuentos
   const limpiarDescuentos = () => {
     const itemsSinDescuento = items.map((item) => ({
       ...item,
@@ -293,7 +291,6 @@ export default function ModalTransaccionUnificado({
     setDescuentoGlobalPorcentaje(0);
   };
 
-  // Add payment method
   const agregarMetodoPago = () => {
     const nuevoMetodo: MetodoPagoForm = {
       tipo: 'efectivo',
@@ -304,14 +301,12 @@ export default function ModalTransaccionUnificado({
     setMetodosPago([...metodosPago, nuevoMetodo]);
   };
 
-  // Remove payment method
   const eliminarMetodoPago = (index: number) => {
     if (metodosPago.length > 1) {
       setMetodosPago(metodosPago.filter((_, i) => i !== index));
     }
   };
 
-  // Update payment method
   const actualizarMetodoPago = (
     index: number,
     campo: keyof MetodoPagoForm,
