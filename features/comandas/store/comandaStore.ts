@@ -29,6 +29,7 @@ interface ComandaState {
   productosServicios: ProductoServicio[];
   tipoCambio: TipoCambio;
   configuracionRecargos: ConfiguracionRecargo[];
+  tipoCambioInicializado: boolean; // Flag para evitar cargas múltiples
 
   // Acciones - Comandas
   agregarComanda: (comanda: Comanda) => void;
@@ -52,6 +53,7 @@ interface ComandaState {
     query?: string,
     unidad?: UnidadNegocio
   ) => ProductoServicio[];
+  cargarTipoCambioInicial: () => Promise<void>;
 
   // Acciones - Productos/Servicios CRUD
   agregarProductoServicio: (producto: Omit<ProductoServicio, 'id'>) => void;
@@ -153,6 +155,7 @@ const estadoInicial = {
     modoManual: false, // Por defecto, permite sobrescribir con API
   } as TipoCambio,
   configuracionRecargos: [],
+  tipoCambioInicializado: false,
 };
 
 // Storage helper que evita acceder a localStorage durante el render en servidor
@@ -945,6 +948,46 @@ export const useComandaStore = create<ComandaState>()(
             throw error;
           }
         },
+
+        // === CARGAR TIPO DE CAMBIO INICIAL ===
+        cargarTipoCambioInicial: async () => {
+          const { tipoCambioInicializado } = get();
+
+          // Evitar cargas múltiples
+          if (tipoCambioInicializado) return;
+
+          try {
+            // Importar dinámicamente para evitar dependencias circulares
+            const { getManualRate } = await import(
+              '@/services/exchangeRate.service'
+            );
+            const manualRate = await getManualRate();
+
+            if (manualRate) {
+              set({
+                tipoCambio: {
+                  valorCompra: manualRate.compra || 0,
+                  valorVenta: manualRate.venta || 0,
+                  fecha: new Date(manualRate.fechaActualizacion),
+                  fuente: 'manual',
+                  modoManual: true,
+                },
+                tipoCambioInicializado: true,
+              });
+              console.log(
+                '✅ Tipo de cambio cargado desde backend:',
+                manualRate
+              );
+            } else {
+              // Solo marcar como inicializado sin cambiar valores por defecto
+              set({ tipoCambioInicializado: true });
+              console.log('ℹ️ No hay tipo de cambio manual previo');
+            }
+          } catch (error) {
+            console.error('Error cargando tipo de cambio inicial:', error);
+            set({ tipoCambioInicializado: true }); // Marcar como inicializado para evitar reintentos
+          }
+        },
       }),
       {
         name: 'comanda-store',
@@ -956,6 +999,7 @@ export const useComandaStore = create<ComandaState>()(
           personal: state.personal,
           personalSimple: state.personalSimple,
           productosServicios: state.productosServicios,
+          tipoCambioInicializado: state.tipoCambioInicializado,
         }),
       }
     ),
@@ -1014,6 +1058,7 @@ export const useDatosReferencia = () => {
     obtenerPersonalPorUnidad: store.obtenerPersonalPorUnidad,
     buscarProductosServicios: store.buscarProductosServicios,
     actualizarTipoCambio: store.actualizarTipoCambio,
+    cargarTipoCambioInicial: store.cargarTipoCambioInicial,
     // CRUD Productos/Servicios
     agregarProductoServicio: store.agregarProductoServicio,
     actualizarProductoServicio: store.actualizarProductoServicio,

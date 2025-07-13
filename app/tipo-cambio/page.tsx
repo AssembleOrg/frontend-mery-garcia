@@ -20,17 +20,6 @@ import { historialTipoCambioService } from '@/services/historialTipoCambio.servi
 import { HistorialTipoCambio } from '@/types/caja';
 import Spinner from '@/components/common/Spinner';
 import { RefreshCw, History, Trash2 } from 'lucide-react';
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-  AlertDialogTrigger,
-} from '@/components/ui/alert-dialog';
 
 const REFRESH_COOLDOWN = 60 * 60 * 1000; // 1 hora en milisegundos
 const LAST_REFRESH_KEY = 'last_exchange_rate_refresh';
@@ -49,15 +38,13 @@ export default function TipoCambioPage() {
   const [nextRefreshTime, setNextRefreshTime] = useState<Date | null>(null);
   const [showHistorialInterno, setShowHistorialInterno] = useState(false);
 
-  const { actualizarTipoCambio, tipoCambio } = useDatosReferencia();
+  const { tipoCambio, actualizarTipoCambio } = useDatosReferencia();
 
-  // Cargar historial interno
   const loadHistorialInterno = useCallback(() => {
     const historial = historialTipoCambioService.getHistorial();
     setHistorialInterno(historial);
   }, []);
 
-  // Verificar si puede hacer refresh
   const checkRefreshCooldown = useCallback(() => {
     const lastRefresh = localStorage.getItem(LAST_REFRESH_KEY);
     if (!lastRefresh) {
@@ -208,12 +195,9 @@ export default function TipoCambioPage() {
     }
   };
 
-  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
-
   const handleClearHistorial = () => {
     historialTipoCambioService.limpiarHistorial();
     loadHistorialInterno();
-    setShowDeleteDialog(false);
     toast.success('Historial interno limpiado');
   };
 
@@ -344,42 +328,14 @@ export default function TipoCambioPage() {
                       {showHistorialInterno ? 'Ocultar' : 'Ver Todo'}
                     </Button>
                     {historialInterno.length > 0 && (
-                      <AlertDialog
-                        open={showDeleteDialog}
-                        onOpenChange={setShowDeleteDialog}
+                      <Button
+                        onClick={handleClearHistorial}
+                        variant="outline"
+                        size="sm"
+                        className="text-red-600 hover:text-red-700"
                       >
-                        <AlertDialogTrigger asChild>
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            className="text-red-600 hover:text-red-700"
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
-                        </AlertDialogTrigger>
-                        <AlertDialogContent>
-                          <AlertDialogHeader>
-                            <AlertDialogTitle>
-                              ¿Eliminar historial interno?
-                            </AlertDialogTitle>
-                            <AlertDialogDescription>
-                              Esta acción eliminará permanentemente todos los
-                              registros del historial de cambios internos (
-                              {historialInterno.length} registros). Esta acción
-                              no se puede deshacer.
-                            </AlertDialogDescription>
-                          </AlertDialogHeader>
-                          <AlertDialogFooter>
-                            <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                            <AlertDialogAction
-                              onClick={handleClearHistorial}
-                              className="bg-red-600 hover:bg-red-700"
-                            >
-                              Eliminar historial
-                            </AlertDialogAction>
-                          </AlertDialogFooter>
-                        </AlertDialogContent>
-                      </AlertDialog>
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
                     )}
                   </div>
                 </div>
