@@ -169,6 +169,7 @@ export const saveManualRate = async (
   ventaARS: number
 ): Promise<{ status: string; data: ExchangeRate }> => {
   return setManualRate({
+    compra: ventaARS - 20,
     venta: ventaARS,
     casa: 'Manual',
     nombre: 'Blue Manual',
