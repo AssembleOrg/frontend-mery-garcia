@@ -29,6 +29,7 @@ import {
   ArrowUpCircle,
   ArrowDownCircle,
   Search,
+  Hash,
 } from 'lucide-react';
 import { useComandaStore } from '@/features/comandas/store/comandaStore';
 import { useModalScrollLock } from '@/hooks/useModalScrollLock';
@@ -83,6 +84,7 @@ export default function ModalTransaccionUnificado({
   const {
     agregarComanda,
     obtenerProximoNumero,
+    comandas,
     personalSimple,
     productosServicios,
     configuracionRecargos,
@@ -109,6 +111,8 @@ export default function ModalTransaccionUnificado({
   ]);
   const [descuentoGlobalPorcentaje, setDescuentoGlobalPorcentaje] = useState(0);
 
+  const [numeroManual, setNumeroManual] = useState('');
+
   // UI state
   const [guardando, setGuardando] = useState(false);
   const [errores, setErrores] = useState<Record<string, string>>({});
@@ -116,6 +120,29 @@ export default function ModalTransaccionUnificado({
   const [busqueda, setBusqueda] = useState('');
 
   useModalScrollLock(isOpen);
+
+  const validarNumeroManual = (numero: string): boolean => {
+    if (!numero.trim()) return false;
+
+    // Validar que sea solo números
+    if (!/^\d+$/.test(numero)) return false;
+
+    // Generar el número completo con prefijo
+    const prefijo = tipo === 'ingreso' ? '01' : '02';
+    const numeroCompleto = `${prefijo}-${numero.padStart(4, '0')}`;
+
+    // Verificar que no exista ya
+    const existe = comandas.some((c) => c.numero === numeroCompleto);
+    return !existe;
+  };
+
+  const generarNumeroComanda = (): string => {
+    if (numeroManual.trim()) {
+      const prefijo = tipo === 'ingreso' ? '01' : '02';
+      return `${prefijo}-${numeroManual.padStart(4, '0')}`;
+    }
+    return obtenerProximoNumero(tipo);
+  };
 
   // Manejar ESC para cerrar modal
   useEffect(() => {
@@ -374,7 +401,7 @@ export default function ModalTransaccionUnificado({
     };
   };
 
-  // Form validation
+  // Form validation (actualizada)
   const validarFormulario = () => {
     const nuevosErrores: Record<string, string> = {};
 
@@ -386,6 +413,17 @@ export default function ModalTransaccionUnificado({
     }
     if (!responsableId) {
       nuevosErrores.responsableId = 'Debe seleccionar un responsable';
+    }
+
+    // Validar numeración manual (siempre activa)
+    if (numeroManual.trim()) {
+      if (!/^\d+$/.test(numeroManual)) {
+        nuevosErrores.numeroManual = 'Solo se permiten números';
+      } else if (!validarNumeroManual(numeroManual)) {
+        const prefijo = tipo === 'ingreso' ? '01' : '02';
+        const numeroCompleto = `${prefijo}-${numeroManual.padStart(4, '0')}`;
+        nuevosErrores.numeroManual = `El número ${numeroCompleto} ya existe`;
+      }
     }
 
     if (items.length === 0) {
@@ -425,7 +463,7 @@ export default function ModalTransaccionUnificado({
 
     try {
       const totales = calcularTotales();
-      const numeroTransaccion = obtenerProximoNumero(tipo);
+      const numeroTransaccion = generarNumeroComanda();
 
       const { tipoCambio } = useComandaStore.getState();
 
@@ -516,7 +554,7 @@ export default function ModalTransaccionUnificado({
     }
   };
 
-  // Reset form
+  // Reset form (actualizada)
   const resetForm = () => {
     setClienteProveedor('');
     setTelefono('');
@@ -528,6 +566,7 @@ export default function ModalTransaccionUnificado({
       { tipo: 'efectivo', monto: 0, recargoPorcentaje: 0, montoFinal: 0 },
     ]);
     setDescuentoGlobalPorcentaje(0);
+    setNumeroManual('');
     setErrores({});
     setMostrarBuscador(false);
     setBusqueda('');
@@ -620,6 +659,75 @@ export default function ModalTransaccionUnificado({
                 </CardHeader>
                 <CardContent className="space-y-4">
                   <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                    {/* Campo de numeración manual (siempre visible) */}
+                    <div className="md:col-span-2">
+                      <div className="mb-4">
+                        <Label className="mb-2 block font-medium text-gray-700">
+                          Numeración Manual
+                        </Label>
+                        <div className="flex items-center gap-2">
+                          <Badge variant="outline" className="text-xs">
+                            Automático: {obtenerProximoNumero(tipo)}
+                          </Badge>
+                        </div>
+                      </div>
+
+                      <div className="grid grid-cols-1 gap-2 md:grid-cols-3">
+                        <div className="flex items-center gap-2">
+                          <div className="flex items-center gap-1 rounded-md border bg-gray-100 px-3 py-2">
+                            <Hash className="h-4 w-4 text-gray-500" />
+                            <span className="text-sm font-medium text-gray-700">
+                              {tipo === 'ingreso' ? '01' : '02'}-
+                            </span>
+                          </div>
+                          <Input
+                            value={numeroManual}
+                            onChange={(e) => {
+                              const valor = e.target.value.replace(/\D/g, '');
+                              setNumeroManual(valor);
+                              if (errores.numeroManual) {
+                                setErrores((prev) => {
+                                  return prev;
+                                });
+                              }
+                            }}
+                            placeholder="0001"
+                            maxLength={4}
+                            className={`text-center ${
+                              errores.numeroManual
+                                ? 'border-red-500'
+                                : 'border-gray-300'
+                            }`}
+                          />
+                        </div>
+                        <div className="md:col-span-2">
+                          {numeroManual && (
+                            <div className="flex items-center gap-2">
+                              <span className="text-sm text-gray-600">
+                                Número completo:
+                              </span>
+                              <Badge
+                                variant={
+                                  validarNumeroManual(numeroManual)
+                                    ? 'default'
+                                    : 'destructive'
+                                }
+                                className="text-xs"
+                              >
+                                {tipo === 'ingreso' ? '01' : '02'}-
+                                {numeroManual.padStart(4, '0')}
+                              </Badge>
+                            </div>
+                          )}
+                          {errores.numeroManual && (
+                            <p className="mt-1 text-xs text-red-600">
+                              {errores.numeroManual}
+                            </p>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+
                     <div>
                       <Label className="text-gray-700">
                         {tipo === 'ingreso' ? 'Cliente' : 'Proveedor'} *

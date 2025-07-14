@@ -116,16 +116,31 @@ export const useAuthStore = create<AuthState & AuthActions>((set, get) => ({
       set({ user: profile, isLoading: false });
     } catch (error) {
       console.error('Error obteniendo perfil:', error);
-      // ✅ Limpiar estado correctamente y quitar loading
-      authService.logout();
-      set({
-        user: null,
-        token: null,
-        isAuthenticated: false,
-        isLoading: false,
-        error: 'Sesión expirada. Por favor, inicia sesión nuevamente.',
-      });
-      toast.error('Sesión expirada. Por favor, inicia sesión nuevamente.');
+
+      const errorMessage =
+        error instanceof Error ? error.message : 'Error desconocido';
+
+      if (
+        errorMessage.includes('500') ||
+        errorMessage.includes('401') ||
+        errorMessage.includes('403')
+      ) {
+        authService.logout();
+        set({
+          user: null,
+          token: null,
+          isAuthenticated: false,
+          isLoading: false,
+          error: 'Sesión expirada. Por favor, inicia sesión nuevamente.',
+        });
+        toast.error('Sesión expirada. Por favor, inicia sesión nuevamente.');
+      } else {
+        set({
+          isLoading: false,
+          error: 'Error al obtener perfil de usuario',
+        });
+        toast.error('Error al obtener perfil de usuario');
+      }
     }
   },
 

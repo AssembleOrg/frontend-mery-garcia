@@ -29,18 +29,22 @@ export default function ManagerOrAdminOnly({
     excludeCaja2 && hasRole('encargado') && !isAdmin;
 
   useEffect(() => {
+    if (!isLoading && !isAuthenticated) {
+      router.push('/login');
+      return;
+    }
+
     if (
       !isLoading &&
       isAuthenticated &&
       (!hasAccess || isEncargadoWithCaja2Restriction)
     ) {
-      // setTimeout(() => router.push(redirectTo), 3000);
     }
   }, [
-    hasAccess,
-    isEncargadoWithCaja2Restriction,
     isAuthenticated,
     isLoading,
+    hasAccess,
+    isEncargadoWithCaja2Restriction,
     router,
     redirectTo,
   ]);
@@ -52,10 +56,12 @@ export default function ManagerOrAdminOnly({
       </div>
     );
   }
-
   if (!isAuthenticated) {
-    router.push('/login');
-    return null;
+    return (
+      <div className="flex min-h-[400px] items-center justify-center">
+        <div className="border-primary h-8 w-8 animate-spin rounded-full border-b-2"></div>
+      </div>
+    );
   }
 
   if (!hasAccess || isEncargadoWithCaja2Restriction) {
