@@ -47,7 +47,7 @@ const menuItems = [
   },
   {
     title: 'Personal',
-    description: 'Gestiona tu equipo y calcula comisiones.',
+    description: 'Gestiona tu equipo',
     href: '/personal',
     icon: <Users2 size={32} strokeWidth={1.5} />,
     gradientFrom: 'from-[#f0b7c8]',

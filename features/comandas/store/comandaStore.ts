@@ -10,7 +10,6 @@ import {
   PersonalSimple,
   ProductoServicio,
   TipoCambio,
-  ConfiguracionRecargo,
   EstadoComandaNegocio,
   EstadoValidacion,
   UnidadNegocio,
@@ -28,7 +27,6 @@ interface ComandaState {
   personalSimple: PersonalSimple[]; // Lista simple para gestión de personal
   productosServicios: ProductoServicio[];
   tipoCambio: TipoCambio;
-  configuracionRecargos: ConfiguracionRecargo[];
   tipoCambioInicializado: boolean; // Flag para evitar cargas múltiples
 
   // Acciones - Comandas
@@ -38,7 +36,7 @@ interface ComandaState {
   obtenerComandaPorId: (id: string) => Comanda | undefined;
 
   // Acciones - Filtros
-  updateFilters: (filters: Partial<FiltrosComanda>) => void;
+  actualizarFiltros: (filters: Partial<FiltrosComanda>) => void;
   limpiarFiltros: () => void;
 
   // Acciones - Cálculos
@@ -152,9 +150,8 @@ const estadoInicial = {
     valorVenta: 0,
     fecha: new Date(),
     fuente: 'manual',
-    modoManual: false, // Por defecto, permite sobrescribir con API
+    modoManual: false,
   } as TipoCambio,
-  configuracionRecargos: [],
   tipoCambioInicializado: false,
 };
 
@@ -235,7 +232,7 @@ export const useComandaStore = create<ComandaState>()(
         },
 
         // === ACCIONES DE FILTROS ===
-        updateFilters: (nuevosFiltros: Partial<FiltrosComanda>) => {
+        actualizarFiltros: (nuevosFiltros: Partial<FiltrosComanda>) => {
           set((state) => ({
             filters: { ...state.filters, ...nuevosFiltros },
           }));
@@ -366,19 +363,11 @@ export const useComandaStore = create<ComandaState>()(
             ([, a], [, b]) => b - a
           )[0]?.[0];
 
-          const comisionesTotales = comandasHoy.reduce(
-            (sum, c) =>
-              sum +
-              c.comisiones.reduce((cSum, com) => cSum + com.montoComision, 0),
-            0
-          );
-
           return {
             totalIncoming,
             totalOutgoing,
             saldo: totalIncoming - totalOutgoing,
             cantidadComandas: comandasHoy.length,
-            comisionesTotales,
             unidadMasActiva,
             personalMasVentas,
           };
@@ -438,7 +427,6 @@ export const useComandaStore = create<ComandaState>()(
             return personalSimple.map((ps) => ({
               id: ps.id,
               nombre: ps.nombre,
-              comisionPorcentaje: ps.comision,
               activo: true,
               unidadesDisponibles: ['tattoo', 'estilismo', 'formacion'],
               fechaIngreso: new Date(),
@@ -523,7 +511,6 @@ export const useComandaStore = create<ComandaState>()(
           const nuevoPersonalCompleto: Personal = {
             id: idGenerado,
             nombre: personal.nombre,
-            comisionPorcentaje: personal.comision,
             activo: true,
             unidadesDisponibles: ['tattoo', 'estilismo', 'formacion'],
             fechaIngreso: new Date(),
@@ -552,8 +539,6 @@ export const useComandaStore = create<ComandaState>()(
                 ? {
                     ...p,
                     nombre: personalActualizado.nombre || p.nombre,
-                    comisionPorcentaje:
-                      personalActualizado.comision ?? p.comisionPorcentaje,
                   }
                 : p
             );
@@ -1034,7 +1019,6 @@ export const useComandaStore = create<ComandaState>()(
         partialize: (state) => ({
           comandas: state.comandas,
           tipoCambio: state.tipoCambio,
-          configuracionRecargos: state.configuracionRecargos,
           personal: state.personal,
           personalSimple: state.personalSimple,
           productosServicios: state.productosServicios,
@@ -1073,7 +1057,7 @@ export const useFiltrosComanda = () => {
   const store = useComandaStore();
   return {
     filters: store.filters,
-    updateFilters: store.updateFilters,
+    actualizarFiltros: store.actualizarFiltros,
     limpiarFiltros: store.limpiarFiltros,
   };
 };
@@ -1093,7 +1077,6 @@ export const useDatosReferencia = () => {
     personalSimple: store.personalSimple,
     productosServicios: store.productosServicios,
     tipoCambio: store.tipoCambio,
-    configuracionRecargos: store.configuracionRecargos,
     obtenerPersonalPorUnidad: store.obtenerPersonalPorUnidad,
     buscarProductosServicios: store.buscarProductosServicios,
     actualizarTipoCambio: store.actualizarTipoCambio,

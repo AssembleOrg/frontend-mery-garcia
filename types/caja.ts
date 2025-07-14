@@ -1,13 +1,8 @@
-// Tipos para el sistema de salón Mery García
-
-// Unidades de Negocio
 export type UnidadNegocio = 'tattoo' | 'estilismo' | 'formacion';
 
-// Personal del salón
 export interface Personal {
   id: string;
   nombre: string;
-  comisionPorcentaje: number; // ej: 15 = 15%
   activo: boolean;
   unidadesDisponibles: UnidadNegocio[];
   telefono?: string;
@@ -18,7 +13,7 @@ export interface Personal {
 export interface PersonalSimple {
   id: string;
   nombre: string;
-  comision: number; // Porcentaje 0-100
+  comision: number;
   rol: 'admin' | 'vendedor';
 }
 
@@ -31,7 +26,6 @@ export interface Cliente {
 }
 
 // Productos y Servicios
-// Actualizar la interfaz ProductoServicio para incluir tipoItemId
 export interface ProductoServicio {
   id: string;
   nombre: string;
@@ -40,10 +34,8 @@ export interface ProductoServicio {
   businessUnit: UnidadNegocio;
   descripcion?: string;
   activo: boolean;
-  // Para servicios
-  duracion?: number; // minutos
-  // Para productos (futuro stock)
-  codigoBarras?: string;
+  duracion?: number; // minutos para servicios
+  codigoBarras?: string; // para productos
 }
 
 // Item seleccionado en la comanda
@@ -70,55 +62,32 @@ export interface Seña {
   observaciones?: string;
 }
 
-// Método de pago individual
 export interface MetodoPago {
   tipo: 'efectivo' | 'tarjeta' | 'transferencia';
   monto: number;
-  recargoPorcentaje: number; // ej: 35 = 35%
-  montoFinal: number; // monto + recargo
-}
-
-// Comisión calculada
-export interface Comision {
-  personalId: string;
-  personalNombre: string;
-  itemComandaId: string;
-  montoBase: number;
-  porcentaje: number;
-  montoComision: number;
 }
 
 // Comanda principal
 export interface Comanda {
   id: string;
-  numero: string; // manual, único global
+  numero: string;
   fecha: Date;
   businessUnit: UnidadNegocio;
   cliente: Cliente;
-  mainStaff: Personal; // quien registra la comanda
+  mainStaff: Personal;
   items: ItemComanda[];
   seña?: Seña;
   metodosPago: MetodoPago[];
   subtotal: number;
   totalDescuentos: number;
-  totalRecargos: number;
   totalSeña: number;
   totalFinal: number;
-  comisiones: Comision[];
   estado: 'pendiente' | 'completado' | 'validado' | 'cancelado';
   observaciones?: string;
   tipo: 'ingreso' | 'egreso';
-  // Campos para validación
   estadoNegocio?: EstadoComandaNegocio;
   estadoValidacion?: EstadoValidacion;
   tipoCambioAlCrear?: TipoCambio;
-}
-
-// Configuración de recargos por método de pago
-export interface ConfiguracionRecargo {
-  metodoPago: 'tarjeta' | 'transferencia';
-  porcentaje: number;
-  activo: boolean;
 }
 
 // Tipo de cambio
@@ -130,22 +99,27 @@ export interface TipoCambio {
   modoManual: boolean;
 }
 
-// Filtros para búsquedas
+// Filtros para búsquedas (UNIFICADO)
 export interface FiltrosComanda {
   startDate?: Date;
   endDate?: Date;
   businessUnit?: UnidadNegocio;
   estado?: string;
   personalId?: string;
-  numeroComanda?: string;
+  metodoPago?: string;
   cliente?: string;
   busqueda?: string;
-  // Legacy compatibility
-  metodoPago?: string;
-  vendedor?: string;
+  numeroComanda?: string;
 }
 
-// Configuración de columns para tablas
+// Estados
+export type EstadoComandaNegocio = 'pendiente' | 'completado' | 'incompleto';
+export type EstadoValidacion = 'no_validado' | 'validado';
+
+// Aliases para compatibilidad
+export type FiltrosEncomienda = FiltrosComanda;
+
+// Configuración de columnas para tablas
 export interface ColumnaComanda {
   key:
     | keyof Comanda
@@ -166,42 +140,19 @@ export interface ColumnaComanda {
   width?: string;
 }
 
+export type ColumnaCaja = ColumnaComanda;
+
 // Resumen para estadísticas
 export interface ResumenCaja {
   totalIncoming: number;
   totalOutgoing: number;
   saldo: number;
   cantidadComandas: number;
-  comisionesTotales: number;
   unidadMasActiva?: string;
   personalMasVentas?: string;
 }
 
-export type FiltrosEncomienda = FiltrosComanda;
-export type ColumnaCaja = ColumnaComanda;
-
-export interface Encomienda {
-  id: string;
-  fecha: Date;
-  numero: string;
-  cliente: string;
-  telefono?: string;
-  servicios: ItemComanda[];
-  subtotal: number;
-  descuentoTotal: number;
-  iva: number;
-  total: number;
-  metodoPago: string;
-  observaciones?: string;
-  vendedor: string;
-  estado: 'pendiente' | 'completado' | 'validado' | 'cancelado';
-  tipo: 'ingreso' | 'egreso';
-
-  estadoNegocio?: EstadoComandaNegocio;
-  estadoValidacion?: EstadoValidacion;
-  metodosPago?: MetodoPago[];
-}
-
+// Archivos adjuntos
 export interface ArchivoAdjunto {
   id: string;
   nombre: string;
@@ -222,12 +173,7 @@ export interface UploadConfig {
   maxArchivos: number;
 }
 
-export type EstadoComandaNegocio = 'pendiente' | 'completado' | 'incompleto';
-
-// Estados de validación por admin
-export type EstadoValidacion = 'no_validado' | 'validado';
-
-// Información de trazabilidad
+// Trazabilidad
 export interface TrazabilidadComanda {
   creadoPor: string;
   fechaCreacion: string;
@@ -238,6 +184,7 @@ export interface TrazabilidadComanda {
   observacionesValidacion?: string;
 }
 
+// Historial
 export interface HistorialTipoCambio {
   id: string;
   valorCompra: number;
@@ -262,21 +209,21 @@ export interface HistorialCambio {
   observaciones?: string;
 }
 
-// Nueva interfaz para comandas con funcionalidades extendidas
+// Validación extendida
 export interface ComandaConValidacion extends Omit<Comanda, 'estado'> {
-  estadoNegocio: EstadoComandaNegocio; // Estado del negocio (vendedor)
-  estadoValidacion: EstadoValidacion; // Validación del admin
+  estadoNegocio: EstadoComandaNegocio;
+  estadoValidacion: EstadoValidacion;
   trazabilidad: TrazabilidadComanda;
-  puedeEditar: boolean; // Calculado: false si está validado
-  puedeValidar: boolean; // Calculado: true si es admin y no está validado
+  puedeEditar: boolean;
+  puedeValidar: boolean;
 }
 
-// Información del traspaso a Caja 2
+// Traspaso
 export interface TraspasoInfo {
   id: string;
   fechaTraspaso: string;
   adminQueTraspaso: string;
-  comandasTraspasadas: string[]; // IDs de comandas
+  comandasTraspasadas: string[];
   montoTotal: number;
   rangoFechas: {
     desde: string;
@@ -285,15 +232,24 @@ export interface TraspasoInfo {
   observaciones?: string;
 }
 
-// Filtros extendidos para las nuevas funcionalidades
-export interface FiltrosComandaExtendidos {
-  fechaDesde?: string;
-  fechaHasta?: string;
-  cliente?: string;
-  vendedor?: string;
-  metodoPago?: string;
-  estadoNegocio?: EstadoComandaNegocio[];
-  estadoValidacion?: EstadoValidacion[];
-  soloEditables?: boolean;
-  soloValidables?: boolean;
+// Encomienda (para compatibilidad)
+export interface Encomienda {
+  id: string;
+  fecha: Date;
+  numero: string;
+  cliente: string;
+  telefono?: string;
+  servicios: ItemComanda[];
+  subtotal: number;
+  descuentoTotal: number;
+  iva: number;
+  total: number;
+  metodoPago: string;
+  observaciones?: string;
+  vendedor: string;
+  estado: 'pendiente' | 'completado' | 'validado' | 'cancelado';
+  tipo: 'ingreso' | 'egreso';
+  estadoNegocio?: EstadoComandaNegocio;
+  estadoValidacion?: EstadoValidacion;
+  metodosPago?: MetodoPago[];
 }

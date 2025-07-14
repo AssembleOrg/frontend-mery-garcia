@@ -158,7 +158,7 @@ export default function ModalPersonal({
 
               {/* Comisión */}
               <div>
-                <Label htmlFor="comision">
+                <Label htmlFor="n">
                   Comisión (%) *
                   {errores.comision && (
                     <span className="ml-1 text-xs text-red-500">
@@ -174,7 +174,7 @@ export default function ModalPersonal({
                     value={comision}
                     onChange={(e) => setComision(Number(e.target.value))}
                     placeholder="10"
-                    className={`pl-10 ${errores.comision ? 'border-red-300' : ''}`}
+                    className={`pl-10 ${errores.n ? 'border-red-300' : ''}`}
                     min="0"
                     max="100"
                   />

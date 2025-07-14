@@ -7,7 +7,6 @@ import {
   ProductoServicio,
   Seña,
   MetodoPago,
-  Comision,
   Comanda,
 } from '@/types/caja';
 import { useDatosReferencia } from '@/features/comandas/store/comandaStore';
@@ -18,7 +17,6 @@ export function useComandaForm() {
   const {
     personal,
     tipoCambio,
-    configuracionRecargos,
     obtenerPersonalPorUnidad,
     buscarProductosServicios,
   } = useDatosReferencia();
@@ -92,14 +90,8 @@ export function useComandaForm() {
 
   const saldoPendiente = subtotalConDescuentos - montoSeña;
 
-  // Calcular recargos por métodos de pago
-  const totalRecargos = metodosPago.reduce(
-    (sum, mp) => sum + (mp.monto * mp.recargoPorcentaje) / 100,
-    0
-  );
-
   // Total final correcto
-  const totalFinal = subtotalConDescuentos + totalRecargos - montoSeña;
+  const totalFinal = subtotalConDescuentos - montoSeña;
 
   // Equivalentes en USD para mostrar
   const subtotalUSD = arsToUsd(subtotal);
@@ -219,8 +211,6 @@ export function useComandaForm() {
     const nuevoMetodo: MetodoPago = {
       tipo: 'efectivo',
       monto: 0,
-      recargoPorcentaje: 0,
-      montoFinal: 0,
     };
     setMetodosPago([...metodosPago, nuevoMetodo]);
   };
@@ -232,22 +222,6 @@ export function useComandaForm() {
   ) => {
     const nuevosMetodos = [...metodosPago];
     nuevosMetodos[index] = { ...nuevosMetodos[index], [campo]: valor };
-
-    // Calcular recargo automáticamente
-    if (campo === 'tipo' || campo === 'monto') {
-      const metodo = nuevosMetodos[index];
-      const configRecargo = configuracionRecargos.find(
-        (c) => c.metodoPago === metodo.tipo && c.activo
-      );
-
-      if (configRecargo && metodo.tipo !== 'efectivo') {
-        metodo.recargoPorcentaje = configRecargo.porcentaje;
-        metodo.montoFinal = metodo.monto * (1 + configRecargo.porcentaje / 100);
-      } else {
-        metodo.recargoPorcentaje = 0;
-        metodo.montoFinal = metodo.monto;
-      }
-    }
 
     setMetodosPago(nuevosMetodos);
   };
@@ -292,34 +266,6 @@ export function useComandaForm() {
     setDescuentoGlobalPorcentaje(0);
   };
 
-  const calcularComisiones = (): Comision[] => {
-    const comisiones: Comision[] = [];
-
-    items.forEach((item, index) => {
-      if (item.personalId) {
-        const personalEncontrado = personal.find(
-          (p: Personal) => p.id === item.personalId
-        );
-        if (personalEncontrado) {
-          const montoBase = item.subtotal;
-          const montoComision =
-            montoBase * (personalEncontrado.comisionPorcentaje / 100);
-
-          comisiones.push({
-            personalId: personalEncontrado.id,
-            personalNombre: personalEncontrado.nombre,
-            itemComandaId: `item-${index}`,
-            montoBase,
-            porcentaje: personalEncontrado.comisionPorcentaje,
-            montoComision,
-          });
-        }
-      }
-    });
-
-    return comisiones;
-  };
-
   const validarFormulario = () => {
     const tieneItemsConMetodosPago = items.length > 0 && metodosPago.length > 0;
     const montosPagoCoinciden =
@@ -354,10 +300,8 @@ export function useComandaForm() {
       estado: 'pendiente',
       subtotal: subtotal,
       totalDescuentos,
-      totalRecargos,
       totalSeña: montoSeña,
       totalFinal: totalFinal,
-      comisiones: calcularComisiones(),
       tipo: 'ingreso',
     };
   };
@@ -393,7 +337,6 @@ export function useComandaForm() {
     itemsDisponibles,
     personalDisponible,
     tipoCambio,
-    configuracionRecargos,
     descuentoGlobalPorcentaje,
 
     // Cálculos en PESOS
@@ -402,7 +345,6 @@ export function useComandaForm() {
     subtotalConDescuentos,
     montoSeña,
     saldoPendiente,
-    totalRecargos,
     totalFinal,
 
     // Equivalentes en USD

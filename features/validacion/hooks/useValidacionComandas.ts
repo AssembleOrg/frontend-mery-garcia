@@ -178,7 +178,6 @@ export function useValidacionComandas() {
         mainStaff: {
           id: '1',
           nombre: 'Personal Test',
-          comisionPorcentaje: 15,
           activo: true,
           unidadesDisponibles: ['estilismo'],
           fechaIngreso: new Date(),
@@ -188,10 +187,8 @@ export function useValidacionComandas() {
         metodosPago: [],
         subtotal: 0,
         totalDescuentos: 0,
-        totalRecargos: 0,
         totalSeña: 0,
         totalFinal: 0,
-        comisiones: [],
         observaciones: '',
         tipo: 'ingreso',
         estadoNegocio: 'pendiente',

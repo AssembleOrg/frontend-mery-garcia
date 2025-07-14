@@ -87,11 +87,3 @@ export const VALIDATION_RULES = {
     message: 'La cantidad debe ser mayor a 0',
   },
 } as const;
-
-// Configuración de recargos por defecto
-export const RECARGOS_DEFAULT = {
-  [METODOS_PAGO.EFECTIVO]: 0,
-  [METODOS_PAGO.TARJETA]: 3.5, // 3.5% por defecto
-  [METODOS_PAGO.TRANSFERENCIA]: 0,
-  [METODOS_PAGO.MIXTO]: 0,
-} as const;

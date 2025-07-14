@@ -70,7 +70,6 @@ interface ItemTransaccion {
 interface MetodoPagoForm {
   tipo: 'efectivo' | 'tarjeta' | 'transferencia';
   monto: number;
-  recargoPorcentaje: number;
   montoFinal: number;
 }
 
@@ -87,7 +86,6 @@ export default function ModalTransaccionUnificado({
     comandas,
     personalSimple,
     productosServicios,
-    configuracionRecargos,
     cargando,
   } = useComandaStore();
 
@@ -107,7 +105,7 @@ export default function ModalTransaccionUnificado({
   const [observaciones, setObservaciones] = useState('');
   const [items, setItems] = useState<ItemTransaccion[]>([]);
   const [metodosPago, setMetodosPago] = useState<MetodoPagoForm[]>([
-    { tipo: 'efectivo', monto: 0, recargoPorcentaje: 0, montoFinal: 0 },
+    { tipo: 'efectivo', monto: 0, montoFinal: 0 },
   ]);
   const [descuentoGlobalPorcentaje, setDescuentoGlobalPorcentaje] = useState(0);
 
@@ -322,7 +320,6 @@ export default function ModalTransaccionUnificado({
     const nuevoMetodo: MetodoPagoForm = {
       tipo: 'efectivo',
       monto: 0,
-      recargoPorcentaje: 0,
       montoFinal: 0,
     };
     setMetodosPago([...metodosPago, nuevoMetodo]);
@@ -342,29 +339,6 @@ export default function ModalTransaccionUnificado({
     const nuevosMetodos = [...metodosPago];
     nuevosMetodos[index] = { ...nuevosMetodos[index], [campo]: valor };
 
-    // Calcular recargo automáticamente solo si no se está editando manualmente
-    if (campo === 'tipo' || campo === 'monto') {
-      const metodo = nuevosMetodos[index];
-      const configRecargo = configuracionRecargos.find(
-        (c) => c.metodoPago === metodo.tipo && c.activo
-      );
-
-      if (configRecargo && metodo.tipo !== 'efectivo') {
-        metodo.recargoPorcentaje = configRecargo.porcentaje;
-        metodo.montoFinal = metodo.monto * (1 + configRecargo.porcentaje / 100);
-      } else {
-        metodo.recargoPorcentaje = 0;
-        metodo.montoFinal = metodo.monto;
-      }
-    }
-
-    // Recalcular monto final si se edita el recargo manualmente
-    if (campo === 'recargoPorcentaje') {
-      const metodo = nuevosMetodos[index];
-      metodo.montoFinal =
-        metodo.monto + (metodo.monto * metodo.recargoPorcentaje) / 100;
-    }
-
     setMetodosPago(nuevosMetodos);
   };
 
@@ -379,24 +353,14 @@ export default function ModalTransaccionUnificado({
     );
     const subtotal = subtotalBase - totalDescuentos;
 
-    const totalRecargos = metodosPago.reduce(
-      (sum, m) => sum + (m.monto * m.recargoPorcentaje) / 100,
-      0
-    );
-    const totalConRecargos = metodosPago.reduce(
-      (sum, m) => sum + m.montoFinal,
-      0
-    );
-
-    const diferencia = totalConRecargos - (subtotal + totalRecargos);
+    const diferencia = subtotal;
 
     return {
       subtotalBase,
       totalDescuentos,
       subtotal,
-      totalRecargos,
-      totalFinal: subtotal + totalRecargos,
-      totalPagos: totalConRecargos,
+      totalFinal: subtotal,
+      totalPagos: subtotal,
       diferencia,
     };
   };
@@ -481,7 +445,6 @@ export default function ModalTransaccionUnificado({
       const metodosPagoComanda: MetodoPago[] = metodosPago.map((metodo) => ({
         tipo: metodo.tipo,
         monto: metodo.monto,
-        recargoPorcentaje: metodo.recargoPorcentaje,
         montoFinal: metodo.montoFinal,
       }));
 
@@ -501,7 +464,6 @@ export default function ModalTransaccionUnificado({
           ? {
               id: responsable.id,
               nombre: responsable.nombre,
-              comisionPorcentaje: responsable.comision,
               activo: true,
               unidadesDisponibles: [
                 tipo === 'ingreso' ? unidadNegocio : 'estilismo',
@@ -511,7 +473,6 @@ export default function ModalTransaccionUnificado({
           : {
               id: 'default',
               nombre: 'Sistema',
-              comisionPorcentaje: 0,
               activo: true,
               unidadesDisponibles: [
                 tipo === 'ingreso' ? unidadNegocio : 'estilismo',
@@ -522,10 +483,8 @@ export default function ModalTransaccionUnificado({
         metodosPago: metodosPagoComanda,
         subtotal: totales.subtotal,
         totalDescuentos: totales.totalDescuentos,
-        totalRecargos: totales.totalRecargos,
         totalSeña: 0,
         totalFinal: totales.totalFinal,
-        comisiones: [],
         estado: 'pendiente',
         observaciones: observaciones || undefined,
         estadoNegocio: 'pendiente',
@@ -562,9 +521,7 @@ export default function ModalTransaccionUnificado({
     setResponsableId('');
     setObservaciones('');
     setItems([]);
-    setMetodosPago([
-      { tipo: 'efectivo', monto: 0, recargoPorcentaje: 0, montoFinal: 0 },
-    ]);
+    setMetodosPago([{ tipo: 'efectivo', monto: 0, montoFinal: 0 }]);
     setDescuentoGlobalPorcentaje(0);
     setNumeroManual('');
     setErrores({});
@@ -1147,26 +1104,6 @@ export default function ModalTransaccionUnificado({
                         </div>
 
                         <div>
-                          <Label className="text-gray-700">Recargo (%)</Label>
-                          <Input
-                            type="number"
-                            min="0"
-                            max="100"
-                            step="0.1"
-                            value={metodo.recargoPorcentaje || ''}
-                            onChange={(e) =>
-                              actualizarMetodoPago(
-                                index,
-                                'recargoPorcentaje',
-                                parseFloat(e.target.value) || 0
-                              )
-                            }
-                            placeholder="0.0"
-                            className="border-gray-300"
-                          />
-                        </div>
-
-                        <div>
                           <Label className="text-gray-700">Total</Label>
                           <div className="flex h-10 items-center justify-between rounded-md border border-gray-300 bg-gray-50 px-3">
                             <span className="text-sm font-medium text-green-600">
@@ -1178,14 +1115,6 @@ export default function ModalTransaccionUnificado({
                               </span>
                             )}
                           </div>
-                          {metodo.recargoPorcentaje > 0 && (
-                            <div className="mt-1 text-xs text-gray-600">
-                              Base: {formatUSD(metodo.monto)} + Recargo:{' '}
-                              {formatUSD(
-                                (metodo.monto * metodo.recargoPorcentaje) / 100
-                              )}
-                            </div>
-                          )}
                         </div>
                       </div>
                     </div>
@@ -1253,20 +1182,6 @@ export default function ModalTransaccionUnificado({
                           {isExchangeRateValid && totales.subtotal > 0 && (
                             <div className="text-xs text-gray-600">
                               {formatARS(totales.subtotal)}
-                            </div>
-                          )}
-                        </div>
-                      </div>
-
-                      <div className="flex items-center justify-between rounded-lg bg-gray-50 p-3">
-                        <div className="text-sm text-gray-700">Recargos</div>
-                        <div className="text-right">
-                          <div className="text-lg font-semibold text-green-600">
-                            {formatUSD(totales.totalRecargos)}
-                          </div>
-                          {isExchangeRateValid && totales.totalRecargos > 0 && (
-                            <div className="text-xs text-gray-600">
-                              {formatARS(totales.totalRecargos)}
                             </div>
                           )}
                         </div>

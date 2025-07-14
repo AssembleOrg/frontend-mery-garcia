@@ -2263,11 +2263,6 @@
             "example": "password123",
             "minLength": 6
           },
-          "comisionPorcentaje": {
-            "type": "number",
-            "description": "Porcentaje de comisión",
-            "example": 15.5
-          },
           "activo": {
             "type": "boolean",
             "description": "Si el usuario está activo",

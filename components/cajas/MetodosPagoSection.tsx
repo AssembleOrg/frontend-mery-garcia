@@ -4,7 +4,6 @@ import React from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
 import {
   Select,
   SelectContent,
@@ -27,7 +26,6 @@ import { formatUSD } from '@/lib/utils';
 interface MetodosPagoSectionProps {
   metodosPago: MetodoPagoForm[];
   totalPagado: number;
-  totalRecargos: number;
   montoTotal: number;
   isReadOnly?: boolean;
   onAgregarMetodo: () => void;
@@ -43,7 +41,6 @@ interface MetodosPagoSectionProps {
 export default function MetodosPagoSection({
   metodosPago,
   totalPagado,
-  totalRecargos,
   montoTotal,
   isReadOnly = false,
   onAgregarMetodo,
@@ -153,13 +150,6 @@ export default function MetodosPagoSection({
                   />
                 </div>
 
-                {/* Recargo */}
-                {metodo.recargoPorcentaje > 0 && (
-                  <Badge variant="secondary" className="text-xs">
-                    +{metodo.recargoPorcentaje}%
-                  </Badge>
-                )}
-
                 {/* Monto final */}
                 <div className="w-24 text-right text-sm font-medium">
                   {formatUSD(metodo.montoFinal)}
@@ -186,14 +176,8 @@ export default function MetodosPagoSection({
         <div className="space-y-2 rounded-lg border bg-blue-50 p-3">
           <div className="flex justify-between text-sm">
             <span>Subtotal pagado:</span>
-            <span>{formatUSD(totalPagado - totalRecargos)}</span>
+            <span>{formatUSD(totalPagado)}</span>
           </div>
-          {totalRecargos > 0 && (
-            <div className="flex justify-between text-sm text-orange-600">
-              <span>Recargos:</span>
-              <span>+{formatUSD(totalRecargos)}</span>
-            </div>
-          )}
           <div className="flex justify-between border-t pt-2 font-medium">
             <span>Total pagado:</span>
             <span className={hayDiferencia ? 'text-red-600' : 'text-green-600'}>

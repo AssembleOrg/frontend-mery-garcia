@@ -111,7 +111,7 @@ export default function EgresosPage() {
     statistics,
     pagination,
     filters,
-    updateFilters,
+    actualizarFiltros,
     handleDelete,
     exportToPDF,
     exportToCSV,
@@ -235,7 +235,7 @@ export default function EgresosPage() {
                       <div className="flex items-center gap-3">
                         <TableFilters
                           filters={filters}
-                          onFiltersChange={updateFilters}
+                          onFiltersChange={actualizarFiltros}
                           columns={columns}
                           onColumnsChange={setColumns}
                           exportToPDF={exportToPDF}

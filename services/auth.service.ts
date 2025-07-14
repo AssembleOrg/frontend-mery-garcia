@@ -14,7 +14,6 @@ export interface AuthResponse {
       nombre: string;
       rol: 'admin' | 'user' | 'encargado';
       unidadesDisponibles: string[];
-      comisionPorcentaje: string;
       fechaIngreso?: string;
     };
   };
@@ -26,7 +25,6 @@ export interface UserProfile {
   email: string;
   rol: 'admin' | 'user' | 'encargado';
   unidadesDisponibles: ('tattoo' | 'estilismo' | 'formacion')[];
-  comisionPorcentaje?: number;
   telefono?: string;
   fechaIngreso: string;
   activo: boolean;

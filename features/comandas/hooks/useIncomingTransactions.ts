@@ -13,7 +13,7 @@ import {
 
 export function useIncomingTransactions(dateRange?: DateRange) {
   const { comandas } = useComandas();
-  const { filters, updateFilters } = useFiltrosComanda();
+  const { filters, actualizarFiltros } = useFiltrosComanda();
   const { exchangeRate } = useCurrencyConverter(); // ← Agregar hook
 
   // Check if date is in range
@@ -102,7 +102,7 @@ export function useIncomingTransactions(dateRange?: DateRange) {
     statistics,
     pagination,
     filters,
-    updateFilters,
+    actualizarFiltros,
 
     // Actions
     handleDelete: (id: string) => {

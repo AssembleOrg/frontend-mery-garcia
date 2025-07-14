@@ -317,18 +317,13 @@ export default function ModalVerDetalles({
                           <p className="font-medium capitalize">
                             {metodo.tipo}
                           </p>
-                          {metodo.recargoPorcentaje > 0 && (
-                            <p className="text-sm text-orange-600">
-                              Recargo: {metodo.recargoPorcentaje}%
-                            </p>
-                          )}
                         </div>
                         <div className="text-right">
                           <p className="text-sm text-gray-600">
                             Base: {formatAmount(metodo.monto)}
                           </p>
                           <p className="font-bold">
-                            Total: {formatAmount(metodo.montoFinal)}
+                            Total: {formatAmount(metodo.monto)}
                           </p>
                         </div>
                       </div>
@@ -355,10 +350,7 @@ export default function ModalVerDetalles({
                       <span>Descuentos:</span>
                       <span>-{formatAmount(comanda.totalDescuentos)}</span>
                     </div>
-                    <div className="flex justify-between text-orange-600">
-                      <span>Recargos:</span>
-                      <span>+{formatAmount(comanda.totalRecargos)}</span>
-                    </div>
+
                     {comanda.seña && (
                       <div className="flex justify-between text-blue-600">
                         <span>Seña:</span>
@@ -372,7 +364,6 @@ export default function ModalVerDetalles({
                     </div>
                     <div className="mt-2 text-xs text-gray-500">
                       Cálculo: {formatAmount(comanda.subtotal)} +{' '}
-                      {formatAmount(comanda.totalRecargos)} -{' '}
                       {formatAmount(comanda.totalDescuentos)} -{' '}
                       {formatAmount(comanda.totalSeña || 0)} ={' '}
                       {formatAmount(comanda.totalFinal)}

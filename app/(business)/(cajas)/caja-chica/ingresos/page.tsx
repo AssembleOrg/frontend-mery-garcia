@@ -109,7 +109,7 @@ export default function IngresosPage() {
     statistics,
     pagination,
     filters,
-    updateFilters,
+    actualizarFiltros,
     handleDelete,
     exportToPDF,
     exportToCSV,
@@ -244,7 +244,7 @@ export default function IngresosPage() {
                       <div className="flex items-center gap-3">
                         <TableFilters
                           filters={filters}
-                          onFiltersChange={updateFilters}
+                          onFiltersChange={actualizarFiltros}
                           columns={columns}
                           onColumnsChange={setColumns}
                           exportToPDF={exportToPDF}
