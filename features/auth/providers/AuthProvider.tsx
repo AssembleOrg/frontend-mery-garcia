@@ -43,12 +43,10 @@ export function AuthProvider({ children }: AuthProviderProps) {
     }
   }, [isAuthenticated, isLoading, pathname, router]);
 
-  // ✅ Mostrar loading mientras se procesa la autenticación
   if (isLoading) {
     return <LoadingSpinner />;
   }
 
-  // ✅ Para usuarios autenticados en la ruta raíz, mostrar loading hasta redirección
   if (isAuthenticated && pathname === '/') {
     return <LoadingSpinner />;
   }

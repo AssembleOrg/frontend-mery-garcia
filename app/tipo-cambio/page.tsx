@@ -11,9 +11,9 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { toast } from 'sonner';
 import {
-  getCotizacion,
   getHistorial,
   setManualRate,
+  getPublicRate,
   ExchangeRate,
 } from '@/services/exchangeRate.service';
 import { historialTipoCambioService } from '@/services/historialTipoCambio.service';
@@ -25,14 +25,12 @@ const REFRESH_COOLDOWN = 60 * 60 * 1000; // 1 hora
 const LAST_REFRESH_KEY = 'last_exchange_rate_refresh';
 
 export default function TipoCambioPage() {
-  // 🎯 SOLO estado para datos informativos de API (no operativos)
   const [apiRate, setApiRate] = useState<ExchangeRate | null>(null);
   const [apiHistorial, setApiHistorial] = useState<ExchangeRate[]>([]);
   const [historialInterno, setHistorialInterno] = useState<
     HistorialTipoCambio[]
   >([]);
 
-  // 🎯 Estado local SOLO para UI
   const [inputValue, setInputValue] = useState('');
   const [saving, setSaving] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
@@ -73,22 +71,25 @@ export default function TipoCambioPage() {
 
       try {
         const [current, historial] = await Promise.all([
-          getCotizacion(),
+          getPublicRate(),
           getHistorial(10),
         ]);
 
-        if (current) setApiRate(current);
+        if (current) {
+          setApiRate(current);
+          console.log('Valores informativos API cargados:', current);
+        }
         if (historial) setApiHistorial(historial);
 
         if (isManualRefresh) {
           localStorage.setItem(LAST_REFRESH_KEY, new Date().toISOString());
           checkRefreshCooldown();
-          toast.success('Cotizaciones API actualizadas');
+          toast.success('Valores informativos API actualizados');
         }
       } catch (error) {
-        console.error('Error cargando datos API:', error);
+        console.error('Error cargando datos informativos API:', error);
         if (isManualRefresh) {
-          toast.error('Error al actualizar cotizaciones API');
+          toast.error('Error al actualizar valores informativos API');
         }
       } finally {
         setRefreshing(false);
@@ -97,19 +98,17 @@ export default function TipoCambioPage() {
     [checkRefreshCooldown]
   );
 
-  // ✅ Estabilizar función con useCallback
   const loadHistorialInterno = useCallback(() => {
     const historial = historialTipoCambioService.getHistorial();
     setHistorialInterno(historial);
   }, []);
 
-  // 🎯 Carga inicial SIMPLE - sin bucles infinitos
   useEffect(() => {
     const initializeData = async () => {
       setLoading(true);
       try {
         await cargarTipoCambioInicial();
-        await loadApiData();
+        await loadApiData(); // Cargar valores informativos
         loadHistorialInterno();
         checkRefreshCooldown();
       } catch (error) {
@@ -127,12 +126,10 @@ export default function TipoCambioPage() {
     checkRefreshCooldown,
   ]);
 
-  // ✅ Separar la sincronización del input en un useEffect independiente
   useEffect(() => {
     setInputValue(tipoCambio.valorVenta.toString());
   }, [tipoCambio.valorVenta]);
 
-  // 🎯 Timer para cooldown
   useEffect(() => {
     if (!canRefresh && nextRefreshTime) {
       const interval = setInterval(checkRefreshCooldown, 60000);
@@ -152,7 +149,7 @@ export default function TipoCambioPage() {
       );
       return;
     }
-    loadApiData(true);
+    loadApiData(true); // ✅ Esto ahora carga valores informativos correctamente
   };
 
   const handleSave = async () => {
@@ -165,29 +162,27 @@ export default function TipoCambioPage() {
     setSaving(true);
 
     try {
-      // A:
+      // Actualizar store local
       actualizar({
-        valorCompra: apiRate?.compra ?? valueNum,
+        valorCompra: valueNum,
         valorVenta: valueNum,
         fecha: new Date(),
         fuente: 'manual',
         modoManual: true,
       });
 
-      // 🎯 Guardar en historial interno
+      // Guardar en historial interno
       historialTipoCambioService.agregarRegistro({
-        valorCompra: apiRate?.compra ?? valueNum,
+        valorCompra: valueNum,
         valorVenta: valueNum,
       });
       loadHistorialInterno();
 
-      // 🎯 Intentar sincronizar con backend
       try {
         await setManualRate({
-          compra: apiRate?.compra || valueNum - 20,
           venta: valueNum,
         });
-        toast.success('Tipo de cambio actualizado correctamente');
+        toast.success('Tipo de cambio operativo actualizado correctamente');
       } catch (error) {
         console.warn('Backend no disponible, usando valor local:', error);
         toast.warning('Guardado localmente. Backend no disponible.');

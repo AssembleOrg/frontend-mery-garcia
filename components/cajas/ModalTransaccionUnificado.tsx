@@ -33,6 +33,7 @@ import {
 } from 'lucide-react';
 import { useComandaStore } from '@/features/comandas/store/comandaStore';
 import { usePersonal } from '@/features/personal/hooks/usePersonal';
+import { useProductosServicios } from '@/features/productos-servicios/hooks/useProductosServicios';
 import { useModalScrollLock } from '@/hooks/useModalScrollLock';
 import { logger } from '@/lib/utils';
 import { useCurrencyConverter } from '@/hooks/useCurrencyConverter';
@@ -79,13 +80,10 @@ export default function ModalTransaccionUnificado({
   tipo,
 }: ModalTransaccionUnificadoProps) {
   // Store hooks
-  const {
-    agregarComanda,
-    obtenerProximoNumero,
-    comandas,
-    productosServicios,
-    cargando,
-  } = useComandaStore();
+  const { agregarComanda, obtenerProximoNumero, comandas, cargando } =
+    useComandaStore();
+
+  const { productosServicios } = useProductosServicios();
 
   const { personal } = usePersonal();
 
@@ -164,15 +162,14 @@ export default function ModalTransaccionUnificado({
   const productosServiciosFiltrados =
     tipo === 'ingreso'
       ? productosServicios.filter(
-          (p) =>
+          (p: ProductoServicio) =>
             p.businessUnit === unidadNegocio &&
             p.nombre.toLowerCase().includes(busqueda.toLowerCase())
         )
-      : productosServicios.filter((p) =>
+      : productosServicios.filter((p: ProductoServicio) =>
           p.nombre.toLowerCase().includes(busqueda.toLowerCase())
         );
 
-  // Add new item
   const agregarItem = () => {
     const nuevoItem: ItemTransaccion = {
       id: `temp-${Date.now()}`,
@@ -205,7 +202,6 @@ export default function ModalTransaccionUnificado({
     setBusqueda('');
   };
 
-  // Remove item
   const eliminarItem = (id: string) => {
     setItems(items.filter((item) => item.id !== id));
   };
@@ -1297,29 +1293,31 @@ export default function ModalTransaccionUnificado({
             </div>
             <div className="max-h-96 overflow-y-auto p-4">
               <div className="space-y-2">
-                {productosServiciosFiltrados.map((producto) => (
-                  <div
-                    key={producto.id}
-                    className="flex cursor-pointer items-center justify-between rounded-lg border border-gray-200 p-3 hover:bg-gray-50"
-                    onClick={() => agregarDesdeProducto(producto)}
-                  >
-                    <div>
-                      <div className="font-medium text-gray-900">
-                        {producto.nombre}
-                      </div>
-                      <div className="text-sm text-gray-600">
-                        {producto.tipo} - {formatUSD(producto.precio)}
-                      </div>
-                    </div>
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      className="border-gray-300"
+                {productosServiciosFiltrados.map(
+                  (producto: ProductoServicio) => (
+                    <div
+                      key={producto.id}
+                      className="flex cursor-pointer items-center justify-between rounded-lg border border-gray-200 p-3 hover:bg-gray-50"
+                      onClick={() => agregarDesdeProducto(producto)}
                     >
-                      Agregar
-                    </Button>
-                  </div>
-                ))}
+                      <div>
+                        <div className="font-medium text-gray-900">
+                          {producto.nombre}
+                        </div>
+                        <div className="text-sm text-gray-600">
+                          {producto.tipo} - {formatUSD(producto.precio)}
+                        </div>
+                      </div>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="border-gray-300"
+                      >
+                        Agregar
+                      </Button>
+                    </div>
+                  )
+                )}
                 {productosServiciosFiltrados.length === 0 && (
                   <div className="py-8 text-center text-gray-500">
                     No se encontraron productos/servicios

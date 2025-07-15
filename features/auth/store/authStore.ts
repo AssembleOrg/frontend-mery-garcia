@@ -190,8 +190,6 @@ export const useAuthStore = create<AuthState & AuthActions>((set, get) => ({
           user,
           isAuthenticated: true,
         });
-        // REMOVER: get().getProfile();
-        // La carga del perfil se hará de forma independiente si es necesaria
       } else {
         set({
           user: null,

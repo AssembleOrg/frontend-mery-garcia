@@ -3,7 +3,7 @@ import localFont from 'next/font/local';
 import './globals.css';
 import { Toaster } from '@/components/ui/sonner';
 import { AuthProvider } from '@/features/auth/providers/AuthProvider';
-import { TipoCambioInitializer } from '@/components/TipoCambioInitializer';
+import { AppInitializer } from '@/components/AppInitializer';
 
 const avantMedium = localFont({
   src: '../public/font/avant-medium.woff2',
@@ -25,7 +25,7 @@ export default function RootLayout({
     <html lang="es">
       <body className={`${avantMedium.variable} font-sans antialiased`}>
         <AuthProvider>
-          <TipoCambioInitializer />
+          <AppInitializer />
           {children}
         </AuthProvider>
         <Toaster position="top-right" richColors />

@@ -24,7 +24,7 @@ import {
   DollarSign,
 } from 'lucide-react';
 import { UnidadNegocio, ProductoServicio } from '@/types/caja';
-import { useDatosReferencia } from '@/features/comandas/store/comandaStore';
+import { useDatosReferencia } from '@/features/productos-servicios/store/productosServiciosStore';
 import { useExchangeRate } from '@/features/exchange-rate/hooks/useExchangeRate';
 
 interface ModalProductoServicioProps {

@@ -3,7 +3,6 @@ import {
   convertARStoUSD,
   convertUSDtoARS,
   formatDualCurrency,
-  isValidExchangeRate,
   formatUSD as formatCurrencyUsd,
   formatARS as formatCurrencyArs,
 } from '@/lib/utils';
@@ -13,10 +12,11 @@ export function useCurrencyConverter() {
 
   // ✅ Esperar a que esté inicializado antes de usar el valor
   const exchangeRate =
-    inicializado && tipoCambio.valorVenta > 0 ? tipoCambio.valorVenta : 1300;
+    inicializado && tipoCambio.valorVenta > 0 ? tipoCambio.valorVenta : 0;
 
-  const isExchangeRateValid = isValidExchangeRate(exchangeRate);
+  const isExchangeRateValid = inicializado && exchangeRate > 0;
   const isInitialized = inicializado;
+  const needsManualSetup = !inicializado || exchangeRate === 0;
 
   const arsToUsd = (amountARS: number): number => {
     return convertARStoUSD(amountARS, exchangeRate);
@@ -57,6 +57,7 @@ export function useCurrencyConverter() {
     isExchangeRateValid,
     getExchangeRateInfo,
     tipoCambio,
-    isInitialized, // ✅ Nuevo: permite a los componentes saber si está listo
+    isInitialized,
+    needsManualSetup,
   };
 }

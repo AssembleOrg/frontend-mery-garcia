@@ -36,10 +36,7 @@ import {
   Lock,
   Unlock,
 } from 'lucide-react';
-import {
-  useComandaStore,
-  useValidacionComandas,
-} from '@/features/comandas/store/comandaStore';
+import { useComandaStore } from '@/features/comandas/store/comandaStore';
 import { useInitializeComandaStore } from '@/hooks/useInitializeComandaStore';
 import ModalVerDetalles from '@/components/validacion/ModalVerDetalles';
 import ModalVerHistorial from '@/components/validacion/ModalVerHistorial';
@@ -49,6 +46,7 @@ import { Comanda, EstadoComandaNegocio, EstadoValidacion } from '@/types/caja';
 import { logger } from '@/lib/utils';
 import ClientOnly from '@/components/common/ClientOnly';
 import Spinner from '@/components/common/Spinner';
+import { useAuthStore } from '@/features/auth/store/authStore';
 
 const breadcrumbItems = [
   { label: 'Inicio', href: '/' },
@@ -61,8 +59,8 @@ export default function ComandasPage() {
   const { isInitialized } = useInitializeComandaStore();
 
   // Store state
-  const { comandas, obtenerUsuarioActual } = useComandaStore();
-  const { error, obtenerPermisosComanda } = useValidacionComandas();
+  const { comandas, error } = useComandaStore();
+  const { user } = useAuthStore();
 
   // Local state
   const [busqueda, setBusqueda] = useState('');
@@ -84,8 +82,7 @@ export default function ComandasPage() {
   const [comandaSeleccionada, setComandaSeleccionada] = useState<string>('');
 
   // User permissions
-  const usuario = obtenerUsuarioActual();
-  const esAdmin = usuario.rol === 'admin';
+  const usuario = user;
 
   // Filter comandas
   const comandasFiltradas = useMemo(() => {
@@ -128,6 +125,29 @@ export default function ComandasPage() {
       return true;
     });
   }, [comandas, busqueda, filtroEstadoNegocio, filtroValidacion, filtroTipo]);
+
+  const obtenerPermisosComanda = (comanda: Comanda) => {
+    const comandaExtendida = comanda as Comanda & {
+      estadoNegocio?: EstadoComandaNegocio;
+      estadoValidacion?: EstadoValidacion;
+    };
+
+    const tienePermisoBasico =
+      usuario?.rol === 'admin' || usuario?.rol === 'encargado';
+
+    // Las comandas completadas (trasladadas a caja 2) solo pueden consultarse
+    const estaCompletada = comandaExtendida.estadoNegocio === 'completado';
+
+    return {
+      puedeVer: tienePermisoBasico,
+      puedeVerHistorial: tienePermisoBasico,
+
+      // Solo se puede editar/validar/cambiar estado si NO está completada
+      puedeEditar: tienePermisoBasico && !estaCompletada,
+      puedeValidar: tienePermisoBasico && !estaCompletada,
+      puedeCambiarEstado: tienePermisoBasico && !estaCompletada,
+    };
+  };
 
   // Calculate statistics
   const estadisticas = useMemo(() => {
@@ -491,9 +511,11 @@ export default function ComandasPage() {
                               estadoNegocio?: EstadoComandaNegocio;
                               estadoValidacion?: EstadoValidacion;
                             };
-                            const permisos = obtenerPermisosComanda(comanda.id);
+                            const permisos = obtenerPermisosComanda(comanda); // Pasar la comanda completa
                             const estaValidado =
                               comandaExtendida.estadoValidacion === 'validado';
+                            const estaCompletada =
+                              comandaExtendida.estadoNegocio === 'completado';
 
                             return (
                               <TableRow
@@ -560,28 +582,35 @@ export default function ComandasPage() {
                                 </TableCell>
                                 <TableCell>
                                   <div className="flex items-center gap-1">
-                                    <Button
-                                      variant="ghost"
-                                      size="sm"
-                                      onClick={() =>
-                                        handleVerDetalles(comanda.id)
-                                      }
-                                      title="Ver detalles"
-                                    >
-                                      <Eye className="h-4 w-4" />
-                                    </Button>
+                                    {/* Botón Ver Detalles - siempre disponible para admin/encargado */}
+                                    {permisos.puedeVer && (
+                                      <Button
+                                        variant="ghost"
+                                        size="sm"
+                                        onClick={() =>
+                                          handleVerDetalles(comanda.id)
+                                        }
+                                        title="Ver detalles"
+                                      >
+                                        <Eye className="h-4 w-4" />
+                                      </Button>
+                                    )}
 
-                                    <Button
-                                      variant="ghost"
-                                      size="sm"
-                                      onClick={() =>
-                                        handleVerHistorial(comanda.id)
-                                      }
-                                      title="Ver historial"
-                                    >
-                                      <History className="h-4 w-4" />
-                                    </Button>
+                                    {/* Botón Ver Historial - siempre disponible para admin/encargado */}
+                                    {permisos.puedeVerHistorial && (
+                                      <Button
+                                        variant="ghost"
+                                        size="sm"
+                                        onClick={() =>
+                                          handleVerHistorial(comanda.id)
+                                        }
+                                        title="Ver historial"
+                                      >
+                                        <History className="h-4 w-4" />
+                                      </Button>
+                                    )}
 
+                                    {/* Botón Cambiar Estado - solo si no está completada */}
                                     {permisos.puedeCambiarEstado && (
                                       <Button
                                         variant="ghost"
@@ -589,13 +618,19 @@ export default function ComandasPage() {
                                         onClick={() =>
                                           handleCambiarEstado(comanda.id)
                                         }
-                                        title="Cambiar estado"
+                                        title={
+                                          estaCompletada
+                                            ? 'No se puede cambiar estado (trasladada a caja 2)'
+                                            : 'Cambiar estado'
+                                        }
+                                        disabled={estaCompletada}
                                       >
                                         <Clock className="h-4 w-4" />
                                       </Button>
                                     )}
 
-                                    {permisos.puedeValidar && esAdmin && (
+                                    {/* Botón Validar - solo si no está completada y para admin/encargado */}
+                                    {permisos.puedeValidar && !estaValidado && (
                                       <Button
                                         variant="ghost"
                                         size="sm"
@@ -603,10 +638,23 @@ export default function ComandasPage() {
                                           handleValidar(comanda.id)
                                         }
                                         className="text-green-600 hover:bg-green-50 hover:text-green-700"
-                                        title="Validar comanda"
+                                        title={
+                                          estaCompletada
+                                            ? 'No se puede validar (trasladada a caja 2)'
+                                            : 'Validar comanda'
+                                        }
+                                        disabled={estaCompletada}
                                       >
                                         <CheckCircle className="h-4 w-4" />
                                       </Button>
+                                    )}
+
+                                    {/* Indicador visual para comandas completadas */}
+                                    {estaCompletada && (
+                                      <div
+                                        className="h-2 w-2 rounded-full bg-blue-500"
+                                        title="Comanda trasladada a caja 2 - Solo consulta"
+                                      />
                                     )}
                                   </div>
                                 </TableCell>

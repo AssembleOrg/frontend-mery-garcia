@@ -12,6 +12,8 @@ import {
   formatDate as formatDateEs,
   resolverMetodoPagoPrincipal,
   formatearDetalleMetodosPago,
+  formatUSD,
+  formatARS,
 } from '@/lib/utils';
 import { useCurrencyConverter } from '@/hooks/useCurrencyConverter';
 import { MoreHorizontal, Edit, Eye, Trash2, Lock } from 'lucide-react';
@@ -35,8 +37,25 @@ export default function TransactionsTableTanStack({
   onChangeStatus,
   hiddenColumns = [],
 }: Props) {
-  const { formatARS, formatUSD } = useCurrencyConverter();
+  const { formatARS: formatARSCurrent, formatUSD: formatUSDCurrent } =
+    useCurrencyConverter();
   const c = createColumnHelper<Comanda>();
+
+  // Función para formatear con tipo de cambio específico o actual
+  const formatWithExchangeRate = (amountUSD: number, comanda: Comanda) => {
+    // Si la comanda tiene tipo de cambio almacenado, usarlo
+    if (comanda.tipoCambioAlCrear?.valorVenta) {
+      return {
+        usd: formatUSD(amountUSD),
+        ars: formatARS(amountUSD, comanda.tipoCambioAlCrear.valorVenta),
+      };
+    }
+    // Fallback al tipo de cambio actual
+    return {
+      usd: formatUSDCurrent(amountUSD),
+      ars: formatARSCurrent(amountUSD),
+    };
+  };
 
   const columnsRaw = [
     c.accessor('fecha', {
@@ -72,24 +91,32 @@ export default function TransactionsTableTanStack({
     }),
     c.accessor('subtotal', {
       header: 'Subtotal',
-      cell: (info) => (
-        <div className="text-right">
-          <div className="font-medium text-green-600">
-            {formatUSD(info.getValue())}
+      cell: (info) => {
+        const formatted = formatWithExchangeRate(
+          info.getValue(),
+          info.row.original
+        );
+        return (
+          <div className="text-right">
+            <div className="font-medium text-green-600">{formatted.usd}</div>
+            <div className="text-muted-foreground text-xs">{formatted.ars}</div>
           </div>
-          <div className="text-muted-foreground text-xs">
-            {formatARS(info.getValue())}
-          </div>
-        </div>
-      ),
+        );
+      },
     }),
     c.accessor('totalFinal', {
       header: 'Total',
-      cell: (info) => (
-        <div className="text-right font-semibold text-green-600">
-          {formatUSD(info.getValue())}
-        </div>
-      ),
+      cell: (info) => {
+        const formatted = formatWithExchangeRate(
+          info.getValue(),
+          info.row.original
+        );
+        return (
+          <div className="text-right font-semibold text-green-600">
+            {formatted.usd}
+          </div>
+        );
+      },
     }),
     c.accessor('metodosPago', {
       header: 'Método',
@@ -198,7 +225,6 @@ export default function TransactionsTableTanStack({
       hiddenColumns={hiddenColumns}
       enableSearch={false}
       enablePagination
-      pageSize={10}
     />
   );
 }

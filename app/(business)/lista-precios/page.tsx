@@ -52,7 +52,7 @@ import {
   Clock,
 } from 'lucide-react';
 import { UnidadNegocio, ProductoServicio } from '@/types/caja';
-import { useDatosReferencia } from '@/features/comandas/store/comandaStore';
+import { useDatosReferencia } from '@/features/productos-servicios/store/productosServiciosStore';
 import { useCurrencyConverter } from '@/hooks/useCurrencyConverter';
 import ManagerOrAdminOnly from '@/components/auth/ManagerOrAdminOnly';
 import ModalProductoServicio from '@/components/lista-precios/ModalProductoServicio';

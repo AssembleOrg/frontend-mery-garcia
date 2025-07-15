@@ -24,8 +24,6 @@ import { useCurrencyConverter } from '@/hooks/useCurrencyConverter';
 
 export default function IngresosPage() {
   const { isInitialized } = useCurrencyConverter();
-  // Eliminar esta línea - tipoCambioInicializado no existe
-  // const { tipoCambioInicializado } = useDatosReferencia();
 
   // Date range filter state
   const [dateRange, setDateRange] = useState<DateRange | undefined>();

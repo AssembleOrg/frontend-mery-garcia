@@ -91,20 +91,20 @@ export const useExchangeRateStore = create<ExchangeRateState>()(
                 error: null,
               });
             } else {
-              // Usar valores por defecto si no hay cotización
               set({
-                inicializado: true,
+                inicializado: false,
                 cargando: false,
                 error:
-                  'No se pudo obtener la cotización. Usando valores por defecto.',
+                  'No se pudo obtener cotización. Debe configurar un valor operativo manualmente.',
               });
             }
           } catch (error) {
             console.error('Error cargando tipo de cambio inicial:', error);
             set({
               cargando: false,
-              error: 'Error al cargar el tipo de cambio inicial',
-              inicializado: true, // Marcar como inicializado para evitar bucles
+              error:
+                'Error al cargar el tipo de cambio. Debe configurar un valor operativo manualmente.',
+              inicializado: false,
             });
           }
         },
@@ -114,11 +114,10 @@ export const useExchangeRateStore = create<ExchangeRateState>()(
           set({ tipoCambio, error: null });
         },
 
-        // Guardar tipo de cambio manual
         guardarTipoCambioManual: async (valorVenta: number) => {
           set({ cargando: true, error: null });
           try {
-            const response = await saveManualRate(valorVenta);
+            const response = await saveManualRate({ venta: valorVenta });
 
             if (response?.data) {
               const tipoCambio: TipoCambio = {
