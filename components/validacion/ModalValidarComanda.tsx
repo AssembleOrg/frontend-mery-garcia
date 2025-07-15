@@ -4,10 +4,11 @@ import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-
 import { X, Shield, CheckCircle } from 'lucide-react';
-import { useValidacionComandas } from '@/features/comandas/store/comandaStore';
 import { toast } from 'sonner';
+import { validarComanda } from '@/services/validacion.service';
+import { useAuthStore } from '@/features/auth/store/authStore';
+import { useComandaStore } from '@/features/comandas/store/comandaStore';
 
 interface ModalValidarComandaProps {
   isOpen: boolean;
@@ -23,18 +24,43 @@ export default function ModalValidarComanda({
   onSuccess,
 }: ModalValidarComandaProps) {
   const [observaciones, setObservaciones] = useState('');
+  const [cargando, setCargando] = useState(false);
 
-  const { validarComanda, cargando } = useValidacionComandas();
+  const { user } = useAuthStore();
+  const { actualizarComanda } = useComandaStore();
 
   const handleValidar = async () => {
-    const exito = await validarComanda(comandaId, observaciones.trim());
+    if (!user) {
+      toast.error('Usuario no autenticado');
+      return;
+    }
 
-    if (exito) {
-      toast.success('Comanda validada exitosamente');
-      onClose();
-      onSuccess?.();
-    } else {
+    setCargando(true);
+
+    try {
+      const resultado = await validarComanda({
+        comandaId,
+        observaciones: observaciones.trim(),
+        adminId: user.id,
+      });
+
+      if (resultado.exito) {
+        // Actualizar el estado local de la comanda
+        actualizarComanda(comandaId, {
+          estadoValidacion: 'validado',
+        });
+
+        toast.success('Comanda validada exitosamente');
+        onClose();
+        onSuccess?.();
+      } else {
+        toast.error(resultado.mensaje || 'Error al validar comanda');
+      }
+    } catch (error) {
+      console.error('Error al validar comanda:', error);
       toast.error('Error al validar comanda');
+    } finally {
+      setCargando(false);
     }
   };
 

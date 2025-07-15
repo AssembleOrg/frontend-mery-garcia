@@ -34,6 +34,8 @@ import {
   ArrowLeft,
 } from 'lucide-react';
 import { toast } from 'sonner';
+import { usePersonal } from '@/features/personal/hooks/usePersonal';
+import { PersonalSimple } from '@/types/caja';
 
 type ModalMode = 'view' | 'edit' | 'create';
 
@@ -52,11 +54,10 @@ export default function ModalTransaccion({
   mode,
   onModeChange,
 }: ModalTransaccionProps) {
-  const { actualizarComanda, obtenerComandaPorId, personalSimple } =
-    useComandaStore();
+  const { actualizarComanda, obtenerComandaPorId } = useComandaStore();
+  const { personal } = usePersonal();
 
   // Hook para bloquear scroll del body
-
   useModalScrollLock(isOpen);
 
   const { isExchangeRateValid } = useCurrencyConverter();
@@ -181,11 +182,11 @@ export default function ModalTransaccion({
         </span>
         <div className="text-right">
           <div className="font-medium text-green-600">
-            {formatUSD(mp.montoFinal || mp.monto)}
+            {formatUSD(mp.monto || mp.monto)}
           </div>
           {isExchangeRateValid && (
             <div className="text-xs text-gray-600">
-              {formatARS(mp.montoFinal || mp.monto)}
+              {formatARS(mp.monto || mp.monto)}
             </div>
           )}
         </div>
@@ -275,7 +276,7 @@ export default function ModalTransaccion({
           items: servicios,
           subtotal,
           totalDescuentos: descuentoTotal,
-          totalFinal: total, // El total ya incluye los recargos calculados
+          totalFinal: total,
           estado,
           observaciones: observaciones.trim() || undefined,
         };
@@ -283,7 +284,6 @@ export default function ModalTransaccion({
         actualizarComanda(transactionId, datosActualizados);
         toast.success('Transacción actualizada exitosamente');
       } else if (mode === 'create') {
-        // Crear nueva transacción
         // TODO: Implementar creación con useComandaForm
         toast.success('Transacción creada exitosamente');
       }
@@ -697,7 +697,7 @@ export default function ModalTransaccion({
                             <SelectValue placeholder="Seleccionar vendedor" />
                           </SelectTrigger>
                           <SelectContent className="z-[10001]">
-                            {personalSimple.map((persona) => (
+                            {personal.map((persona: PersonalSimple) => (
                               <SelectItem
                                 key={persona.id}
                                 value={persona.nombre}
@@ -760,13 +760,6 @@ export default function ModalTransaccion({
                       </div>
                     )}
 
-                    {metodoPago === 'tarjeta' && (
-                      <div className="flex justify-between text-sm text-orange-600">
-                        <span>Recargo (35%):</span>
-                        <span>+{formatAmount(total * 0.35)}</span>
-                      </div>
-                    )}
-
                     <Separator />
 
                     <div className="flex justify-between text-lg font-semibold">
@@ -795,9 +788,7 @@ export default function ModalTransaccion({
                                   ? '💳 Tarjeta'
                                   : '🏦 Transferencia'}
                             </span>
-                            <span>
-                              {formatAmount(mp.montoFinal || mp.monto)}
-                            </span>
+                            <span>{formatAmount(mp.monto || mp.monto)}</span>
                           </div>
                         ))}
                       </div>

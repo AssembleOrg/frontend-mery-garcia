@@ -32,6 +32,8 @@ import {
   Hash,
 } from 'lucide-react';
 import { useComandaStore } from '@/features/comandas/store/comandaStore';
+import { usePersonal } from '@/features/personal/hooks/usePersonal';
+import { useProductosServicios } from '@/features/productos-servicios/hooks/useProductosServicios';
 import { useModalScrollLock } from '@/hooks/useModalScrollLock';
 import { logger } from '@/lib/utils';
 import { useCurrencyConverter } from '@/hooks/useCurrencyConverter';
@@ -47,11 +49,11 @@ import {
   generateUniqueId,
 } from '@/hooks/useInitializeComandaStore';
 import { DiscountControls } from './DiscountControls';
+import { useExchangeRate } from '@/features/exchange-rate/hooks/useExchangeRate';
 
 interface ModalTransaccionUnificadoProps {
   isOpen: boolean;
   onClose: () => void;
-  onSuccess?: () => void;
   tipo: 'ingreso' | 'egreso';
 }
 
@@ -70,32 +72,26 @@ interface ItemTransaccion {
 interface MetodoPagoForm {
   tipo: 'efectivo' | 'tarjeta' | 'transferencia';
   monto: number;
-  recargoPorcentaje: number;
-  montoFinal: number;
 }
 
 export default function ModalTransaccionUnificado({
   isOpen,
   onClose,
-  onSuccess,
   tipo,
 }: ModalTransaccionUnificadoProps) {
   // Store hooks
-  const {
-    agregarComanda,
-    obtenerProximoNumero,
-    comandas,
-    personalSimple,
-    productosServicios,
-    configuracionRecargos,
-    cargando,
-  } = useComandaStore();
+  const { agregarComanda, obtenerProximoNumero, comandas, cargando } =
+    useComandaStore();
 
-  // Currency converter hook
+  const { productosServicios } = useProductosServicios();
+
+  const { personal } = usePersonal();
+
   const { exchangeRate, isExchangeRateValid, formatARS, formatUSD } =
     useCurrencyConverter();
 
-  // Ensure the comanda store is initialized
+  const { tipoCambio } = useExchangeRate();
+
   useInitializeComandaStore();
 
   // Form state
@@ -107,7 +103,7 @@ export default function ModalTransaccionUnificado({
   const [observaciones, setObservaciones] = useState('');
   const [items, setItems] = useState<ItemTransaccion[]>([]);
   const [metodosPago, setMetodosPago] = useState<MetodoPagoForm[]>([
-    { tipo: 'efectivo', monto: 0, recargoPorcentaje: 0, montoFinal: 0 },
+    { tipo: 'efectivo', monto: 0 },
   ]);
   const [descuentoGlobalPorcentaje, setDescuentoGlobalPorcentaje] = useState(0);
 
@@ -166,15 +162,14 @@ export default function ModalTransaccionUnificado({
   const productosServiciosFiltrados =
     tipo === 'ingreso'
       ? productosServicios.filter(
-          (p) =>
+          (p: ProductoServicio) =>
             p.businessUnit === unidadNegocio &&
             p.nombre.toLowerCase().includes(busqueda.toLowerCase())
         )
-      : productosServicios.filter((p) =>
+      : productosServicios.filter((p: ProductoServicio) =>
           p.nombre.toLowerCase().includes(busqueda.toLowerCase())
         );
 
-  // Add new item
   const agregarItem = () => {
     const nuevoItem: ItemTransaccion = {
       id: `temp-${Date.now()}`,
@@ -207,7 +202,6 @@ export default function ModalTransaccionUnificado({
     setBusqueda('');
   };
 
-  // Remove item
   const eliminarItem = (id: string) => {
     setItems(items.filter((item) => item.id !== id));
   };
@@ -322,8 +316,6 @@ export default function ModalTransaccionUnificado({
     const nuevoMetodo: MetodoPagoForm = {
       tipo: 'efectivo',
       monto: 0,
-      recargoPorcentaje: 0,
-      montoFinal: 0,
     };
     setMetodosPago([...metodosPago, nuevoMetodo]);
   };
@@ -342,29 +334,6 @@ export default function ModalTransaccionUnificado({
     const nuevosMetodos = [...metodosPago];
     nuevosMetodos[index] = { ...nuevosMetodos[index], [campo]: valor };
 
-    // Calcular recargo automáticamente solo si no se está editando manualmente
-    if (campo === 'tipo' || campo === 'monto') {
-      const metodo = nuevosMetodos[index];
-      const configRecargo = configuracionRecargos.find(
-        (c) => c.metodoPago === metodo.tipo && c.activo
-      );
-
-      if (configRecargo && metodo.tipo !== 'efectivo') {
-        metodo.recargoPorcentaje = configRecargo.porcentaje;
-        metodo.montoFinal = metodo.monto * (1 + configRecargo.porcentaje / 100);
-      } else {
-        metodo.recargoPorcentaje = 0;
-        metodo.montoFinal = metodo.monto;
-      }
-    }
-
-    // Recalcular monto final si se edita el recargo manualmente
-    if (campo === 'recargoPorcentaje') {
-      const metodo = nuevosMetodos[index];
-      metodo.montoFinal =
-        metodo.monto + (metodo.monto * metodo.recargoPorcentaje) / 100;
-    }
-
     setMetodosPago(nuevosMetodos);
   };
 
@@ -379,24 +348,19 @@ export default function ModalTransaccionUnificado({
     );
     const subtotal = subtotalBase - totalDescuentos;
 
-    const totalRecargos = metodosPago.reduce(
-      (sum, m) => sum + (m.monto * m.recargoPorcentaje) / 100,
-      0
-    );
-    const totalConRecargos = metodosPago.reduce(
-      (sum, m) => sum + m.montoFinal,
+    const totalPagado = metodosPago.reduce(
+      (sum, metodo) => sum + (metodo.monto || 0),
       0
     );
 
-    const diferencia = totalConRecargos - (subtotal + totalRecargos);
+    const diferencia = totalPagado - subtotal;
 
     return {
       subtotalBase,
       totalDescuentos,
       subtotal,
-      totalRecargos,
-      totalFinal: subtotal + totalRecargos,
-      totalPagos: totalConRecargos,
+      totalFinal: subtotal,
+      totalPagado,
       diferencia,
     };
   };
@@ -465,8 +429,6 @@ export default function ModalTransaccionUnificado({
       const totales = calcularTotales();
       const numeroTransaccion = generarNumeroComanda();
 
-      const { tipoCambio } = useComandaStore.getState();
-
       const itemsComanda: ItemComanda[] = items.map((item) => ({
         productoServicioId: item.productoServicioId,
         nombre: item.nombre,
@@ -481,11 +443,9 @@ export default function ModalTransaccionUnificado({
       const metodosPagoComanda: MetodoPago[] = metodosPago.map((metodo) => ({
         tipo: metodo.tipo,
         monto: metodo.monto,
-        recargoPorcentaje: metodo.recargoPorcentaje,
-        montoFinal: metodo.montoFinal,
       }));
 
-      const responsable = personalSimple.find((p) => p.id === responsableId);
+      const responsable = personal.find((p) => p.id === responsableId);
 
       const nuevaComanda: Comanda = {
         id: generateUniqueId(tipo === 'ingreso' ? 'ing' : 'egr', Date.now()),
@@ -501,7 +461,6 @@ export default function ModalTransaccionUnificado({
           ? {
               id: responsable.id,
               nombre: responsable.nombre,
-              comisionPorcentaje: responsable.comision,
               activo: true,
               unidadesDisponibles: [
                 tipo === 'ingreso' ? unidadNegocio : 'estilismo',
@@ -511,7 +470,6 @@ export default function ModalTransaccionUnificado({
           : {
               id: 'default',
               nombre: 'Sistema',
-              comisionPorcentaje: 0,
               activo: true,
               unidadesDisponibles: [
                 tipo === 'ingreso' ? unidadNegocio : 'estilismo',
@@ -522,10 +480,8 @@ export default function ModalTransaccionUnificado({
         metodosPago: metodosPagoComanda,
         subtotal: totales.subtotal,
         totalDescuentos: totales.totalDescuentos,
-        totalRecargos: totales.totalRecargos,
         totalSeña: 0,
         totalFinal: totales.totalFinal,
-        comisiones: [],
         estado: 'pendiente',
         observaciones: observaciones || undefined,
         estadoNegocio: 'pendiente',
@@ -542,7 +498,6 @@ export default function ModalTransaccionUnificado({
       logger.info(`Guardando ${tipo}:`, nuevaComanda);
       agregarComanda(nuevaComanda);
       resetForm();
-      if (onSuccess) onSuccess();
       onClose();
     } catch (error) {
       logger.error(`Error al guardar ${tipo}:`, error);
@@ -562,9 +517,7 @@ export default function ModalTransaccionUnificado({
     setResponsableId('');
     setObservaciones('');
     setItems([]);
-    setMetodosPago([
-      { tipo: 'efectivo', monto: 0, recargoPorcentaje: 0, montoFinal: 0 },
-    ]);
+    setMetodosPago([{ tipo: 'efectivo', monto: 0 }]);
     setDescuentoGlobalPorcentaje(0);
     setNumeroManual('');
     setErrores({});
@@ -802,7 +755,7 @@ export default function ModalTransaccionUnificado({
                           <SelectValue placeholder="Seleccionar responsable" />
                         </SelectTrigger>
                         <SelectContent className="z-[10001]">
-                          {personalSimple.map((persona) => (
+                          {personal.map((persona) => (
                             <SelectItem key={persona.id} value={persona.id}>
                               {persona.nombre}
                             </SelectItem>
@@ -1147,45 +1100,17 @@ export default function ModalTransaccionUnificado({
                         </div>
 
                         <div>
-                          <Label className="text-gray-700">Recargo (%)</Label>
-                          <Input
-                            type="number"
-                            min="0"
-                            max="100"
-                            step="0.1"
-                            value={metodo.recargoPorcentaje || ''}
-                            onChange={(e) =>
-                              actualizarMetodoPago(
-                                index,
-                                'recargoPorcentaje',
-                                parseFloat(e.target.value) || 0
-                              )
-                            }
-                            placeholder="0.0"
-                            className="border-gray-300"
-                          />
-                        </div>
-
-                        <div>
                           <Label className="text-gray-700">Total</Label>
                           <div className="flex h-10 items-center justify-between rounded-md border border-gray-300 bg-gray-50 px-3">
                             <span className="text-sm font-medium text-green-600">
-                              {formatUSD(metodo.montoFinal)}
+                              {formatUSD(metodo.monto)}
                             </span>
-                            {isExchangeRateValid && metodo.montoFinal > 0 && (
+                            {isExchangeRateValid && metodo.monto > 0 && (
                               <span className="text-xs text-gray-600">
-                                {formatARS(metodo.montoFinal)}
+                                {formatARS(metodo.monto)}
                               </span>
                             )}
                           </div>
-                          {metodo.recargoPorcentaje > 0 && (
-                            <div className="mt-1 text-xs text-gray-600">
-                              Base: {formatUSD(metodo.monto)} + Recargo:{' '}
-                              {formatUSD(
-                                (metodo.monto * metodo.recargoPorcentaje) / 100
-                              )}
-                            </div>
-                          )}
                         </div>
                       </div>
                     </div>
@@ -1253,20 +1178,6 @@ export default function ModalTransaccionUnificado({
                           {isExchangeRateValid && totales.subtotal > 0 && (
                             <div className="text-xs text-gray-600">
                               {formatARS(totales.subtotal)}
-                            </div>
-                          )}
-                        </div>
-                      </div>
-
-                      <div className="flex items-center justify-between rounded-lg bg-gray-50 p-3">
-                        <div className="text-sm text-gray-700">Recargos</div>
-                        <div className="text-right">
-                          <div className="text-lg font-semibold text-green-600">
-                            {formatUSD(totales.totalRecargos)}
-                          </div>
-                          {isExchangeRateValid && totales.totalRecargos > 0 && (
-                            <div className="text-xs text-gray-600">
-                              {formatARS(totales.totalRecargos)}
                             </div>
                           )}
                         </div>
@@ -1382,29 +1293,31 @@ export default function ModalTransaccionUnificado({
             </div>
             <div className="max-h-96 overflow-y-auto p-4">
               <div className="space-y-2">
-                {productosServiciosFiltrados.map((producto) => (
-                  <div
-                    key={producto.id}
-                    className="flex cursor-pointer items-center justify-between rounded-lg border border-gray-200 p-3 hover:bg-gray-50"
-                    onClick={() => agregarDesdeProducto(producto)}
-                  >
-                    <div>
-                      <div className="font-medium text-gray-900">
-                        {producto.nombre}
-                      </div>
-                      <div className="text-sm text-gray-600">
-                        {producto.tipo} - {formatUSD(producto.precio)}
-                      </div>
-                    </div>
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      className="border-gray-300"
+                {productosServiciosFiltrados.map(
+                  (producto: ProductoServicio) => (
+                    <div
+                      key={producto.id}
+                      className="flex cursor-pointer items-center justify-between rounded-lg border border-gray-200 p-3 hover:bg-gray-50"
+                      onClick={() => agregarDesdeProducto(producto)}
                     >
-                      Agregar
-                    </Button>
-                  </div>
-                ))}
+                      <div>
+                        <div className="font-medium text-gray-900">
+                          {producto.nombre}
+                        </div>
+                        <div className="text-sm text-gray-600">
+                          {producto.tipo} - {formatUSD(producto.precio)}
+                        </div>
+                      </div>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="border-gray-300"
+                      >
+                        Agregar
+                      </Button>
+                    </div>
+                  )
+                )}
                 {productosServiciosFiltrados.length === 0 && (
                   <div className="py-8 text-center text-gray-500">
                     No se encontraron productos/servicios

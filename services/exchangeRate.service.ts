@@ -2,182 +2,119 @@ import { apiFetch } from '@/lib/apiClient';
 
 export interface ExchangeRate {
   compra: number;
-  /**
-   * Monto de venta. Puede no estar disponible cuando el valor es ingresado manualmente
-   * y solo se define la cotización de compra.
-   */
   venta?: number;
   fechaActualizacion: string;
-  /** Fuente o casa de cambio – opcional y depende de la implementación del backend */
   casa?: string;
-  /** Nombre descriptivo de la cotización */
   nombre?: string;
-  /** Moneda de referencia, por ejemplo "USD" */
   moneda?: string;
 }
 
+export const getUltimoTipoCambio = async (): Promise<
+  ExchangeRate | undefined
+> => {
+  try {
+    const response = await apiFetch<{ status: string; data: ExchangeRate }>(
+      'api/dolar/ultimo'
+    );
+    return response?.data;
+  } catch (error) {
+    console.error('Error obteniendo último tipo de cambio:', error);
+    return undefined;
+  }
+};
+
 export async function getCotizacion(): Promise<ExchangeRate | undefined> {
   try {
-    const manualRate = await getManualRate();
-    if (manualRate && manualRate.casa === 'Manual') {
-      return manualRate;
+    const ultimoGuardado = await getUltimoTipoCambio();
+    if (ultimoGuardado) {
+      console.log(
+        'Usando último tipo de cambio operativo guardado:',
+        ultimoGuardado
+      );
+      return ultimoGuardado;
     }
 
+    // Si no hay valor guardado, usar la cotización pública como fallback
     const res = await apiFetch<{ status: string; data: ExchangeRate }>(
       'api/dolar/cotizacion',
       { cache: 'no-store' }
     );
-    return res?.data;
+
+    if (res?.data) {
+      console.log(
+        'Usando cotización pública como fallback operativo:',
+        res.data
+      );
+      return res.data;
+    }
+
+    throw new Error('No se pudo obtener cotización');
   } catch (error) {
-    console.error('Error obteniendo cotización:', error);
+    console.error('Error en getCotizacion:', error);
     return undefined;
   }
 }
+
+// ✅ SOLO para valores informativos - siempre obtiene de la API pública
+export const getPublicRate = async (): Promise<ExchangeRate | undefined> => {
+  try {
+    console.log('Obteniendo cotización pública informativa...');
+    const response = await apiFetch<{ status: string; data: ExchangeRate }>(
+      'api/dolar/cotizacion',
+      { cache: 'no-store' } // Siempre obtener datos frescos para informativos
+    );
+
+    if (response?.data) {
+      console.log('Cotización pública informativa obtenida:', response.data);
+      return response.data;
+    }
+
+    return undefined;
+  } catch (error) {
+    console.error('Error obteniendo cotización pública informativa:', error);
+    return undefined;
+  }
+};
 
 // Historial de cotizaciones
 export async function getHistorial(
-  limit = 10
-): Promise<ExchangeRate[] | undefined> {
+  limit: number = 10
+): Promise<ExchangeRate[]> {
   try {
-    const res = await apiFetch<ExchangeRate[] | undefined>(
-      `api/dolar/historial?limit=${limit}`,
-      { cache: 'no-store' }
+    const response = await apiFetch<{ status: string; data: ExchangeRate[] }>(
+      `api/dolar/historial?limit=${limit}`
     );
-    return res;
+    return response?.data || [];
   } catch (error) {
     console.error('Error obteniendo historial:', error);
-    return undefined;
+    return [];
   }
 }
-
-/**
- * Envía una cotización manual al backend.
- *
- * Según el OpenAPI spec, el endpoint acepta:
- * - compra: number (opcional)
- * - venta: number (opcional)
- * - casa: string (opcional)
- * - nombre: string (opcional)
- * - moneda: string (opcional)
- */
-export async function setManualRate(params: {
-  /** Cuando no se indica, el backend dejará sin modificar el valor de compra. */
-  compra?: number;
-  /** Valor de venta (obligatorio) que usará la app internamente */
+export async function setManualRate(rate: {
   venta: number;
-  casa?: string;
-  nombre?: string;
-  moneda?: string;
+  compra?: number;
 }): Promise<{ status: string; data: ExchangeRate }> {
-  const {
-    compra,
-    venta,
-    casa = 'Manual',
-    nombre = 'Blue Manual',
-    moneda = 'USD',
-  } = params;
-
-  // Construir payload según OpenAPI spec
-  const payload: Record<string, unknown> = {
-    venta,
-    casa,
-    nombre,
-    moneda,
-  };
-
-  // Sólo incluir compra si se pasa explícitamente
-  if (compra !== undefined) {
-    payload.compra = compra;
-  }
-
   try {
     const response = await apiFetch<{ status: string; data: ExchangeRate }>(
       'api/dolar/cotizacion',
       {
         method: 'POST',
-        json: payload,
+        json: {
+          venta: rate.venta,
+          compra: rate.compra || rate.venta,
+        },
       }
     );
-
-    if (!response || !response.data) {
-      throw new Error('Respuesta inválida del servidor');
-    }
-
     return response;
-  } catch (error: unknown) {
-    // Manejo específico de errores
-    const errorObj = error as { status?: number; message?: string };
-
-    if (errorObj?.status === 404) {
-      throw new Error('API 404: Endpoint /api/dolar/cotizacion no disponible');
-    }
-
-    if (errorObj?.status === 400) {
-      throw new Error('Datos inválidos enviados al servidor');
-    }
-
-    if (errorObj?.status === 500) {
-      throw new Error('Error interno del servidor');
-    }
-
-    // Error genérico
-    throw new Error(
-      `Error al guardar tipo de cambio: ${errorObj?.message || 'Error desconocido'}`
-    );
+  } catch (error) {
+    console.error('Error guardando tipo de cambio manual:', error);
+    throw error;
   }
 }
 
-// Cotización pública (la real de la casa cambiaria)
-export const getPublicRate = async (): Promise<ExchangeRate | undefined> => {
-  try {
-    const response = await apiFetch<{ status: string; data: ExchangeRate }>(
-      'api/dolar/cotizacion'
-    );
-    return response?.data;
-  } catch (error) {
-    console.error('Error obteniendo cotización pública:', error);
-    return undefined;
-  }
-};
-
-// Último valor manual registrado por el admin
-export const getManualRate = async (): Promise<ExchangeRate | undefined> => {
-  try {
-    const historial = await apiFetch<{ status: string; data: ExchangeRate[] }>(
-      'api/dolar/historial?limit=50'
-    );
-
-    if (!historial?.data || historial.data.length === 0) {
-      console.log('No hay historial de tipos de cambio');
-      return undefined;
-    }
-
-    // Buscar primero registros manuales
-    const manualRate = historial.data.find((r) => r.casa === 'Manual');
-    if (manualRate) {
-      console.log('Encontrado tipo de cambio manual:', manualRate);
-      return manualRate;
-    }
-
-    // Si no hay manual, usar el más reciente
-    const latestRate = historial.data[0];
-    console.log('Usando tipo de cambio más reciente:', latestRate);
-    return latestRate;
-  } catch (error) {
-    console.error('Error obteniendo valor manual:', error);
-    return undefined;
-  }
-};
-
-// Guardar nuevo valor manual (función simplificada)
-export const saveManualRate = async (
-  ventaARS: number
-): Promise<{ status: string; data: ExchangeRate }> => {
-  return setManualRate({
-    compra: ventaARS - 20,
-    venta: ventaARS,
-    casa: 'Manual',
-    nombre: 'Blue Manual',
-    moneda: 'USD',
-  });
+export const saveManualRate = async (rate: {
+  venta: number;
+  compra?: number;
+}): Promise<{ status: string; data: ExchangeRate }> => {
+  return setManualRate(rate);
 };

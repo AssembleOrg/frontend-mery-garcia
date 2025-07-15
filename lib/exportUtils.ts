@@ -188,39 +188,3 @@ const downloadFile = (content: string, filename: string, mimeType: string) => {
     URL.revokeObjectURL(url);
   }
 };
-
-/**
- * Exporta comandas a formato Excel (usando CSV con extensión .xlsx)
- * Nota: Para Excel real se necesitaría una librería como xlsx
- */
-export const exportComandasToExcel = (
-  comandas: Comanda[],
-  options: ExportOptions = {}
-) => {
-  const timestamp = new Date().toISOString().split('T')[0];
-  const filename = options.filename || `comandas_${timestamp}`;
-
-  const data = comandas.map((comanda) => ({
-    Fecha: new Date(comanda.fecha).toLocaleDateString('es-AR'),
-    Numero: comanda.numero,
-    Cliente: comanda.cliente?.nombre || 'N/A',
-    Personal: comanda.mainStaff?.nombre || 'N/A',
-    'Unidad de Negocio': comanda.businessUnit,
-    Tipo: comanda.tipo,
-    'Total (ARS)': comanda.totalFinal,
-    Estado: comanda.estado,
-    'Método de Pago': comanda.metodosPago?.[0]?.tipo || 'N/A',
-    Observaciones: comanda.observaciones || '',
-  }));
-
-  const csv = Papa.unparse(data, {
-    delimiter: ',',
-    header: true,
-  });
-
-  downloadFile(
-    csv,
-    `${filename}.xlsx`,
-    'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
-  );
-};

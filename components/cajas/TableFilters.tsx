@@ -34,10 +34,10 @@ import {
   X,
   Columns,
 } from 'lucide-react';
-import { FiltrosEncomienda, ColumnaCaja, Personal } from '@/types/caja';
-import { useDatosReferencia } from '@/features/comandas/store/comandaStore';
+import { FiltrosEncomienda, ColumnaCaja, PersonalSimple } from '@/types/caja';
 import { ESTADO_LABELS } from '@/lib/constants';
 import { useHasMounted } from '@/hooks/useHasMounted';
+import { usePersonal } from '@/features/personal/hooks/usePersonal';
 
 interface TableFiltersProps {
   filters: FiltrosEncomienda;
@@ -54,14 +54,14 @@ export default function TableFilters({
   onFiltersChange,
   columns,
   onColumnsChange,
-  accentColor = '#f9bbc4',
   exportToPDF,
   exportToCSV,
+  accentColor = '#f9bbc4',
 }: TableFiltersProps) {
   const [showAdvancedFilters, setShowAdvancedFilters] = useState(false);
 
   // Get real staff data from store
-  const { personal } = useDatosReferencia();
+  const { personal } = usePersonal();
 
   const toggleColumn = (key: ColumnaCaja['key']) => {
     const updatedColumns = columns.map((col) =>
@@ -338,17 +338,16 @@ export default function TableFilters({
               </Select>
             </div>
 
-            {/* Staff filter (detailed) */}
             <div>
               <label className="mb-2 block text-sm font-medium text-gray-700">
                 Miembro del Personal
               </label>
               <Select
-                value={filters.vendedor || 'todos'}
+                value={filters.personalId || 'todos'}
                 onValueChange={(value) =>
                   onFiltersChange({
                     ...filters,
-                    vendedor: value === 'todos' ? undefined : value,
+                    personalId: value === 'todos' ? undefined : value,
                   })
                 }
               >
@@ -363,14 +362,11 @@ export default function TableFilters({
                       <span>Sin Asignar</span>
                     </div>
                   </SelectItem>
-                  {personal.map((person: Personal) => (
-                    <SelectItem key={person.id} value={person.nombre}>
+                  {personal.map((persona: PersonalSimple) => (
+                    <SelectItem key={persona.id} value={persona.id}>
                       <div className="flex items-center gap-2">
-                        <div className="h-2 w-2 rounded-full bg-green-500"></div>
-                        <span>{person.nombre}</span>
-                        <span className="text-xs text-gray-500">
-                          ({person.comisionPorcentaje}%)
-                        </span>
+                        <div className="h-2 w-2 rounded-full bg-green-500" />
+                        <span>{persona.nombre}</span>
                       </div>
                     </SelectItem>
                   ))}

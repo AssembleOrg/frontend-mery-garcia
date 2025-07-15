@@ -1,17 +1,14 @@
 import { useState, useCallback } from 'react';
-import { useComandaStore } from '@/features/comandas/store/comandaStore';
 
 export interface MetodoPagoForm {
   tipo: 'efectivo' | 'tarjeta' | 'transferencia' | 'mixto';
   monto: number;
-  recargoPorcentaje: number;
   montoFinal: number;
 }
 
 export interface UseMetodosPagoReturn {
   metodosPago: MetodoPagoForm[];
   totalPagado: number;
-  totalRecargos: number;
   agregarMetodoPago: () => void;
   eliminarMetodoPago: (index: number) => void;
   actualizarMetodoPago: (
@@ -28,17 +25,14 @@ export interface UseMetodosPagoReturn {
 }
 
 export function useMetodosPago(): UseMetodosPagoReturn {
-  const { configuracionRecargos } = useComandaStore();
-
   const [metodosPago, setMetodosPago] = useState<MetodoPagoForm[]>([
-    { tipo: 'efectivo', monto: 0, recargoPorcentaje: 0, montoFinal: 0 },
+    { tipo: 'efectivo', monto: 0, montoFinal: 0 },
   ]);
 
   const agregarMetodoPago = useCallback(() => {
     const nuevoMetodo: MetodoPagoForm = {
       tipo: 'efectivo',
       monto: 0,
-      recargoPorcentaje: 0,
       montoFinal: 0,
     };
     setMetodosPago((prev) => [...prev, nuevoMetodo]);
@@ -59,28 +53,20 @@ export function useMetodosPago(): UseMetodosPagoReturn {
         const nuevosMetodos = [...prev];
         nuevosMetodos[index] = { ...nuevosMetodos[index], [campo]: valor };
 
-        // Calcular recargo automáticamente
         if (campo === 'tipo' || campo === 'monto') {
           const metodo = nuevosMetodos[index];
-          const configuracion = configuracionRecargos.find(
-            (c) => c.metodoPago === metodo.tipo && c.activo
-          );
 
-          metodo.recargoPorcentaje = configuracion?.porcentaje || 0;
-          metodo.montoFinal =
-            metodo.monto + (metodo.monto * metodo.recargoPorcentaje) / 100;
+          metodo.montoFinal = metodo.monto + metodo.monto / 100;
         }
 
         return nuevosMetodos;
       });
     },
-    [configuracionRecargos]
+    []
   );
 
   const resetMetodosPago = useCallback(() => {
-    setMetodosPago([
-      { tipo: 'efectivo', monto: 0, recargoPorcentaje: 0, montoFinal: 0 },
-    ]);
+    setMetodosPago([{ tipo: 'efectivo', monto: 0, montoFinal: 0 }]);
   }, []);
 
   const validarMetodosPago = useCallback(
@@ -118,15 +104,10 @@ export function useMetodosPago(): UseMetodosPagoReturn {
 
   // Cálculos derivados
   const totalPagado = metodosPago.reduce((sum, mp) => sum + mp.montoFinal, 0);
-  const totalRecargos = metodosPago.reduce(
-    (sum, mp) => sum + (mp.montoFinal - mp.monto),
-    0
-  );
 
   return {
     metodosPago,
     totalPagado,
-    totalRecargos,
     agregarMetodoPago,
     eliminarMetodoPago,
     actualizarMetodoPago,

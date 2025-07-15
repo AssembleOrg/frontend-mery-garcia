@@ -4,7 +4,7 @@ import { useCurrencyConverter } from '@/hooks/useCurrencyConverter';
 
 interface SummaryCardProps {
   title: string;
-  value: number;
+  value: number | undefined;
   format?: 'currency' | 'number';
   valueClassName?: string;
 }
@@ -17,10 +17,12 @@ export default function SummaryCard({
 }: SummaryCardProps) {
   const { formatUSD } = useCurrencyConverter();
 
+  const safeValue = value ?? 0;
+
   const formattedValue =
     format === 'currency'
-      ? formatUSD(value)
-      : new Intl.NumberFormat('es-AR').format(value);
+      ? formatUSD(safeValue)
+      : new Intl.NumberFormat('es-AR').format(safeValue);
 
   return (
     <Card className="overflow-hidden border border-[#f9bbc4]/30 bg-white/90">

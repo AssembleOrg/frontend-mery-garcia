@@ -29,10 +29,9 @@ export interface RegistroDiario {
   totalOutgoing: number;
   saldo: number;
   cantidadComandas: number;
-  comisionesTotales: number;
   unidadMasActiva?: string;
   personalMasVentas?: string;
-  comandasIds: string[]; // IDs de las comandas del día
+  comandasIds: string[];
   fechaCreacion: string;
   creadoPor: string;
 }

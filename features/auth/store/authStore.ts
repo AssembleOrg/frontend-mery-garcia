@@ -26,7 +26,6 @@ interface AuthActions {
 }
 
 export const useAuthStore = create<AuthState & AuthActions>((set, get) => ({
-  // Estado inicial
   user: null,
   token: null,
   isAuthenticated: false,
@@ -47,8 +46,6 @@ export const useAuthStore = create<AuthState & AuthActions>((set, get) => ({
           ...response.data.user,
           unidadesDisponibles: response.data.user
             .unidadesDisponibles as UnidadNegocio[],
-          comisionPorcentaje:
-            parseFloat(response.data.user.comisionPorcentaje) || 0,
           fechaIngreso:
             response.data.user.fechaIngreso || new Date().toISOString(),
           activo: true,
@@ -84,8 +81,7 @@ export const useAuthStore = create<AuthState & AuthActions>((set, get) => ({
           ...response.data.user,
           unidadesDisponibles: response.data.user
             .unidadesDisponibles as UnidadNegocio[],
-          comisionPorcentaje:
-            parseFloat(response.data.user.comisionPorcentaje) || 0,
+
           fechaIngreso: userData.fechaIngreso || new Date().toISOString(),
           activo: true,
         },
@@ -194,7 +190,6 @@ export const useAuthStore = create<AuthState & AuthActions>((set, get) => ({
           user,
           isAuthenticated: true,
         });
-        get().getProfile();
       } else {
         set({
           user: null,
