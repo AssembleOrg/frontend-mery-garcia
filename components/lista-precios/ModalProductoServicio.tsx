@@ -13,14 +13,12 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
 import {
   X,
   Package,
   Scissors,
   Edit,
   GraduationCap,
-  Clock,
   DollarSign,
 } from 'lucide-react';
 import { UnidadNegocio, ProductoServicio } from '@/types/caja';
@@ -66,7 +64,6 @@ export default function ModalProductoServicio({
   const [precio, setPrecio] = useState<number>(0);
   const [tipo, setTipo] = useState<'producto' | 'servicio'>('servicio');
   const [businessUnit, setBusinessUnit] = useState<UnidadNegocio>('estilismo');
-  const [duracion, setDuracion] = useState<number>(0);
 
   // Estados de validación
   const [errores, setErrores] = useState<Record<string, string>>({});
@@ -84,7 +81,6 @@ export default function ModalProductoServicio({
         setPrecio(producto.precio);
         setTipo(producto.tipo);
         setBusinessUnit(producto.businessUnit);
-        setDuracion(producto.duracion || 0);
       } else {
         // Modo creación
         clearForm();
@@ -99,7 +95,6 @@ export default function ModalProductoServicio({
     setPrecio(0);
     setTipo('servicio');
     setBusinessUnit('estilismo');
-    setDuracion(0);
     setErrores({});
   };
 
@@ -112,10 +107,6 @@ export default function ModalProductoServicio({
 
     if (precio <= 0) {
       nuevosErrores.precio = 'El precio debe ser mayor a 0';
-    }
-
-    if (tipo === 'servicio' && duracion <= 0) {
-      nuevosErrores.duracion = 'La duración es obligatoria para servicios';
     }
 
     setErrores(nuevosErrores);
@@ -134,8 +125,7 @@ export default function ModalProductoServicio({
         precio,
         tipo,
         businessUnit,
-        activo: true, // Siempre activo para salón de belleza
-        ...(tipo === 'servicio' && duracion > 0 && { duracion }),
+        activo: true,
       };
 
       if (esEdicion) {
@@ -172,19 +162,6 @@ export default function ModalProductoServicio({
     }
 
     return { ars: montoARSFormatted, usd: montoUSD };
-  };
-
-  const obtenerIconoUnidad = (unidad: UnidadNegocio) => {
-    switch (unidad) {
-      case 'estilismo':
-        return <Scissors className="h-4 w-4" />;
-      case 'tattoo':
-        return <Edit className="h-4 w-4" />;
-      case 'formacion':
-        return <GraduationCap className="h-4 w-4" />;
-      default:
-        return <Package className="h-4 w-4" />;
-    }
   };
 
   if (!isOpen) return null;
@@ -354,94 +331,6 @@ export default function ModalProductoServicio({
                       <p className="mt-1 text-sm text-gray-500">
                         Equivalente: {precios.ars}
                       </p>
-                    )}
-                  </div>
-                </CardContent>
-              </Card>
-
-              {/* Detalles específicos */}
-              {tipo === 'servicio' && (
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="text-base">
-                      Detalles del Servicio
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <div>
-                      <Label htmlFor="duracion">
-                        Duración (minutos) *
-                        {errores.duracion && (
-                          <span className="ml-1 text-xs text-red-500">
-                            ({errores.duracion})
-                          </span>
-                        )}
-                      </Label>
-                      <div className="relative">
-                        <Clock className="absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-gray-400" />
-                        <Input
-                          id="duracion"
-                          type="number"
-                          value={duracion || ''}
-                          onChange={(e) => setDuracion(Number(e.target.value))}
-                          placeholder="0"
-                          className={`pl-10 ${errores.duracion ? 'border-red-300' : ''}`}
-                          min="0"
-                        />
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              )}
-
-              {/* Vista previa */}
-              <Card>
-                <CardHeader>
-                  <CardTitle className="text-base">Vista Previa</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="rounded-lg border p-4">
-                    <div className="flex items-start justify-between">
-                      <div className="flex items-center gap-3">
-                        {obtenerIconoUnidad(businessUnit)}
-                        <div>
-                          <h3 className="font-medium">
-                            {nombre || 'Nombre del elemento'}
-                          </h3>
-                          {descripcion && (
-                            <p className="text-sm text-gray-600">
-                              {descripcion}
-                            </p>
-                          )}
-                          <div className="mt-2 flex items-center gap-2">
-                            <Badge
-                              variant={
-                                tipo === 'servicio' ? 'default' : 'secondary'
-                              }
-                              className="capitalize"
-                            >
-                              {tipo}
-                            </Badge>
-                            <Badge variant="outline" className="capitalize">
-                              {businessUnit}
-                            </Badge>
-                          </div>
-                        </div>
-                      </div>
-                      <div className="text-right">
-                        <div className="font-semibold text-green-600">
-                          {precios.usd}
-                        </div>
-                        <div className="text-sm text-gray-500">
-                          {precios.ars}
-                        </div>
-                      </div>
-                    </div>
-                    {tipo === 'servicio' && duracion > 0 && (
-                      <div className="mt-3 flex items-center gap-1 text-sm text-gray-500">
-                        <Clock className="h-3 w-3" />
-                        {duracion} minutos
-                      </div>
                     )}
                   </div>
                 </CardContent>

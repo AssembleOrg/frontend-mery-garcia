@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -30,6 +30,10 @@ import {
   ArrowDownCircle,
   Search,
   Hash,
+  Scissors,
+  Edit,
+  GraduationCap,
+  Package,
 } from 'lucide-react';
 import { useComandaStore } from '@/features/comandas/store/comandaStore';
 import { usePersonal } from '@/features/personal/hooks/usePersonal';
@@ -91,6 +95,19 @@ export default function ModalTransaccionUnificado({
     useCurrencyConverter();
 
   const { tipoCambio } = useExchangeRate();
+
+  const obtenerIconoUnidad = (unidad: UnidadNegocio) => {
+    switch (unidad) {
+      case 'estilismo':
+        return <Scissors className="h-4 w-4 text-[#8b5a6b]" />;
+      case 'tattoo':
+        return <Edit className="h-4 w-4 text-[#8b5a6b]" />;
+      case 'formacion':
+        return <GraduationCap className="h-4 w-4 text-[#8b5a6b]" />;
+      default:
+        return <Package className="h-4 w-4 text-[#8b5a6b]" />;
+    }
+  };
 
   useInitializeComandaStore();
 
@@ -158,17 +175,32 @@ export default function ModalTransaccionUnificado({
     }
   }, [isOpen, onClose, mostrarBuscador]);
 
-  // Filtrar productos/servicios
-  const productosServiciosFiltrados =
-    tipo === 'ingreso'
-      ? productosServicios.filter(
-          (p: ProductoServicio) =>
-            p.businessUnit === unidadNegocio &&
-            p.nombre.toLowerCase().includes(busqueda.toLowerCase())
-        )
-      : productosServicios.filter((p: ProductoServicio) =>
-          p.nombre.toLowerCase().includes(busqueda.toLowerCase())
-        );
+  const productosServiciosFiltrados = useMemo(() => {
+    if (tipo === 'egreso') {
+      return productosServicios.filter((p: ProductoServicio) =>
+        p.nombre.toLowerCase().includes(busqueda.toLowerCase())
+      );
+    }
+
+    // Para ingresos, agrupar por unidad de negocio
+    const productosPorUnidad = productosServicios.reduce(
+      (acc, producto) => {
+        if (
+          producto.nombre.toLowerCase().includes(busqueda.toLowerCase()) &&
+          producto.activo
+        ) {
+          if (!acc[producto.businessUnit]) {
+            acc[producto.businessUnit] = [];
+          }
+          acc[producto.businessUnit].push(producto);
+        }
+        return acc;
+      },
+      {} as Record<UnidadNegocio, ProductoServicio[]>
+    );
+
+    return productosPorUnidad;
+  }, [productosServicios, busqueda, tipo]);
 
   const agregarItem = () => {
     const nuevoItem: ItemTransaccion = {
@@ -1266,7 +1298,7 @@ export default function ModalTransaccionUnificado({
       {/* Product Search Modal */}
       {mostrarBuscador && (
         <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/50 p-4">
-          <div className="w-full max-w-2xl rounded-lg bg-white shadow-2xl">
+          <div className="w-full max-w-3xl rounded-lg bg-white shadow-2xl">
             <div className="border-b p-4">
               <div className="flex items-center justify-between">
                 <h3 className="text-lg font-semibold text-gray-900">
@@ -1292,35 +1324,98 @@ export default function ModalTransaccionUnificado({
               </div>
             </div>
             <div className="max-h-96 overflow-y-auto p-4">
-              <div className="space-y-2">
-                {productosServiciosFiltrados.map(
-                  (producto: ProductoServicio) => (
-                    <div
-                      key={producto.id}
-                      className="flex cursor-pointer items-center justify-between rounded-lg border border-gray-200 p-3 hover:bg-gray-50"
-                      onClick={() => agregarDesdeProducto(producto)}
+              <div className="space-y-6">
+                {tipo === 'ingreso' ? (
+                  // Vista agrupada para ingresos
+                  Object.entries(
+                    productosServiciosFiltrados as Record<
+                      UnidadNegocio,
+                      ProductoServicio[]
                     >
-                      <div>
-                        <div className="font-medium text-gray-900">
-                          {producto.nombre}
-                        </div>
-                        <div className="text-sm text-gray-600">
-                          {producto.tipo} - {formatUSD(producto.precio)}
-                        </div>
+                  ).map(([unidad, productos]) => (
+                    <div key={unidad}>
+                      <div className="mb-3 flex items-center gap-3">
+                        {obtenerIconoUnidad(unidad as UnidadNegocio)}
+                        <h4 className="font-medium text-gray-900 capitalize">
+                          {unidad}
+                        </h4>
+                        <Badge variant="outline" className="text-xs">
+                          {productos.length} items
+                        </Badge>
                       </div>
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        className="border-gray-300"
-                      >
-                        Agregar
-                      </Button>
+                      <div className="ml-6 space-y-2">
+                        {productos.map((producto: ProductoServicio) => (
+                          <div
+                            key={producto.id}
+                            className="flex cursor-pointer items-center justify-between rounded-lg border border-gray-200 p-3 transition-colors hover:bg-gray-50"
+                            onClick={() => agregarDesdeProducto(producto)}
+                          >
+                            <div className="flex-1">
+                              <div className="font-medium text-gray-900">
+                                {producto.nombre}
+                              </div>
+                              <div className="text-sm text-gray-600">
+                                {producto.tipo} - {formatUSD(producto.precio)}
+                              </div>
+                              {producto.descripcion && (
+                                <div className="mt-1 text-xs text-gray-500">
+                                  {producto.descripcion}
+                                </div>
+                              )}
+                            </div>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              className="border-[#f9bbc4] text-[#8b5a6b] hover:bg-[#f9bbc4] hover:text-white"
+                            >
+                              Agregar
+                            </Button>
+                          </div>
+                        ))}
+                      </div>
                     </div>
-                  )
+                  ))
+                ) : (
+                  // Vista simple para egresos (comportamiento actual)
+                  <div className="space-y-2">
+                    {(productosServiciosFiltrados as ProductoServicio[]).map(
+                      (producto: ProductoServicio) => (
+                        <div
+                          key={producto.id}
+                          className="flex cursor-pointer items-center justify-between rounded-lg border border-gray-200 p-3 hover:bg-gray-50"
+                          onClick={() => agregarDesdeProducto(producto)}
+                        >
+                          <div>
+                            <div className="font-medium text-gray-900">
+                              {producto.nombre}
+                            </div>
+                            <div className="text-sm text-gray-600">
+                              {producto.tipo} - {formatUSD(producto.precio)}
+                            </div>
+                          </div>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="border-gray-300"
+                          >
+                            Agregar
+                          </Button>
+                        </div>
+                      )
+                    )}
+                  </div>
                 )}
-                {productosServiciosFiltrados.length === 0 && (
+                {((tipo === 'ingreso' &&
+                  Object.keys(productosServiciosFiltrados).length === 0) ||
+                  (tipo === 'egreso' &&
+                    (productosServiciosFiltrados as ProductoServicio[])
+                      .length === 0)) && (
                   <div className="py-8 text-center text-gray-500">
-                    No se encontraron productos/servicios
+                    <Package className="mx-auto mb-3 h-12 w-12 text-gray-300" />
+                    <p>No se encontraron productos/servicios</p>
+                    <p className="mt-1 text-sm text-gray-400">
+                      Intenta con otros términos de búsqueda
+                    </p>
                   </div>
                 )}
               </div>
