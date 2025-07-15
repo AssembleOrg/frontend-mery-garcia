@@ -23,6 +23,16 @@ export const exportComandasToCSV = (
   const timestamp = new Date().toISOString().split('T')[0];
   const filename = options.filename || `comandas_${timestamp}`;
 
+  const calcularValorEfectivo = (comanda: Comanda): number => {
+    if (!comanda.metodosPago || comanda.metodosPago.length === 0) {
+      return 0;
+    }
+
+    return comanda.metodosPago
+      .filter((metodo) => metodo.tipo === 'efectivo')
+      .reduce((total, metodo) => total + metodo.monto, 0);
+  };
+
   // Preparar datos para CSV
   const data = comandas.map((comanda) => ({
     Fecha: new Date(comanda.fecha).toLocaleDateString('es-AR'),
@@ -31,9 +41,10 @@ export const exportComandasToCSV = (
     Personal: comanda.mainStaff?.nombre || 'N/A',
     'Unidad de Negocio': comanda.businessUnit,
     Tipo: comanda.tipo,
-    'Total (ARS)': comanda.totalFinal,
+    Total: comanda.totalFinal,
+    'Valor Efectivo': calcularValorEfectivo(comanda),
     Estado: comanda.estado,
-    'Método de Pago': comanda.metodosPago?.[0]?.tipo || 'N/A',
+    'Metodo de Pago': comanda.metodosPago?.[0]?.tipo || 'N/A',
     Observaciones: comanda.observaciones || '',
   }));
 
@@ -88,6 +99,16 @@ export const exportComandasToPDF = (
     35
   );
 
+  const calcularValorEfectivo = (comanda: Comanda): number => {
+    if (!comanda.metodosPago || comanda.metodosPago.length === 0) {
+      return 0;
+    }
+
+    return comanda.metodosPago
+      .filter((metodo) => metodo.tipo === 'efectivo')
+      .reduce((total, metodo) => total + metodo.monto, 0);
+  };
+
   // Preparar datos para la tabla
   const columns = [
     'Fecha',
@@ -97,6 +118,7 @@ export const exportComandasToPDF = (
     'Unidad',
     'Tipo',
     'Total',
+    'Efectivo',
     'Estado',
   ];
   const rows = comandas.map((comanda) => [
@@ -106,7 +128,8 @@ export const exportComandasToPDF = (
     comanda.mainStaff?.nombre || 'N/A',
     comanda.businessUnit,
     comanda.tipo,
-    formatUSD(comanda.totalFinal), // Ahora usa el exchangeRate actual
+    formatUSD(comanda.totalFinal),
+    formatUSD(calcularValorEfectivo(comanda)),
     comanda.estado,
   ]);
 
@@ -116,8 +139,8 @@ export const exportComandasToPDF = (
     body: rows,
     startY: 45,
     styles: {
-      fontSize: 8,
-      cellPadding: 3,
+      fontSize: 7,
+      cellPadding: 2,
       overflow: 'linebreak',
       halign: 'left',
     },
@@ -126,21 +149,24 @@ export const exportComandasToPDF = (
       textColor: [0, 0, 0],
       fontStyle: 'bold',
       halign: 'center',
+      fontSize: 6,
     },
     alternateRowStyles: {
       fillColor: [252, 248, 249], // Rosa muy claro
     },
     columnStyles: {
-      0: { cellWidth: 20 }, // Fecha
-      1: { cellWidth: 15 }, // Número
+      0: { cellWidth: 16 }, // Fecha
+      1: { cellWidth: 12 }, // Número
       2: { cellWidth: 30 }, // Cliente
       3: { cellWidth: 30 }, // Personal
       4: { cellWidth: 20 }, // Unidad
       5: { cellWidth: 20 }, // Tipo
-      6: { cellWidth: 25, halign: 'right' }, // Total
-      7: { cellWidth: 20 }, // Estado
+      6: { cellWidth: 24 }, // Total
+      7: { cellWidth: 20 }, // Efectivo
+      8: { cellWidth: 20 }, // Estado
     },
-    margin: { top: 45, left: 20, right: 20 },
+    margin: { top: 45, left: 15, right: 15 },
+    tableWidth: 'auto',
   });
 
   // Footer con totales

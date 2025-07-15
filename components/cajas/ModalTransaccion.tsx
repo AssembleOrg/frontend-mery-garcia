@@ -156,13 +156,9 @@ export default function ModalTransaccion({
   <div className="flex justify-between text-lg font-semibold">
     <span>Total:</span>
     <div className="text-right">
-      <div className="text-green-600">
-        {formatUSD(metodoPago === 'tarjeta' ? total * 1.35 : total)}
-      </div>
+      <div className="text-green-600">{formatUSD(total)}</div>
       {isExchangeRateValid && (
-        <div className="text-sm text-gray-600">
-          {formatARS(metodoPago === 'tarjeta' ? total * 1.35 : total)}
-        </div>
+        <div className="text-sm text-gray-600">{formatARS(total)}</div>
       )}
     </div>
   </div>;
@@ -765,9 +761,7 @@ export default function ModalTransaccion({
                     <div className="flex justify-between text-lg font-semibold">
                       <span>Total:</span>
                       <span className="text-[#4a3540]">
-                        {formatAmount(
-                          metodoPago === 'tarjeta' ? total * 1.35 : total
-                        )}
+                        {formatAmount(total)}
                       </span>
                     </div>
 

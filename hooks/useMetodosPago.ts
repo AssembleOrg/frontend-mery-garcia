@@ -56,7 +56,7 @@ export function useMetodosPago(): UseMetodosPagoReturn {
         if (campo === 'tipo' || campo === 'monto') {
           const metodo = nuevosMetodos[index];
 
-          metodo.montoFinal = metodo.monto + metodo.monto / 100;
+          metodo.montoFinal = metodo.monto;
         }
 
         return nuevosMetodos;
