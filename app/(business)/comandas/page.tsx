@@ -36,8 +36,10 @@ import {
   Lock,
   Unlock,
 } from 'lucide-react';
-import { useComandaStore } from '@/features/comandas/store/comandaStore';
-import { useValidacionComandas } from '@/features/validacion/hooks/useValidacionComandas';
+import {
+  useComandaStore,
+  useValidacionComandas,
+} from '@/features/comandas/store/comandaStore';
 import { useInitializeComandaStore } from '@/hooks/useInitializeComandaStore';
 import ModalVerDetalles from '@/components/validacion/ModalVerDetalles';
 import ModalVerHistorial from '@/components/validacion/ModalVerHistorial';

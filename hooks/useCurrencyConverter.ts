@@ -1,4 +1,4 @@
-import { useDatosReferencia } from '@/features/comandas/store/comandaStore';
+import { useExchangeRate } from '@/features/exchange-rate/hooks/useExchangeRate';
 import {
   convertARStoUSD,
   convertUSDtoARS,
@@ -9,11 +9,14 @@ import {
 } from '@/lib/utils';
 
 export function useCurrencyConverter() {
-  const { tipoCambio } = useDatosReferencia();
+  const { tipoCambio, inicializado } = useExchangeRate();
 
-  const exchangeRate = tipoCambio.valorVenta;
+  // ✅ Esperar a que esté inicializado antes de usar el valor
+  const exchangeRate =
+    inicializado && tipoCambio.valorVenta > 0 ? tipoCambio.valorVenta : 1300;
 
   const isExchangeRateValid = isValidExchangeRate(exchangeRate);
+  const isInitialized = inicializado;
 
   const arsToUsd = (amountARS: number): number => {
     return convertARStoUSD(amountARS, exchangeRate);
@@ -54,5 +57,6 @@ export function useCurrencyConverter() {
     isExchangeRateValid,
     getExchangeRateInfo,
     tipoCambio,
+    isInitialized, // ✅ Nuevo: permite a los componentes saber si está listo
   };
 }

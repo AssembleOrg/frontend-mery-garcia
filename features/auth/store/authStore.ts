@@ -26,7 +26,6 @@ interface AuthActions {
 }
 
 export const useAuthStore = create<AuthState & AuthActions>((set, get) => ({
-  // Estado inicial
   user: null,
   token: null,
   isAuthenticated: false,
@@ -191,7 +190,8 @@ export const useAuthStore = create<AuthState & AuthActions>((set, get) => ({
           user,
           isAuthenticated: true,
         });
-        get().getProfile();
+        // REMOVER: get().getProfile();
+        // La carga del perfil se hará de forma independiente si es necesaria
       } else {
         set({
           user: null,

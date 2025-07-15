@@ -32,38 +32,18 @@ export interface RespuestaValidacion {
 const mockDelay = (ms: number = 500) =>
   new Promise((resolve) => setTimeout(resolve, ms));
 
-// Mock del usuario actual (en producción vendría del AuthService)
-export const obtenerUsuarioActual = async () => {
-  await mockDelay(100);
-  return {
-    id: 'user-1',
-    nombre: 'Usuario Demo',
-    rol: 'admin' as 'admin' | 'vendedor',
-  };
-};
+// === CLIENTE API PURO - SIN LÓGICA DE NEGOCIO ===
 
-// Cambiar estado de comanda (vendedor)
+// Cambiar estado de comanda - Solo llamada HTTP
 export const cambiarEstadoComanda = async (
   payload: CambiarEstadoPayload
 ): Promise<RespuestaValidacion> => {
-  logger.info('[MOCK API] Cambiar estado comanda:', payload);
+  logger.info('[API] Cambiar estado comanda:', payload);
 
   try {
     await mockDelay();
 
-    // Validaciones de negocio
-    if (
-      payload.nuevoEstado === 'completado' &&
-      !payload.observaciones?.trim()
-    ) {
-      return {
-        exito: false,
-        mensaje: 'Se requieren observaciones para marcar como completado',
-        errores: ['Observaciones requeridas para estado completado'],
-      };
-    }
-
-    // Simular actualización en backend
+    // Simular actualización en backend - Solo transformación de datos
     const trazabilidad: TrazabilidadComanda = {
       creadoPor: payload.usuarioId,
       fechaCreacion: new Date().toISOString(),
@@ -76,7 +56,7 @@ export const cambiarEstadoComanda = async (
       comandaId: payload.comandaId,
       usuario: payload.usuarioId,
       accion: 'cambio_estado',
-      estadoAnterior: { estado: 'pendiente' }, // En producción se obtendría de la BD
+      estadoAnterior: { estado: 'pendiente' },
       estadoNuevo: {
         estado: payload.nuevoEstado,
         observaciones: payload.observaciones,
@@ -85,10 +65,7 @@ export const cambiarEstadoComanda = async (
       observaciones: payload.observaciones,
     };
 
-    // Log para debugging
-    logger.success('[MOCK API] Estado cambiado exitosamente');
-    logger.debug('[MOCK API] Trazabilidad:', trazabilidad);
-    logger.debug('[MOCK API] Historial:', historialCambio);
+    logger.success('[API] Estado cambiado exitosamente');
 
     return {
       exito: true,
@@ -99,7 +76,7 @@ export const cambiarEstadoComanda = async (
       },
     };
   } catch (error) {
-    logger.error('[MOCK API] Error al cambiar estado:', error);
+    logger.error('[API] Error al cambiar estado:', error);
     return {
       exito: false,
       mensaje: 'Error interno del servidor',
@@ -108,26 +85,16 @@ export const cambiarEstadoComanda = async (
   }
 };
 
-// Validar comanda (admin)
+// Validar comanda - Solo llamada HTTP
 export const validarComanda = async (
   payload: ValidarComandaPayload
 ): Promise<RespuestaValidacion> => {
-  console.log('✅ [MOCK API] Validar comanda:', payload);
+  logger.info('[API] Validar comanda:', payload);
 
   try {
-    await mockDelay(800); // Simular operación más lenta
+    await mockDelay(800);
 
-    // En producción: verificar que el usuario sea admin
-    const usuario = await obtenerUsuarioActual();
-    if (usuario.rol !== 'admin') {
-      return {
-        exito: false,
-        mensaje: 'Solo los administradores pueden validar comandas',
-        errores: ['Permisos insuficientes'],
-      };
-    }
-
-    // Simular validación en backend
+    // Simular validación en backend - Solo transformación de datos
     const trazabilidad: TrazabilidadComanda = {
       creadoPor: 'sistema',
       fechaCreacion: new Date().toISOString(),
@@ -150,10 +117,7 @@ export const validarComanda = async (
       observaciones: payload.observaciones,
     };
 
-    // Log para debugging
-    console.log('🔒 [MOCK API] Comanda validada exitosamente');
-    console.log('📋 [MOCK API] Trazabilidad:', trazabilidad);
-    console.log('📝 [MOCK API] Historial:', historialCambio);
+    logger.success('[API] Comanda validada exitosamente');
 
     return {
       exito: true,
@@ -164,7 +128,7 @@ export const validarComanda = async (
       },
     };
   } catch (error) {
-    console.error('❌ [MOCK API] Error al validar comanda:', error);
+    logger.error('[API] Error al validar comanda:', error);
     return {
       exito: false,
       mensaje: 'Error interno del servidor',
@@ -173,16 +137,16 @@ export const validarComanda = async (
   }
 };
 
-// Obtener historial de una comanda
+// Obtener historial de una comanda - Solo llamada HTTP
 export const obtenerHistorialComanda = async (
   comandaId: string
 ): Promise<RespuestaValidacion> => {
-  console.log('📜 [MOCK API] Obtener historial:', comandaId);
+  logger.info('[API] Obtener historial:', comandaId);
 
   try {
     await mockDelay(300);
 
-    // Mock del historial
+    // Mock del historial - Solo transformación de datos
     const historial: HistorialCambio[] = [
       {
         id: 'hist-1',
@@ -191,7 +155,7 @@ export const obtenerHistorialComanda = async (
         accion: 'creacion',
         estadoAnterior: {},
         estadoNuevo: { estado: 'pendiente' },
-        fecha: new Date(Date.now() - 86400000).toISOString(), // Ayer
+        fecha: new Date(Date.now() - 86400000).toISOString(),
         observaciones: 'Comanda creada',
       },
       {
@@ -201,7 +165,7 @@ export const obtenerHistorialComanda = async (
         accion: 'cambio_estado',
         estadoAnterior: { estado: 'pendiente' },
         estadoNuevo: { estado: 'completado' },
-        fecha: new Date(Date.now() - 3600000).toISOString(), // Hace 1 hora
+        fecha: new Date(Date.now() - 3600000).toISOString(),
         observaciones: 'Servicio completado, pago recibido',
       },
     ];
@@ -212,7 +176,7 @@ export const obtenerHistorialComanda = async (
       data: { historial },
     };
   } catch (error) {
-    console.error('❌ [MOCK API] Error al obtener historial:', error);
+    logger.error('[API] Error al obtener historial:', error);
     return {
       exito: false,
       mensaje: 'Error al obtener el historial',
@@ -221,12 +185,12 @@ export const obtenerHistorialComanda = async (
   }
 };
 
-// Obtener comandas validadas para traspaso
+// Obtener comandas validadas para traspaso - Solo llamada HTTP
 export const obtenerComandasValidadas = async (
   fechaDesde: string,
   fechaHasta: string
 ): Promise<RespuestaValidacion> => {
-  console.log('📦 [MOCK API] Obtener comandas validadas:', {
+  logger.info('[API] Obtener comandas validadas:', {
     fechaDesde,
     fechaHasta,
   });
@@ -234,7 +198,7 @@ export const obtenerComandasValidadas = async (
   try {
     await mockDelay(400);
 
-    // Mock de comandas validadas (en producción vendría de la BD)
+    // Mock de comandas validadas - Solo transformación de datos
     const comandasValidadas: ComandaConValidacion[] = [];
 
     return {
@@ -243,7 +207,7 @@ export const obtenerComandasValidadas = async (
       data: { comandasValidadas },
     };
   } catch (error) {
-    console.error('❌ [MOCK API] Error al obtener comandas validadas:', error);
+    logger.error('[API] Error al obtener comandas validadas:', error);
     return {
       exito: false,
       mensaje: 'Error al obtener comandas validadas',
@@ -252,38 +216,26 @@ export const obtenerComandasValidadas = async (
   }
 };
 
-// Realizar traspaso a Caja 2
 export const realizarTraspaso = async (
   comandaIds: string[],
   observaciones?: string
 ): Promise<RespuestaValidacion> => {
-  console.log('🚚 [MOCK API] Realizar traspaso:', {
+  logger.info('[API] Realizar traspaso:', {
     comandaIds,
     observaciones,
   });
 
   try {
-    await mockDelay(1000); // Operación más lenta
+    await mockDelay(1000);
 
-    const usuario = await obtenerUsuarioActual();
-    if (usuario.rol !== 'admin') {
-      return {
-        exito: false,
-        mensaje: 'Solo los administradores pueden realizar traspasos',
-        errores: ['Permisos insuficientes'],
-      };
-    }
-
-    // Simular traspaso
     const traspasoInfo = {
       id: `traspaso-${Date.now()}`,
       fechaTraspaso: new Date().toISOString(),
-      adminQueTraspaso: usuario.id,
       comandasTraspasadas: comandaIds,
       observaciones,
     };
 
-    console.log('🎯 [MOCK API] Traspaso realizado exitosamente:', traspasoInfo);
+    logger.success('[API] Traspaso realizado exitosamente:', traspasoInfo);
 
     return {
       exito: true,
@@ -291,29 +243,11 @@ export const realizarTraspaso = async (
       data: traspasoInfo,
     };
   } catch (error) {
-    console.error('❌ [MOCK API] Error al realizar traspaso:', error);
+    logger.error('[API] Error al realizar traspaso:', error);
     return {
       exito: false,
       mensaje: 'Error al realizar el traspaso',
       errores: ['Error interno del servidor'],
     };
   }
-};
-
-// Función para determinar permisos (se usará en el store)
-export const calcularPermisosComanda = (
-  comanda: Partial<ComandaConValidacion>,
-  usuarioRol: 'admin' | 'vendedor'
-) => {
-  const estaValidado = comanda.estadoValidacion === 'validado';
-  const esAdmin = usuarioRol === 'admin';
-
-  return {
-    // ✅ ADMIN PUEDE TODO - VENDEDOR LIMITADO SI ESTÁ VALIDADO
-    puedeEditar: esAdmin || !estaValidado,
-    puedeEliminar: esAdmin,
-    puedeCambiarEstado: esAdmin || !estaValidado,
-    puedeValidar: esAdmin, // Admin puede validar Y revertir validación
-    puedeVerHistorial: true,
-  };
 };

@@ -25,6 +25,7 @@ import {
 } from 'lucide-react';
 import { UnidadNegocio, ProductoServicio } from '@/types/caja';
 import { useDatosReferencia } from '@/features/comandas/store/comandaStore';
+import { useExchangeRate } from '@/features/exchange-rate/hooks/useExchangeRate';
 
 interface ModalProductoServicioProps {
   isOpen: boolean;
@@ -55,8 +56,9 @@ export default function ModalProductoServicio({
   onClose,
   producto,
 }: ModalProductoServicioProps) {
-  const { tipoCambio, agregarProductoServicio, actualizarProductoServicio } =
+  const { agregarProductoServicio, actualizarProductoServicio } =
     useDatosReferencia();
+  const { tipoCambio } = useExchangeRate();
 
   // Estados del formulario
   const [nombre, setNombre] = useState('');

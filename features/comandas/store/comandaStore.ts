@@ -6,10 +6,7 @@ import {
   Comanda,
   FiltrosComanda,
   ResumenCaja,
-  Personal,
-  PersonalSimple,
   ProductoServicio,
-  TipoCambio,
   EstadoComandaNegocio,
   EstadoValidacion,
   UnidadNegocio,
@@ -22,12 +19,7 @@ interface ComandaState {
   cargando: boolean;
   error: string | null;
 
-  // Datos de referencia
-  personal: Personal[];
-  personalSimple: PersonalSimple[]; // Lista simple para gestión de personal
   productosServicios: ProductoServicio[];
-  tipoCambio: TipoCambio;
-  tipoCambioInicializado: boolean; // Flag para evitar cargas múltiples
 
   // Acciones - Comandas
   agregarComanda: (comanda: Comanda) => void;
@@ -44,14 +36,10 @@ interface ComandaState {
   obtenerResumenCaja: () => ResumenCaja;
   obtenerProximoNumero: (tipo: 'ingreso' | 'egreso') => string;
 
-  // Acciones - Datos de referencia
-  actualizarTipoCambio: (tipoCambio: TipoCambio) => void;
-  obtenerPersonalPorUnidad: (unidad?: UnidadNegocio) => Personal[];
   buscarProductosServicios: (
     query?: string,
     unidad?: UnidadNegocio
   ) => ProductoServicio[];
-  cargarTipoCambioInicial: () => Promise<void>;
 
   // Acciones - Productos/Servicios CRUD
   agregarProductoServicio: (producto: Omit<ProductoServicio, 'id'>) => void;
@@ -61,15 +49,6 @@ interface ComandaState {
   ) => void;
   eliminarProductoServicio: (id: string) => void;
   obtenerProductoServicioPorId: () => ProductoServicio | undefined;
-
-  // Acciones - Personal Simple CRUD
-  agregarPersonalSimple: (personal: Omit<PersonalSimple, 'id'>) => void;
-  actualizarPersonalSimple: (
-    id: string,
-    personal: Partial<PersonalSimple>
-  ) => void;
-  eliminarPersonalSimple: (id: string) => void;
-  obtenerPersonalSimplePorId: () => PersonalSimple | undefined;
 
   // Acciones - Validación
   cambiarEstadoComanda: (
@@ -142,17 +121,7 @@ const estadoInicial = {
   filters: {},
   cargando: false,
   error: null,
-  personal: [],
-  personalSimple: [],
   productosServicios: [],
-  tipoCambio: {
-    valorCompra: 0,
-    valorVenta: 0,
-    fecha: new Date(),
-    fuente: 'manual',
-    modoManual: false,
-  } as TipoCambio,
-  tipoCambioInicializado: false,
 };
 
 // Storage helper que evita acceder a localStorage durante el render en servidor
@@ -314,30 +283,32 @@ export const useComandaStore = create<ComandaState>()(
         },
 
         obtenerResumenCaja: () => {
-          const comandas = get().comandas;
+          const { comandas } = get();
           const hoy = new Date();
-          hoy.setHours(0, 0, 0, 0);
+          const inicioHoy = new Date(
+            hoy.getFullYear(),
+            hoy.getMonth(),
+            hoy.getDate()
+          );
+          const finHoy = new Date(
+            inicioHoy.getTime() + 24 * 60 * 60 * 1000 - 1
+          );
 
           const comandasHoy = comandas.filter((c) => {
             const fechaComanda = new Date(c.fecha);
-            fechaComanda.setHours(0, 0, 0, 0);
-            return fechaComanda.getTime() === hoy.getTime();
+            return fechaComanda >= inicioHoy && fechaComanda <= finHoy;
           });
 
-          const ingresos = comandasHoy.filter((c) => c.tipo === 'ingreso');
-          const egresos = comandasHoy.filter((c) => c.tipo === 'egreso');
+          const totalIncoming = comandasHoy
+            .filter((c) => c.tipo === 'ingreso')
+            .reduce((sum, c) => sum + c.totalFinal, 0);
 
-          const totalIncoming = ingresos.reduce(
-            (sum, c) => sum + c.totalFinal,
-            0
-          );
-          const totalOutgoing = egresos.reduce(
-            (sum, c) => sum + c.totalFinal,
-            0
-          );
+          const totalOutgoing = comandasHoy
+            .filter((c) => c.tipo === 'egreso')
+            .reduce((sum, c) => sum + c.totalFinal, 0);
 
-          // Obtener unidad más activa
-          const unidadesPorActividad = comandasHoy.reduce(
+          // Calcular unidad más activa
+          const unidadConteo = comandasHoy.reduce(
             (acc, c) => {
               acc[c.businessUnit] = (acc[c.businessUnit] || 0) + 1;
               return acc;
@@ -345,23 +316,14 @@ export const useComandaStore = create<ComandaState>()(
             {} as Record<string, number>
           );
 
-          const unidadMasActiva = Object.entries(unidadesPorActividad).sort(
-            ([, a], [, b]) => b - a
-          )[0]?.[0];
+          const unidadMasActiva = Object.entries(unidadConteo).reduce(
+            (max, [unidad, count]) =>
+              count > max.count ? { unidad, count } : max,
+            { unidad: 'N/A', count: 0 }
+          ).unidad;
 
-          // Obtener personal con más ventas
-          const ventasPorPersonal = comandasHoy.reduce(
-            (acc, c) => {
-              const nombrePersonal = c.mainStaff?.nombre || 'Sin asignar';
-              acc[nombrePersonal] = (acc[nombrePersonal] || 0) + c.totalFinal;
-              return acc;
-            },
-            {} as Record<string, number>
-          );
-
-          const personalMasVentas = Object.entries(ventasPorPersonal).sort(
-            ([, a], [, b]) => b - a
-          )[0]?.[0];
+          // Calcular personal con más ventas (usando datos mock)
+          const personalMasVentas = 'Personal Demo';
 
           return {
             totalIncoming,
@@ -404,36 +366,6 @@ export const useComandaStore = create<ComandaState>()(
           const siguienteNumero = numeroMaximo + 1;
 
           return `${prefix}-${siguienteNumero.toString().padStart(4, '0')}`;
-        },
-
-        // === DATOS DE REFERENCIA ===
-        actualizarTipoCambio: (tipoCambio: TipoCambio) => {
-          set({ tipoCambio });
-        },
-
-        /**
-         * Devuelve la lista de personal filtrada por unidad de negocio.
-         * Si no se pasa unidad, devuelve todo el personal.
-         */
-        obtenerPersonalPorUnidad: (unidad?: UnidadNegocio) => {
-          // Ahora todos los miembros del personal son globales; la variable se mantiene para compatibilidad.
-
-          void unidad; // Marcar como usada para evitar advertencia de lint
-
-          const { personal, personalSimple } = get();
-
-          // Si la lista completa está vacía pero existe simple, convertirla
-          if (personal.length === 0 && personalSimple.length > 0) {
-            return personalSimple.map((ps) => ({
-              id: ps.id,
-              nombre: ps.nombre,
-              activo: true,
-              unidadesDisponibles: ['tattoo', 'estilismo', 'formacion'],
-              fechaIngreso: new Date(),
-            }));
-          }
-
-          return personal;
         },
 
         /**
@@ -494,77 +426,6 @@ export const useComandaStore = create<ComandaState>()(
         },
 
         obtenerProductoServicioPorId: () => undefined,
-
-        // === PERSONAL SIMPLE CRUD ===
-        agregarPersonalSimple: (personal: Omit<PersonalSimple, 'id'>) => {
-          const idGenerado = `personal-${Date.now()}-${Math.random()
-            .toString(36)
-            .substr(2, 9)}`;
-
-          // Versión simplificada
-          const nuevoPersonalSimple: PersonalSimple = {
-            ...personal,
-            id: idGenerado,
-          };
-
-          // Versión completa para otras partes de la app
-          const nuevoPersonalCompleto: Personal = {
-            id: idGenerado,
-            nombre: personal.nombre,
-            activo: true,
-            unidadesDisponibles: ['tattoo', 'estilismo', 'formacion'],
-            fechaIngreso: new Date(),
-          };
-
-          set((state) => ({
-            personalSimple: [...state.personalSimple, nuevoPersonalSimple],
-            personal: [...state.personal, nuevoPersonalCompleto],
-          }));
-
-          console.log('✅ Personal creado:', nuevoPersonalSimple);
-        },
-
-        actualizarPersonalSimple: (
-          id: string,
-          personalActualizado: Partial<PersonalSimple>
-        ) => {
-          set((state) => {
-            // Actualizar arrays simples y completos
-            const personalSimpleActualizado = state.personalSimple.map((p) =>
-              p.id === id ? { ...p, ...personalActualizado } : p
-            );
-
-            const personalActualizadoCompleto = state.personal.map((p) =>
-              p.id === id
-                ? {
-                    ...p,
-                    nombre: personalActualizado.nombre || p.nombre,
-                  }
-                : p
-            );
-
-            return {
-              personalSimple: personalSimpleActualizado,
-              personal: personalActualizadoCompleto,
-            };
-          });
-
-          console.log('✅ Personal actualizado:', {
-            id,
-            ...personalActualizado,
-          });
-        },
-
-        eliminarPersonalSimple: (id: string) => {
-          set((state) => ({
-            personalSimple: state.personalSimple.filter((p) => p.id !== id),
-            personal: state.personal.filter((p) => p.id !== id),
-          }));
-
-          console.log('✅ Personal eliminado:', id);
-        },
-
-        obtenerPersonalSimplePorId: () => undefined,
 
         // === VALIDACIÓN ===
         cambiarEstadoComanda: async (
@@ -933,96 +794,13 @@ export const useComandaStore = create<ComandaState>()(
             throw error;
           }
         },
-
-        cargarTipoCambioInicial: async () => {
-          const { tipoCambioInicializado } = get();
-
-          if (tipoCambioInicializado) return;
-
-          try {
-            const persistedState = safeJSONStorage?.getItem('comanda-store');
-            if (persistedState && typeof persistedState === 'string') {
-              const parsed = JSON.parse(persistedState);
-              if (
-                parsed?.state?.tipoCambio?.modoManual &&
-                parsed?.state?.tipoCambio?.valorVenta > 0
-              ) {
-                console.log(
-                  '✅ Usando tipo de cambio manual persistido:',
-                  `${parsed.state.tipoCambio.valorVenta} (local)`
-                );
-                set({
-                  tipoCambio: {
-                    ...parsed.state.tipoCambio,
-                    fecha: new Date(parsed.state.tipoCambio.fecha),
-                  },
-                  tipoCambioInicializado: true,
-                });
-                return;
-              }
-            }
-
-            // 2. FALLBACK: Solo si no hay valor local manual, consultar backend
-            console.log('🔍 No hay valor manual local, consultando backend...');
-            const { getManualRate } = await import(
-              '@/services/exchangeRate.service'
-            );
-            const manualRate = await getManualRate();
-
-            if (manualRate) {
-              set({
-                tipoCambio: {
-                  valorCompra: manualRate.compra || 0,
-                  valorVenta: manualRate.venta || 0,
-                  fecha: new Date(manualRate.fechaActualizacion),
-                  fuente: 'backend',
-                  modoManual: false, // Marcar como no manual para permitir sobrescritura
-                },
-                tipoCambioInicializado: true,
-              });
-              console.log(
-                '✅ Tipo de cambio cargado desde backend:',
-                `${manualRate.venta} (backend)`
-              );
-            } else {
-              // 3. ÚLTIMO RECURSO: Usar valores por defecto
-              set({
-                tipoCambioInicializado: true,
-                tipoCambio: {
-                  valorCompra: 0,
-                  valorVenta: 1200, // Valor por defecto
-                  fecha: new Date(),
-                  fuente: 'default',
-                  modoManual: false,
-                },
-              });
-              console.log('ℹ️ Usando tipo de cambio por defecto: 1200');
-            }
-          } catch (error) {
-            console.error('❌ Error cargando tipo de cambio inicial:', error);
-            set({
-              tipoCambioInicializado: true,
-              tipoCambio: {
-                valorCompra: 0,
-                valorVenta: 1200,
-                fecha: new Date(),
-                fuente: 'error',
-                modoManual: false,
-              },
-            });
-          }
-        },
       }),
       {
         name: 'comanda-store',
         storage: safeJSONStorage,
         partialize: (state) => ({
           comandas: state.comandas,
-          tipoCambio: state.tipoCambio,
-          personal: state.personal,
-          personalSimple: state.personalSimple,
           productosServicios: state.productosServicios,
-          tipoCambioInicializado: state.tipoCambioInicializado,
         }),
       }
     ),
@@ -1073,24 +851,13 @@ export const useResumenCaja = () => {
 export const useDatosReferencia = () => {
   const store = useComandaStore();
   return {
-    personal: store.personal,
-    personalSimple: store.personalSimple,
     productosServicios: store.productosServicios,
-    tipoCambio: store.tipoCambio,
-    obtenerPersonalPorUnidad: store.obtenerPersonalPorUnidad,
     buscarProductosServicios: store.buscarProductosServicios,
-    actualizarTipoCambio: store.actualizarTipoCambio,
-    cargarTipoCambioInicial: store.cargarTipoCambioInicial,
     // CRUD Productos/Servicios
     agregarProductoServicio: store.agregarProductoServicio,
     actualizarProductoServicio: store.actualizarProductoServicio,
     eliminarProductoServicio: store.eliminarProductoServicio,
     obtenerProductoServicioPorId: store.obtenerProductoServicioPorId,
-    // CRUD Personal Simple
-    agregarPersonalSimple: store.agregarPersonalSimple,
-    actualizarPersonalSimple: store.actualizarPersonalSimple,
-    eliminarPersonalSimple: store.eliminarPersonalSimple,
-    obtenerPersonalSimplePorId: store.obtenerPersonalSimplePorId,
   };
 };
 

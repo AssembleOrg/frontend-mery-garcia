@@ -35,7 +35,7 @@ import StandardPageBanner from '@/components/common/StandardPageBanner';
 import StandardBreadcrumbs from '@/components/common/StandardBreadcrumbs';
 import ModalPersonal from '@/components/personal/ModalPersonal';
 import ManagerOrAdminOnly from '@/components/auth/ManagerOrAdminOnly';
-import { useDatosReferencia } from '@/features/comandas/store/comandaStore';
+import { usePersonal } from '@/features/personal/hooks/usePersonal';
 
 const breadcrumbItems = [
   { label: 'Inicio', href: '/' },
@@ -44,12 +44,7 @@ const breadcrumbItems = [
 ];
 
 export default function PersonalPage() {
-  const {
-    personalSimple,
-    agregarPersonalSimple,
-    actualizarPersonalSimple,
-    eliminarPersonalSimple,
-  } = useDatosReferencia();
+  const { personal, agregar, actualizar, eliminar } = usePersonal();
   const [modalAbierto, setModalAbierto] = useState(false);
   const [personalEditando, setPersonalEditando] =
     useState<PersonalSimple | null>(null);
@@ -73,7 +68,7 @@ export default function PersonalPage() {
 
   const confirmarEliminar = () => {
     if (alertaEliminar) {
-      eliminarPersonalSimple(alertaEliminar.id);
+      eliminar(alertaEliminar.id);
       setAlertaEliminar(null);
     }
   };
@@ -81,12 +76,13 @@ export default function PersonalPage() {
   const handleGuardarPersonal = (personaData: Omit<PersonalSimple, 'id'>) => {
     if (personalEditando) {
       // Editar
-      actualizarPersonalSimple(personalEditando.id, personaData);
+      actualizar(personalEditando.id, personaData);
     } else {
       // Crear
-      agregarPersonalSimple(personaData);
+      agregar(personaData);
     }
     setModalAbierto(false);
+    setPersonalEditando(null);
   };
 
   return (
@@ -119,7 +115,7 @@ export default function PersonalPage() {
                     </div>
                     <div className="flex items-center gap-3">
                       <Badge variant="secondary">
-                        {personalSimple.length} personas
+                        {personal.length} personas
                       </Badge>
                       <Button
                         onClick={handleNuevoPersonal}
@@ -143,7 +139,7 @@ export default function PersonalPage() {
                         </TableRow>
                       </TableHeader>
                       <TableBody>
-                        {personalSimple.map((persona) => (
+                        {personal.map((persona) => (
                           <TableRow
                             key={persona.id}
                             className="hover:bg-[#f9bbc4]/5"
@@ -206,7 +202,7 @@ export default function PersonalPage() {
                       </TableBody>
                     </Table>
 
-                    {personalSimple.length === 0 && (
+                    {personal.length === 0 && (
                       <div className="py-12 text-center">
                         <Users className="mx-auto mb-4 h-12 w-12 text-gray-300" />
                         <p className="text-lg font-medium text-gray-500">

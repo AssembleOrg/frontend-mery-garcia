@@ -32,6 +32,7 @@ import {
   Hash,
 } from 'lucide-react';
 import { useComandaStore } from '@/features/comandas/store/comandaStore';
+import { usePersonal } from '@/features/personal/hooks/usePersonal';
 import { useModalScrollLock } from '@/hooks/useModalScrollLock';
 import { logger } from '@/lib/utils';
 import { useCurrencyConverter } from '@/hooks/useCurrencyConverter';
@@ -47,11 +48,11 @@ import {
   generateUniqueId,
 } from '@/hooks/useInitializeComandaStore';
 import { DiscountControls } from './DiscountControls';
+import { useExchangeRate } from '@/features/exchange-rate/hooks/useExchangeRate';
 
 interface ModalTransaccionUnificadoProps {
   isOpen: boolean;
   onClose: () => void;
-  onSuccess?: () => void;
   tipo: 'ingreso' | 'egreso';
 }
 
@@ -70,13 +71,11 @@ interface ItemTransaccion {
 interface MetodoPagoForm {
   tipo: 'efectivo' | 'tarjeta' | 'transferencia';
   monto: number;
-  montoFinal: number;
 }
 
 export default function ModalTransaccionUnificado({
   isOpen,
   onClose,
-  onSuccess,
   tipo,
 }: ModalTransaccionUnificadoProps) {
   // Store hooks
@@ -84,16 +83,17 @@ export default function ModalTransaccionUnificado({
     agregarComanda,
     obtenerProximoNumero,
     comandas,
-    personalSimple,
     productosServicios,
     cargando,
   } = useComandaStore();
 
-  // Currency converter hook
+  const { personal } = usePersonal();
+
   const { exchangeRate, isExchangeRateValid, formatARS, formatUSD } =
     useCurrencyConverter();
 
-  // Ensure the comanda store is initialized
+  const { tipoCambio } = useExchangeRate();
+
   useInitializeComandaStore();
 
   // Form state
@@ -105,7 +105,7 @@ export default function ModalTransaccionUnificado({
   const [observaciones, setObservaciones] = useState('');
   const [items, setItems] = useState<ItemTransaccion[]>([]);
   const [metodosPago, setMetodosPago] = useState<MetodoPagoForm[]>([
-    { tipo: 'efectivo', monto: 0, montoFinal: 0 },
+    { tipo: 'efectivo', monto: 0 },
   ]);
   const [descuentoGlobalPorcentaje, setDescuentoGlobalPorcentaje] = useState(0);
 
@@ -320,7 +320,6 @@ export default function ModalTransaccionUnificado({
     const nuevoMetodo: MetodoPagoForm = {
       tipo: 'efectivo',
       monto: 0,
-      montoFinal: 0,
     };
     setMetodosPago([...metodosPago, nuevoMetodo]);
   };
@@ -353,14 +352,19 @@ export default function ModalTransaccionUnificado({
     );
     const subtotal = subtotalBase - totalDescuentos;
 
-    const diferencia = subtotal;
+    const totalPagado = metodosPago.reduce(
+      (sum, metodo) => sum + (metodo.monto || 0),
+      0
+    );
+
+    const diferencia = totalPagado - subtotal;
 
     return {
       subtotalBase,
       totalDescuentos,
       subtotal,
       totalFinal: subtotal,
-      totalPagos: subtotal,
+      totalPagado,
       diferencia,
     };
   };
@@ -429,8 +433,6 @@ export default function ModalTransaccionUnificado({
       const totales = calcularTotales();
       const numeroTransaccion = generarNumeroComanda();
 
-      const { tipoCambio } = useComandaStore.getState();
-
       const itemsComanda: ItemComanda[] = items.map((item) => ({
         productoServicioId: item.productoServicioId,
         nombre: item.nombre,
@@ -445,10 +447,9 @@ export default function ModalTransaccionUnificado({
       const metodosPagoComanda: MetodoPago[] = metodosPago.map((metodo) => ({
         tipo: metodo.tipo,
         monto: metodo.monto,
-        montoFinal: metodo.montoFinal,
       }));
 
-      const responsable = personalSimple.find((p) => p.id === responsableId);
+      const responsable = personal.find((p) => p.id === responsableId);
 
       const nuevaComanda: Comanda = {
         id: generateUniqueId(tipo === 'ingreso' ? 'ing' : 'egr', Date.now()),
@@ -501,7 +502,6 @@ export default function ModalTransaccionUnificado({
       logger.info(`Guardando ${tipo}:`, nuevaComanda);
       agregarComanda(nuevaComanda);
       resetForm();
-      if (onSuccess) onSuccess();
       onClose();
     } catch (error) {
       logger.error(`Error al guardar ${tipo}:`, error);
@@ -521,7 +521,7 @@ export default function ModalTransaccionUnificado({
     setResponsableId('');
     setObservaciones('');
     setItems([]);
-    setMetodosPago([{ tipo: 'efectivo', monto: 0, montoFinal: 0 }]);
+    setMetodosPago([{ tipo: 'efectivo', monto: 0 }]);
     setDescuentoGlobalPorcentaje(0);
     setNumeroManual('');
     setErrores({});
@@ -759,7 +759,7 @@ export default function ModalTransaccionUnificado({
                           <SelectValue placeholder="Seleccionar responsable" />
                         </SelectTrigger>
                         <SelectContent className="z-[10001]">
-                          {personalSimple.map((persona) => (
+                          {personal.map((persona) => (
                             <SelectItem key={persona.id} value={persona.id}>
                               {persona.nombre}
                             </SelectItem>
@@ -1107,11 +1107,11 @@ export default function ModalTransaccionUnificado({
                           <Label className="text-gray-700">Total</Label>
                           <div className="flex h-10 items-center justify-between rounded-md border border-gray-300 bg-gray-50 px-3">
                             <span className="text-sm font-medium text-green-600">
-                              {formatUSD(metodo.montoFinal)}
+                              {formatUSD(metodo.monto)}
                             </span>
-                            {isExchangeRateValid && metodo.montoFinal > 0 && (
+                            {isExchangeRateValid && metodo.monto > 0 && (
                               <span className="text-xs text-gray-600">
-                                {formatARS(metodo.montoFinal)}
+                                {formatARS(metodo.monto)}
                               </span>
                             )}
                           </div>

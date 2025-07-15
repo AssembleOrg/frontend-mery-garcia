@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState, useCallback } from 'react';
-import { useDatosReferencia } from '@/features/comandas/store/comandaStore';
+import { useExchangeRate } from '@/features/exchange-rate/hooks/useExchangeRate';
 import MainLayout from '@/components/layout/MainLayout';
 import StandardPageBanner from '@/components/common/StandardPageBanner';
 import StandardBreadcrumbs from '@/components/common/StandardBreadcrumbs';
@@ -41,8 +41,7 @@ export default function TipoCambioPage() {
   const [showHistorialInterno, setShowHistorialInterno] = useState(false);
   const [loading, setLoading] = useState(true);
 
-  const { tipoCambio, actualizarTipoCambio, cargarTipoCambioInicial } =
-    useDatosReferencia();
+  const { tipoCambio, actualizar, cargarTipoCambioInicial } = useExchangeRate();
 
   const checkRefreshCooldown = useCallback(() => {
     const lastRefresh = localStorage.getItem(LAST_REFRESH_KEY);
@@ -166,8 +165,8 @@ export default function TipoCambioPage() {
     setSaving(true);
 
     try {
-      // 🎯 Actualizar en store (source of truth)
-      actualizarTipoCambio({
+      // A:
+      actualizar({
         valorCompra: apiRate?.compra ?? valueNum,
         valorVenta: valueNum,
         fecha: new Date(),

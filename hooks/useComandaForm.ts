@@ -1,34 +1,32 @@
 import { useState, useEffect } from 'react';
 import {
+  ItemComanda,
+  Comanda,
+  PersonalSimple,
+  Personal,
+  ProductoServicio,
   UnidadNegocio,
   Cliente,
-  Personal,
-  ItemComanda,
-  ProductoServicio,
   Seña,
   MetodoPago,
-  Comanda,
 } from '@/types/caja';
 import { useDatosReferencia } from '@/features/comandas/store/comandaStore';
+import { usePersonal } from '@/features/personal/hooks/usePersonal';
+import { useExchangeRate } from '@/features/exchange-rate/hooks/useExchangeRate';
 import { useCurrencyConverter } from '@/hooks/useCurrencyConverter';
 
 export function useComandaForm() {
   // Datos del store
-  const {
-    personal,
-    tipoCambio,
-    obtenerPersonalPorUnidad,
-    buscarProductosServicios,
-  } = useDatosReferencia();
-
+  const { buscarProductosServicios } = useDatosReferencia();
+  const { tipoCambio } = useExchangeRate();
+  const { personal } = usePersonal();
   const { arsToUsd, usdToArs, formatDual } = useCurrencyConverter();
 
   // Estados del formulario
   const [numeroComanda, setNumeroComanda] = useState('');
   const [unidadNegocio, setUnidadNegocio] = useState<UnidadNegocio | ''>('');
-  const [personalPrincipal, setPersonalPrincipal] = useState<Personal | null>(
-    null
-  );
+  const [personalPrincipal, setPersonalPrincipal] =
+    useState<PersonalSimple | null>(null);
   const [cliente, setCliente] = useState<Cliente>({
     nombre: '',
     cuit: '',
@@ -50,16 +48,17 @@ export function useComandaForm() {
   );
 
   // Personal disponible según unidad de negocio
-  const [personalDisponible, setPersonalDisponible] = useState<Personal[]>([]);
+  const [personalDisponible, setPersonalDisponible] = useState<
+    PersonalSimple[]
+  >([]);
 
   // Actualizar personal disponible global
   useEffect(() => {
-    const todos = obtenerPersonalPorUnidad(); // devuelve lista global
-    setPersonalDisponible(todos);
-    if (todos.length === 1) {
-      setPersonalPrincipal(todos[0]);
+    setPersonalDisponible(personal);
+    if (personal.length === 1) {
+      setPersonalPrincipal(personal[0]);
     }
-  }, [obtenerPersonalPorUnidad]);
+  }, [personal]);
 
   // Actualizar items disponibles para búsqueda
   useEffect(() => {
@@ -286,12 +285,24 @@ export function useComandaForm() {
   };
 
   const crearComanda = (): Comanda => {
+    if (!personalPrincipal) {
+      throw new Error('Debe seleccionar un responsable');
+    }
+
+    const mainStaff: Personal = {
+      id: personalPrincipal.id,
+      nombre: personalPrincipal.nombre,
+      activo: true,
+      unidadesDisponibles: unidadNegocio ? [unidadNegocio] : [],
+      fechaIngreso: new Date(),
+    };
+
     return {
       id: `comanda-${Date.now()}`,
       numero: numeroComanda,
       fecha: new Date(),
       businessUnit: unidadNegocio as UnidadNegocio,
-      mainStaff: personalPrincipal!,
+      mainStaff: mainStaff,
       cliente,
       items,
       seña: seña || undefined,

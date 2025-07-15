@@ -34,6 +34,8 @@ import {
   ArrowLeft,
 } from 'lucide-react';
 import { toast } from 'sonner';
+import { usePersonal } from '@/features/personal/hooks/usePersonal';
+import { PersonalSimple } from '@/types/caja';
 
 type ModalMode = 'view' | 'edit' | 'create';
 
@@ -52,11 +54,10 @@ export default function ModalTransaccion({
   mode,
   onModeChange,
 }: ModalTransaccionProps) {
-  const { actualizarComanda, obtenerComandaPorId, personalSimple } =
-    useComandaStore();
+  const { actualizarComanda, obtenerComandaPorId } = useComandaStore();
+  const { personal } = usePersonal();
 
   // Hook para bloquear scroll del body
-
   useModalScrollLock(isOpen);
 
   const { isExchangeRateValid } = useCurrencyConverter();
@@ -696,7 +697,7 @@ export default function ModalTransaccion({
                             <SelectValue placeholder="Seleccionar vendedor" />
                           </SelectTrigger>
                           <SelectContent className="z-[10001]">
-                            {personalSimple.map((persona) => (
+                            {personal.map((persona: PersonalSimple) => (
                               <SelectItem
                                 key={persona.id}
                                 value={persona.nombre}

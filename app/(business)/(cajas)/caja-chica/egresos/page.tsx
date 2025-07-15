@@ -8,15 +8,14 @@ import TableFilters from '@/components/cajas/TableFilters';
 import TransactionsTable from '@/components/cajas/TransactionsTableTanStack';
 import ModalCambiarEstado from '@/components/validacion/ModalCambiarEstado';
 import ModalVerDetalles from '@/components/validacion/ModalVerDetalles';
+import { useTransactions } from '@/hooks/useTransactions';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Plus } from 'lucide-react';
 import { ColumnaCaja } from '@/types/caja';
 import ModalTransaccionUnificado from '@/components/cajas/ModalTransaccionUnificado';
 import ModalTransaccion from '@/components/cajas/ModalTransaccion';
-
 import { useInitializeComandaStore } from '@/hooks/useInitializeComandaStore';
-import { useOutgoingTransactions } from '@/features/comandas/hooks/useOutgoingTransactions';
 import { Pagination } from '@/components/ui/pagination';
 import { DateRangePicker } from '@/components/ui/date-range-picker';
 import { DateRange } from 'react-day-picker';
@@ -105,17 +104,18 @@ export default function EgresosPage() {
   // Date range filter state
   const [dateRange, setDateRange] = useState<DateRange | undefined>();
 
-  // Use clean hook for outgoing transactions
   const {
-    data,
+    data: transactions,
     statistics,
     pagination,
     filters,
     actualizarFiltros,
-    handleDelete,
     exportToPDF,
     exportToCSV,
-  } = useOutgoingTransactions(dateRange);
+  } = useTransactions({
+    type: 'egreso',
+    dateRange,
+  });
 
   // Local UI state
   const [columns, setColumns] = useState<ColumnaCaja[]>(initialColumns);
@@ -128,7 +128,15 @@ export default function EgresosPage() {
     useState<string>('');
 
   // Get the selected transaction for the modal
-  const selectedTransaction = data.find((t) => t.id === selectedTransactionId);
+  const selectedTransaction = transactions.find(
+    (t) => t.id === selectedTransactionId
+  );
+
+  // Handle delete transaction
+  const handleDelete = (id: string) => {
+    // TODO: Implement delete functionality
+    console.log('Delete transaction:', id);
+  };
 
   // Handle status change
   const onChangeStatus = (id: string) => {
@@ -187,8 +195,8 @@ export default function EgresosPage() {
                     </h1>
                     <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
                       <SummaryCard
-                        title="Total Egresos"
-                        value={statistics.totalOutgoing}
+                        title="💰 Total Egresos"
+                        value={statistics.totalOutgoing ?? 0}
                         format="currency"
                         valueClassName="text-red-600"
                       />
@@ -198,9 +206,9 @@ export default function EgresosPage() {
                         format="number"
                       />
                       <SummaryCard
-                        title="Proveedores"
-                        value={statistics.providerCount}
-                        format="number"
+                        title="🏪 Proveedores"
+                        value={statistics.providerCount ?? 0}
+                        valueClassName="text-blue-600"
                       />
                     </div>
                   </div>
@@ -240,7 +248,6 @@ export default function EgresosPage() {
                           onColumnsChange={setColumns}
                           exportToPDF={exportToPDF}
                           exportToCSV={exportToCSV}
-                          // Eliminar: exportToExcel={exportToExcel}
                         />
                       </div>
                     </div>
@@ -266,7 +273,7 @@ export default function EgresosPage() {
                 <Card className="border border-[#f9bbc4]/20 bg-white/80 shadow-sm">
                   <CardContent className="p-4">
                     <TransactionsTable
-                      data={data}
+                      data={transactions}
                       onEdit={onEditTransaction}
                       onDelete={handleDelete}
                       onView={onViewTransaction}
@@ -303,10 +310,6 @@ export default function EgresosPage() {
           isOpen={showAddModal}
           onClose={() => setShowAddModal(false)}
           tipo="egreso"
-          onSuccess={() => {
-            // Refresh data after successful creation
-            // Egreso agregado exitosamente
-          }}
         />
 
         <ModalCambiarEstado
