@@ -8,7 +8,6 @@ export const ESTADOS_COMANDA = {
 export type EstadoComanda =
   (typeof ESTADOS_COMANDA)[keyof typeof ESTADOS_COMANDA];
 
-// Estados de validación - CONSISTENCIA TOTAL
 export const ESTADOS_VALIDACION = {
   NO_VALIDADO: 'no_validado',
   VALIDADO: 'validado',
@@ -17,11 +16,12 @@ export const ESTADOS_VALIDACION = {
 export type EstadoValidacion =
   (typeof ESTADOS_VALIDACION)[keyof typeof ESTADOS_VALIDACION];
 
-// Métodos de pago - CONSISTENCIA TOTAL
 export const METODOS_PAGO = {
   EFECTIVO: 'efectivo',
   TARJETA: 'tarjeta',
   TRANSFERENCIA: 'transferencia',
+  GIFTCARD: 'giftcard',
+  QR: 'qr',
   MIXTO: 'mixto',
 } as const;
 
@@ -43,6 +43,8 @@ export const METODO_PAGO_LABELS = {
   [METODOS_PAGO.EFECTIVO]: 'Efectivo',
   [METODOS_PAGO.TARJETA]: 'Tarjeta',
   [METODOS_PAGO.TRANSFERENCIA]: 'Transferencia',
+  [METODOS_PAGO.GIFTCARD]: 'Gift Card',
+  [METODOS_PAGO.QR]: 'QR',
   [METODOS_PAGO.MIXTO]: 'Mixto',
 } as const;
 

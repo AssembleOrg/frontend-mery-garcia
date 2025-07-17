@@ -17,20 +17,22 @@ import {
   CreditCard,
   Banknote,
   Smartphone,
+  Gift,
+  QrCode,
   DollarSign,
 } from 'lucide-react';
-import { MetodoPagoForm } from '@/hooks/useMetodosPago';
-import { METODOS_PAGO, METODO_PAGO_LABELS } from '@/lib/constants';
+import { METODOS_PAGO } from '@/lib/constants';
 import { formatUSD } from '@/lib/utils';
+import { MetodoPagoForm } from '@/hooks/useMetodosPago';
 
 interface MetodosPagoSectionProps {
   metodosPago: MetodoPagoForm[];
   totalPagado: number;
   montoTotal: number;
   isReadOnly?: boolean;
-  onAgregarMetodo: () => void;
-  onEliminarMetodo: (index: number) => void;
-  onActualizarMetodo: (
+  onAgregarMetodo?: () => void;
+  onEliminarMetodo?: (index: number) => void;
+  onActualizarMetodo?: (
     index: number,
     campo: keyof MetodoPagoForm,
     valor: string | number
@@ -56,157 +58,140 @@ export default function MetodosPagoSection({
         return <CreditCard className="h-4 w-4" />;
       case METODOS_PAGO.TRANSFERENCIA:
         return <Smartphone className="h-4 w-4" />;
-      case METODOS_PAGO.MIXTO:
-        return <DollarSign className="h-4 w-4" />;
+      case METODOS_PAGO.GIFTCARD:
+        return <Gift className="h-4 w-4" />;
+      case METODOS_PAGO.QR:
+        return <QrCode className="h-4 w-4" />;
       default:
         return <DollarSign className="h-4 w-4" />;
     }
   };
 
-  const diferencia = totalPagado - montoTotal;
-  const hayDiferencia = Math.abs(diferencia) > 0.01;
+  const totalDescuentos = metodosPago.reduce(
+    (sum, mp) => sum + mp.descuentoAplicado,
+    0
+  );
 
   return (
     <Card className={className}>
       <CardHeader>
-        <div className="flex items-center justify-between">
-          <CardTitle className="flex items-center gap-2 text-base">
-            <CreditCard className="h-4 w-4" />
-            Métodos de Pago
-          </CardTitle>
+        <CardTitle className="flex items-center justify-between">
+          <span>Métodos de Pago</span>
           {!isReadOnly && (
             <Button
               type="button"
               variant="outline"
               size="sm"
               onClick={onAgregarMetodo}
-              className="h-8 gap-1 text-xs"
+              className="flex items-center gap-1"
             >
-              <Plus className="h-3 w-3" />
+              <Plus className="h-4 w-4" />
               Agregar
             </Button>
           )}
-        </div>
+        </CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
-        {/* Lista de métodos de pago */}
-        <div className="space-y-3">
-          {metodosPago.map((metodo, index) => (
-            <div
-              key={index}
-              className="flex items-center gap-3 rounded-lg border bg-gray-50 p-3"
-            >
-              <div className="flex items-center gap-2">
-                {getPaymentIcon(metodo.tipo)}
-                <span className="text-sm font-medium">
-                  {
-                    METODO_PAGO_LABELS[
-                      metodo.tipo as keyof typeof METODO_PAGO_LABELS
-                    ]
-                  }
-                </span>
-              </div>
-
-              <div className="flex flex-1 items-center gap-2">
-                {/* Selector de tipo */}
-                <Select
-                  value={metodo.tipo}
-                  onValueChange={(value) =>
-                    onActualizarMetodo(index, 'tipo', value)
-                  }
-                  disabled={isReadOnly}
-                >
-                  <SelectTrigger className="w-32">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value={METODOS_PAGO.EFECTIVO}>
-                      {METODO_PAGO_LABELS.efectivo}
-                    </SelectItem>
-                    <SelectItem value={METODOS_PAGO.TARJETA}>
-                      {METODO_PAGO_LABELS.tarjeta}
-                    </SelectItem>
-                    <SelectItem value={METODOS_PAGO.TRANSFERENCIA}>
-                      {METODO_PAGO_LABELS.transferencia}
-                    </SelectItem>
-                  </SelectContent>
-                </Select>
-
-                {/* Monto */}
-                <div className="flex-1">
-                  <Input
-                    type="number"
-                    value={metodo.monto}
-                    onChange={(e) =>
-                      onActualizarMetodo(
-                        index,
-                        'monto',
-                        parseFloat(e.target.value) || 0
-                      )
-                    }
-                    placeholder="Monto"
-                    className="text-right"
-                    disabled={isReadOnly}
-                  />
-                </div>
-
-                {/* Monto final */}
-                <div className="w-24 text-right text-sm font-medium">
-                  {formatUSD(metodo.montoFinal)}
-                </div>
-
-                {/* Botón eliminar */}
-                {!isReadOnly && metodosPago.length > 1 && (
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => onEliminarMetodo(index)}
-                    className="h-8 w-8 p-0 text-red-500 hover:bg-red-50"
-                  >
-                    <Trash2 className="h-3 w-3" />
-                  </Button>
-                )}
-              </div>
+        {metodosPago.map((metodo, index) => (
+          <div key={index} className="flex items-center gap-2">
+            <div className="flex items-center gap-2">
+              {getPaymentIcon(metodo.tipo)}
             </div>
-          ))}
-        </div>
 
-        {/* Resumen */}
-        <div className="space-y-2 rounded-lg border bg-blue-50 p-3">
+            <Select
+              value={metodo.tipo}
+              onValueChange={(value) =>
+                onActualizarMetodo?.(index, 'tipo', value)
+              }
+              disabled={isReadOnly}
+            >
+              <SelectTrigger className="w-[140px]">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value={METODOS_PAGO.EFECTIVO}>Efectivo</SelectItem>
+                <SelectItem value={METODOS_PAGO.TARJETA}>Tarjeta</SelectItem>
+                <SelectItem value={METODOS_PAGO.TRANSFERENCIA}>
+                  Transferencia
+                </SelectItem>
+                <SelectItem value={METODOS_PAGO.GIFTCARD}>Gift Card</SelectItem>
+                <SelectItem value={METODOS_PAGO.QR}>QR</SelectItem>
+                <SelectItem value={METODOS_PAGO.MIXTO}>Mixto</SelectItem>
+              </SelectContent>
+            </Select>
+
+            <Input
+              type="number"
+              placeholder="Monto"
+              value={metodo.monto || ''}
+              onChange={(e) =>
+                onActualizarMetodo?.(
+                  index,
+                  'monto',
+                  parseFloat(e.target.value) || 0
+                )
+              }
+              className="w-24"
+              min="0"
+              step="0.01"
+              readOnly={isReadOnly}
+            />
+
+            {/* Mostrar descuento aplicado si existe */}
+            {metodo.descuentoAplicado > 0 && (
+              <div className="min-w-[60px] text-xs text-green-600">
+                -{formatUSD(metodo.descuentoAplicado)}
+              </div>
+            )}
+
+            <div className="min-w-[80px] text-sm font-medium">
+              = {formatUSD(metodo.montoFinal)}
+            </div>
+
+            {!isReadOnly && metodosPago.length > 1 && (
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                onClick={() => onEliminarMetodo?.(index)}
+                className="text-red-500 hover:text-red-700"
+              >
+                <Trash2 className="h-4 w-4" />
+              </Button>
+            )}
+          </div>
+        ))}
+
+        {/* Resumen con descuentos */}
+        <div className="space-y-2 border-t pt-4">
           <div className="flex justify-between text-sm">
-            <span>Subtotal pagado:</span>
+            <span>Total a Pagar:</span>
+            <span className="font-medium">{formatUSD(montoTotal)}</span>
+          </div>
+          {totalDescuentos > 0 && (
+            <div className="flex justify-between text-sm text-green-600">
+              <span>Descuentos Aplicados:</span>
+              <span className="font-medium">-{formatUSD(totalDescuentos)}</span>
+            </div>
+          )}
+          <div className="flex justify-between border-t pt-2 text-sm font-medium">
+            <span>Total Pagado:</span>
             <span>{formatUSD(totalPagado)}</span>
           </div>
-          <div className="flex justify-between border-t pt-2 font-medium">
-            <span>Total pagado:</span>
-            <span className={hayDiferencia ? 'text-red-600' : 'text-green-600'}>
-              {formatUSD(totalPagado)}
-            </span>
-          </div>
-          <div className="flex justify-between text-sm text-gray-600">
-            <span>Monto total:</span>
-            <span>{formatUSD(montoTotal)}</span>
-          </div>
-          {hayDiferencia && (
-            <div className="flex justify-between text-sm font-medium text-red-600">
+          {Math.abs(totalPagado - montoTotal) > 0.01 && (
+            <div
+              className={`flex justify-between text-sm ${
+                totalPagado > montoTotal ? 'text-blue-600' : 'text-red-600'
+              }`}
+            >
               <span>Diferencia:</span>
-              <span>
-                {diferencia > 0 ? '+' : ''}
-                {formatUSD(diferencia)}
+              <span className="font-medium">
+                {totalPagado > montoTotal ? '+' : ''}
+                {formatUSD(totalPagado - montoTotal)}
               </span>
             </div>
           )}
         </div>
-
-        {/* Mensaje de validación */}
-        {hayDiferencia && (
-          <div className="rounded-lg bg-red-50 p-3 text-sm text-red-700">
-            {diferencia > 0
-              ? 'El monto pagado es mayor al total. Verifique los importes.'
-              : 'El monto pagado es menor al total. Agregue métodos de pago o ajuste los importes.'}
-          </div>
-        )}
       </CardContent>
     </Card>
   );

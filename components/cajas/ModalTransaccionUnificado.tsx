@@ -34,6 +34,9 @@ import {
   Edit,
   GraduationCap,
   Package,
+  Gift,
+  QrCode,
+  Shuffle,
 } from 'lucide-react';
 import { useComandaStore } from '@/features/comandas/store/comandaStore';
 import { usePersonal } from '@/features/personal/hooks/usePersonal';
@@ -54,6 +57,7 @@ import {
 } from '@/hooks/useInitializeComandaStore';
 import { DiscountControls } from './DiscountControls';
 import { useExchangeRate } from '@/features/exchange-rate/hooks/useExchangeRate';
+import { useMetodosPago } from '@/hooks/useMetodosPago';
 
 interface ModalTransaccionUnificadoProps {
   isOpen: boolean;
@@ -73,11 +77,6 @@ interface ItemTransaccion {
   descripcion?: string;
 }
 
-interface MetodoPagoForm {
-  tipo: 'efectivo' | 'tarjeta' | 'transferencia';
-  monto: number;
-}
-
 export default function ModalTransaccionUnificado({
   isOpen,
   onClose,
@@ -95,6 +94,16 @@ export default function ModalTransaccionUnificado({
     useCurrencyConverter();
 
   const { tipoCambio } = useExchangeRate();
+
+  // Hook para métodos de pago con descuentos automáticos
+  const {
+    metodosPago,
+    agregarMetodoPago,
+    eliminarMetodoPago,
+    actualizarMetodoPago,
+    resetMetodosPago,
+    validarMetodosPago,
+  } = useMetodosPago();
 
   const obtenerIconoUnidad = (unidad: UnidadNegocio) => {
     switch (unidad) {
@@ -119,9 +128,7 @@ export default function ModalTransaccionUnificado({
   const [responsableId, setResponsableId] = useState('');
   const [observaciones, setObservaciones] = useState('');
   const [items, setItems] = useState<ItemTransaccion[]>([]);
-  const [metodosPago, setMetodosPago] = useState<MetodoPagoForm[]>([
-    { tipo: 'efectivo', monto: 0 },
-  ]);
+  // Removemos el estado local de metodosPago ya que ahora usamos el hook
   const [descuentoGlobalPorcentaje, setDescuentoGlobalPorcentaje] = useState(0);
 
   const [numeroManual, setNumeroManual] = useState('');
@@ -344,29 +351,24 @@ export default function ModalTransaccionUnificado({
     setDescuentoGlobalPorcentaje(0);
   };
 
-  const agregarMetodoPago = () => {
-    const nuevoMetodo: MetodoPagoForm = {
-      tipo: 'efectivo',
-      monto: 0,
-    };
-    setMetodosPago([...metodosPago, nuevoMetodo]);
-  };
-
-  const eliminarMetodoPago = (index: number) => {
-    if (metodosPago.length > 1) {
-      setMetodosPago(metodosPago.filter((_, i) => i !== index));
+  // Función para obtener el ícono del método de pago
+  const getPaymentIcon = (tipo: string) => {
+    switch (tipo) {
+      case 'efectivo':
+        return <Banknote className="h-4 w-4" />;
+      case 'tarjeta':
+        return <CreditCard className="h-4 w-4" />;
+      case 'transferencia':
+        return <Smartphone className="h-4 w-4" />;
+      case 'giftcard':
+        return <Gift className="h-4 w-4" />;
+      case 'qr':
+        return <QrCode className="h-4 w-4" />;
+      case 'mixto':
+        return <Shuffle className="h-4 w-4" />;
+      default:
+        return <DollarSign className="h-4 w-4" />;
     }
-  };
-
-  const actualizarMetodoPago = (
-    index: number,
-    campo: keyof MetodoPagoForm,
-    valor: string | number
-  ) => {
-    const nuevosMetodos = [...metodosPago];
-    nuevosMetodos[index] = { ...nuevosMetodos[index], [campo]: valor };
-
-    setMetodosPago(nuevosMetodos);
   };
 
   const calcularTotales = () => {
@@ -378,37 +380,46 @@ export default function ModalTransaccionUnificado({
       (sum, item) => sum + item.descuento,
       0
     );
-    const subtotal = subtotalBase - totalDescuentos;
+    const subtotalConDescuentosItems = subtotalBase - totalDescuentos;
 
-    const totalPagado = metodosPago.reduce(
-      (sum, metodo) => sum + (metodo.monto || 0),
+    const totalPagadoConDescuentos = metodosPago.reduce(
+      (sum, metodo) => sum + metodo.montoFinal,
       0
     );
 
-    const diferencia = totalPagado - subtotal;
+    // Calcular descuentos por método de pago
+    const descuentosPorMetodo = metodosPago.reduce(
+      (sum, metodo) => sum + metodo.descuentoAplicado,
+      0
+    );
+
+    const totalFinalConDescuentos =
+      subtotalConDescuentosItems - descuentosPorMetodo;
+
+    const diferencia = totalPagadoConDescuentos - totalFinalConDescuentos;
 
     return {
       subtotalBase,
       totalDescuentos,
-      subtotal,
-      totalFinal: subtotal,
-      totalPagado,
+      subtotalConDescuentosItems,
+      totalFinal: totalFinalConDescuentos,
+      totalPagadoConDescuentos,
       diferencia,
+      descuentosPorMetodo,
     };
   };
 
   // Form validation (actualizada)
-  const validarFormulario = () => {
+  const validarFormulario = (): boolean => {
     const nuevosErrores: Record<string, string> = {};
 
     if (!clienteProveedor.trim()) {
       nuevosErrores.clienteProveedor =
-        tipo === 'ingreso'
-          ? 'El cliente es obligatorio'
-          : 'El proveedor es obligatorio';
+        'El nombre del cliente/proveedor es requerido';
     }
+
     if (!responsableId) {
-      nuevosErrores.responsableId = 'Debe seleccionar un responsable';
+      nuevosErrores.responsable = 'Debe seleccionar un responsable';
     }
 
     // Validar numeración manual (siempre activa)
@@ -426,9 +437,10 @@ export default function ModalTransaccionUnificado({
       nuevosErrores.items = 'Debe agregar al menos un item';
     }
 
+    // Validar items
     items.forEach((item, index) => {
       if (!item.nombre.trim()) {
-        nuevosErrores[`item-${index}-nombre`] = 'El nombre es obligatorio';
+        nuevosErrores[`item-${index}-nombre`] = 'El nombre es requerido';
       }
       if (item.precio <= 0) {
         nuevosErrores[`item-${index}-precio`] = 'El precio debe ser mayor a 0';
@@ -440,11 +452,9 @@ export default function ModalTransaccionUnificado({
     });
 
     const totales = calcularTotales();
-    if (Math.abs(totales.diferencia) > 0.01) {
-      nuevosErrores.pagos =
-        totales.diferencia > 0
-          ? `Se está pagando $${totales.diferencia.toFixed(2)} de más`
-          : `Faltan $${Math.abs(totales.diferencia).toFixed(2)} por pagar`;
+    const validacionMetodos = validarMetodosPago(totales.totalFinal);
+    if (!validacionMetodos.esValido && validacionMetodos.error) {
+      nuevosErrores.pagos = validacionMetodos.error;
     }
 
     setErrores(nuevosErrores);
@@ -472,10 +482,32 @@ export default function ModalTransaccionUnificado({
         subtotal: item.subtotal,
       }));
 
-      const metodosPagoComanda: MetodoPago[] = metodosPago.map((metodo) => ({
-        tipo: metodo.tipo,
-        monto: metodo.monto,
-      }));
+      const metodosPagoComanda: MetodoPago[] = metodosPago
+        .filter((metodo) =>
+          ['efectivo', 'tarjeta', 'transferencia'].includes(metodo.tipo)
+        )
+        .map((metodo) => ({
+          tipo: metodo.tipo as 'efectivo' | 'tarjeta' | 'transferencia',
+          monto: metodo.montoFinal,
+        }));
+
+      const metodosNoCompatibles = metodosPago.filter(
+        (metodo) =>
+          !['efectivo', 'tarjeta', 'transferencia'].includes(metodo.tipo)
+      );
+
+      if (metodosNoCompatibles.length > 0) {
+        const montoTotal = metodosNoCompatibles.reduce(
+          (sum, metodo) => sum + metodo.montoFinal,
+          0
+        );
+        if (montoTotal > 0) {
+          metodosPagoComanda.push({
+            tipo: 'efectivo',
+            monto: montoTotal,
+          });
+        }
+      }
 
       const responsable = personal.find((p) => p.id === responsableId);
 
@@ -510,7 +542,7 @@ export default function ModalTransaccionUnificado({
             },
         items: itemsComanda,
         metodosPago: metodosPagoComanda,
-        subtotal: totales.subtotal,
+        subtotal: totales.subtotalConDescuentosItems,
         totalDescuentos: totales.totalDescuentos,
         totalSeña: 0,
         totalFinal: totales.totalFinal,
@@ -549,26 +581,12 @@ export default function ModalTransaccionUnificado({
     setResponsableId('');
     setObservaciones('');
     setItems([]);
-    setMetodosPago([{ tipo: 'efectivo', monto: 0 }]);
+    resetMetodosPago();
     setDescuentoGlobalPorcentaje(0);
     setNumeroManual('');
     setErrores({});
     setMostrarBuscador(false);
     setBusqueda('');
-  };
-
-  // Get payment icon
-  const getPaymentIcon = (tipoMetodo: string) => {
-    switch (tipoMetodo) {
-      case 'efectivo':
-        return <Banknote className="h-4 w-4 text-gray-600" />;
-      case 'tarjeta':
-        return <CreditCard className="h-4 w-4 text-gray-600" />;
-      case 'transferencia':
-        return <Smartphone className="h-4 w-4 text-gray-600" />;
-      default:
-        return <DollarSign className="h-4 w-4 text-gray-600" />;
-    }
   };
 
   const totales = calcularTotales();
@@ -792,11 +810,55 @@ export default function ModalTransaccionUnificado({
                               {persona.nombre}
                             </SelectItem>
                           ))}
+
+                          {/* Resumen de métodos de pago */}
+                          {metodosPago.length > 1 && (
+                            <div className="mt-4 rounded-lg bg-gray-50 p-4">
+                              <h4 className="mb-3 text-sm font-medium text-gray-900">
+                                Resumen de Pagos
+                              </h4>
+                              <div className="space-y-2">
+                                <div className="flex justify-between text-sm">
+                                  <span className="text-gray-600">
+                                    Total base:
+                                  </span>
+                                  <span className="font-medium">
+                                    {formatUSD(
+                                      metodosPago.reduce(
+                                        (sum, m) => sum + m.monto,
+                                        0
+                                      )
+                                    )}
+                                  </span>
+                                </div>
+                                {totales.descuentosPorMetodo > 0 && (
+                                  <div className="flex justify-between text-sm">
+                                    <span className="text-green-600">
+                                      Descuentos:
+                                    </span>
+                                    <span className="font-medium text-green-600">
+                                      -{formatUSD(totales.descuentosPorMetodo)}
+                                    </span>
+                                  </div>
+                                )}
+                                <div className="flex justify-between border-t pt-2 text-sm font-medium">
+                                  <span className="text-gray-900">
+                                    Total final:
+                                  </span>
+                                  <span className="text-green-600">
+                                    {formatUSD(
+                                      totales.totalPagadoConDescuentos
+                                    )}
+                                  </span>
+                                </div>
+                              </div>
+                            </div>
+                          )}
                         </SelectContent>
                       </Select>
-                      {errores.responsableId && (
+                      {errores.responsable && (
                         <p className="mt-1 text-xs text-red-600">
-                          {errores.responsableId}
+                          {errores.responsable}
                         </p>
                       )}
                     </div>
@@ -1076,6 +1138,11 @@ export default function ModalTransaccionUnificado({
                           <Badge variant="outline" className="text-gray-700">
                             Método #{index + 1}
                           </Badge>
+                          {metodo.descuentoAplicado > 0 && (
+                            <Badge className="bg-green-100 text-green-800">
+                              -{formatUSD(metodo.descuentoAplicado)} descuento
+                            </Badge>
+                          )}
                         </div>
                         {metodosPago.length > 1 && (
                           <Button
@@ -1108,6 +1175,11 @@ export default function ModalTransaccionUnificado({
                               <SelectItem value="transferencia">
                                 Transferencia
                               </SelectItem>
+                              <SelectItem value="giftcard">
+                                Gift Card
+                              </SelectItem>
+                              <SelectItem value="qr">QR</SelectItem>
+                              <SelectItem value="mixto">Mixto</SelectItem>
                             </SelectContent>
                           </Select>
                         </div>
@@ -1132,18 +1204,29 @@ export default function ModalTransaccionUnificado({
                         </div>
 
                         <div>
-                          <Label className="text-gray-700">Total</Label>
+                          <Label className="text-gray-700">Total Final</Label>
                           <div className="flex h-10 items-center justify-between rounded-md border border-gray-300 bg-gray-50 px-3">
                             <span className="text-sm font-medium text-green-600">
-                              {formatUSD(metodo.monto)}
+                              {formatUSD(metodo.montoFinal)}
                             </span>
-                            {isExchangeRateValid && metodo.monto > 0 && (
+                            {isExchangeRateValid && metodo.montoFinal > 0 && (
                               <span className="text-xs text-gray-600">
-                                {formatARS(metodo.monto)}
+                                {formatARS(metodo.montoFinal)}
                               </span>
                             )}
                           </div>
                         </div>
+
+                        {metodo.descuentoAplicado > 0 && (
+                          <div>
+                            <Label className="text-gray-700">Descuento</Label>
+                            <div className="flex h-10 items-center justify-between rounded-md border border-green-300 bg-green-50 px-3">
+                              <span className="text-sm font-medium text-green-600">
+                                -{formatUSD(metodo.descuentoAplicado)}
+                              </span>
+                            </div>
+                          </div>
+                        )}
                       </div>
                     </div>
                   ))}
@@ -1166,12 +1249,13 @@ export default function ModalTransaccionUnificado({
                   </CardHeader>
                   <CardContent className="space-y-4">
                     <div className="space-y-3">
+                      {/* Subtotal base */}
                       <div className="flex items-center justify-between rounded-lg bg-gray-50 p-3">
                         <div className="text-sm text-gray-700">
                           Subtotal base
                         </div>
                         <div className="text-right">
-                          <div className="text-lg font-semibold text-green-600">
+                          <div className="text-lg font-semibold text-gray-900">
                             {formatUSD(totales.subtotalBase)}
                           </div>
                           {isExchangeRateValid && totales.subtotalBase > 0 && (
@@ -1182,18 +1266,19 @@ export default function ModalTransaccionUnificado({
                         </div>
                       </div>
 
+                      {/* Descuentos por ítem */}
                       {totales.totalDescuentos > 0 && (
-                        <div className="flex items-center justify-between rounded-lg bg-green-50 p-3">
-                          <div className="text-sm text-green-700">
-                            Descuentos
+                        <div className="flex items-center justify-between rounded-lg bg-orange-50 p-3">
+                          <div className="text-sm text-orange-700">
+                            Descuentos por ítem
                           </div>
                           <div className="text-right">
-                            <div className="text-lg font-semibold text-green-700">
+                            <div className="text-lg font-semibold text-orange-700">
                               -{formatUSD(totales.totalDescuentos)}
                             </div>
                             {isExchangeRateValid &&
                               totales.totalDescuentos > 0 && (
-                                <div className="text-xs text-green-600">
+                                <div className="text-xs text-orange-600">
                                   -{formatARS(totales.totalDescuentos)}
                                 </div>
                               )}
@@ -1201,49 +1286,79 @@ export default function ModalTransaccionUnificado({
                         </div>
                       )}
 
-                      <div className="flex items-center justify-between rounded-lg bg-gray-50 p-3">
-                        <div className="text-sm text-gray-700">Subtotal</div>
-                        <div className="text-right">
-                          <div className="text-lg font-semibold text-green-600">
-                            {formatUSD(totales.subtotal)}
-                          </div>
-                          {isExchangeRateValid && totales.subtotal > 0 && (
-                            <div className="text-xs text-gray-600">
-                              {formatARS(totales.subtotal)}
-                            </div>
-                          )}
-                        </div>
-                      </div>
-
-                      <div className="flex items-center justify-between rounded-lg border border-[#f9bbc4]/20 bg-[#f9bbc4]/10 p-3">
-                        <div className="text-sm font-medium text-gray-900">
-                          Total Final
+                      {/* Total a pagar (después de descuentos por ítem) */}
+                      <div className="flex items-center justify-between rounded-lg border-2 border-blue-200 bg-blue-50 p-3">
+                        <div className="text-sm font-medium text-blue-900">
+                          Total a pagar
                         </div>
                         <div className="text-right">
-                          <div className="text-xl font-bold text-green-600">
+                          <div className="text-xl font-bold text-blue-900">
                             {formatUSD(totales.totalFinal)}
                           </div>
                           {isExchangeRateValid && totales.totalFinal > 0 && (
-                            <div className="text-sm text-gray-700">
+                            <div className="text-sm text-blue-700">
                               {formatARS(totales.totalFinal)}
                             </div>
                           )}
                         </div>
                       </div>
 
+                      {/* Descuentos por método de pago */}
+                      {totales.descuentosPorMetodo > 0 && (
+                        <div className="flex items-center justify-between rounded-lg bg-green-50 p-3">
+                          <div className="text-sm text-green-700">
+                            Descuentos por método de pago
+                          </div>
+                          <div className="text-right">
+                            <div className="text-lg font-semibold text-green-700">
+                              -{formatUSD(totales.descuentosPorMetodo)}
+                            </div>
+                            {isExchangeRateValid &&
+                              totales.descuentosPorMetodo > 0 && (
+                                <div className="text-xs text-green-600">
+                                  -{formatARS(totales.descuentosPorMetodo)}
+                                </div>
+                              )}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Total efectivamente pagado */}
+                      <div className="flex items-center justify-between rounded-lg bg-green-50 p-3">
+                        <div className="text-sm text-green-700">
+                          Total pagado
+                        </div>
+                        <div className="text-right">
+                          <div className="text-lg font-semibold text-green-700">
+                            {formatUSD(totales.totalPagadoConDescuentos)}
+                          </div>
+                          {isExchangeRateValid &&
+                            totales.totalPagadoConDescuentos > 0 && (
+                              <div className="text-xs text-green-600">
+                                {formatARS(totales.totalPagadoConDescuentos)}
+                              </div>
+                            )}
+                        </div>
+                      </div>
+
+                      {/* Diferencia/Balance */}
                       <div className="flex items-center justify-between rounded-lg bg-gray-50 p-3">
-                        <div className="text-sm text-gray-700">Diferencia</div>
+                        <div className="text-sm text-gray-700">Balance</div>
                         <div className="text-right">
                           <div
                             className={`text-lg font-semibold ${
                               Math.abs(totales.diferencia) < 0.01
-                                ? 'text-gray-900'
-                                : 'text-red-600'
+                                ? 'text-green-600'
+                                : totales.diferencia > 0
+                                  ? 'text-blue-600'
+                                  : 'text-red-600'
                             }`}
                           >
                             {Math.abs(totales.diferencia) < 0.01
                               ? '✓ Balanceado'
-                              : formatUSD(totales.diferencia)}
+                              : totales.diferencia > 0
+                                ? `+${formatUSD(totales.diferencia)} (exceso)`
+                                : `${formatUSD(totales.diferencia)} (faltante)`}
                           </div>
                         </div>
                       </div>
