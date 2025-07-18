@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useComandaStore } from '@/features/comandas/store/comandaStore';
 import { useModalScrollLock } from '@/hooks/useModalScrollLock';
-import { ItemComanda } from '@/types/caja';
+import { ItemComanda, EstadoComandaNegocio } from '@/types/caja';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -61,16 +61,45 @@ export default function ModalTransaccion({
   useModalScrollLock(isOpen);
 
   const { isExchangeRateValid } = useCurrencyConverter();
+
+  //* Cambiar esta logica cuando hay atiempo:
+  const mapEstadoNegocioToLocal = (
+    estado: EstadoComandaNegocio
+  ): 'pendiente' | 'completado' | 'cancelado' => {
+    switch (estado) {
+      case 'completado':
+        return 'completado';
+      case 'incompleto':
+        return 'cancelado';
+      case 'pendiente':
+      default:
+        return 'pendiente';
+    }
+  };
+  const mapLocalToEstadoNegocio = (
+    estado: 'pendiente' | 'completado' | 'cancelado'
+  ): EstadoComandaNegocio => {
+    switch (estado) {
+      case 'completado':
+        return 'completado';
+      case 'cancelado':
+        return 'incompleto';
+      case 'pendiente':
+      default:
+        return 'pendiente';
+    }
+  };
+
   // Estados del formulario
   const [cliente, setCliente] = useState('');
   const [telefono, setTelefono] = useState('');
   const [servicios, setServicios] = useState<ItemComanda[]>([]);
   const [metodoPago, setMetodoPago] = useState<
-    'efectivo' | 'tarjeta' | 'transferencia' | 'mixto'
+    'efectivo' | 'tarjeta' | 'transferencia' | 'giftcard' | 'qr' | 'mixto'
   >('efectivo');
   const [vendedor, setVendedor] = useState('');
   const [estado, setEstado] = useState<
-    'pendiente' | 'completado' | 'validado' | 'cancelado'
+    'pendiente' | 'completado' | 'cancelado'
   >('pendiente');
   const [observaciones, setObservaciones] = useState('');
   const [loading, setLoading] = useState(false);
@@ -81,8 +110,6 @@ export default function ModalTransaccion({
     return obtenerComandaPorId(transactionId);
   }, [transactionId, obtenerComandaPorId, mode]);
 
-  // Scroll lock manejado por el hook useModalScrollLock
-
   // Cargar datos iniciales cuando se abre el modal
   useEffect(() => {
     if (isOpen && transaccion && (mode === 'view' || mode === 'edit')) {
@@ -91,7 +118,9 @@ export default function ModalTransaccion({
       setServicios(transaccion.items);
       setMetodoPago(transaccion.metodosPago[0]?.tipo || 'efectivo');
       setVendedor(transaccion.mainStaff?.nombre || '');
-      setEstado(transaccion.estado);
+      setEstado(
+        mapEstadoNegocioToLocal(transaccion.estadoNegocio || 'pendiente')
+      );
       setObservaciones(transaccion.observaciones || '');
     } else if (mode === 'create') {
       // Limpiar formulario para crear nueva
@@ -266,14 +295,20 @@ export default function ModalTransaccion({
         // Actualizar transacción existente
         const datosActualizados = {
           cliente: {
+            id: `cliente-${Date.now()}`,
             nombre: cliente.trim(),
             telefono: telefono.trim() || undefined,
+            email: undefined,
+            cuit: undefined,
+            señasDisponibles: 0,
+            fechaRegistro: new Date(),
           },
           items: servicios,
           subtotal,
           totalDescuentos: descuentoTotal,
           totalFinal: total,
           estado,
+          estadoNegocio: mapLocalToEstadoNegocio(estado),
           observaciones: observaciones.trim() || undefined,
         };
 
@@ -293,7 +328,6 @@ export default function ModalTransaccion({
     }
   };
 
-  // Cambiar a modo edición
   const handleEditMode = () => {
     if (onModeChange) {
       onModeChange('edit');
@@ -745,8 +779,8 @@ export default function ModalTransaccion({
                   </CardHeader>
                   <CardContent className="space-y-3">
                     <div className="flex justify-between text-sm">
-                      <span>Subtotal:</span>
-                      <span>{formatAmount(subtotal)}</span>
+                      <span>Total:</span>
+                      <span>{formatAmount(total)}</span>
                     </div>
 
                     {descuentoTotal > 0 && (
@@ -759,7 +793,7 @@ export default function ModalTransaccion({
                     <Separator />
 
                     <div className="flex justify-between text-lg font-semibold">
-                      <span>Total:</span>
+                      <span>Total Final:</span>
                       <span className="text-[#4a3540]">
                         {formatAmount(total)}
                       </span>
@@ -780,7 +814,18 @@ export default function ModalTransaccion({
                                 ? '💰 Efectivo'
                                 : mp.tipo === 'tarjeta'
                                   ? '💳 Tarjeta'
-                                  : '🏦 Transferencia'}
+                                  : mp.tipo === 'transferencia'
+                                    ? '🏦 Transferencia'
+                                    : mp.tipo === 'giftcard'
+                                      ? '🎁 Giftcard'
+                                      : mp.tipo === 'qr'
+                                        ? '📱 QR'
+                                        : '🔄 Mixto'}
+                              {mp.tipo === 'giftcard' && mp.giftcard && (
+                                <span className="ml-1 text-xs text-gray-600">
+                                  ({mp.giftcard.nombre} - {mp.giftcard.codigo})
+                                </span>
+                              )}
                             </span>
                             <span>{formatAmount(mp.monto || mp.monto)}</span>
                           </div>

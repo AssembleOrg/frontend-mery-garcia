@@ -19,12 +19,14 @@ export interface PersonalSimple {
 
 // Cliente
 export interface Cliente {
-  cuit?: string;
+  id: string;
   nombre: string;
   telefono?: string;
   email?: string;
+  cuit?: string;
+  señasDisponibles: number;
+  fechaRegistro: Date;
 }
-
 // Productos y Servicios
 export interface ProductoServicio {
   id: string;
@@ -63,8 +65,12 @@ export interface Seña {
 }
 
 export interface MetodoPago {
-  tipo: 'efectivo' | 'tarjeta' | 'transferencia';
+  tipo: 'efectivo' | 'tarjeta' | 'transferencia' | 'giftcard' | 'qr' | 'mixto';
   monto: number;
+  giftcard?: {
+    nombre: string;
+    codigo: string;
+  };
 }
 
 // Comanda principal
@@ -82,7 +88,7 @@ export interface Comanda {
   totalDescuentos: number;
   totalSeña: number;
   totalFinal: number;
-  estado: 'pendiente' | 'completado' | 'validado' | 'cancelado';
+  estado: 'pendiente' | 'completado' | 'cancelado';
   observaciones?: string;
   tipo: 'ingreso' | 'egreso';
   estadoNegocio?: EstadoComandaNegocio;
@@ -230,6 +236,27 @@ export interface TraspasoInfo {
     hasta: string;
   };
   observaciones?: string;
+  montoParcial?: number;
+  montoResidual?: number;
+  esTraspasoParcial?: boolean;
+}
+
+export interface ResumenConMontoParcial {
+  totalCompletados: number;
+  totalPendientes: number;
+  montoNeto: number;
+  totalIngresos: number;
+  totalEgresos: number;
+  montoDisponibleParaTraslado: number;
+  montoParcialSeleccionado?: number;
+  montoResidual?: number;
+}
+
+export interface ConfiguracionTraspasoParcial {
+  montoMaximo: number;
+  montoParcial: number;
+  montoResidual: number;
+  porcentajeSeleccionado: number;
 }
 
 // Encomienda (para compatibilidad)
@@ -247,9 +274,14 @@ export interface Encomienda {
   metodoPago: string;
   observaciones?: string;
   vendedor: string;
-  estado: 'pendiente' | 'completado' | 'validado' | 'cancelado';
+  estado: 'pendiente' | 'completado' | 'cancelado';
   tipo: 'ingreso' | 'egreso';
   estadoNegocio?: EstadoComandaNegocio;
   estadoValidacion?: EstadoValidacion;
   metodosPago?: MetodoPago[];
+}
+
+export interface MetodoPagoForm extends MetodoPago {
+  montoFinal: number;
+  descuentoAplicado: number;
 }

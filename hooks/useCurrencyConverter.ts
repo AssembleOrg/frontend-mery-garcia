@@ -10,7 +10,6 @@ import {
 export function useCurrencyConverter() {
   const { tipoCambio, inicializado } = useExchangeRate();
 
-  // ✅ Esperar a que esté inicializado antes de usar el valor
   const exchangeRate =
     inicializado && tipoCambio.valorVenta > 0 ? tipoCambio.valorVenta : 0;
 

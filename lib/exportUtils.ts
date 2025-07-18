@@ -100,13 +100,17 @@ export const exportComandasToPDF = (
   );
 
   const calcularValorEfectivo = (comanda: Comanda): number => {
-    if (!comanda.metodosPago || comanda.metodosPago.length === 0) {
+    if (!comanda.items || comanda.items.length === 0) {
       return 0;
     }
 
-    return comanda.metodosPago
-      .filter((metodo) => metodo.tipo === 'efectivo')
-      .reduce((total, metodo) => total + metodo.monto, 0);
+    // (precio original sin descuentos)
+    const precioListaTotal = comanda.items.reduce((total, item) => {
+      return total + item.precio * item.cantidad;
+    }, 0);
+
+    // 10% de descuento por pago en efectivo
+    return precioListaTotal * 0.9;
   };
 
   // Preparar datos para la tabla

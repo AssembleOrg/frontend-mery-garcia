@@ -14,7 +14,6 @@ import { Button } from '@/components/ui/button';
 import { Plus } from 'lucide-react';
 import { ColumnaCaja } from '@/types/caja';
 import ModalTransaccionUnificado from '@/components/cajas/ModalTransaccionUnificado';
-import ModalTransaccion from '@/components/cajas/ModalTransaccion';
 import { useInitializeComandaStore } from '@/hooks/useInitializeComandaStore';
 import { Pagination } from '@/components/ui/pagination';
 import { DateRangePicker } from '@/components/ui/date-range-picker';
@@ -22,6 +21,7 @@ import { DateRange } from 'react-day-picker';
 import ClientOnly from '@/components/common/ClientOnly';
 import Spinner from '@/components/common/Spinner';
 import SummaryCard from '@/components/common/SummaryCard';
+import ModalEditarTransaccion from '@/components/cajas/ModalEditarTransaccion';
 
 const breadcrumbItems = [
   { label: 'Inicio', href: '/' },
@@ -202,12 +202,13 @@ export default function EgresosPage() {
                       />
                       <SummaryCard
                         title="Transacciones"
-                        value={statistics.transactionCount}
+                        value={statistics.transactionCount ?? 0}
                         format="number"
                       />
                       <SummaryCard
                         title="🏪 Proveedores"
                         value={statistics.providerCount ?? 0}
+                        format="number"
                         valueClassName="text-blue-600"
                       />
                     </div>
@@ -272,15 +273,6 @@ export default function EgresosPage() {
               <div className="mb-6">
                 <Card className="border border-[#f9bbc4]/20 bg-white/80 shadow-sm">
                   <CardContent className="p-4">
-                    <TransactionsTable
-                      data={transactions}
-                      onEdit={onEditTransaction}
-                      onDelete={handleDelete}
-                      onView={onViewTransaction}
-                      onChangeStatus={onChangeStatus}
-                      hiddenColumns={hiddenColumns}
-                    />
-
                     {/* Pagination */}
                     <div className="mt-6">
                       <Pagination
@@ -320,22 +312,26 @@ export default function EgresosPage() {
           }}
           comandaId={selectedTransactionId}
           estadoActual={
-            (selectedTransaction?.estado === 'validado'
+            (selectedTransaction?.estadoValidacion === 'validado'
               ? 'completado'
               : selectedTransaction?.estado) || 'pendiente'
           }
+          onSuccess={() => {
+            setShowChangeStatusModal(false);
+            setSelectedTransactionId('');
+          }}
         />
 
-        <ModalTransaccion
+        <ModalEditarTransaccion
           isOpen={showEditModal}
           onClose={() => {
             setShowEditModal(false);
             setSelectedTransactionId('');
           }}
-          transactionId={selectedTransactionId}
-          mode="edit"
+          comandaId={selectedTransactionId}
         />
 
+        {/* ✅ ModalVerDetalles para VER detalles de transacciones */}
         <ModalVerDetalles
           isOpen={showViewModal}
           onClose={() => {
@@ -343,6 +339,15 @@ export default function EgresosPage() {
             setSelectedTransactionId('');
           }}
           comandaId={selectedTransactionId}
+        />
+
+        <TransactionsTable
+          data={transactions}
+          onEdit={onEditTransaction}
+          onDelete={handleDelete}
+          onView={onViewTransaction}
+          onChangeStatus={onChangeStatus}
+          hiddenColumns={hiddenColumns}
         />
       </div>
     </MainLayout>

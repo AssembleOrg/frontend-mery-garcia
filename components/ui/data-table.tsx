@@ -9,6 +9,7 @@ import {
   ColumnDef,
   VisibilityState,
   useReactTable,
+  Row,
 } from '@tanstack/react-table';
 import {
   Table,
@@ -30,6 +31,8 @@ interface DataTableProps<T extends object> {
   enablePagination?: boolean;
   /** Tamaño de página si enablePagination=true */
   pageSize?: number;
+  /** Función para obtener clases CSS personalizadas para cada fila */
+  getRowClassName?: (row: Row<T>) => string;
 }
 
 /**
@@ -45,6 +48,7 @@ export function DataTable<T extends object>({
   enableSearch = false,
   enablePagination = false,
   pageSize = 10,
+  getRowClassName,
 }: DataTableProps<T>) {
   const [sorting, setSorting] = React.useState<SortingState>([]);
   const [columnVisibility, setColumnVisibility] =
@@ -65,7 +69,6 @@ export function DataTable<T extends object>({
         updated[id] = !hiddenColumns.includes(id);
       });
 
-      // Si llega un id nuevo desde hiddenColumns, añadirlo
       hiddenColumns.forEach((id) => {
         if (!(id in updated)) {
           updated[id] = false;
@@ -146,15 +149,21 @@ export function DataTable<T extends object>({
           ))}
         </TableHeader>
         <TableBody>
-          {table.getRowModel().rows.map((row) => (
-            <TableRow key={row.id} className="hover:bg-muted/50">
-              {row.getVisibleCells().map((cell) => (
-                <TableCell key={cell.id} className="whitespace-nowrap">
-                  {flexRender(cell.column.columnDef.cell, cell.getContext())}
-                </TableCell>
-              ))}
-            </TableRow>
-          ))}
+          {table.getRowModel().rows.map((row) => {
+            const customClassName = getRowClassName ? getRowClassName(row) : '';
+            return (
+              <TableRow
+                key={row.id}
+                className={`hover:bg-muted/50 ${customClassName}`}
+              >
+                {row.getVisibleCells().map((cell) => (
+                  <TableCell key={cell.id} className="whitespace-nowrap">
+                    {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                  </TableCell>
+                ))}
+              </TableRow>
+            );
+          })}
         </TableBody>
       </Table>
 

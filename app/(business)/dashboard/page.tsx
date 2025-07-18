@@ -46,8 +46,8 @@ const menuItems = [
     accentColor: '#d4a7ca',
   },
   {
-    title: 'Personal',
-    description: 'Gestiona tu equipo',
+    title: 'Personal y Clientes',
+    description: 'Gestiona tu equipo y clientes',
     href: '/personal',
     icon: <Users2 size={32} strokeWidth={1.5} />,
     gradientFrom: 'from-[#f0b7c8]',

@@ -610,7 +610,7 @@ export default function ComandasPage() {
                                       </Button>
                                     )}
 
-                                    {/* Botón Cambiar Estado - solo si no está completada */}
+                                    {/* solo si no está completada */}
                                     {permisos.puedeCambiarEstado && (
                                       <Button
                                         variant="ghost"
@@ -738,8 +738,8 @@ export default function ComandasPage() {
           }}
           comandaId={comandaSeleccionada}
           estadoActual={
-            ((comandas.find((c) => c.id === comandaSeleccionada)?.estado ===
-            'validado'
+            ((comandas.find((c) => c.id === comandaSeleccionada)
+              ?.estadoValidacion === 'validado'
               ? 'completado'
               : comandas.find((c) => c.id === comandaSeleccionada)?.estado) as
               | 'pendiente'

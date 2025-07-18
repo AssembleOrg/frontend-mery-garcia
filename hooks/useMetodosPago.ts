@@ -1,12 +1,8 @@
 import { useState, useCallback } from 'react';
 import { useConfiguracion } from '@/features/configuracion/store/configuracionStore';
+import { MetodoPago, MetodoPagoForm } from '@/types/caja';
 
-export interface MetodoPagoForm {
-  tipo: 'efectivo' | 'tarjeta' | 'transferencia' | 'giftcard' | 'qr' | 'mixto';
-  monto: number;
-  montoFinal: number;
-  descuentoAplicado: number; // mostrar el descuento
-}
+export type { MetodoPagoForm } from '@/types/caja';
 
 export interface UseMetodosPagoReturn {
   metodosPago: MetodoPagoForm[];
@@ -16,7 +12,7 @@ export interface UseMetodosPagoReturn {
   actualizarMetodoPago: (
     index: number,
     campo: keyof MetodoPagoForm,
-    valor: string | number
+    valor: string | number | { nombre: string; codigo: string }
   ) => void;
   setMetodosPago: (metodos: MetodoPagoForm[]) => void;
   resetMetodosPago: () => void;
@@ -24,17 +20,22 @@ export interface UseMetodosPagoReturn {
     esValido: boolean;
     error?: string;
   };
+  convertirParaPersistencia: () => MetodoPago[];
 }
 
 export function useMetodosPago(): UseMetodosPagoReturn {
   const { descuentosPorMetodo } = useConfiguracion();
   const [metodosPago, setMetodosPago] = useState<MetodoPagoForm[]>([
-    { tipo: 'efectivo', monto: 0, montoFinal: 0, descuentoAplicado: 0 },
+    {
+      tipo: 'efectivo',
+      monto: 0,
+      montoFinal: 0,
+      descuentoAplicado: 0,
+    },
   ]);
 
   const calcularMontoFinal = useCallback(
     (tipo: MetodoPagoForm['tipo'], monto: number) => {
-      // Métodos sin descuento automático
       if (tipo === 'mixto' || tipo === 'giftcard' || tipo === 'qr') {
         return { montoFinal: monto, descuentoAplicado: 0 };
       }
@@ -69,7 +70,11 @@ export function useMetodosPago(): UseMetodosPagoReturn {
   }, []);
 
   const actualizarMetodoPago = useCallback(
-    (index: number, campo: keyof MetodoPagoForm, valor: string | number) => {
+    (
+      index: number,
+      campo: keyof MetodoPagoForm,
+      valor: string | number | { nombre: string; codigo: string }
+    ) => {
       setMetodosPago((prev) => {
         const nuevosMetodos = [...prev];
         nuevosMetodos[index] = { ...nuevosMetodos[index], [campo]: valor };
@@ -130,7 +135,21 @@ export function useMetodosPago(): UseMetodosPagoReturn {
     [metodosPago]
   );
 
-  // Cálculos derivados
+  const convertirParaPersistencia = useCallback((): MetodoPago[] => {
+    return metodosPago.map((metodo) => {
+      const metodoPersistencia: MetodoPago = {
+        tipo: metodo.tipo,
+        monto: metodo.montoFinal,
+      };
+
+      if (metodo.tipo === 'giftcard' && metodo.giftcard) {
+        metodoPersistencia.giftcard = metodo.giftcard;
+      }
+
+      return metodoPersistencia;
+    });
+  }, [metodosPago]);
+
   const totalPagado = metodosPago.reduce((sum, mp) => sum + mp.montoFinal, 0);
 
   return {
@@ -142,5 +161,6 @@ export function useMetodosPago(): UseMetodosPagoReturn {
     setMetodosPago,
     resetMetodosPago,
     validarMetodosPago,
+    convertirParaPersistencia,
   };
 }

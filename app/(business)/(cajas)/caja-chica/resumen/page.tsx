@@ -6,6 +6,8 @@ import StandardPageBanner from '@/components/common/StandardPageBanner';
 import StandardBreadcrumbs from '@/components/common/StandardBreadcrumbs';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import { DateRangePicker } from '@/components/ui/date-range-picker';
 import { DateRange } from 'react-day-picker';
 import {
@@ -14,6 +16,8 @@ import {
   ArrowRight,
   Clock,
   DollarSign,
+  Calculator,
+  Percent,
 } from 'lucide-react';
 import { useComandaStore } from '@/features/comandas/store/comandaStore';
 import { useRecordsStore } from '@/features/records/store/recordsStore';
@@ -29,6 +33,8 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
+import { ComandaValidationService } from '@/services/comandaValidation.service';
+import { formatUSD } from '@/lib/utils';
 
 const breadcrumbItems = [
   { label: 'Inicio', href: '/' },
@@ -38,29 +44,60 @@ const breadcrumbItems = [
 ];
 
 export default function ResumenCajaChicaPage() {
-  const { validarComandasRango, obtenerResumenRango } = useComandaStore();
+  const { validarComandasParaTraspasoParcial, obtenerResumenConMontoParcial } =
+    useComandaStore();
   const { registrarTraspaso } = useRecordsStore();
   const [dateRange, setDateRange] = useState<DateRange | undefined>();
   const [loading, setLoading] = useState(false);
   const [showConfirmModal, setShowConfirmModal] = useState(false);
+  const [montoParcial, setMontoParcial] = useState<string>('');
   const [mensaje, setMensaje] = useState<{
     tipo: 'success' | 'info';
     texto: string;
   } | null>(null);
 
   const resumen = dateRange?.from
-    ? obtenerResumenRango(dateRange.from, dateRange.to ?? dateRange.from)
+    ? obtenerResumenConMontoParcial(
+        dateRange.from,
+        dateRange.to ?? dateRange.from
+      )
     : null;
 
+  const configuracionTraspaso =
+    resumen && montoParcial
+      ? ComandaValidationService.calcularConfiguracionTraspasoParcial(
+          resumen.montoDisponibleParaTraslado,
+          parseFloat(montoParcial) || 0
+        )
+      : null;
+
+  const handleMontoParcialChange = (value: string) => {
+    // Solo permitir números y punto decimal
+    const regex = /^\d*\.?\d*$/;
+    if (regex.test(value) || value === '') {
+      setMontoParcial(value);
+    }
+  };
+
   const handleTrasladar = async () => {
-    if (!dateRange?.from) return;
+    if (!dateRange?.from || !resumen) return;
+
+    const montoATraslado = montoParcial
+      ? parseFloat(montoParcial) || 0
+      : resumen.montoDisponibleParaTraslado;
+
+    if (montoATraslado <= 0) {
+      toast.error('El monto a trasladar debe ser mayor a 0');
+      return;
+    }
 
     setLoading(true);
     try {
-      // Pasar objetos Date directamente
-      await validarComandasRango(
+      // Validar comandas para traspaso parcial
+      const resultado = await validarComandasParaTraspasoParcial(
         dateRange.from,
-        dateRange.to ?? dateRange.from
+        dateRange.to ?? dateRange.from,
+        montoATraslado
       );
 
       // Para el registro del traspaso, usar la estructura correcta
@@ -69,29 +106,57 @@ export default function ResumenCajaChicaPage() {
         .toISOString()
         .split('T')[0];
 
+      const esTraspasoParcial =
+        montoATraslado < resumen.montoDisponibleParaTraslado;
+
       // Registrar el traspaso con la estructura correcta de TraspasoInfo
       registrarTraspaso({
-        fechaTraspaso: new Date().toISOString().split('T')[0],
+        fechaTraspaso: new Date().toISOString(),
         adminQueTraspaso: 'admin-actual', // Reemplazar con el usuario actual
-        comandasTraspasadas: [], // IDs de comandas trasladadas
-        montoTotal: resumen?.montoNeto || 0,
+        comandasTraspasadas: resultado.idsValidados,
+        montoTotal: resultado.montoTrasladado,
         rangoFechas: {
           desde: fechaInicio,
           hasta: fechaFin,
         },
-        observaciones: `Traspaso de comandas validadas del ${fechaInicio} al ${fechaFin}`,
+        observaciones: esTraspasoParcial
+          ? `Traspaso parcial de ${resultado.montoTrasladado} (residual: ${resultado.montoResidual})`
+          : `Traspaso completo del ${fechaInicio} al ${fechaFin}`,
+        // campos para traspaso parcial
+        montoParcial: esTraspasoParcial ? resultado.montoTrasladado : undefined,
+        montoResidual: esTraspasoParcial ? resultado.montoResidual : undefined,
+        esTraspasoParcial,
       });
 
-      toast.success('Comandas trasladadas exitosamente a Caja Grande');
+      const mensajeExito = esTraspasoParcial
+        ? `Traspaso parcial realizado exitosamente:
+           • ${resultado.idsValidados.length} comandas trasladadas
+           • Monto trasladado: ${formatUSD(resultado.montoTrasladado)}
+           • Monto residual: ${formatUSD(resultado.montoResidual)}
+           • Las comandas trasladadas ahora están en Caja Grande`
+        : `Traspaso completo realizado exitosamente:
+           • ${resultado.idsValidados.length} comandas trasladadas
+           • Monto total: ${formatUSD(resultado.montoTrasladado)}
+           • Caja Chica limpiada para el período seleccionado`;
+
+      toast.success(mensajeExito);
+
       setMensaje({
         tipo: 'success',
-        texto: 'Comandas trasladadas exitosamente a Caja Grande',
+        texto: esTraspasoParcial
+          ? `Traspaso parcial realizado exitosamente. ${resultado.idsValidados.length} comandas trasladadas a Caja Grande.`
+          : `Traspaso completo realizado. Caja Chica limpiada para el período ${fechaInicio} - ${fechaFin}.`,
       });
-    } catch {
+
+      // Limpiar formulario y cerrar modal
+      setMontoParcial('');
+      setShowConfirmModal(false);
+    } catch (error) {
+      console.error('Error en traspaso:', error);
       toast.error('Error al realizar el traspaso');
       setMensaje({
         tipo: 'info',
-        texto: 'Error al realizar el traspaso',
+        texto: 'Error al realizar el traspaso. Intente nuevamente.',
       });
     } finally {
       setLoading(false);
@@ -175,19 +240,117 @@ export default function ResumenCajaChicaPage() {
                           />
                         </div>
                       </div>
+
+                      {resumen.montoDisponibleParaTraslado > 0 && (
+                        <>
+                          <div className="my-6 border-t border-gray-200"></div>
+                          <div>
+                            <h3 className="mb-3 flex items-center gap-2 text-lg font-semibold text-gray-800">
+                              <Calculator className="h-5 w-5 text-purple-600" />
+                              Configuración de Traspaso
+                            </h3>
+
+                            <div className="space-y-4">
+                              <SummaryCard
+                                title="Monto Disponible para Traslado"
+                                value={resumen.montoDisponibleParaTraslado}
+                                format="currency"
+                                valueClassName="text-blue-700"
+                              />
+
+                              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                                <div className="space-y-2">
+                                  <Label
+                                    htmlFor="montoParcial"
+                                    className="text-sm font-medium"
+                                  >
+                                    Monto Parcial a Trasladar (opcional)
+                                  </Label>
+                                  <Input
+                                    id="montoParcial"
+                                    type="text"
+                                    placeholder="Ingrese monto o deje vacío para traslado completo"
+                                    value={montoParcial}
+                                    onChange={(e) =>
+                                      handleMontoParcialChange(e.target.value)
+                                    }
+                                    className="border-[#f9bbc4]/30 focus:border-[#f9bbc4] focus:ring-[#f9bbc4]/20"
+                                  />
+                                  <p className="text-xs text-gray-500">
+                                    Máximo:{' '}
+                                    {new Intl.NumberFormat('es-AR', {
+                                      style: 'currency',
+                                      currency: 'USD',
+                                    }).format(
+                                      resumen.montoDisponibleParaTraslado
+                                    )}
+                                  </p>
+                                </div>
+
+                                {configuracionTraspaso && (
+                                  <div className="space-y-2">
+                                    <Label className="text-sm font-medium">
+                                      Vista Previa
+                                    </Label>
+                                    <div className="space-y-2 rounded-lg border border-gray-200 bg-gray-50 p-3">
+                                      <div className="flex justify-between text-sm">
+                                        <span>Monto a trasladar:</span>
+                                        <span className="font-semibold text-green-700">
+                                          {new Intl.NumberFormat('es-AR', {
+                                            style: 'currency',
+                                            currency: 'USD',
+                                          }).format(
+                                            configuracionTraspaso.montoParcial
+                                          )}
+                                        </span>
+                                      </div>
+                                      <div className="flex justify-between text-sm">
+                                        <span>Residual en Caja 1:</span>
+                                        <span className="font-semibold text-orange-600">
+                                          {new Intl.NumberFormat('es-AR', {
+                                            style: 'currency',
+                                            currency: 'USD',
+                                          }).format(
+                                            configuracionTraspaso.montoResidual
+                                          )}
+                                        </span>
+                                      </div>
+                                      <div className="flex justify-between text-sm">
+                                        <span>Porcentaje:</span>
+                                        <span className="font-semibold text-blue-600">
+                                          {configuracionTraspaso.porcentajeSeleccionado.toFixed(
+                                            1
+                                          )}
+                                          %
+                                        </span>
+                                      </div>
+                                    </div>
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+                        </>
+                      )}
                     </div>
                   )}
 
                   <div className="border-t border-gray-200 pt-4">
                     <Button
-                      disabled={!dateRange?.from || loading}
+                      disabled={
+                        !dateRange?.from ||
+                        loading ||
+                        (resumen?.montoDisponibleParaTraslado || 0) <= 0
+                      }
                       onClick={() => setShowConfirmModal(true)}
                       className="w-full bg-gradient-to-r from-[#f9bbc4] to-[#e292a3] text-white hover:from-[#e292a3] hover:to-[#d4869c] sm:w-auto"
                     >
                       {loading ? (
                         <Spinner size={4} />
+                      ) : montoParcial ? (
+                        'Trasladar Monto Parcial'
                       ) : (
-                        'Trasladar comandas completadas'
+                        'Trasladar Comandas Completadas'
                       )}
                     </Button>
                   </div>
@@ -215,8 +378,9 @@ export default function ResumenCajaChicaPage() {
           <DialogHeader>
             <DialogTitle>Confirmar Traspaso</DialogTitle>
             <DialogDescription>
-              ¿Estás seguro de que deseas trasladar las comandas completadas a
-              Caja Grande?
+              {montoParcial
+                ? '¿Estás seguro de que deseas realizar este traspaso parcial?'
+                : '¿Estás seguro de que deseas trasladar las comandas completadas a Caja Grande?'}
             </DialogDescription>
           </DialogHeader>
 
@@ -243,15 +407,38 @@ export default function ResumenCajaChicaPage() {
               <div className="flex items-center gap-2">
                 <DollarSign className="h-4 w-4 text-blue-600" />
                 <span className="text-sm">
-                  <strong>Monto total:</strong>{' '}
+                  <strong>Monto a trasladar:</strong>{' '}
                   <span className="font-semibold text-blue-700">
                     {new Intl.NumberFormat('es-AR', {
                       style: 'currency',
                       currency: 'USD',
-                    }).format(resumen.montoNeto)}
+                    }).format(
+                      montoParcial
+                        ? Math.min(
+                            parseFloat(montoParcial) || 0,
+                            resumen.montoDisponibleParaTraslado
+                          )
+                        : resumen.montoDisponibleParaTraslado
+                    )}
                   </span>
                 </span>
               </div>
+              {montoParcial &&
+                configuracionTraspaso &&
+                configuracionTraspaso.montoResidual > 0 && (
+                  <div className="flex items-center gap-2">
+                    <Percent className="h-4 w-4 text-orange-600" />
+                    <span className="text-sm">
+                      <strong>Residual en Caja 1:</strong>{' '}
+                      <span className="font-semibold text-orange-700">
+                        {new Intl.NumberFormat('es-AR', {
+                          style: 'currency',
+                          currency: 'USD',
+                        }).format(configuracionTraspaso.montoResidual)}
+                      </span>
+                    </span>
+                  </div>
+                )}
             </div>
           )}
 

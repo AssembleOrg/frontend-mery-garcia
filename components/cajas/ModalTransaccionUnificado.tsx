@@ -12,18 +12,14 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-
+import MetodosPagoSection from './MetodosPagoSection';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import {
   Plus,
   Trash2,
-  DollarSign,
   Save,
   X,
-  CreditCard,
-  Banknote,
-  Smartphone,
   TrendingUp,
   Calculator,
   ArrowUpCircle,
@@ -34,22 +30,22 @@ import {
   Edit,
   GraduationCap,
   Package,
-  Gift,
-  QrCode,
-  Shuffle,
+  User,
+  DollarSign,
 } from 'lucide-react';
 import { useComandaStore } from '@/features/comandas/store/comandaStore';
 import { usePersonal } from '@/features/personal/hooks/usePersonal';
 import { useProductosServicios } from '@/features/productos-servicios/hooks/useProductosServicios';
+import { useCliente } from '@/features/clientes/hooks/useCliente';
 import { useModalScrollLock } from '@/hooks/useModalScrollLock';
 import { logger } from '@/lib/utils';
 import { useCurrencyConverter } from '@/hooks/useCurrencyConverter';
 import {
   Comanda,
   ItemComanda,
-  MetodoPago,
   UnidadNegocio,
   ProductoServicio,
+  Cliente,
 } from '@/types/caja';
 import {
   useInitializeComandaStore,
@@ -87,8 +83,9 @@ export default function ModalTransaccionUnificado({
     useComandaStore();
 
   const { productosServicios } = useProductosServicios();
-
   const { personal } = usePersonal();
+  const { clientes, buscarCliente, obtenerSeñasDisponibles, usarSeña } =
+    useCliente();
 
   const { exchangeRate, isExchangeRateValid, formatARS, formatUSD } =
     useCurrencyConverter();
@@ -103,6 +100,7 @@ export default function ModalTransaccionUnificado({
     actualizarMetodoPago,
     resetMetodosPago,
     validarMetodosPago,
+    convertirParaPersistencia,
   } = useMetodosPago();
 
   const obtenerIconoUnidad = (unidad: UnidadNegocio) => {
@@ -121,8 +119,13 @@ export default function ModalTransaccionUnificado({
   useInitializeComandaStore();
 
   // Form state
+  const [clienteSeleccionado, setClienteSeleccionado] =
+    useState<Cliente | null>(null);
   const [clienteProveedor, setClienteProveedor] = useState('');
   const [telefono, setTelefono] = useState('');
+  const [señaAplicada, setSeñaAplicada] = useState(0);
+  const [mostrarSelectorCliente, setMostrarSelectorCliente] = useState(false);
+  const [busquedaCliente, setBusquedaCliente] = useState('');
   const [unidadNegocio, setUnidadNegocio] =
     useState<UnidadNegocio>('estilismo');
   const [responsableId, setResponsableId] = useState('');
@@ -181,6 +184,31 @@ export default function ModalTransaccionUnificado({
       return () => document.removeEventListener('keydown', handleEsc);
     }
   }, [isOpen, onClose, mostrarBuscador]);
+
+  // Filtrar clientes para el selector
+  const clientesFiltrados = useMemo(() => {
+    if (!busquedaCliente.trim()) return clientes;
+    return buscarCliente(busquedaCliente);
+  }, [busquedaCliente, clientes, buscarCliente]);
+
+  // Manejar selección de cliente
+  const handleSeleccionarCliente = (cliente: Cliente) => {
+    setClienteSeleccionado(cliente);
+    setClienteProveedor(cliente.nombre);
+    setTelefono(cliente.telefono || '');
+    setMostrarSelectorCliente(false);
+    setBusquedaCliente('');
+  };
+
+  // Manejar aplicación de seña
+  const handleAplicarSeña = (monto: number) => {
+    if (!clienteSeleccionado) return;
+
+    const señasDisponibles = obtenerSeñasDisponibles(clienteSeleccionado.id);
+    if (monto <= señasDisponibles) {
+      setSeñaAplicada(monto);
+    }
+  };
 
   const productosServiciosFiltrados = useMemo(() => {
     if (tipo === 'egreso') {
@@ -351,26 +379,6 @@ export default function ModalTransaccionUnificado({
     setDescuentoGlobalPorcentaje(0);
   };
 
-  // Función para obtener el ícono del método de pago
-  const getPaymentIcon = (tipo: string) => {
-    switch (tipo) {
-      case 'efectivo':
-        return <Banknote className="h-4 w-4" />;
-      case 'tarjeta':
-        return <CreditCard className="h-4 w-4" />;
-      case 'transferencia':
-        return <Smartphone className="h-4 w-4" />;
-      case 'giftcard':
-        return <Gift className="h-4 w-4" />;
-      case 'qr':
-        return <QrCode className="h-4 w-4" />;
-      case 'mixto':
-        return <Shuffle className="h-4 w-4" />;
-      default:
-        return <DollarSign className="h-4 w-4" />;
-    }
-  };
-
   const calcularTotales = () => {
     const subtotalBase = items.reduce(
       (sum, item) => sum + item.precio * item.cantidad,
@@ -393,8 +401,9 @@ export default function ModalTransaccionUnificado({
       0
     );
 
+    // Aplicar seña al total final
     const totalFinalConDescuentos =
-      subtotalConDescuentosItems - descuentosPorMetodo;
+      subtotalConDescuentosItems - descuentosPorMetodo - señaAplicada;
 
     const diferencia = totalPagadoConDescuentos - totalFinalConDescuentos;
 
@@ -406,6 +415,7 @@ export default function ModalTransaccionUnificado({
       totalPagadoConDescuentos,
       diferencia,
       descuentosPorMetodo,
+      señaAplicada,
     };
   };
 
@@ -482,32 +492,8 @@ export default function ModalTransaccionUnificado({
         subtotal: item.subtotal,
       }));
 
-      const metodosPagoComanda: MetodoPago[] = metodosPago
-        .filter((metodo) =>
-          ['efectivo', 'tarjeta', 'transferencia'].includes(metodo.tipo)
-        )
-        .map((metodo) => ({
-          tipo: metodo.tipo as 'efectivo' | 'tarjeta' | 'transferencia',
-          monto: metodo.montoFinal,
-        }));
-
-      const metodosNoCompatibles = metodosPago.filter(
-        (metodo) =>
-          !['efectivo', 'tarjeta', 'transferencia'].includes(metodo.tipo)
-      );
-
-      if (metodosNoCompatibles.length > 0) {
-        const montoTotal = metodosNoCompatibles.reduce(
-          (sum, metodo) => sum + metodo.montoFinal,
-          0
-        );
-        if (montoTotal > 0) {
-          metodosPagoComanda.push({
-            tipo: 'efectivo',
-            monto: montoTotal,
-          });
-        }
-      }
+      // USAR LA FUNCIÓN UNIFICADA PARA PERSISTENCIA
+      const metodosPagoComanda = convertirParaPersistencia();
 
       const responsable = personal.find((p) => p.id === responsableId);
 
@@ -518,8 +504,13 @@ export default function ModalTransaccionUnificado({
         fecha: new Date(),
         businessUnit: tipo === 'ingreso' ? unidadNegocio : 'estilismo',
         cliente: {
+          id: `cliente-${Date.now()}`,
           nombre: clienteProveedor,
           telefono: telefono || undefined,
+          email: undefined,
+          cuit: undefined,
+          señasDisponibles: 0,
+          fechaRegistro: new Date(),
         },
         mainStaff: responsable
           ? {
@@ -544,7 +535,7 @@ export default function ModalTransaccionUnificado({
         metodosPago: metodosPagoComanda,
         subtotal: totales.subtotalConDescuentosItems,
         totalDescuentos: totales.totalDescuentos,
-        totalSeña: 0,
+        totalSeña: señaAplicada,
         totalFinal: totales.totalFinal,
         estado: 'pendiente',
         observaciones: observaciones || undefined,
@@ -558,6 +549,10 @@ export default function ModalTransaccionUnificado({
           modoManual: tipoCambio.modoManual,
         },
       };
+
+      if (clienteSeleccionado && señaAplicada > 0) {
+        usarSeña(clienteSeleccionado.id, señaAplicada);
+      }
 
       logger.info(`Guardando ${tipo}:`, nuevaComanda);
       agregarComanda(nuevaComanda);
@@ -575,8 +570,12 @@ export default function ModalTransaccionUnificado({
 
   // Reset form (actualizada)
   const resetForm = () => {
+    setClienteSeleccionado(null);
     setClienteProveedor('');
     setTelefono('');
+    setSeñaAplicada(0);
+    setMostrarSelectorCliente(false);
+    setBusquedaCliente('');
     setUnidadNegocio('estilismo');
     setResponsableId('');
     setObservaciones('');
@@ -731,30 +730,174 @@ export default function ModalTransaccionUnificado({
                       </div>
                     </div>
 
-                    <div>
-                      <Label className="text-gray-700">
-                        {tipo === 'ingreso' ? 'Cliente' : 'Proveedor'} *
-                      </Label>
-                      <Input
-                        value={clienteProveedor}
-                        onChange={(e) => setClienteProveedor(e.target.value)}
-                        placeholder={
-                          tipo === 'ingreso'
-                            ? 'Nombre del cliente'
-                            : 'Nombre del proveedor'
-                        }
-                        className={
-                          errores.clienteProveedor
-                            ? 'border-red-500'
-                            : 'border-gray-300'
-                        }
-                      />
-                      {errores.clienteProveedor && (
-                        <p className="mt-1 text-xs text-red-600">
-                          {errores.clienteProveedor}
-                        </p>
-                      )}
-                    </div>
+                    {tipo === 'ingreso' && (
+                      <div className="md:col-span-2">
+                        <Label className="text-gray-700">Cliente *</Label>
+                        <div className="space-y-2">
+                          <div className="flex gap-2">
+                            <Input
+                              value={clienteProveedor}
+                              onChange={(e) =>
+                                setClienteProveedor(e.target.value)
+                              }
+                              placeholder="Nombre del cliente"
+                              className={
+                                errores.clienteProveedor
+                                  ? 'border-red-500'
+                                  : 'border-gray-300'
+                              }
+                            />
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="sm"
+                              onClick={() =>
+                                setMostrarSelectorCliente(
+                                  !mostrarSelectorCliente
+                                )
+                              }
+                              className="border-[#f9bbc4] text-[#8b5a6b] hover:bg-[#f9bbc4]/10"
+                            >
+                              <User className="h-4 w-4" />
+                            </Button>
+                          </div>
+
+                          {/* Selector de clientes existentes */}
+                          {mostrarSelectorCliente && (
+                            <div className="rounded-lg border border-gray-200 bg-white p-3 shadow-sm">
+                              <div className="mb-2">
+                                <Input
+                                  value={busquedaCliente}
+                                  onChange={(e) =>
+                                    setBusquedaCliente(e.target.value)
+                                  }
+                                  placeholder="Buscar cliente..."
+                                  className="text-sm"
+                                />
+                              </div>
+                              <div className="max-h-32 space-y-1 overflow-y-auto">
+                                {clientesFiltrados.map((cliente) => (
+                                  <div
+                                    key={cliente.id}
+                                    onClick={() =>
+                                      handleSeleccionarCliente(cliente)
+                                    }
+                                    className="cursor-pointer rounded p-2 text-sm hover:bg-gray-50"
+                                  >
+                                    <div className="flex items-center justify-between">
+                                      <span className="font-medium">
+                                        {cliente.nombre}
+                                      </span>
+                                      {cliente.señasDisponibles > 0 && (
+                                        <Badge
+                                          variant="outline"
+                                          className="text-xs"
+                                        >
+                                          <DollarSign className="mr-1 h-3 w-3" />
+                                          ${cliente.señasDisponibles}
+                                        </Badge>
+                                      )}
+                                    </div>
+                                    {cliente.telefono && (
+                                      <div className="text-gray-500">
+                                        {cliente.telefono}
+                                      </div>
+                                    )}
+                                  </div>
+                                ))}
+                                {clientesFiltrados.length === 0 && (
+                                  <div className="p-2 text-center text-sm text-gray-500">
+                                    No se encontraron clientes
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+                          )}
+
+                          {/* Información de señas disponibles */}
+                          {clienteSeleccionado &&
+                            clienteSeleccionado.señasDisponibles > 0 && (
+                              <div className="rounded-lg bg-green-50 p-3">
+                                <div className="flex items-center justify-between">
+                                  <div>
+                                    <p className="text-sm font-medium text-green-800">
+                                      Señas disponibles: $
+                                      {clienteSeleccionado.señasDisponibles}
+                                    </p>
+                                    <p className="text-xs text-green-600">
+                                      Puedes aplicar una seña a esta comanda
+                                    </p>
+                                  </div>
+                                  <div className="flex items-center gap-2">
+                                    <Input
+                                      type="number"
+                                      placeholder="Monto"
+                                      className="w-20 text-sm"
+                                      max={clienteSeleccionado.señasDisponibles}
+                                      onChange={(e) => {
+                                        const monto =
+                                          parseFloat(e.target.value) || 0;
+                                        handleAplicarSeña(monto);
+                                      }}
+                                    />
+                                    <Button
+                                      type="button"
+                                      size="sm"
+                                      variant="outline"
+                                      className="border-green-300 text-green-700 hover:bg-green-50"
+                                      onClick={() =>
+                                        handleAplicarSeña(
+                                          clienteSeleccionado.señasDisponibles
+                                        )
+                                      }
+                                    >
+                                      Aplicar toda
+                                    </Button>
+                                  </div>
+                                </div>
+                                {señaAplicada > 0 && (
+                                  <div className="mt-2 rounded bg-green-100 p-2">
+                                    <p className="text-sm font-medium text-green-800">
+                                      Seña aplicada: {formatUSD(señaAplicada)}
+                                    </p>
+                                    <p className="text-xs text-green-600">
+                                      Equivale a: {formatARS(señaAplicada)}
+                                    </p>
+                                  </div>
+                                )}
+                              </div>
+                            )}
+
+                          {errores.clienteProveedor && (
+                            <p className="text-xs text-red-600">
+                              {errores.clienteProveedor}
+                            </p>
+                          )}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Campo de proveedor para egresos */}
+                    {tipo === 'egreso' && (
+                      <div>
+                        <Label className="text-gray-700">Proveedor *</Label>
+                        <Input
+                          value={clienteProveedor}
+                          onChange={(e) => setClienteProveedor(e.target.value)}
+                          placeholder="Nombre del proveedor"
+                          className={
+                            errores.clienteProveedor
+                              ? 'border-red-500'
+                              : 'border-gray-300'
+                          }
+                        />
+                        {errores.clienteProveedor && (
+                          <p className="mt-1 text-xs text-red-600">
+                            {errores.clienteProveedor}
+                          </p>
+                        )}
+                      </div>
+                    )}
 
                     <div>
                       <Label className="text-gray-700">Teléfono</Label>
@@ -1109,133 +1252,20 @@ export default function ModalTransaccionUnificado({
                 </CardContent>
               </Card>
 
-              {/* Payment Methods */}
-              <Card className="border border-gray-200 bg-white">
-                <CardHeader>
-                  <CardTitle className="flex items-center justify-between text-lg text-gray-900">
-                    <span>Métodos de Pago</span>
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      onClick={agregarMetodoPago}
-                      className="border-[#f9bbc4] bg-[#f9bbc4] font-medium text-white hover:bg-[#e292a3]"
-                    >
-                      <Plus className="mr-2 h-4 w-4" />
-                      Agregar
-                    </Button>
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  {metodosPago.map((metodo, index) => (
-                    <div
-                      key={index}
-                      className="rounded-lg border border-gray-200 p-4"
-                    >
-                      <div className="mb-3 flex items-center justify-between">
-                        <div className="flex items-center gap-2">
-                          {getPaymentIcon(metodo.tipo)}
-                          <Badge variant="outline" className="text-gray-700">
-                            Método #{index + 1}
-                          </Badge>
-                          {metodo.descuentoAplicado > 0 && (
-                            <Badge className="bg-green-100 text-green-800">
-                              -{formatUSD(metodo.descuentoAplicado)} descuento
-                            </Badge>
-                          )}
-                        </div>
-                        {metodosPago.length > 1 && (
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => eliminarMetodoPago(index)}
-                            className="text-gray-500 hover:bg-gray-100 hover:text-gray-700"
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
-                        )}
-                      </div>
+              <MetodosPagoSection
+                metodosPago={metodosPago}
+                totalPagado={totales.totalPagadoConDescuentos}
+                montoTotal={totales.totalFinal}
+                onAgregarMetodo={agregarMetodoPago}
+                onEliminarMetodo={eliminarMetodoPago}
+                onActualizarMetodo={actualizarMetodoPago}
+              />
 
-                      <div className="grid grid-cols-1 gap-3 md:grid-cols-4">
-                        <div>
-                          <Label className="text-gray-700">Tipo</Label>
-                          <Select
-                            value={metodo.tipo}
-                            onValueChange={(value) =>
-                              actualizarMetodoPago(index, 'tipo', value)
-                            }
-                          >
-                            <SelectTrigger className="border-gray-300">
-                              <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent className="z-[10001]">
-                              <SelectItem value="efectivo">Efectivo</SelectItem>
-                              <SelectItem value="tarjeta">Tarjeta</SelectItem>
-                              <SelectItem value="transferencia">
-                                Transferencia
-                              </SelectItem>
-                              <SelectItem value="giftcard">
-                                Gift Card
-                              </SelectItem>
-                              <SelectItem value="qr">QR</SelectItem>
-                              <SelectItem value="mixto">Mixto</SelectItem>
-                            </SelectContent>
-                          </Select>
-                        </div>
-
-                        <div>
-                          <Label className="text-gray-700">Monto</Label>
-                          <Input
-                            type="number"
-                            min="0"
-                            step="0.01"
-                            value={metodo.monto || ''}
-                            onChange={(e) =>
-                              actualizarMetodoPago(
-                                index,
-                                'monto',
-                                parseFloat(e.target.value) || 0
-                              )
-                            }
-                            placeholder="0.00"
-                            className="border-gray-300"
-                          />
-                        </div>
-
-                        <div>
-                          <Label className="text-gray-700">Total Final</Label>
-                          <div className="flex h-10 items-center justify-between rounded-md border border-gray-300 bg-gray-50 px-3">
-                            <span className="text-sm font-medium text-green-600">
-                              {formatUSD(metodo.montoFinal)}
-                            </span>
-                            {isExchangeRateValid && metodo.montoFinal > 0 && (
-                              <span className="text-xs text-gray-600">
-                                {formatARS(metodo.montoFinal)}
-                              </span>
-                            )}
-                          </div>
-                        </div>
-
-                        {metodo.descuentoAplicado > 0 && (
-                          <div>
-                            <Label className="text-gray-700">Descuento</Label>
-                            <div className="flex h-10 items-center justify-between rounded-md border border-green-300 bg-green-50 px-3">
-                              <span className="text-sm font-medium text-green-600">
-                                -{formatUSD(metodo.descuentoAplicado)}
-                              </span>
-                            </div>
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  ))}
-
-                  {errores.pagos && (
-                    <p className="text-sm text-red-600">{errores.pagos}</p>
-                  )}
-                </CardContent>
-              </Card>
+              {errores.pagos && (
+                <div className="mt-2">
+                  <p className="text-sm text-red-600">{errores.pagos}</p>
+                </div>
+              )}
             </div>
 
             {/* Right Column - Summary */}
@@ -1286,22 +1316,24 @@ export default function ModalTransaccionUnificado({
                         </div>
                       )}
 
-                      {/* Total a pagar (después de descuentos por ítem) */}
-                      <div className="flex items-center justify-between rounded-lg border-2 border-blue-200 bg-blue-50 p-3">
-                        <div className="text-sm font-medium text-blue-900">
-                          Total a pagar
-                        </div>
-                        <div className="text-right">
-                          <div className="text-xl font-bold text-blue-900">
-                            {formatUSD(totales.totalFinal)}
+                      {/* Seña aplicada */}
+                      {señaAplicada > 0 && (
+                        <div className="flex items-center justify-between rounded-lg bg-purple-50 p-3">
+                          <div className="text-sm text-purple-700">
+                            Seña aplicada
                           </div>
-                          {isExchangeRateValid && totales.totalFinal > 0 && (
-                            <div className="text-sm text-blue-700">
-                              {formatARS(totales.totalFinal)}
+                          <div className="text-right">
+                            <div className="text-lg font-semibold text-purple-700">
+                              -{formatUSD(señaAplicada)}
                             </div>
-                          )}
+                            {isExchangeRateValid && señaAplicada > 0 && (
+                              <div className="text-xs text-purple-600">
+                                -{formatARS(señaAplicada)}
+                              </div>
+                            )}
+                          </div>
                         </div>
-                      </div>
+                      )}
 
                       {/* Descuentos por método de pago */}
                       {totales.descuentosPorMetodo > 0 && (
@@ -1322,6 +1354,23 @@ export default function ModalTransaccionUnificado({
                           </div>
                         </div>
                       )}
+
+                      {/* Total a pagar (después de descuentos por ítem y seña) */}
+                      <div className="flex items-center justify-between rounded-lg border-2 border-blue-200 bg-blue-50 p-3">
+                        <div className="text-sm font-medium text-blue-900">
+                          Total a pagar
+                        </div>
+                        <div className="text-right">
+                          <div className="text-xl font-bold text-blue-900">
+                            {formatUSD(totales.totalFinal)}
+                          </div>
+                          {isExchangeRateValid && totales.totalFinal > 0 && (
+                            <div className="text-sm text-blue-700">
+                              {formatARS(totales.totalFinal)}
+                            </div>
+                          )}
+                        </div>
+                      </div>
 
                       {/* Total efectivamente pagado */}
                       <div className="flex items-center justify-between rounded-lg bg-green-50 p-3">

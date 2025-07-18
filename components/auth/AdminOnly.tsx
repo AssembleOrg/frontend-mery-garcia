@@ -2,7 +2,6 @@
 
 import { useAuth } from '@/features/auth/hooks/useAuth';
 import { useRouter } from 'next/navigation';
-import { useEffect } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { ShieldX, ArrowLeft } from 'lucide-react';
@@ -20,13 +19,11 @@ export default function AdminOnly({
 }: AdminOnlyProps) {
   const { isAdmin, isAuthenticated, isLoading } = useAuth();
   const router = useRouter();
-
-  useEffect(() => {
-    if (!isLoading && isAuthenticated && !isAdmin) {
-      // Opcional: redirección automática después de 3 segundos
-      // setTimeout(() => router.push(redirectTo), 3000);
-    }
-  }, [isAdmin, isAuthenticated, isLoading, router, redirectTo]);
+  //* Añadir AUTH y ROL permision cuando este el BE
+  // useEffect(() => {
+  //   if (!isLoading && isAuthenticated && !isAdmin) {
+  //   }
+  // }, [isAdmin, isAuthenticated, isLoading, router, redirectTo]);
 
   if (isLoading) {
     return (

@@ -31,6 +31,8 @@ import {
   CreditCard,
   Smartphone,
   DollarSign,
+  Gift,
+  QrCode,
   X,
   Columns,
 } from 'lucide-react';
@@ -60,7 +62,6 @@ export default function TableFilters({
 }: TableFiltersProps) {
   const [showAdvancedFilters, setShowAdvancedFilters] = useState(false);
 
-  // Get real staff data from store
   const { personal } = usePersonal();
 
   const toggleColumn = (key: ColumnaCaja['key']) => {
@@ -326,6 +327,18 @@ export default function TableFilters({
                     <div className="flex items-center gap-2">
                       <Smartphone className="h-4 w-4 text-purple-600" />
                       <span className="font-medium">Transferencia</span>
+                    </div>
+                  </SelectItem>
+                  <SelectItem value="giftcard">
+                    <div className="flex items-center gap-2">
+                      <Gift className="h-4 w-4 text-pink-600" />
+                      <span className="font-medium">Gift Card</span>
+                    </div>
+                  </SelectItem>
+                  <SelectItem value="qr">
+                    <div className="flex items-center gap-2">
+                      <QrCode className="h-4 w-4 text-indigo-600" />
+                      <span className="font-medium">QR</span>
                     </div>
                   </SelectItem>
                   <SelectItem value="mixto">

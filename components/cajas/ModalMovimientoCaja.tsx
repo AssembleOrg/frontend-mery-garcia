@@ -149,14 +149,10 @@ export default function ModalMovimientoCaja({
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="efectivo">Efectivo</SelectItem>
+                <SelectItem value="tarjeta">Tarjeta</SelectItem>
                 <SelectItem value="transferencia">Transferencia</SelectItem>
-                <SelectItem value="tarjeta_debito">
-                  Tarjeta de Débito
-                </SelectItem>
-                <SelectItem value="tarjeta_credito">
-                  Tarjeta de Crédito
-                </SelectItem>
-                <SelectItem value="cheque">Cheque</SelectItem>
+                <SelectItem value="giftcard">Gift Card</SelectItem>
+                <SelectItem value="qr">QR</SelectItem>
               </SelectContent>
             </Select>
           </div>

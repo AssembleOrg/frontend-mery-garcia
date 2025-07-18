@@ -9,6 +9,7 @@ import {
   FiltrosComanda,
   ResumenCaja,
   EstadoComandaNegocio,
+  ResumenConMontoParcial,
 } from '@/types/caja';
 
 interface ComandaState {
@@ -39,10 +40,14 @@ interface ComandaState {
   limpiarDuplicados: () => void;
   migrarDatosValidacion: () => void;
 
-  // Actualizar estado de comanda (simplificado)
-  actualizarEstadoComanda: (
+  actualizarEstadoNegocio: (
     comandaId: string,
-    nuevoEstado: 'pendiente' | 'completado' | 'validado' | 'cancelado'
+    nuevoEstado: 'pendiente' | 'completado' | 'cancelado'
+  ) => void;
+
+  actualizarEstadoValidacion: (
+    comandaId: string,
+    nuevoEstado: 'no_validado' | 'validado'
   ) => void;
 
   // === OPERACIONES MASIVAS ===
@@ -57,6 +62,22 @@ interface ComandaState {
     totalIngresos: number;
     totalEgresos: number;
   };
+
+  // NUEVAS FUNCIONES PARA MONTO PARCIAL
+  obtenerResumenConMontoParcial: (
+    fechaDesde: Date,
+    fechaHasta: Date
+  ) => ResumenConMontoParcial;
+
+  validarComandasParaTraspasoParcial: (
+    fechaDesde: Date,
+    fechaHasta: Date,
+    montoParcial: number
+  ) => Promise<{
+    idsValidados: string[];
+    montoTrasladado: number;
+    montoResidual: number;
+  }>;
 
   obtenerResumenCajaRango: (
     fechaDesde: Date,
@@ -347,14 +368,63 @@ export const useComandaStore = create<ComandaState>()(
           );
         },
 
-        actualizarEstadoComanda: (
+        obtenerResumenConMontoParcial: (fechaDesde: Date, fechaHasta: Date) => {
+          const { comandas } = get();
+          return ComandaValidationService.obtenerResumenConMontoParcial(
+            comandas,
+            fechaDesde,
+            fechaHasta
+          );
+        },
+
+        validarComandasParaTraspasoParcial: async (
+          fechaDesde: Date,
+          fechaHasta: Date,
+          montoParcial: number
+        ) => {
+          const { comandas } = get();
+          const resultado =
+            ComandaValidationService.validarComandasParaTraspasoParcial(
+              comandas,
+              fechaDesde,
+              fechaHasta,
+              montoParcial
+            );
+
+          set({ comandas: resultado.comandasActualizadas });
+
+          return {
+            idsValidados: resultado.idsValidados,
+            montoTrasladado: resultado.montoTrasladado,
+            montoResidual: resultado.montoResidual,
+          };
+        },
+
+        actualizarEstadoNegocio: (
           comandaId: string,
-          nuevoEstado: 'pendiente' | 'completado' | 'validado' | 'cancelado'
+          nuevoEstado: 'pendiente' | 'completado' | 'cancelado'
         ) => {
           set((state) => ({
             comandas: state.comandas.map((comanda) =>
               comanda.id === comandaId
-                ? { ...comanda, estado: nuevoEstado }
+                ? {
+                    ...comanda,
+                    estado: nuevoEstado,
+                    estadoNegocio: nuevoEstado as EstadoComandaNegocio,
+                  }
+                : comanda
+            ),
+          }));
+        },
+
+        actualizarEstadoValidacion: (
+          comandaId: string,
+          nuevoEstado: 'no_validado' | 'validado'
+        ) => {
+          set((state) => ({
+            comandas: state.comandas.map((comanda) =>
+              comanda.id === comandaId
+                ? { ...comanda, estadoValidacion: nuevoEstado }
                 : comanda
             ),
           }));

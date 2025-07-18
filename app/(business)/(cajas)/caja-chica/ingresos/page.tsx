@@ -7,20 +7,22 @@ import StandardBreadcrumbs from '@/components/common/StandardBreadcrumbs';
 import TableFilters from '@/components/cajas/TableFilters';
 import TransactionsTable from '@/components/cajas/TransactionsTableTanStack';
 import ModalCambiarEstado from '@/components/validacion/ModalCambiarEstado';
+import ModalVerDetalles from '@/components/validacion/ModalVerDetalles';
+import { useTransactions } from '@/hooks/useTransactions';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Plus } from 'lucide-react';
-import { ColumnaCaja } from '@/types/caja';
+import { ColumnaCaja, Comanda } from '@/types/caja';
 import ModalTransaccionUnificado from '@/components/cajas/ModalTransaccionUnificado';
-import { useTransactions } from '@/hooks/useTransactions';
-import ModalTransaccion from '@/components/cajas/ModalTransaccion';
 import { Pagination } from '@/components/ui/pagination';
 import { DateRangePicker } from '@/components/ui/date-range-picker';
 import { DateRange } from 'react-day-picker';
 import ClientOnly from '@/components/common/ClientOnly';
 import Spinner from '@/components/common/Spinner';
 import SummaryCard from '@/components/common/SummaryCard';
+import ModalEditarTransaccion from '@/components/cajas/ModalEditarTransaccion';
 import { useCurrencyConverter } from '@/hooks/useCurrencyConverter';
+import { formatDate } from '@/lib/utils';
 
 export default function IngresosPage() {
   const { isInitialized } = useCurrencyConverter();
@@ -46,13 +48,11 @@ export default function IngresosPage() {
   const [columns, setColumns] = useState<ColumnaCaja[]>(initialColumns);
   const [showAddModal, setShowAddModal] = useState(false);
   const [showChangeStatusModal, setShowChangeStatusModal] = useState(false);
-  const [showTransactionModal, setShowTransactionModal] = useState(false); // ✅ Agregamos este estado
-  const [selectedTransactionId, setSelectedTransactionId] = useState<
-    string | null
-  >(null);
-  const [modalMode, setModalMode] = useState<'view' | 'edit' | 'create'>(
-    'view'
-  );
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [showViewModal, setShowViewModal] = useState(false);
+  const [selectedTransactionId, setSelectedTransactionId] =
+    useState<string>('');
+
   if (!isInitialized) {
     return (
       <div className="flex min-h-screen items-center justify-center">
@@ -81,21 +81,62 @@ export default function IngresosPage() {
   // Handle edit transaction
   const onEditTransaction = (id: string) => {
     setSelectedTransactionId(id);
-    setModalMode('edit');
-    setShowTransactionModal(true);
+    setShowEditModal(true);
   };
 
+  // Handle view transaction details
   const onViewTransaction = (id: string) => {
     setSelectedTransactionId(id);
-    setModalMode('view');
-    setShowTransactionModal(true);
-  };
-
-  const handleModalModeChange = (mode: 'view' | 'edit' | 'create') => {
-    setModalMode(mode); // ✅ Simplificamos, ya no necesitamos mapear
+    setShowViewModal(true);
   };
 
   const hiddenColumns = columns.filter((c) => !c.visible).map((c) => c.key);
+
+  const agruparTransaccionesConTraspasos = () => {
+    const grupos: Array<{
+      tipo: 'transacciones';
+      fecha: string;
+      data: Comanda[];
+      key: string;
+    }> = [];
+
+    // Crear un Set para evitar duplicados de fechas de transacciones
+    const fechasTransaccionesProcesadas = new Set<string>();
+
+    // Agrupar transacciones por fecha
+    const transaccionesPorFecha = transactions.reduce(
+      (acc, transaction) => {
+        const fechaStr = formatDate(transaction.fecha);
+        if (!acc[fechaStr]) {
+          acc[fechaStr] = [];
+        }
+        acc[fechaStr].push(transaction);
+        return acc;
+      },
+      {} as Record<string, typeof transactions>
+    );
+
+    Object.entries(transaccionesPorFecha).forEach(
+      ([fecha, transaccionesDeLaFecha]) => {
+        if (!fechasTransaccionesProcesadas.has(fecha)) {
+          grupos.push({
+            tipo: 'transacciones',
+            fecha,
+            data: transaccionesDeLaFecha,
+            key: `transacciones-${fecha}`,
+          });
+          fechasTransaccionesProcesadas.add(fecha);
+        }
+      }
+    );
+
+    // Ordenar por fecha descendente (más recientes primero)
+    return grupos.sort((a, b) => {
+      return new Date(b.fecha).getTime() - new Date(a.fecha).getTime();
+    });
+  };
+
+  const gruposOrdenados = agruparTransaccionesConTraspasos();
 
   return (
     <MainLayout>
@@ -139,7 +180,6 @@ export default function IngresosPage() {
                     </div>
                   </div>
 
-                  {/* Add transaction button */}
                   <Button
                     onClick={() => setShowAddModal(true)}
                     className="rounded-lg bg-gradient-to-r from-[#f9bbc4] to-[#e292a3] px-6 py-2 font-semibold text-white shadow-md transition-all duration-200 hover:scale-105 hover:from-[#e292a3] hover:to-[#d4a7ca] hover:shadow-lg"
@@ -198,14 +238,34 @@ export default function IngresosPage() {
               <div className="mb-6">
                 <Card className="border border-[#f9bbc4]/20 bg-white/80 shadow-sm">
                   <CardContent className="p-4">
-                    <TransactionsTable
-                      data={transactions}
-                      onEdit={onEditTransaction}
-                      onDelete={handleDelete}
-                      onView={onViewTransaction}
-                      onChangeStatus={onChangeStatus}
-                      hiddenColumns={hiddenColumns}
-                    />
+                    {/* Renderizar grupos ordenados - SIN TraspasoIndicator */}
+                    <div className="space-y-4">
+                      {gruposOrdenados.map((grupo) => (
+                        <div key={grupo.key}>
+                          {/* Solo mostrar tabla de transacciones */}
+                          <TransactionsTable
+                            data={grupo.data}
+                            onEdit={onEditTransaction}
+                            onDelete={handleDelete}
+                            onView={onViewTransaction}
+                            onChangeStatus={onChangeStatus}
+                            hiddenColumns={hiddenColumns}
+                          />
+                        </div>
+                      ))}
+
+                      {/* Si no hay grupos, mostrar tabla normal */}
+                      {gruposOrdenados.length === 0 && (
+                        <TransactionsTable
+                          data={transactions}
+                          onEdit={onEditTransaction}
+                          onDelete={handleDelete}
+                          onView={onViewTransaction}
+                          onChangeStatus={onChangeStatus}
+                          hiddenColumns={hiddenColumns}
+                        />
+                      )}
+                    </div>
 
                     {/* Pagination */}
                     <div className="mt-6">
@@ -232,44 +292,49 @@ export default function IngresosPage() {
         </ClientOnly>
 
         {/* Modals */}
+
         <ModalTransaccionUnificado
           isOpen={showAddModal}
           onClose={() => setShowAddModal(false)}
           tipo="ingreso"
         />
 
-        {/* ✅ Solo renderizar si selectedTransactionId no es null */}
-        {showChangeStatusModal && selectedTransactionId && (
-          <ModalCambiarEstado
-            isOpen={showChangeStatusModal}
-            onClose={() => {
-              setShowChangeStatusModal(false);
-              setSelectedTransactionId(null);
-            }}
-            comandaId={selectedTransactionId}
-            estadoActual={
-              (selectedTransaction?.estado === 'validado'
-                ? 'completado'
-                : selectedTransaction?.estado) || 'pendiente'
-            }
-            onSuccess={() => {
-              setShowChangeStatusModal(false);
-              setSelectedTransactionId(null);
-            }}
-          />
-        )}
-
-        {/* ✅ Modal de transacción corregido */}
-        <ModalTransaccion
-          isOpen={showTransactionModal}
+        <ModalCambiarEstado
+          isOpen={showChangeStatusModal}
           onClose={() => {
-            setShowTransactionModal(false);
-            setSelectedTransactionId(null);
-            setModalMode('view');
+            setShowChangeStatusModal(false);
+            setSelectedTransactionId('');
           }}
-          transactionId={selectedTransactionId || undefined}
-          mode={modalMode}
-          onModeChange={handleModalModeChange}
+          comandaId={selectedTransactionId}
+          estadoActual={
+            (selectedTransaction?.estadoValidacion === 'validado'
+              ? 'completado'
+              : selectedTransaction?.estado) || 'pendiente'
+          }
+          onSuccess={() => {
+            setShowChangeStatusModal(false);
+            setSelectedTransactionId('');
+          }}
+        />
+
+        {/* ✅ ModalEditarTransaccion para EDITAR transacciones existentes (NUEVO MODAL MEJORADO) */}
+        <ModalEditarTransaccion
+          isOpen={showEditModal}
+          onClose={() => {
+            setShowEditModal(false);
+            setSelectedTransactionId('');
+          }}
+          comandaId={selectedTransactionId}
+        />
+
+        {/* ✅ ModalVerDetalles para VER detalles de transacciones */}
+        <ModalVerDetalles
+          isOpen={showViewModal}
+          onClose={() => {
+            setShowViewModal(false);
+            setSelectedTransactionId('');
+          }}
+          comandaId={selectedTransactionId}
         />
       </div>
     </MainLayout>

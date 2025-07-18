@@ -35,7 +35,7 @@ interface MetodosPagoSectionProps {
   onActualizarMetodo?: (
     index: number,
     campo: keyof MetodoPagoForm,
-    valor: string | number
+    valor: string | number | { nombre: string; codigo: string }
   ) => void;
   className?: string;
 }
@@ -93,71 +93,110 @@ export default function MetodosPagoSection({
       </CardHeader>
       <CardContent className="space-y-4">
         {metodosPago.map((metodo, index) => (
-          <div key={index} className="flex items-center gap-2">
+          <div key={index} className="space-y-2">
+            {/* Fila principal del método de pago */}
             <div className="flex items-center gap-2">
-              {getPaymentIcon(metodo.tipo)}
-            </div>
-
-            <Select
-              value={metodo.tipo}
-              onValueChange={(value) =>
-                onActualizarMetodo?.(index, 'tipo', value)
-              }
-              disabled={isReadOnly}
-            >
-              <SelectTrigger className="w-[140px]">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value={METODOS_PAGO.EFECTIVO}>Efectivo</SelectItem>
-                <SelectItem value={METODOS_PAGO.TARJETA}>Tarjeta</SelectItem>
-                <SelectItem value={METODOS_PAGO.TRANSFERENCIA}>
-                  Transferencia
-                </SelectItem>
-                <SelectItem value={METODOS_PAGO.GIFTCARD}>Gift Card</SelectItem>
-                <SelectItem value={METODOS_PAGO.QR}>QR</SelectItem>
-                <SelectItem value={METODOS_PAGO.MIXTO}>Mixto</SelectItem>
-              </SelectContent>
-            </Select>
-
-            <Input
-              type="number"
-              placeholder="Monto"
-              value={metodo.monto || ''}
-              onChange={(e) =>
-                onActualizarMetodo?.(
-                  index,
-                  'monto',
-                  parseFloat(e.target.value) || 0
-                )
-              }
-              className="w-24"
-              min="0"
-              step="0.01"
-              readOnly={isReadOnly}
-            />
-
-            {/* Mostrar descuento aplicado si existe */}
-            {metodo.descuentoAplicado > 0 && (
-              <div className="min-w-[60px] text-xs text-green-600">
-                -{formatUSD(metodo.descuentoAplicado)}
+              <div className="flex items-center gap-2">
+                {getPaymentIcon(metodo.tipo)}
               </div>
-            )}
 
-            <div className="min-w-[80px] text-sm font-medium">
-              = {formatUSD(metodo.montoFinal)}
+              <Select
+                value={metodo.tipo}
+                onValueChange={(value) =>
+                  onActualizarMetodo?.(index, 'tipo', value)
+                }
+                disabled={isReadOnly}
+              >
+                <SelectTrigger className="w-[140px]">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value={METODOS_PAGO.EFECTIVO}>
+                    Efectivo
+                  </SelectItem>
+                  <SelectItem value={METODOS_PAGO.TARJETA}>Tarjeta</SelectItem>
+                  <SelectItem value={METODOS_PAGO.TRANSFERENCIA}>
+                    Transferencia
+                  </SelectItem>
+                  <SelectItem value={METODOS_PAGO.GIFTCARD}>
+                    Gift Card
+                  </SelectItem>
+                  <SelectItem value={METODOS_PAGO.QR}>QR</SelectItem>
+                  <SelectItem value={METODOS_PAGO.MIXTO}>Mixto</SelectItem>
+                </SelectContent>
+              </Select>
+
+              <Input
+                type="number"
+                placeholder="Monto"
+                value={metodo.monto || ''}
+                onChange={(e) =>
+                  onActualizarMetodo?.(
+                    index,
+                    'monto',
+                    parseFloat(e.target.value) || 0
+                  )
+                }
+                className="w-24"
+                min="0"
+                step="0.01"
+                readOnly={isReadOnly}
+              />
+
+              {/* Mostrar descuento aplicado si existe */}
+              {metodo.descuentoAplicado > 0 && (
+                <div className="min-w-[60px] text-xs text-green-600">
+                  -{formatUSD(metodo.descuentoAplicado)}
+                </div>
+              )}
+
+              <div className="min-w-[80px] text-sm font-medium">
+                = {formatUSD(metodo.montoFinal)}
+              </div>
+
+              {!isReadOnly && metodosPago.length > 1 && (
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => onEliminarMetodo?.(index)}
+                  className="text-red-500 hover:text-red-700"
+                >
+                  <Trash2 className="h-4 w-4" />
+                </Button>
+              )}
             </div>
 
-            {!isReadOnly && metodosPago.length > 1 && (
-              <Button
-                type="button"
-                variant="ghost"
-                size="sm"
-                onClick={() => onEliminarMetodo?.(index)}
-                className="text-red-500 hover:text-red-700"
-              >
-                <Trash2 className="h-4 w-4" />
-              </Button>
+            {/* Campos adicionales para Gift Card */}
+            {metodo.tipo === METODOS_PAGO.GIFTCARD && (
+              <div className="ml-6 flex gap-2">
+                <Input
+                  placeholder="Nombre"
+                  value={metodo.giftcard?.nombre || ''}
+                  onChange={(e) => {
+                    const giftcardData = {
+                      nombre: e.target.value,
+                      codigo: metodo.giftcard?.codigo || '',
+                    };
+                    onActualizarMetodo?.(index, 'giftcard', giftcardData);
+                  }}
+                  className="w-32"
+                  readOnly={isReadOnly}
+                />
+                <Input
+                  placeholder="Código"
+                  value={metodo.giftcard?.codigo || ''}
+                  onChange={(e) => {
+                    const giftcardData = {
+                      nombre: metodo.giftcard?.nombre || '',
+                      codigo: e.target.value,
+                    };
+                    onActualizarMetodo?.(index, 'giftcard', giftcardData);
+                  }}
+                  className="w-32"
+                  readOnly={isReadOnly}
+                />
+              </div>
             )}
           </div>
         ))}

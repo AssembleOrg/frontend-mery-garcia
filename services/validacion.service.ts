@@ -1,6 +1,5 @@
 import {
   EstadoComandaNegocio,
-  ComandaConValidacion,
   TrazabilidadComanda,
   HistorialCambio,
 } from '@/types/caja';
@@ -33,8 +32,7 @@ const mockDelay = (ms: number = 500) =>
   new Promise((resolve) => setTimeout(resolve, ms));
 
 // === CLIENTE API PURO - SIN LÓGICA DE NEGOCIO ===
-
-// Cambiar estado de comanda - Solo llamada HTTP
+//* CONECTAR BE
 export const cambiarEstadoComanda = async (
   payload: CambiarEstadoPayload
 ): Promise<RespuestaValidacion> => {
@@ -180,73 +178,6 @@ export const obtenerHistorialComanda = async (
     return {
       exito: false,
       mensaje: 'Error al obtener el historial',
-      errores: ['Error interno del servidor'],
-    };
-  }
-};
-
-// Obtener comandas validadas para traspaso - Solo llamada HTTP
-export const obtenerComandasValidadas = async (
-  fechaDesde: string,
-  fechaHasta: string
-): Promise<RespuestaValidacion> => {
-  logger.info('[API] Obtener comandas validadas:', {
-    fechaDesde,
-    fechaHasta,
-  });
-
-  try {
-    await mockDelay(400);
-
-    // Mock de comandas validadas - Solo transformación de datos
-    const comandasValidadas: ComandaConValidacion[] = [];
-
-    return {
-      exito: true,
-      mensaje: `${comandasValidadas.length} comandas validadas encontradas`,
-      data: { comandasValidadas },
-    };
-  } catch (error) {
-    logger.error('[API] Error al obtener comandas validadas:', error);
-    return {
-      exito: false,
-      mensaje: 'Error al obtener comandas validadas',
-      errores: ['Error interno del servidor'],
-    };
-  }
-};
-
-export const realizarTraspaso = async (
-  comandaIds: string[],
-  observaciones?: string
-): Promise<RespuestaValidacion> => {
-  logger.info('[API] Realizar traspaso:', {
-    comandaIds,
-    observaciones,
-  });
-
-  try {
-    await mockDelay(1000);
-
-    const traspasoInfo = {
-      id: `traspaso-${Date.now()}`,
-      fechaTraspaso: new Date().toISOString(),
-      comandasTraspasadas: comandaIds,
-      observaciones,
-    };
-
-    logger.success('[API] Traspaso realizado exitosamente:', traspasoInfo);
-
-    return {
-      exito: true,
-      mensaje: `${comandaIds.length} comandas traspasadas exitosamente a Caja 2`,
-      data: traspasoInfo,
-    };
-  } catch (error) {
-    logger.error('[API] Error al realizar traspaso:', error);
-    return {
-      exito: false,
-      mensaje: 'Error al realizar el traspaso',
       errores: ['Error interno del servidor'],
     };
   }
