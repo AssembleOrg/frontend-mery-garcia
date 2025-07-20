@@ -198,6 +198,8 @@ export default function EgresosPage() {
                         title="💰 Total Egresos"
                         value={statistics.totalOutgoing ?? 0}
                         format="currency"
+                        dualCurrency={true}
+                        isDualValue={true}
                         valueClassName="text-red-600"
                       />
                       <SummaryCard

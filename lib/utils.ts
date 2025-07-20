@@ -65,6 +65,14 @@ export function formatARS(amountUSD: number, exchangeRate = 1000) {
   }).format(amountUSD * exchangeRate);
 }
 
+export function formatARSNative(amountARS: number) {
+  return new Intl.NumberFormat('es-AR', {
+    style: 'currency',
+    currency: 'ARS',
+    maximumFractionDigits: 2,
+  }).format(amountARS);
+}
+
 export function formatCurrencyUyu(amount: number) {
   return new Intl.NumberFormat('es-UY', {
     style: 'currency',

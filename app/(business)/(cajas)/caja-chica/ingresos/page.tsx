@@ -165,6 +165,8 @@ export default function IngresosPage() {
                         title="💰 Total Ingresos"
                         value={statistics.totalIncoming ?? 0}
                         format="currency"
+                        dualCurrency={true}
+                        isDualValue={true}
                         valueClassName="text-green-600"
                       />
                       <SummaryCard

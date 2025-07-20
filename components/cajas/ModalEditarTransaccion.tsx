@@ -106,9 +106,15 @@ export default function ModalEditarTransaccion({
   const { formatUSD } = useCurrencyConverter();
 
   const calcularMontoOriginal = (tipo: string, montoFinal: number) => {
-    if (tipo === 'efectivo') {
-      const descuentoPorcentaje = descuentosPorMetodo.efectivo / 100;
-      return montoFinal / (1 - descuentoPorcentaje);
+    // Excluir métodos que no tienen descuentos
+    if (tipo === 'mixto' || tipo === 'giftcard' || tipo === 'qr') {
+      return montoFinal;
+    }
+
+    const descuentoPorcentaje =
+      descuentosPorMetodo[tipo as keyof typeof descuentosPorMetodo] || 0;
+    if (descuentoPorcentaje > 0) {
+      return montoFinal / (1 - descuentoPorcentaje / 100);
     }
     return montoFinal;
   };
@@ -204,6 +210,7 @@ export default function ModalEditarTransaccion({
     const nuevoMetodo: MetodoPago = {
       tipo: 'efectivo',
       monto: 0,
+      moneda: 'USD', // Valor por defecto
     };
     setMetodosPago([...metodosPago, nuevoMetodo]);
   };
@@ -629,9 +636,15 @@ export default function ModalEditarTransaccion({
                         metodo.tipo,
                         metodo.monto
                       );
+                      const descuentoPorcentaje =
+                        descuentosPorMetodo[
+                          metodo.tipo as keyof typeof descuentosPorMetodo
+                        ] || 0;
                       const tieneDescuento =
-                        metodo.tipo === 'efectivo' &&
-                        descuentosPorMetodo.efectivo > 0;
+                        descuentoPorcentaje > 0 &&
+                        metodo.tipo !== 'mixto' &&
+                        metodo.tipo !== 'giftcard' &&
+                        metodo.tipo !== 'qr';
 
                       return (
                         <div
@@ -682,7 +695,7 @@ export default function ModalEditarTransaccion({
                                   'monto',
                                   tieneDescuento
                                     ? numeroValor *
-                                        (1 - descuentosPorMetodo.efectivo / 100)
+                                        (1 - descuentoPorcentaje / 100)
                                     : numeroValor
                                 );
                               }}
@@ -691,7 +704,7 @@ export default function ModalEditarTransaccion({
                             {tieneDescuento && (
                               <p className="mt-1 text-xs text-green-600">
                                 Final: {formatUSD(metodo.monto)} (desc.{' '}
-                                {descuentosPorMetodo.efectivo}%)
+                                {descuentoPorcentaje}%)
                               </p>
                             )}
                           </div>

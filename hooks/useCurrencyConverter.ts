@@ -5,6 +5,7 @@ import {
   formatDualCurrency,
   formatUSD as formatCurrencyUsd,
   formatARS as formatCurrencyArs,
+  formatARSNative,
 } from '@/lib/utils';
 
 export function useCurrencyConverter() {
@@ -33,6 +34,10 @@ export function useCurrencyConverter() {
     return formatCurrencyUsd(amountUSD);
   };
 
+  const formatARSFromNative = (amountARS: number): string => {
+    return formatARSNative(amountARS);
+  };
+
   const formatDual = (amountUSD: number, showARS: boolean = true): string => {
     return formatDualCurrency(amountUSD, exchangeRate, showARS);
   };
@@ -51,6 +56,7 @@ export function useCurrencyConverter() {
     usdToArs,
     formatARS,
     formatUSD,
+    formatARSFromNative,
     formatDual,
     exchangeRate,
     isExchangeRateValid,

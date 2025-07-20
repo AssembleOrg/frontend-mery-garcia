@@ -1,8 +1,22 @@
 import { useState, useCallback } from 'react';
 import { useConfiguracion } from '@/features/configuracion/store/configuracionStore';
+import { useExchangeRateStore } from '@/features/exchange-rate/store/exchangeRateStore';
+import { useCurrencyConverter } from '@/hooks/useCurrencyConverter';
 import { MetodoPago, MetodoPagoForm } from '@/types/caja';
+import { MONEDAS } from '@/lib/constants';
 
 export type { MetodoPagoForm } from '@/types/caja';
+
+export interface ResumenDual {
+  totalUSD: number;
+  totalARS: number;
+  totalPagadoUSD: number;
+  totalPagadoARS: number;
+  detallesPorMoneda: {
+    USD: { total: number; metodos: number };
+    ARS: { total: number; metodos: number };
+  };
+}
 
 export interface UseMetodosPagoReturn {
   metodosPago: MetodoPagoForm[];
@@ -21,33 +35,67 @@ export interface UseMetodosPagoReturn {
     error?: string;
   };
   convertirParaPersistencia: () => MetodoPago[];
+  obtenerResumenDual: () => ResumenDual;
 }
 
 export function useMetodosPago(): UseMetodosPagoReturn {
   const { descuentosPorMetodo } = useConfiguracion();
+  const { tipoCambio } = useExchangeRateStore();
+  const { arsToUsd, usdToArs } = useCurrencyConverter();
+
   const [metodosPago, setMetodosPago] = useState<MetodoPagoForm[]>([
     {
       tipo: 'efectivo',
       monto: 0,
       montoFinal: 0,
       descuentoAplicado: 0,
+      moneda: MONEDAS.USD,
     },
   ]);
 
   const calcularMontoFinal = useCallback(
-    (tipo: MetodoPagoForm['tipo'], monto: number) => {
+    (
+      tipo: MetodoPagoForm['tipo'],
+      monto: number,
+      moneda: string = MONEDAS.USD
+    ) => {
       if (tipo === 'mixto' || tipo === 'giftcard' || tipo === 'qr') {
-        return { montoFinal: monto, descuentoAplicado: 0 };
+        // Para estos tipos no hay descuento
+        const montoUSD = moneda === MONEDAS.ARS ? arsToUsd(monto) : monto;
+        return {
+          montoFinal: montoUSD,
+          descuentoAplicado: 0,
+        };
       }
 
       const porcentajeDescuento = descuentosPorMetodo[tipo] || 0;
-      const descuento = (monto * porcentajeDescuento) / 100;
-      return {
-        montoFinal: monto - descuento,
-        descuentoAplicado: descuento,
-      };
+
+      if (moneda === MONEDAS.ARS) {
+        // Para ARS: aplicar descuento en ARS, luego convertir a USD
+        const descuentoARS = (monto * porcentajeDescuento) / 100;
+        const montoFinalARS = monto - descuentoARS;
+        const montoFinalUSD = arsToUsd(montoFinalARS);
+        const descuentoUSD = arsToUsd(descuentoARS);
+
+        return {
+          montoFinal: montoFinalUSD,
+          descuentoAplicado: descuentoUSD, // Descuento convertido a USD para consistencia
+          // Campos adicionales para tracking
+          descuentoOriginalARS: descuentoARS,
+          montoFinalOriginalARS: montoFinalARS,
+        };
+      } else {
+        // Para USD: aplicar descuento directamente en USD
+        const descuentoUSD = (monto * porcentajeDescuento) / 100;
+        const montoFinalUSD = monto - descuentoUSD;
+
+        return {
+          montoFinal: montoFinalUSD,
+          descuentoAplicado: descuentoUSD,
+        };
+      }
     },
-    [descuentosPorMetodo]
+    [descuentosPorMetodo, arsToUsd, tipoCambio]
   );
 
   const agregarMetodoPago = useCallback(() => {
@@ -56,6 +104,7 @@ export function useMetodosPago(): UseMetodosPagoReturn {
       monto: 0,
       montoFinal: 0,
       descuentoAplicado: 0,
+      moneda: MONEDAS.USD,
     };
     setMetodosPago((prev) => [...prev, nuevoMetodo]);
   }, []);
@@ -79,15 +128,17 @@ export function useMetodosPago(): UseMetodosPagoReturn {
         const nuevosMetodos = [...prev];
         nuevosMetodos[index] = { ...nuevosMetodos[index], [campo]: valor };
 
-        if (campo === 'tipo' || campo === 'monto') {
+        if (campo === 'tipo' || campo === 'monto' || campo === 'moneda') {
           const metodo = nuevosMetodos[index];
-          const { montoFinal, descuentoAplicado } = calcularMontoFinal(
+          const monedaActual = metodo.moneda || MONEDAS.USD;
+          const calculado = calcularMontoFinal(
             metodo.tipo,
-            metodo.monto
+            metodo.monto,
+            monedaActual
           );
 
-          metodo.montoFinal = montoFinal;
-          metodo.descuentoAplicado = descuentoAplicado;
+          // Aplicar todos los campos calculados
+          Object.assign(metodo, calculado);
         }
 
         return nuevosMetodos;
@@ -98,7 +149,13 @@ export function useMetodosPago(): UseMetodosPagoReturn {
 
   const resetMetodosPago = useCallback(() => {
     setMetodosPago([
-      { tipo: 'efectivo', monto: 0, montoFinal: 0, descuentoAplicado: 0 },
+      {
+        tipo: 'efectivo',
+        monto: 0,
+        montoFinal: 0,
+        descuentoAplicado: 0,
+        moneda: MONEDAS.USD,
+      },
     ]);
   }, []);
 
@@ -139,7 +196,8 @@ export function useMetodosPago(): UseMetodosPagoReturn {
     return metodosPago.map((metodo) => {
       const metodoPersistencia: MetodoPago = {
         tipo: metodo.tipo,
-        monto: metodo.montoFinal,
+        monto: metodo.montoFinal, // Siempre en USD
+        moneda: metodo.moneda,
       };
 
       if (metodo.tipo === 'giftcard' && metodo.giftcard) {
@@ -149,6 +207,46 @@ export function useMetodosPago(): UseMetodosPagoReturn {
       return metodoPersistencia;
     });
   }, [metodosPago]);
+
+  const obtenerResumenDual = useCallback((): ResumenDual => {
+    const resumen = {
+      totalUSD: 0,
+      totalARS: 0,
+      totalPagadoUSD: 0,
+      totalPagadoARS: 0,
+      detallesPorMoneda: {
+        USD: { total: 0, metodos: 0 },
+        ARS: { total: 0, metodos: 0 },
+      },
+    };
+
+    metodosPago.forEach((metodo) => {
+      const moneda = metodo.moneda || MONEDAS.USD;
+
+      if (moneda === MONEDAS.USD) {
+        // Para USD: usar el monto final (ya con descuento aplicado)
+        resumen.detallesPorMoneda.USD.total += metodo.montoFinal;
+        resumen.detallesPorMoneda.USD.metodos += 1;
+        resumen.totalPagadoUSD += metodo.montoFinal;
+      } else {
+        // Para ARS: usar el monto final en ARS (ya con descuento aplicado)
+        const montoFinalARS = metodo.montoFinalOriginalARS || metodo.monto;
+        resumen.detallesPorMoneda.ARS.total += montoFinalARS;
+        resumen.detallesPorMoneda.ARS.metodos += 1;
+        resumen.totalPagadoARS += montoFinalARS;
+      }
+    });
+
+    // El total USD es la suma de todos los montos finales (ya convertidos a USD)
+    resumen.totalUSD = metodosPago.reduce((sum, mp) => sum + mp.montoFinal, 0);
+
+    // Para el total ARS equivalente: convertir la parte USD + la parte ARS ya existente
+    const usdPartInARS =
+      resumen.totalPagadoUSD > 0 ? usdToArs(resumen.totalPagadoUSD) : 0;
+    resumen.totalARS = usdPartInARS + resumen.totalPagadoARS;
+
+    return resumen;
+  }, [metodosPago, usdToArs]);
 
   const totalPagado = metodosPago.reduce((sum, mp) => sum + mp.montoFinal, 0);
 
@@ -162,5 +260,6 @@ export function useMetodosPago(): UseMetodosPagoReturn {
     resetMetodosPago,
     validarMetodosPago,
     convertirParaPersistencia,
+    obtenerResumenDual,
   };
 }

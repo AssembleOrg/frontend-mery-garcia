@@ -220,18 +220,24 @@ export default function ResumenCajaChicaPage() {
                             title="Total Ingresos"
                             value={resumen.totalIngresos}
                             format="currency"
+                            dualCurrency={true}
+                            isDualValue={true}
                             valueClassName="text-green-700"
                           />
                           <SummaryCard
                             title="Total Egresos"
                             value={resumen.totalEgresos}
                             format="currency"
+                            dualCurrency={true}
+                            isDualValue={true}
                             valueClassName="text-red-700"
                           />
                           <SummaryCard
                             title="Balance Neto"
                             value={resumen.montoNeto}
                             format="currency"
+                            dualCurrency={true}
+                            isDualValue={true}
                             valueClassName={
                               resumen.montoNeto >= 0
                                 ? 'text-green-700'
@@ -255,6 +261,8 @@ export default function ResumenCajaChicaPage() {
                                 title="Monto Disponible para Traslado"
                                 value={resumen.montoDisponibleParaTraslado}
                                 format="currency"
+                                dualCurrency={true}
+                                isDualValue={true}
                                 valueClassName="text-blue-700"
                               />
 

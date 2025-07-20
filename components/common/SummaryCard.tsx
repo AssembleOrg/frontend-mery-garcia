@@ -7,6 +7,9 @@ interface SummaryCardProps {
   value: number | undefined;
   format?: 'currency' | 'number';
   valueClassName?: string;
+  dualCurrency?: boolean;
+  // Nueva prop para indicar si el valor ya incluye conversiones mixtas
+  isDualValue?: boolean;
 }
 
 export default function SummaryCard({
@@ -14,15 +17,29 @@ export default function SummaryCard({
   value,
   format = 'number',
   valueClassName,
+  dualCurrency = false,
+  isDualValue = false,
 }: SummaryCardProps) {
-  const { formatUSD } = useCurrencyConverter();
+  const { formatUSD, formatDual, isExchangeRateValid } = useCurrencyConverter();
 
   const safeValue = value ?? 0;
 
-  const formattedValue =
-    format === 'currency'
-      ? formatUSD(safeValue)
-      : new Intl.NumberFormat('es-AR').format(safeValue);
+  const getFormattedValue = () => {
+    if (format === 'currency') {
+      if (dualCurrency && isExchangeRateValid) {
+        // Si isDualValue es true, el valor ya incluye conversiones mixtas
+        // por lo que solo mostramos en USD
+        if (isDualValue) {
+          return formatUSD(safeValue);
+        }
+        return formatDual(safeValue);
+      }
+      return formatUSD(safeValue);
+    }
+    return new Intl.NumberFormat('es-AR').format(safeValue);
+  };
+
+  const formattedValue = getFormattedValue();
 
   return (
     <Card className="overflow-hidden border border-[#f9bbc4]/30 bg-white/90">
@@ -35,6 +52,9 @@ export default function SummaryCard({
         <p
           className={cn(
             'text-xl leading-tight font-bold break-words sm:text-2xl',
+            dualCurrency && format === 'currency'
+              ? 'text-base sm:text-lg'
+              : 'text-xl sm:text-2xl',
             valueClassName ?? 'text-[#4a3540]'
           )}
           title={formattedValue}

@@ -66,7 +66,8 @@ export interface Seña {
 
 export interface MetodoPago {
   tipo: 'efectivo' | 'tarjeta' | 'transferencia' | 'giftcard' | 'qr' | 'mixto';
-  monto: number;
+  monto: number; // Monto en la moneda especificada
+  moneda: 'USD' | 'ARS'; // Moneda del pago (obligatorio)
   giftcard?: {
     nombre: string;
     codigo: string;
@@ -284,4 +285,7 @@ export interface Encomienda {
 export interface MetodoPagoForm extends MetodoPago {
   montoFinal: number;
   descuentoAplicado: number;
+  montoFinalARS?: number;
+  descuentoOriginalARS?: number;
+  montoFinalOriginalARS?: number;
 }

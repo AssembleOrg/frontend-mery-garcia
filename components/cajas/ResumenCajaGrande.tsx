@@ -15,7 +15,12 @@ export default function ResumenCajaGrande({
   comandasValidadas,
   traspasos,
 }: ResumenCajaGrandeProps) {
-  const { formatUSD } = useCurrencyConverter();
+  const { formatUSD, formatDual, isExchangeRateValid } = useCurrencyConverter();
+
+  // Función helper para formatear montos con visualización dual
+  const formatAmount = (amount: number) => {
+    return isExchangeRateValid ? formatDual(amount) : formatUSD(amount);
+  };
 
   // Estadísticas por unidad de negocio
   const estadisticasPorUnidad = comandasValidadas.reduce(
@@ -93,7 +98,7 @@ export default function ResumenCajaGrande({
                   </div>
                   <div className="text-right">
                     <p className="font-medium">
-                      {formatUSD(traspaso.montoTotal)}
+                      {formatAmount(traspaso.montoTotal)}
                     </p>
                     <Badge variant="outline" className="text-xs">
                       {traspaso.rangoFechas.desde} -{' '}
@@ -128,13 +133,13 @@ export default function ResumenCajaGrande({
                   <div className="flex justify-between text-green-600">
                     <span>Ingresos:</span>
                     <span className="font-medium">
-                      {formatUSD(stats.ingresos)}
+                      {formatAmount(stats.ingresos)}
                     </span>
                   </div>
                   <div className="flex justify-between text-red-600">
                     <span>Egresos:</span>
                     <span className="font-medium">
-                      {formatUSD(stats.egresos)}
+                      {formatAmount(stats.egresos)}
                     </span>
                   </div>
                   <div className="flex justify-between border-t pt-1">
@@ -146,7 +151,7 @@ export default function ResumenCajaGrande({
                           : 'text-red-600'
                       }`}
                     >
-                      {formatUSD(stats.ingresos - stats.egresos)}
+                      {formatAmount(stats.ingresos - stats.egresos)}
                     </span>
                   </div>
                 </div>
@@ -176,7 +181,7 @@ export default function ResumenCajaGrande({
                   {personalMasActivo[1].cantidad} comandas
                 </p>
                 <p className="text-sm text-gray-600">
-                  {formatUSD(personalMasActivo[1].total)}
+                  {formatAmount(personalMasActivo[1].total)}
                 </p>
               </div>
             </div>

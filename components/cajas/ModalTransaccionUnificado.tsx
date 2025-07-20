@@ -95,12 +95,14 @@ export default function ModalTransaccionUnificado({
   // Hook para métodos de pago con descuentos automáticos
   const {
     metodosPago,
+    totalPagado,
     agregarMetodoPago,
     eliminarMetodoPago,
     actualizarMetodoPago,
     resetMetodosPago,
     validarMetodosPago,
     convertirParaPersistencia,
+    obtenerResumenDual,
   } = useMetodosPago();
 
   const obtenerIconoUnidad = (unidad: UnidadNegocio) => {
@@ -390,20 +392,22 @@ export default function ModalTransaccionUnificado({
     );
     const subtotalConDescuentosItems = subtotalBase - totalDescuentos;
 
+    // El total pagado ya incluye los descuentos aplicados (está en montoFinal)
     const totalPagadoConDescuentos = metodosPago.reduce(
       (sum, metodo) => sum + metodo.montoFinal,
       0
     );
 
-    // Calcular descuentos por método de pago
+    // Calcular descuentos por método de pago (solo para mostrar)
     const descuentosPorMetodo = metodosPago.reduce(
       (sum, metodo) => sum + metodo.descuentoAplicado,
       0
     );
 
-    // Aplicar seña al total final
+    // El total final debe ser el subtotal menos la seña menos los descuentos por método de pago
+    // para que coincida con lo que realmente se debe pagar
     const totalFinalConDescuentos =
-      subtotalConDescuentosItems - descuentosPorMetodo - señaAplicada;
+      subtotalConDescuentosItems - señaAplicada - descuentosPorMetodo;
 
     const diferencia = totalPagadoConDescuentos - totalFinalConDescuentos;
 
@@ -1259,6 +1263,7 @@ export default function ModalTransaccionUnificado({
                 onAgregarMetodo={agregarMetodoPago}
                 onEliminarMetodo={eliminarMetodoPago}
                 onActualizarMetodo={actualizarMetodoPago}
+                obtenerResumenDual={obtenerResumenDual}
               />
 
               {errores.pagos && (

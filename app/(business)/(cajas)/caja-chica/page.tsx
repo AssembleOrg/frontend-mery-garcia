@@ -145,6 +145,8 @@ export default function CajaChicaMenuPage() {
                     title="Saldo Actual"
                     value={resumenDelDia.saldo}
                     format="currency"
+                    dualCurrency={true}
+                    isDualValue={true}
                     valueClassName={
                       resumenDelDia.saldo >= 0
                         ? 'text-green-600'
