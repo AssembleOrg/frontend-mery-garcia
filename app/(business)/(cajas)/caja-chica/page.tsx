@@ -10,7 +10,10 @@ import {
   useResumenCaja,
   useComandaStore,
 } from '@/features/comandas/store/comandaStore';
-import SummaryCard from '@/components/common/SummaryCard';
+import { useCurrencyConverter } from '@/hooks/useCurrencyConverter';
+import { useTransactions } from '@/hooks/useTransactions';
+import SummaryCardDual from '@/components/common/SummaryCardDual';
+import SummaryCardCount from '@/components/common/SummaryCardCount';
 import ClientOnly from '@/components/common/ClientOnly';
 import ManagerOrAdminOnly from '@/components/auth/ManagerOrAdminOnly';
 
@@ -28,12 +31,19 @@ export default function CajaChicaMenuPage() {
   // Obtener resumen del store y todas las comandas
   const { resumen } = useResumenCaja();
   const { comandas } = useComandaStore();
+  const { formatUSD, formatDual, isExchangeRateValid } = useCurrencyConverter();
+
+  // Hook para obtener estadísticas de transacciones con separación por moneda
+  const { statistics: ingresoStats } = useTransactions({
+    type: 'ingreso',
+  });
+
+  const { statistics: egresoStats } = useTransactions({
+    type: 'egreso',
+  });
 
   const formatAmount = (monto: number) => {
-    return new Intl.NumberFormat('es-AR', {
-      style: 'currency',
-      currency: 'USD',
-    }).format(monto);
+    return isExchangeRateValid ? formatDual(monto) : formatUSD(monto);
   };
 
   // Calcular servicio más vendido del día
@@ -139,52 +149,62 @@ export default function CajaChicaMenuPage() {
 
               {/* Resumen Rápido del Día */}
               <ClientOnly>
-                <div className="mb-8 grid grid-cols-1 gap-6 md:grid-cols-4">
-                  {/* Saldo Actual */}
-                  <SummaryCard
-                    title="Saldo Actual"
-                    value={resumenDelDia.saldo}
-                    format="currency"
-                    dualCurrency={true}
-                    isDualValue={true}
-                    valueClassName={
-                      resumenDelDia.saldo >= 0
-                        ? 'text-green-600'
-                        : 'text-red-600'
-                    }
-                  />
-
-                  {/* Clientes Hoy */}
-                  <SummaryCard
-                    title="Clientes Hoy"
-                    value={resumenDelDia.clientesAtendidos}
-                    format="number"
-                  />
-
-                  {/* Transacciones */}
-                  <SummaryCard
-                    title="Transacciones"
-                    value={
-                      resumenDelDia.cantidadIngresos +
-                      resumenDelDia.cantidadEgresos
-                    }
-                    format="number"
-                  />
-
-                  <Card className="border-2 border-[#f9bbc4]/20 bg-gradient-to-br from-white/95 to-[#f9bbc4]/5">
-                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                      <CardTitle className="text-sm font-medium text-[#6b4c57]">
-                        Más Vendido
-                      </CardTitle>
-                      <TrendingUp className="h-4 w-4 text-green-600" />
-                    </CardHeader>
-                    <CardContent>
-                      <div className="text-lg font-bold text-[#4a3540]">
-                        {resumenDelDia.servicioMasVendido}
-                      </div>
-                      <p className="text-xs text-[#8b6b75]">Servicio popular</p>
-                    </CardContent>
-                  </Card>
+                <div className="mb-8">
+                  <div className="grid grid-cols-1 gap-4 md:grid-cols-4">
+                    <SummaryCardDual
+                      title="💰 Total Ingresos"
+                      totalUSD={ingresoStats?.totalIncomingUSD || 0}
+                      totalARS={ingresoStats?.totalIncomingARS || 0}
+                      valueClassName="text-green-600"
+                      showTransactionCount={true}
+                      transactionCountUSD={
+                        ingresoStats?.dualCurrencyDetails?.USD?.transacciones ||
+                        0
+                      }
+                      transactionCountARS={
+                        ingresoStats?.dualCurrencyDetails?.ARS?.transacciones ||
+                        0
+                      }
+                    />
+                    <SummaryCardDual
+                      title="💸 Total Egresos"
+                      totalUSD={egresoStats?.totalOutgoingUSD || 0}
+                      totalARS={egresoStats?.totalOutgoingARS || 0}
+                      valueClassName="text-red-600"
+                      showTransactionCount={true}
+                      transactionCountUSD={
+                        egresoStats?.dualCurrencyDetails?.USD?.transacciones ||
+                        0
+                      }
+                      transactionCountARS={
+                        egresoStats?.dualCurrencyDetails?.ARS?.transacciones ||
+                        0
+                      }
+                    />
+                    <SummaryCardDual
+                      title="💳 Saldo Actual"
+                      totalUSD={
+                        (ingresoStats?.totalIncomingUSD || 0) -
+                        (egresoStats?.totalOutgoingUSD || 0)
+                      }
+                      totalARS={
+                        (ingresoStats?.totalIncomingARS || 0) -
+                        (egresoStats?.totalOutgoingARS || 0)
+                      }
+                      valueClassName={
+                        resumenDelDia.saldo >= 0
+                          ? 'text-green-600'
+                          : 'text-red-600'
+                      }
+                      showTransactionCount={false}
+                    />
+                    <SummaryCardCount
+                      title="👥 Clientes"
+                      count={ingresoStats?.clientCount || 0}
+                      subtitle="clientes únicos"
+                      valueClassName="text-blue-600"
+                    />
+                  </div>
                 </div>
               </ClientOnly>
 
@@ -225,7 +245,7 @@ export default function CajaChicaMenuPage() {
                           </p>
                           <div className="space-y-2">
                             <div
-                              className={`text-2xl font-bold ${option.isBalance && option.amount >= 0 ? 'text-green-600' : option.isBalance && option.amount < 0 ? 'text-red-600' : 'text-[#4a3540]'}`}
+                              className={`text-base font-bold ${option.isBalance && option.amount >= 0 ? 'text-green-600' : option.isBalance && option.amount < 0 ? 'text-red-600' : 'text-[#4a3540]'}`}
                             >
                               {formatAmount(option.amount)}
                             </div>

@@ -4,6 +4,7 @@ import MainLayout from '@/components/layout/MainLayout';
 import StandardPageBanner from '@/components/common/StandardPageBanner';
 import StandardBreadcrumbs from '@/components/common/StandardBreadcrumbs';
 import SummaryCard from '@/components/common/SummaryCard';
+import SummaryCardCount from '@/components/common/SummaryCardCount';
 import ResumenCajaGrande from '@/components/cajas/ResumenCajaGrande';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -27,6 +28,7 @@ import {
   Download,
   FileText,
   Database,
+  Activity,
 } from 'lucide-react';
 import Link from 'next/link';
 
@@ -108,28 +110,19 @@ export default function CajaGrandePage() {
                 <div className="mb-8 grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4">
                   <SummaryCard
                     title="Total Ingresos"
-                    value={resumenCaja.totalIngresos}
-                    format="currency"
-                    dualCurrency={true}
-                    isDualValue={true}
+                    totalUSD={resumenCaja.totalIngresos}
                   />
                   <SummaryCard
                     title="Total Egresos"
-                    value={resumenCaja.totalEgresos}
-                    format="currency"
-                    dualCurrency={true}
-                    isDualValue={true}
+                    totalUSD={resumenCaja.totalEgresos}
                   />
                   <SummaryCard
                     title="Saldo Neto"
-                    value={resumenCaja.saldoNeto}
-                    format="currency"
-                    dualCurrency={true}
-                    isDualValue={true}
+                    totalUSD={resumenCaja.saldoNeto}
                   />
-                  <SummaryCard
+                  <SummaryCardCount
                     title="Comandas Validadas"
-                    value={resumenCaja.cantidadComandas}
+                    count={resumenCaja.cantidadComandas}
                   />
                 </div>
 
@@ -354,6 +347,15 @@ export default function CajaGrandePage() {
                               <span className="flex items-center gap-2">
                                 <Eye className="h-4 w-4" />
                                 Ver Comandas Validadas
+                              </span>
+                              <ArrowRight className="h-4 w-4" />
+                            </Button>
+                          </Link>
+                          <Link href="/caja-grande/auditoria">
+                            <Button className="w-full justify-between bg-[#8b5a6b] text-white hover:bg-[#7a4f5e]">
+                              <span className="flex items-center gap-2">
+                                <Activity className="h-4 w-4" />
+                                Auditoría del Sistema
                               </span>
                               <ArrowRight className="h-4 w-4" />
                             </Button>

@@ -11,6 +11,7 @@ import { DataTable } from '@/components/ui/data-table';
 import {
   formatDate as formatDateEs,
   resolverMetodoPagoPrincipal,
+  resolverMetodoPagoPrincipalConMoneda,
   formatearDetalleMetodosPago,
   formatUSD,
   formatARS,
@@ -191,8 +192,12 @@ export default function TransactionsTableTanStack({
         // Resolver método principal
         const metodoPrincipal =
           metodosPago && metodosPago.length > 0
-            ? resolverMetodoPagoPrincipal(
-                metodosPago.map((m) => ({ tipo: m.tipo, monto: m.monto }))
+            ? resolverMetodoPagoPrincipalConMoneda(
+                metodosPago.map((m) => ({ 
+                  tipo: m.tipo, 
+                  monto: m.monto, 
+                  moneda: (m as any).moneda || 'USD' 
+                }))
               )
             : 'efectivo';
 
@@ -216,7 +221,13 @@ export default function TransactionsTableTanStack({
 
         const detalleTooltip =
           metodosPago && metodosPago.length > 0
-            ? formatearDetalleMetodosPago(metodosPago)
+            ? formatearDetalleMetodosPago(
+                metodosPago.map((m) => ({ 
+                  tipo: m.tipo, 
+                  monto: m.monto, 
+                  moneda: (m as any).moneda || 'USD' 
+                }))
+              )
             : metodoPrincipal;
 
         return (
@@ -224,7 +235,7 @@ export default function TransactionsTableTanStack({
             className={`rounded-md px-2 py-1 text-xs font-medium ${style(metodoPrincipal)} cursor-help`}
             title={detalleTooltip}
           >
-            {metodoPrincipal}
+            💰 {metodoPrincipal}
           </span>
         );
       },

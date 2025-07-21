@@ -89,6 +89,7 @@ export interface Comanda {
   totalDescuentos: number;
   totalSeña: number;
   totalFinal: number;
+  moneda?: 'USD' | 'ARS'; // Moneda principal de la transacción
   estado: 'pendiente' | 'completado' | 'cancelado';
   observaciones?: string;
   tipo: 'ingreso' | 'egreso';
@@ -114,6 +115,7 @@ export interface FiltrosComanda {
   estado?: string;
   personalId?: string;
   metodoPago?: string;
+  moneda?: string;
   cliente?: string;
   busqueda?: string;
   numeroComanda?: string;
@@ -248,6 +250,13 @@ export interface ResumenConMontoParcial {
   montoNeto: number;
   totalIngresos: number;
   totalEgresos: number;
+  // Nuevos campos separados por moneda
+  totalIngresosUSD?: number;
+  totalEgresosUSD?: number;
+  totalIngresosARS?: number;
+  totalEgresosARS?: number;
+  montoNetoUSD?: number;
+  montoNetoARS?: number;
   montoDisponibleParaTraslado: number;
   montoParcialSeleccionado?: number;
   montoResidual?: number;
@@ -285,6 +294,7 @@ export interface Encomienda {
 export interface MetodoPagoForm extends MetodoPago {
   montoFinal: number;
   descuentoAplicado: number;
+  montoOriginal: number;
   montoFinalARS?: number;
   descuentoOriginalARS?: number;
   montoFinalOriginalARS?: number;

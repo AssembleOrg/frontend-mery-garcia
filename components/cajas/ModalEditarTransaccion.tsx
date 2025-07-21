@@ -36,6 +36,7 @@ import {
   Comanda,
   ItemComanda,
   MetodoPago,
+  MetodoPagoForm,
   Personal,
   UnidadNegocio,
   EstadoComandaNegocio,
@@ -96,14 +97,20 @@ export default function ModalEditarTransaccion({
   const [clienteTelefono, setClienteTelefono] = useState('');
   const [clienteCuit, setClienteCuit] = useState('');
   const [items, setItems] = useState<ItemComanda[]>([]);
-  const [metodosPago, setMetodosPago] = useState<MetodoPago[]>([]);
+  const [metodosPago, setMetodosPago] = useState<MetodoPagoForm[]>([]);
   const [observaciones, setObservaciones] = useState('');
   const [vendedorId, setVendedorId] = useState('');
 
   const { obtenerComandaPorId, actualizarComanda } = useComandaStore();
   const { personal } = usePersonal();
   const { productosServicios } = useProductosServicios();
-  const { formatUSD } = useCurrencyConverter();
+  const { formatUSD, formatARS, formatDual, isExchangeRateValid, arsToUsd } =
+    useCurrencyConverter();
+
+  // Helper para formatear montos con dual currency
+  const formatAmount = (amount: number) => {
+    return isExchangeRateValid ? formatDual(amount) : formatUSD(amount);
+  };
 
   const calcularMontoOriginal = (tipo: string, montoFinal: number) => {
     // Excluir métodos que no tienen descuentos
@@ -129,7 +136,18 @@ export default function ModalEditarTransaccion({
         setClienteTelefono(comandaEncontrada.cliente.telefono || '');
         setClienteCuit(comandaEncontrada.cliente.cuit || '');
         setItems([...comandaEncontrada.items]);
-        setMetodosPago([...comandaEncontrada.metodosPago]);
+        // Convertir MetodoPago a MetodoPagoForm
+        const metodosPagoForm = comandaEncontrada.metodosPago.map(metodo => {
+          const montoOriginal = calcularMontoOriginal(metodo.tipo, metodo.monto);
+          const descuentoAplicado = montoOriginal - metodo.monto;
+          return {
+            ...metodo,
+            montoFinal: metodo.monto,
+            descuentoAplicado,
+            montoOriginal
+          };
+        });
+        setMetodosPago(metodosPagoForm);
         setObservaciones(comandaEncontrada.observaciones || '');
         setVendedorId(comandaEncontrada.mainStaff?.id || '');
       }
@@ -166,8 +184,26 @@ export default function ModalEditarTransaccion({
     0
   );
   const totalSeña = comanda.totalSeña || 0;
-  const totalFinal = subtotal - totalDescuentos - totalSeña;
-  const totalPagos = metodosPago.reduce((sum, metodo) => sum + metodo.monto, 0);
+  
+  // Calcular descuentos por método de pago
+  const descuentosPorMetodoPago = metodosPago.reduce((sum, metodo) => {
+    const montoOriginal = metodo.montoOriginal || metodo.monto;
+    const descuentoAplicado = montoOriginal - metodo.monto;
+    return sum + descuentoAplicado;
+  }, 0);
+  
+  // El total final debe considerar los descuentos por método de pago
+  const totalFinal = subtotal - totalDescuentos - totalSeña - descuentosPorMetodoPago;
+  
+  // Calcular total de pagos convirtiendo ARS a USD
+  const totalPagos = metodosPago.reduce((sum, metodo) => {
+    if (metodo.moneda === 'ARS') {
+      return sum + arsToUsd(metodo.monto);
+    }
+    return sum + metodo.monto;
+  }, 0);
+  
+  const diferencia = totalFinal - totalPagos;
 
   const agregarItem = () => {
     const nuevoItem: ItemComanda = {
@@ -207,10 +243,13 @@ export default function ModalEditarTransaccion({
   };
 
   const agregarMetodoPago = () => {
-    const nuevoMetodo: MetodoPago = {
+    const nuevoMetodo: MetodoPagoForm = {
       tipo: 'efectivo',
       monto: 0,
       moneda: 'USD', // Valor por defecto
+      montoFinal: 0,
+      descuentoAplicado: 0,
+      montoOriginal: 0,
     };
     setMetodosPago([...metodosPago, nuevoMetodo]);
   };
@@ -223,11 +262,34 @@ export default function ModalEditarTransaccion({
   // Actualizar método de pago
   const actualizarMetodoPago = (
     index: number,
-    campo: keyof MetodoPago,
+    campo: keyof MetodoPagoForm,
     valor: string | number
   ) => {
     const nuevosMetodos = [...metodosPago];
     nuevosMetodos[index] = { ...nuevosMetodos[index], [campo]: valor };
+    
+    // Si se actualiza el monto original o el tipo, recalcular el monto final
+    if (campo === 'montoOriginal' || campo === 'tipo') {
+      const metodo = nuevosMetodos[index];
+      const montoOriginal = campo === 'montoOriginal' ? Number(valor) : metodo.montoOriginal;
+      const tipo = campo === 'tipo' ? String(valor) : metodo.tipo;
+      
+      const descuentoPorcentaje = descuentosPorMetodo[tipo as keyof typeof descuentosPorMetodo] || 0;
+      const tieneDescuento = descuentoPorcentaje > 0 && tipo !== 'mixto' && tipo !== 'giftcard' && tipo !== 'qr';
+      
+      const montoFinal = tieneDescuento 
+        ? montoOriginal * (1 - descuentoPorcentaje / 100)
+        : montoOriginal;
+      
+      nuevosMetodos[index].monto = montoFinal;
+      nuevosMetodos[index].montoFinal = montoFinal;
+      nuevosMetodos[index].descuentoAplicado = montoOriginal - montoFinal;
+      
+      if (campo === 'montoOriginal') {
+        nuevosMetodos[index].montoOriginal = montoOriginal;
+      }
+    }
+    
     setMetodosPago(nuevosMetodos);
   };
 
@@ -252,13 +314,16 @@ export default function ModalEditarTransaccion({
         return;
       }
 
-      if (Math.abs(totalPagos - totalFinal) > 0.01) {
+      if (Math.abs(diferencia) > 0.01) {
         toast.error(
-          `El total de pagos (${formatUSD(totalPagos)}) debe coincidir con el total final (${formatUSD(totalFinal)})`
+          `El total de pagos (${formatAmount(totalPagos)}) debe coincidir con el total final (${formatAmount(totalFinal)})`
         );
         return;
       }
 
+      // Convertir MetodoPagoForm a MetodoPago para guardar
+      const metodosPagoParaGuardar: MetodoPago[] = metodosPago.map(({ montoFinal, descuentoAplicado, montoOriginal, ...metodo }) => metodo);
+      
       const comandaActualizada: Comanda = {
         ...comanda,
         cliente: {
@@ -268,7 +333,7 @@ export default function ModalEditarTransaccion({
           cuit: clienteCuit,
         },
         items,
-        metodosPago,
+        metodosPago: metodosPagoParaGuardar,
         observaciones,
         mainStaff: (() => {
           const personalEncontrado = personal.find(
@@ -539,7 +604,7 @@ export default function ModalEditarTransaccion({
                                     precio: number;
                                   }) => (
                                     <SelectItem key={p.id} value={p.id}>
-                                      {p.nombre} - {formatUSD(p.precio)}
+                                      {p.nombre} - {formatAmount(p.precio)}
                                     </SelectItem>
                                   )
                                 )}
@@ -604,7 +669,7 @@ export default function ModalEditarTransaccion({
                         </div>
                         <div className="mt-2 text-right">
                           <span className="font-bold">
-                            Subtotal: {formatUSD(item.subtotal)}
+                            Subtotal: {formatAmount(item.subtotal)}
                           </span>
                         </div>
                       </div>
@@ -632,10 +697,6 @@ export default function ModalEditarTransaccion({
                 <CardContent>
                   <div className="space-y-3">
                     {metodosPago.map((metodo, index) => {
-                      const montoOriginal = calcularMontoOriginal(
-                        metodo.tipo,
-                        metodo.monto
-                      );
                       const descuentoPorcentaje =
                         descuentosPorMetodo[
                           metodo.tipo as keyof typeof descuentosPorMetodo
@@ -677,36 +738,47 @@ export default function ModalEditarTransaccion({
                             </SelectContent>
                           </Select>
                           <div className="flex-1">
-                            <Input
-                              type="text"
-                              value={
-                                tieneDescuento
-                                  ? montoOriginal.toFixed(2)
-                                  : metodo.monto.toString()
-                              }
-                              onChange={(e) => {
-                                const valor = e.target.value;
-                                // Permitir solo números y punto decimal
-                                if (!/^\d*\.?\d*$/.test(valor)) return;
-
-                                const numeroValor = parseFloat(valor) || 0;
-                                actualizarMetodoPago(
-                                  index,
-                                  'monto',
-                                  tieneDescuento
-                                    ? numeroValor *
-                                        (1 - descuentoPorcentaje / 100)
-                                    : numeroValor
-                                );
-                              }}
-                              placeholder="Monto"
-                            />
-                            {tieneDescuento && (
-                              <p className="mt-1 text-xs text-green-600">
-                                Final: {formatUSD(metodo.monto)} (desc.{' '}
-                                {descuentoPorcentaje}%)
-                              </p>
-                            )}
+                            <div className="space-y-2">
+                              <div className="flex gap-2">
+                                <Input
+                                  type="number"
+                                  value={metodo.montoOriginal}
+                                  onChange={(e) => {
+                                    const valor =
+                                      parseFloat(e.target.value) || 0;
+                                    actualizarMetodoPago(
+                                      index,
+                                      'montoOriginal',
+                                      valor
+                                    );
+                                  }}
+                                  placeholder="Monto"
+                                  step="0.01"
+                                  min="0"
+                                  className="flex-1"
+                                />
+                                <Select
+                                  value={metodo.moneda || 'USD'}
+                                  onValueChange={(value) =>
+                                    actualizarMetodoPago(index, 'moneda', value)
+                                  }
+                                >
+                                  <SelectTrigger className="w-20">
+                                    <SelectValue />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    <SelectItem value="USD">USD</SelectItem>
+                                    <SelectItem value="ARS">ARS</SelectItem>
+                                  </SelectContent>
+                                </Select>
+                              </div>
+                              {tieneDescuento && (
+                                <p className="text-xs text-green-600">
+                                  Final: {formatAmount(metodo.monto)} (desc.{' '}
+                                  {descuentoPorcentaje}%)
+                                </p>
+                              )}
+                            </div>
                           </div>
                           <Button
                             variant="outline"
@@ -743,40 +815,92 @@ export default function ModalEditarTransaccion({
                   <div className="space-y-2">
                     <div className="flex justify-between">
                       <span>Subtotal:</span>
-                      <span>{formatUSD(subtotal)}</span>
+                      <div className="text-right">
+                        <div>{formatAmount(subtotal)}</div>
+                        {isExchangeRateValid && subtotal > 0 && (
+                          <div className="text-xs text-gray-600">
+                            {formatARS(subtotal)}
+                          </div>
+                        )}
+                      </div>
                     </div>
                     {totalDescuentos > 0 && (
                       <div className="flex justify-between text-red-600">
                         <span>Descuentos:</span>
-                        <span>-{formatUSD(totalDescuentos)}</span>
+                        <div className="text-right">
+                          <div>-{formatAmount(totalDescuentos)}</div>
+                          {isExchangeRateValid && totalDescuentos > 0 && (
+                            <div className="text-xs text-red-500">
+                              -{formatARS(totalDescuentos)}
+                            </div>
+                          )}
+                        </div>
                       </div>
                     )}
                     {totalSeña > 0 && (
                       <div className="flex justify-between text-blue-600">
                         <span>Seña aplicada:</span>
-                        <span>-{formatUSD(totalSeña)}</span>
+                        <div className="text-right">
+                          <div>-{formatAmount(totalSeña)}</div>
+                          {isExchangeRateValid && totalSeña > 0 && (
+                            <div className="text-xs text-blue-500">
+                              -{formatARS(totalSeña)}
+                            </div>
+                          )}
+                        </div>
                       </div>
                     )}
-                    <div className="flex justify-between border-t pt-2 text-lg font-bold">
+                    {descuentosPorMetodoPago > 0 && (
+                      <div className="flex justify-between text-green-600">
+                        <span>Desc. métodos pago:</span>
+                        <div className="text-right">
+                          <div>-{formatAmount(descuentosPorMetodoPago)}</div>
+                          {isExchangeRateValid && descuentosPorMetodoPago > 0 && (
+                            <div className="text-xs text-green-500">
+                              -{formatARS(descuentosPorMetodoPago)}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    )}
+                    <div className="flex justify-between border-t pt-2 text-sm font-bold">
                       <span>Total Final:</span>
-                      <span>{formatUSD(totalFinal)}</span>
+                      <div className="text-right">
+                        <div>{formatAmount(totalFinal)}</div>
+                        {isExchangeRateValid && totalFinal > 0 && (
+                          <div className="text-xs font-medium">
+                            {formatARS(totalFinal)}
+                          </div>
+                        )}
+                      </div>
                     </div>
                     <div className="flex justify-between">
                       <span>Total Pagos:</span>
-                      <span
-                        className={
-                          Math.abs(totalPagos - totalFinal) > 0.01
+                      <div
+                        className={`text-right ${
+                          Math.abs(diferencia) > 0.01
                             ? 'text-red-600'
                             : 'text-green-600'
-                        }
+                        }`}
                       >
-                        {formatUSD(totalPagos)}
-                      </span>
+                        <div>{formatAmount(totalPagos)}</div>
+                        {isExchangeRateValid && totalPagos > 0 && (
+                          <div className="text-xs">{formatARS(totalPagos)}</div>
+                        )}
+                      </div>
                     </div>
-                    {Math.abs(totalPagos - totalFinal) > 0.01 && (
+                    {Math.abs(diferencia) > 0.01 && (
                       <div className="flex justify-between font-medium text-red-600">
                         <span>Diferencia:</span>
-                        <span>{formatUSD(totalPagos - totalFinal)}</span>
+                        <div className="text-right">
+                          <div>{formatAmount(diferencia)}</div>
+                          {isExchangeRateValid &&
+                            Math.abs(diferencia) > 0 && (
+                              <div className="text-xs">
+                                {formatARS(diferencia)}
+                              </div>
+                            )}
+                        </div>
                       </div>
                     )}
                   </div>

@@ -19,6 +19,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { formatUSD } from '@/lib/utils';
+import { useCurrencyConverter } from '@/hooks/useCurrencyConverter';
 
 interface MovimientoCaja {
   tipo: 'ingreso' | 'egreso';
@@ -41,6 +42,7 @@ export default function ModalMovimientoCaja({
   onCerrar,
   onGuardar,
 }: ModalMovimientoCajaProps) {
+  const { formatUSD, formatDual, isExchangeRateValid } = useCurrencyConverter();
   const [formData, setFormData] = useState<MovimientoCaja>({
     tipo,
     monto: 0,
@@ -48,6 +50,11 @@ export default function ModalMovimientoCaja({
     metodoPago: 'efectivo',
     observaciones: '',
   });
+
+  // Helper function for dual currency display
+  const formatAmount = (amount: number) => {
+    return isExchangeRateValid ? formatDual(amount) : formatUSD(amount);
+  };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -110,7 +117,7 @@ export default function ModalMovimientoCaja({
             />
             {formData.monto > 0 && (
               <p className="text-sm text-gray-600">
-                {formatUSD(formData.monto)}
+                {formatAmount(formData.monto)}
               </p>
             )}
           </div>

@@ -38,7 +38,7 @@ export interface UseMetodosPagoReturn {
   obtenerResumenDual: () => ResumenDual;
 }
 
-export function useMetodosPago(): UseMetodosPagoReturn {
+export function useMetodosPago(aplicarDescuentos: boolean = true): UseMetodosPagoReturn {
   const { descuentosPorMetodo } = useConfiguracion();
   const { tipoCambio } = useExchangeRateStore();
   const { arsToUsd, usdToArs } = useCurrencyConverter();
@@ -47,6 +47,7 @@ export function useMetodosPago(): UseMetodosPagoReturn {
     {
       tipo: 'efectivo',
       monto: 0,
+      montoOriginal: 0,
       montoFinal: 0,
       descuentoAplicado: 0,
       moneda: MONEDAS.USD,
@@ -59,6 +60,15 @@ export function useMetodosPago(): UseMetodosPagoReturn {
       monto: number,
       moneda: string = MONEDAS.USD
     ) => {
+      // Si no se deben aplicar descuentos, devolver el monto original
+      if (!aplicarDescuentos) {
+        const montoUSD = moneda === MONEDAS.ARS ? arsToUsd(monto) : monto;
+        return {
+          montoFinal: montoUSD,
+          descuentoAplicado: 0,
+        };
+      }
+
       if (tipo === 'mixto' || tipo === 'giftcard' || tipo === 'qr') {
         // Para estos tipos no hay descuento
         const montoUSD = moneda === MONEDAS.ARS ? arsToUsd(monto) : monto;
@@ -95,13 +105,14 @@ export function useMetodosPago(): UseMetodosPagoReturn {
         };
       }
     },
-    [descuentosPorMetodo, arsToUsd, tipoCambio]
+    [descuentosPorMetodo, arsToUsd, tipoCambio, aplicarDescuentos]
   );
 
   const agregarMetodoPago = useCallback(() => {
     const nuevoMetodo: MetodoPagoForm = {
       tipo: 'efectivo',
       monto: 0,
+      montoOriginal: 0,
       montoFinal: 0,
       descuentoAplicado: 0,
       moneda: MONEDAS.USD,
@@ -128,12 +139,17 @@ export function useMetodosPago(): UseMetodosPagoReturn {
         const nuevosMetodos = [...prev];
         nuevosMetodos[index] = { ...nuevosMetodos[index], [campo]: valor };
 
+        // Si se actualiza el monto, también actualizar montoOriginal
+        if (campo === 'monto') {
+          nuevosMetodos[index].montoOriginal = valor as number;
+        }
+
         if (campo === 'tipo' || campo === 'monto' || campo === 'moneda') {
           const metodo = nuevosMetodos[index];
           const monedaActual = metodo.moneda || MONEDAS.USD;
           const calculado = calcularMontoFinal(
             metodo.tipo,
-            metodo.monto,
+            metodo.montoOriginal || metodo.monto,
             monedaActual
           );
 
@@ -152,6 +168,7 @@ export function useMetodosPago(): UseMetodosPagoReturn {
       {
         tipo: 'efectivo',
         monto: 0,
+        montoOriginal: 0,
         montoFinal: 0,
         descuentoAplicado: 0,
         moneda: MONEDAS.USD,

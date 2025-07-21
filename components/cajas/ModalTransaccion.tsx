@@ -60,7 +60,13 @@ export default function ModalTransaccion({
   // Hook para bloquear scroll del body
   useModalScrollLock(isOpen);
 
-  const { isExchangeRateValid } = useCurrencyConverter();
+  const {
+    formatUSD,
+    formatARS,
+    formatARSFromNative,
+    formatDual,
+    isExchangeRateValid,
+  } = useCurrencyConverter();
 
   //* Cambiar esta logica cuando hay atiempo:
   const mapEstadoNegocioToLocal = (
@@ -169,26 +175,20 @@ export default function ModalTransaccion({
 
   // Formatear montos usando utilidad centralizada
   const formatAmount = (amount: number) => {
-    return formatUSD(amount);
+    return isExchangeRateValid ? formatDual(amount) : formatUSD(amount);
   };
 
   <div className="flex justify-between text-sm">
     <span>Subtotal:</span>
     <div className="text-right">
-      <div className="font-medium text-green-600">{formatUSD(subtotal)}</div>
-      {isExchangeRateValid && subtotal > 0 && (
-        <div className="text-xs text-gray-600">{formatARS(subtotal)}</div>
-      )}
+      <div className="font-medium text-green-600">{formatAmount(subtotal)}</div>
     </div>
   </div>;
 
-  <div className="flex justify-between text-lg font-semibold">
+  <div className="flex justify-between text-sm font-semibold">
     <span>Total:</span>
     <div className="text-right">
-      <div className="text-green-600">{formatUSD(total)}</div>
-      {isExchangeRateValid && (
-        <div className="text-sm text-gray-600">{formatARS(total)}</div>
-      )}
+      <div className="text-green-600">{formatAmount(total)}</div>
     </div>
   </div>;
 
@@ -207,13 +207,8 @@ export default function ModalTransaccion({
         </span>
         <div className="text-right">
           <div className="font-medium text-green-600">
-            {formatUSD(mp.monto || mp.monto)}
+            {formatAmount(mp.monto || mp.monto)}
           </div>
-          {isExchangeRateValid && (
-            <div className="text-xs text-gray-600">
-              {formatARS(mp.monto || mp.monto)}
-            </div>
-          )}
         </div>
       </div>
     ));
@@ -780,23 +775,42 @@ export default function ModalTransaccion({
                   <CardContent className="space-y-3">
                     <div className="flex justify-between text-sm">
                       <span>Total:</span>
-                      <span>{formatAmount(total)}</span>
+                      <div className="text-right">
+                        <div>{formatAmount(total)}</div>
+                        {isExchangeRateValid && total > 0 && (
+                          <div className="text-xs text-gray-600">
+                            {formatARS(total)}
+                          </div>
+                        )}
+                      </div>
                     </div>
 
                     {descuentoTotal > 0 && (
                       <div className="flex justify-between text-sm text-red-600">
                         <span>Descuentos:</span>
-                        <span>-{formatAmount(descuentoTotal)}</span>
+                        <div className="text-right">
+                          <div>-{formatAmount(descuentoTotal)}</div>
+                          {isExchangeRateValid && descuentoTotal > 0 && (
+                            <div className="text-xs text-red-500">
+                              -{formatARS(descuentoTotal)}
+                            </div>
+                          )}
+                        </div>
                       </div>
                     )}
 
                     <Separator />
 
-                    <div className="flex justify-between text-lg font-semibold">
+                    <div className="flex justify-between text-sm font-semibold">
                       <span>Total Final:</span>
-                      <span className="text-[#4a3540]">
-                        {formatAmount(total)}
-                      </span>
+                      <div className="text-right text-[#4a3540]">
+                        <div>{formatAmount(total)}</div>
+                        {isExchangeRateValid && total > 0 && (
+                          <div className="text-xs font-medium">
+                            {formatARS(total)}
+                          </div>
+                        )}
+                      </div>
                     </div>
 
                     {/* Detalle de pagos cuando es mixto */}
@@ -809,7 +823,7 @@ export default function ModalTransaccion({
                             key={idx}
                             className="flex justify-between rounded-md bg-gray-50 px-3 py-1"
                           >
-                            <span>
+                            <span className="flex items-center gap-2">
                               {mp.tipo === 'efectivo'
                                 ? '💰 Efectivo'
                                 : mp.tipo === 'tarjeta'
@@ -821,13 +835,32 @@ export default function ModalTransaccion({
                                       : mp.tipo === 'qr'
                                         ? '📱 QR'
                                         : '🔄 Mixto'}
+                              {/* Mostrar moneda */}
+                              <span className="rounded bg-gray-200 px-1.5 py-0.5 text-xs font-medium text-gray-700">
+                                {mp.moneda || 'USD'}
+                              </span>
                               {mp.tipo === 'giftcard' && mp.giftcard && (
                                 <span className="ml-1 text-xs text-gray-600">
                                   ({mp.giftcard.nombre} - {mp.giftcard.codigo})
                                 </span>
                               )}
                             </span>
-                            <span>{formatAmount(mp.monto || mp.monto)}</span>
+                            <div className="text-right">
+                              <div>
+                                {mp.moneda === 'ARS'
+                                  ? formatARSFromNative(
+                                      (mp.monto || 0) *
+                                        (transaccion?.tipoCambioAlCrear
+                                          ?.valorVenta || 1000)
+                                    )
+                                  : formatAmount(mp.monto || 0)}
+                              </div>
+                              <div className="text-xs text-gray-600">
+                                {mp.moneda === 'ARS'
+                                  ? `≈ ${formatAmount(mp.monto || 0)}`
+                                  : `≈ ${formatARS(mp.monto || 0)}`}
+                              </div>
+                            </div>
                           </div>
                         ))}
                       </div>

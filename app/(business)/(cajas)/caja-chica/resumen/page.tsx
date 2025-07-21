@@ -23,7 +23,8 @@ import { useComandaStore } from '@/features/comandas/store/comandaStore';
 import { useRecordsStore } from '@/features/records/store/recordsStore';
 import Spinner from '@/components/common/Spinner';
 import ClientOnly from '@/components/common/ClientOnly';
-import SummaryCard from '@/components/common/SummaryCard';
+import SummaryCardDual from '@/components/common/SummaryCardDual';
+import SummaryCardCount from '@/components/common/SummaryCardCount';
 import { toast } from 'sonner';
 import {
   Dialog,
@@ -34,7 +35,8 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { ComandaValidationService } from '@/services/comandaValidation.service';
-import { formatUSD } from '@/lib/utils';
+import { useCurrencyConverter } from '@/hooks/useCurrencyConverter';
+import { useExchangeRate } from '@/features/exchange-rate/hooks/useExchangeRate';
 
 const breadcrumbItems = [
   { label: 'Inicio', href: '/' },
@@ -43,7 +45,9 @@ const breadcrumbItems = [
   { label: 'Resumen' },
 ];
 
-export default function ResumenCajaChicaPage() {
+export default function CajaChicaResumenPage() {
+  const { formatDual, formatUSD, isExchangeRateValid } = useCurrencyConverter();
+  const { tipoCambio } = useExchangeRate();
   const { validarComandasParaTraspasoParcial, obtenerResumenConMontoParcial } =
     useComandaStore();
   const { registrarTraspaso } = useRecordsStore();
@@ -191,16 +195,16 @@ export default function ResumenCajaChicaPage() {
                           Estado de Comandas
                         </h3>
                         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                          <SummaryCard
+                          <SummaryCardCount
                             title="Completadas"
-                            value={resumen.totalCompletados}
-                            format="number"
+                            count={resumen.totalCompletados}
+                            icon="✅"
                             valueClassName="text-green-700"
                           />
-                          <SummaryCard
+                          <SummaryCardCount
                             title="Pendientes"
-                            value={resumen.totalPendientes}
-                            format="number"
+                            count={resumen.totalPendientes}
+                            icon="⏳"
                             valueClassName="text-yellow-600"
                           />
                         </div>
@@ -216,30 +220,29 @@ export default function ResumenCajaChicaPage() {
                           Resumen Financiero
                         </h3>
                         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                          <SummaryCard
+                          <SummaryCardDual
                             title="Total Ingresos"
-                            value={resumen.totalIngresos}
-                            format="currency"
-                            dualCurrency={true}
-                            isDualValue={true}
+                            totalUSD={resumen.totalIngresosUSD || 0}
+                            totalARS={resumen.totalIngresosARS || 0}
+                            showTransactionCount={false}
                             valueClassName="text-green-700"
                           />
-                          <SummaryCard
+                          <SummaryCardDual
                             title="Total Egresos"
-                            value={resumen.totalEgresos}
-                            format="currency"
-                            dualCurrency={true}
-                            isDualValue={true}
+                            totalUSD={resumen.totalEgresosUSD || 0}
+                            totalARS={resumen.totalEgresosARS || 0}
+                            showTransactionCount={false}
                             valueClassName="text-red-700"
                           />
-                          <SummaryCard
+                          <SummaryCardDual
                             title="Balance Neto"
-                            value={resumen.montoNeto}
-                            format="currency"
-                            dualCurrency={true}
-                            isDualValue={true}
+                            totalUSD={resumen.montoNetoUSD || 0}
+                            totalARS={resumen.montoNetoARS || 0}
+                            showTransactionCount={false}
                             valueClassName={
-                              resumen.montoNeto >= 0
+                              (resumen.montoNetoUSD || 0) +
+                                (resumen.montoNetoARS || 0) >=
+                              0
                                 ? 'text-green-700'
                                 : 'text-red-700'
                             }
@@ -257,12 +260,16 @@ export default function ResumenCajaChicaPage() {
                             </h3>
 
                             <div className="space-y-4">
-                              <SummaryCard
+                              <SummaryCardDual
                                 title="Monto Disponible para Traslado"
-                                value={resumen.montoDisponibleParaTraslado}
-                                format="currency"
-                                dualCurrency={true}
-                                isDualValue={true}
+                                totalUSD={resumen.montoDisponibleParaTraslado}
+                                totalARS={
+                                  isExchangeRateValid
+                                    ? resumen.montoDisponibleParaTraslado *
+                                      (tipoCambio?.valorVenta || 0)
+                                    : 0
+                                }
+                                showTransactionCount={false}
                                 valueClassName="text-blue-700"
                               />
 
@@ -286,55 +293,12 @@ export default function ResumenCajaChicaPage() {
                                   />
                                   <p className="text-xs text-gray-500">
                                     Máximo:{' '}
-                                    {new Intl.NumberFormat('es-AR', {
-                                      style: 'currency',
-                                      currency: 'USD',
-                                    }).format(
-                                      resumen.montoDisponibleParaTraslado
+                                    {formatDual(
+                                      resumen.montoDisponibleParaTraslado,
+                                      true
                                     )}
                                   </p>
                                 </div>
-
-                                {configuracionTraspaso && (
-                                  <div className="space-y-2">
-                                    <Label className="text-sm font-medium">
-                                      Vista Previa
-                                    </Label>
-                                    <div className="space-y-2 rounded-lg border border-gray-200 bg-gray-50 p-3">
-                                      <div className="flex justify-between text-sm">
-                                        <span>Monto a trasladar:</span>
-                                        <span className="font-semibold text-green-700">
-                                          {new Intl.NumberFormat('es-AR', {
-                                            style: 'currency',
-                                            currency: 'USD',
-                                          }).format(
-                                            configuracionTraspaso.montoParcial
-                                          )}
-                                        </span>
-                                      </div>
-                                      <div className="flex justify-between text-sm">
-                                        <span>Residual en Caja 1:</span>
-                                        <span className="font-semibold text-orange-600">
-                                          {new Intl.NumberFormat('es-AR', {
-                                            style: 'currency',
-                                            currency: 'USD',
-                                          }).format(
-                                            configuracionTraspaso.montoResidual
-                                          )}
-                                        </span>
-                                      </div>
-                                      <div className="flex justify-between text-sm">
-                                        <span>Porcentaje:</span>
-                                        <span className="font-semibold text-blue-600">
-                                          {configuracionTraspaso.porcentajeSeleccionado.toFixed(
-                                            1
-                                          )}
-                                          %
-                                        </span>
-                                      </div>
-                                    </div>
-                                  </div>
-                                )}
                               </div>
                             </div>
                           </div>
@@ -417,16 +381,14 @@ export default function ResumenCajaChicaPage() {
                 <span className="text-sm">
                   <strong>Monto a trasladar:</strong>{' '}
                   <span className="font-semibold text-blue-700">
-                    {new Intl.NumberFormat('es-AR', {
-                      style: 'currency',
-                      currency: 'USD',
-                    }).format(
+                    {formatDual(
                       montoParcial
                         ? Math.min(
                             parseFloat(montoParcial) || 0,
                             resumen.montoDisponibleParaTraslado
                           )
-                        : resumen.montoDisponibleParaTraslado
+                        : resumen.montoDisponibleParaTraslado,
+                      true
                     )}
                   </span>
                 </span>
@@ -439,10 +401,7 @@ export default function ResumenCajaChicaPage() {
                     <span className="text-sm">
                       <strong>Residual en Caja 1:</strong>{' '}
                       <span className="font-semibold text-orange-700">
-                        {new Intl.NumberFormat('es-AR', {
-                          style: 'currency',
-                          currency: 'USD',
-                        }).format(configuracionTraspaso.montoResidual)}
+                        {formatDual(configuracionTraspaso.montoResidual, true)}
                       </span>
                     </span>
                   </div>

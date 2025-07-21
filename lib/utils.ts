@@ -157,7 +157,7 @@ export function resolverMetodoPagoPrincipal(
 }
 
 export function formatearDetalleMetodosPago(
-  metodosPago: Array<{ tipo: string; monto: number }>
+  metodosPago: Array<{ tipo: string; monto: number; moneda?: string }>
 ): string {
   if (!metodosPago || metodosPago.length === 0) {
     return 'Sin métodos de pago';
@@ -165,8 +165,75 @@ export function formatearDetalleMetodosPago(
 
   if (metodosPago.length === 1) {
     const metodo = metodosPago[0];
-    return `${metodo.tipo} ${formatUSD(metodo.monto)}`;
+    const moneda = metodo.moneda || 'USD';
+    const montoFormateado =
+      moneda === 'ARS'
+        ? formatARSNative(metodo.monto)
+        : formatUSD(metodo.monto);
+    return `${metodo.tipo} ${montoFormateado}`;
   }
 
-  return metodosPago.map((m) => `${m.tipo} ${formatUSD(m.monto)}`).join(', ');
+  return metodosPago
+    .map((m) => {
+      const moneda = m.moneda || 'USD';
+      const montoFormateado =
+        moneda === 'ARS' ? formatARSNative(m.monto) : formatUSD(m.monto);
+      return `${m.tipo} ${montoFormateado}`;
+    })
+    .join(', ');
+}
+
+export function resolverMetodoPagoPrincipalConMoneda(
+  metodosPago: Array<{ tipo: string; monto: number; moneda?: string }>
+): string {
+  if (!metodosPago || metodosPago.length === 0) {
+    return 'EFE - USD';
+  }
+
+  if (metodosPago.length === 1) {
+    const metodo = metodosPago[0];
+    const moneda = metodo.moneda || 'USD';
+    const tipoAbrev = abreviarTipoMetodo(metodo.tipo);
+    return `${tipoAbrev} - ${moneda}`;
+  }
+
+  const metodoPrincipal = metodosPago.reduce((prev, current) =>
+    current.monto > prev.monto ? current : prev
+  );
+
+  const totalMonto = metodosPago.reduce((sum, m) => sum + m.monto, 0);
+  const porcentajePrincipal = (metodoPrincipal.monto / totalMonto) * 100;
+
+  if (porcentajePrincipal < 80) {
+    // Para mixto, mostrar las monedas involucradas
+    const monedasUnicas = [
+      ...new Set(metodosPago.map((m) => m.moneda || 'USD')),
+    ];
+    return monedasUnicas.length > 1
+      ? 'MIXTO - USD/ARS'
+      : `MIXTO - ${monedasUnicas[0]}`;
+  }
+
+  const moneda = metodoPrincipal.moneda || 'USD';
+  const tipoAbrev = abreviarTipoMetodo(metodoPrincipal.tipo);
+  return `${tipoAbrev} - ${moneda}`;
+}
+
+function abreviarTipoMetodo(tipo: string): string {
+  switch (tipo.toLowerCase()) {
+    case 'efectivo':
+      return 'EFE';
+    case 'tarjeta':
+      return 'TAR';
+    case 'transferencia':
+      return 'TRANS';
+    case 'giftcard':
+      return 'GIFT';
+    case 'qr':
+      return 'QR';
+    case 'mixto':
+      return 'MIXTO';
+    default:
+      return tipo.toUpperCase().substring(0, 5);
+  }
 }

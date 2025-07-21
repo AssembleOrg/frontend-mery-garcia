@@ -125,7 +125,12 @@ export function DateRangePicker({
                   size="sm"
                   onClick={() => {
                     const today = new Date();
-                    handleDateChange({ from: today, to: today });
+                    // Asegurar que la fecha sea el inicio del día
+                    today.setHours(0, 0, 0, 0);
+                    const endOfDay = new Date(today);
+                    endOfDay.setHours(23, 59, 59, 999);
+                    handleDateChange({ from: today, to: endOfDay });
+                    setIsOpen(false);
                   }}
                   className="border-2 bg-white/80 font-medium shadow-sm transition-all hover:bg-white hover:shadow-md"
                   style={{
@@ -133,7 +138,7 @@ export function DateRangePicker({
                     color: '#4a3540',
                   }}
                 >
-                  Hoy
+                  📅 Hoy
                 </Button>
                 <Button
                   variant="outline"
@@ -142,7 +147,11 @@ export function DateRangePicker({
                     const today = new Date();
                     const weekAgo = new Date(today);
                     weekAgo.setDate(today.getDate() - 7);
+                    // Asegurar que las fechas sean el inicio y fin del día
+                    weekAgo.setHours(0, 0, 0, 0);
+                    today.setHours(23, 59, 59, 999);
                     handleDateChange({ from: weekAgo, to: today });
+                    setIsOpen(false);
                   }}
                   className="border-2 bg-white/80 font-medium shadow-sm transition-all hover:bg-white hover:shadow-md"
                   style={{
@@ -150,7 +159,7 @@ export function DateRangePicker({
                     color: '#4a3540',
                   }}
                 >
-                  Última semana
+                  📊 Última semana
                 </Button>
                 <Button
                   variant="outline"
@@ -159,7 +168,11 @@ export function DateRangePicker({
                     const today = new Date();
                     const monthAgo = new Date(today);
                     monthAgo.setMonth(today.getMonth() - 1);
+                    // Asegurar que las fechas sean el inicio y fin del día
+                    monthAgo.setHours(0, 0, 0, 0);
+                    today.setHours(23, 59, 59, 999);
                     handleDateChange({ from: monthAgo, to: today });
+                    setIsOpen(false);
                   }}
                   className="border-2 bg-white/80 font-medium shadow-sm transition-all hover:bg-white hover:shadow-md"
                   style={{
@@ -167,7 +180,7 @@ export function DateRangePicker({
                     color: '#4a3540',
                   }}
                 >
-                  Último mes
+                  📈 Último mes
                 </Button>
               </div>
             </div>

@@ -34,6 +34,7 @@ import {
   DollarSign,
 } from 'lucide-react';
 import { useComandaStore } from '@/features/comandas/store/comandaStore';
+import { useActivityStore } from '@/features/activity/store/activityStore';
 import { usePersonal } from '@/features/personal/hooks/usePersonal';
 import { useProductosServicios } from '@/features/productos-servicios/hooks/useProductosServicios';
 import { useCliente } from '@/features/clientes/hooks/useCliente';
@@ -54,6 +55,7 @@ import {
 import { DiscountControls } from './DiscountControls';
 import { useExchangeRate } from '@/features/exchange-rate/hooks/useExchangeRate';
 import { useMetodosPago } from '@/hooks/useMetodosPago';
+import { useAuth } from '@/features/auth/hooks/useAuth';
 
 interface ModalTransaccionUnificadoProps {
   isOpen: boolean;
@@ -87,10 +89,22 @@ export default function ModalTransaccionUnificado({
   const { clientes, buscarCliente, obtenerSeñasDisponibles, usarSeña } =
     useCliente();
 
-  const { exchangeRate, isExchangeRateValid, formatARS, formatUSD } =
-    useCurrencyConverter();
+  const {
+    exchangeRate,
+    isExchangeRateValid,
+    formatARS,
+    formatUSD,
+    formatDual,
+  } = useCurrencyConverter();
+
+  // Helper function for dual currency display
+  const formatAmount = (amount: number) => {
+    return isExchangeRateValid ? formatDual(amount) : formatUSD(amount);
+  };
 
   const { tipoCambio } = useExchangeRate();
+  const { user } = useAuth();
+  const { logActivity } = useActivityStore();
 
   // Hook para métodos de pago con descuentos automáticos
   const {
@@ -103,7 +117,7 @@ export default function ModalTransaccionUnificado({
     validarMetodosPago,
     convertirParaPersistencia,
     obtenerResumenDual,
-  } = useMetodosPago();
+  } = useMetodosPago(tipo === 'ingreso'); // Solo aplicar descuentos en ingresos
 
   const obtenerIconoUnidad = (unidad: UnidadNegocio) => {
     switch (unidad) {
@@ -432,7 +446,7 @@ export default function ModalTransaccionUnificado({
         'El nombre del cliente/proveedor es requerido';
     }
 
-    if (!responsableId) {
+    if (!responsableId && tipo === 'ingreso') {
       nuevosErrores.responsable = 'Debe seleccionar un responsable';
     }
 
@@ -499,7 +513,19 @@ export default function ModalTransaccionUnificado({
       // USAR LA FUNCIÓN UNIFICADA PARA PERSISTENCIA
       const metodosPagoComanda = convertirParaPersistencia();
 
-      const responsable = personal.find((p) => p.id === responsableId);
+      // Para egresos, usar el usuario logueado como responsable automáticamente
+      let responsable;
+      if (tipo === 'egreso' && user) {
+        responsable = {
+          id: user.id,
+          nombre: user.nombre,
+          activo: true,
+          unidadesDisponibles: ['estilismo'],
+          fechaIngreso: new Date(),
+        };
+      } else {
+        responsable = personal.find((p) => p.id === responsableId);
+      }
 
       const nuevaComanda: Comanda = {
         id: generateUniqueId(tipo === 'ingreso' ? 'ing' : 'egr', Date.now()),
@@ -560,6 +586,22 @@ export default function ModalTransaccionUnificado({
 
       logger.info(`Guardando ${tipo}:`, nuevaComanda);
       agregarComanda(nuevaComanda);
+      
+      // Registrar actividad en auditoría
+      logActivity(
+        'Crear',
+        'Caja Chica',
+        `${tipo === 'ingreso' ? 'Ingreso' : 'Egreso'} creado: ${nuevaComanda.numero} por ${formatAmount(nuevaComanda.totalFinal)} ${nuevaComanda.moneda}`,
+        {
+          comandaId: nuevaComanda.id,
+          numero: nuevaComanda.numero,
+          tipo: tipo,
+          monto: nuevaComanda.totalFinal,
+          moneda: nuevaComanda.moneda,
+          cliente: clienteSeleccionado?.nombre || clienteProveedor,
+        }
+      );
+      
       resetForm();
       onClose();
     } catch (error) {
@@ -635,7 +677,7 @@ export default function ModalTransaccionUnificado({
                 <div className="flex items-center gap-2 rounded-lg bg-gray-50 px-3 py-2">
                   <TrendingUp className="h-4 w-4 text-gray-600" />
                   <span className="text-sm font-medium text-gray-800">
-                    USD: {formatUSD(exchangeRate)}
+                    USD: {formatAmount(exchangeRate)}
                   </span>
                 </div>
               )}
@@ -862,7 +904,8 @@ export default function ModalTransaccionUnificado({
                                 {señaAplicada > 0 && (
                                   <div className="mt-2 rounded bg-green-100 p-2">
                                     <p className="text-sm font-medium text-green-800">
-                                      Seña aplicada: {formatUSD(señaAplicada)}
+                                      Seña aplicada:{' '}
+                                      {formatAmount(señaAplicada)}
                                     </p>
                                     <p className="text-xs text-green-600">
                                       Equivale a: {formatARS(señaAplicada)}
@@ -936,79 +979,37 @@ export default function ModalTransaccionUnificado({
                       </div>
                     )}
 
-                    <div>
-                      <Label className="text-gray-700">Responsable *</Label>
-                      <Select
-                        value={responsableId}
-                        onValueChange={setResponsableId}
-                      >
-                        <SelectTrigger
-                          className={
-                            errores.responsableId
-                              ? 'border-red-500'
-                              : 'border-gray-300'
-                          }
+                    {tipo === 'ingreso' && (
+                      <div>
+                        <Label className="text-gray-700">Responsable *</Label>
+                        <Select
+                          value={responsableId}
+                          onValueChange={setResponsableId}
                         >
-                          <SelectValue placeholder="Seleccionar responsable" />
-                        </SelectTrigger>
-                        <SelectContent className="z-[10001]">
-                          {personal.map((persona) => (
-                            <SelectItem key={persona.id} value={persona.id}>
-                              {persona.nombre}
-                            </SelectItem>
-                          ))}
-
-                          {/* Resumen de métodos de pago */}
-                          {metodosPago.length > 1 && (
-                            <div className="mt-4 rounded-lg bg-gray-50 p-4">
-                              <h4 className="mb-3 text-sm font-medium text-gray-900">
-                                Resumen de Pagos
-                              </h4>
-                              <div className="space-y-2">
-                                <div className="flex justify-between text-sm">
-                                  <span className="text-gray-600">
-                                    Total base:
-                                  </span>
-                                  <span className="font-medium">
-                                    {formatUSD(
-                                      metodosPago.reduce(
-                                        (sum, m) => sum + m.monto,
-                                        0
-                                      )
-                                    )}
-                                  </span>
-                                </div>
-                                {totales.descuentosPorMetodo > 0 && (
-                                  <div className="flex justify-between text-sm">
-                                    <span className="text-green-600">
-                                      Descuentos:
-                                    </span>
-                                    <span className="font-medium text-green-600">
-                                      -{formatUSD(totales.descuentosPorMetodo)}
-                                    </span>
-                                  </div>
-                                )}
-                                <div className="flex justify-between border-t pt-2 text-sm font-medium">
-                                  <span className="text-gray-900">
-                                    Total final:
-                                  </span>
-                                  <span className="text-green-600">
-                                    {formatUSD(
-                                      totales.totalPagadoConDescuentos
-                                    )}
-                                  </span>
-                                </div>
-                              </div>
-                            </div>
-                          )}
-                        </SelectContent>
-                      </Select>
-                      {errores.responsable && (
-                        <p className="mt-1 text-xs text-red-600">
-                          {errores.responsable}
-                        </p>
-                      )}
-                    </div>
+                          <SelectTrigger
+                            className={
+                              errores.responsableId
+                                ? 'border-red-500'
+                                : 'border-gray-300'
+                            }
+                          >
+                            <SelectValue placeholder="Seleccionar responsable" />
+                          </SelectTrigger>
+                          <SelectContent className="z-[10001]">
+                            {personal.map((persona) => (
+                              <SelectItem key={persona.id} value={persona.id}>
+                                {persona.nombre}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        {errores.responsable && (
+                          <p className="mt-1 text-xs text-red-600">
+                            {errores.responsable}
+                          </p>
+                        )}
+                      </div>
+                    )}
 
                     <div className="md:col-span-2">
                       <Label className="text-gray-700">Observaciones</Label>
@@ -1060,8 +1061,8 @@ export default function ModalTransaccionUnificado({
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-4">
-                  {/* Descuento Global */}
-                  {items.length > 0 && (
+                  {/* Descuento Global - Solo para ingresos */}
+                  {items.length > 0 && tipo === 'ingreso' && (
                     <div className="mb-6 rounded-lg bg-gray-50 p-4">
                       <div className="mb-4 flex items-center justify-between">
                         <h4 className="font-medium text-gray-900">
@@ -1217,7 +1218,7 @@ export default function ModalTransaccionUnificado({
                               <Label className="text-gray-700">Subtotal</Label>
                               <div className="flex h-10 items-center justify-between rounded-md border border-gray-300 bg-gray-50 px-3">
                                 <span className="text-sm font-medium text-green-600">
-                                  {formatUSD(item.subtotal)}
+                                  {formatAmount(item.subtotal)}
                                 </span>
                                 {isExchangeRateValid && item.subtotal > 0 && (
                                   <span className="text-xs text-gray-600">
@@ -1228,23 +1229,25 @@ export default function ModalTransaccionUnificado({
                             </div>
                           </div>
 
-                          {/* Descuento por Item */}
-                          <div className="mt-4 border-t pt-4">
-                            <DiscountControls
-                              descuentoPorcentaje={item.descuentoPorcentaje}
-                              montoDescuento={item.descuento}
-                              precioBase={precioBase}
-                              onAplicarDescuento={(porcentaje) =>
-                                aplicarDescuentoItem(item.id, porcentaje)
-                              }
-                              onEliminarDescuento={() =>
-                                eliminarDescuentoItem(item.id)
-                              }
-                              label="Descuento individual"
-                              size="sm"
-                              maxDescuento={50}
-                            />
-                          </div>
+                          {/* Descuento por Item - Solo para ingresos */}
+                          {tipo === 'ingreso' && (
+                            <div className="mt-4 border-t pt-4">
+                              <DiscountControls
+                                descuentoPorcentaje={item.descuentoPorcentaje}
+                                montoDescuento={item.descuento}
+                                precioBase={precioBase}
+                                onAplicarDescuento={(porcentaje) =>
+                                  aplicarDescuentoItem(item.id, porcentaje)
+                                }
+                                onEliminarDescuento={() =>
+                                  eliminarDescuentoItem(item.id)
+                                }
+                                label="Descuento individual"
+                                size="sm"
+                                maxDescuento={50}
+                              />
+                            </div>
+                          )}
                         </div>
                       );
                     })
@@ -1290,8 +1293,8 @@ export default function ModalTransaccionUnificado({
                           Subtotal base
                         </div>
                         <div className="text-right">
-                          <div className="text-lg font-semibold text-gray-900">
-                            {formatUSD(totales.subtotalBase)}
+                          <div className="text-sm font-semibold text-gray-900">
+                            {formatAmount(totales.subtotalBase)}
                           </div>
                           {isExchangeRateValid && totales.subtotalBase > 0 && (
                             <div className="text-xs text-gray-600">
@@ -1308,8 +1311,8 @@ export default function ModalTransaccionUnificado({
                             Descuentos por ítem
                           </div>
                           <div className="text-right">
-                            <div className="text-lg font-semibold text-orange-700">
-                              -{formatUSD(totales.totalDescuentos)}
+                            <div className="text-sm font-semibold text-orange-700">
+                              -{formatAmount(totales.totalDescuentos)}
                             </div>
                             {isExchangeRateValid &&
                               totales.totalDescuentos > 0 && (
@@ -1328,8 +1331,8 @@ export default function ModalTransaccionUnificado({
                             Seña aplicada
                           </div>
                           <div className="text-right">
-                            <div className="text-lg font-semibold text-purple-700">
-                              -{formatUSD(señaAplicada)}
+                            <div className="text-sm font-semibold text-purple-700">
+                              -{formatAmount(señaAplicada)}
                             </div>
                             {isExchangeRateValid && señaAplicada > 0 && (
                               <div className="text-xs text-purple-600">
@@ -1347,8 +1350,8 @@ export default function ModalTransaccionUnificado({
                             Descuentos por método de pago
                           </div>
                           <div className="text-right">
-                            <div className="text-lg font-semibold text-green-700">
-                              -{formatUSD(totales.descuentosPorMetodo)}
+                            <div className="text-sm font-semibold text-green-700">
+                              -{formatAmount(totales.descuentosPorMetodo)}
                             </div>
                             {isExchangeRateValid &&
                               totales.descuentosPorMetodo > 0 && (
@@ -1366,8 +1369,8 @@ export default function ModalTransaccionUnificado({
                           Total a pagar
                         </div>
                         <div className="text-right">
-                          <div className="text-xl font-bold text-blue-900">
-                            {formatUSD(totales.totalFinal)}
+                          <div className="text-base font-bold text-blue-900">
+                            {formatAmount(totales.totalFinal)}
                           </div>
                           {isExchangeRateValid && totales.totalFinal > 0 && (
                             <div className="text-sm text-blue-700">
@@ -1383,8 +1386,8 @@ export default function ModalTransaccionUnificado({
                           Total pagado
                         </div>
                         <div className="text-right">
-                          <div className="text-lg font-semibold text-green-700">
-                            {formatUSD(totales.totalPagadoConDescuentos)}
+                          <div className="text-sm font-semibold text-green-700">
+                            {formatAmount(totales.totalPagadoConDescuentos)}
                           </div>
                           {isExchangeRateValid &&
                             totales.totalPagadoConDescuentos > 0 && (
@@ -1400,7 +1403,7 @@ export default function ModalTransaccionUnificado({
                         <div className="text-sm text-gray-700">Balance</div>
                         <div className="text-right">
                           <div
-                            className={`text-lg font-semibold ${
+                            className={`text-sm font-semibold ${
                               Math.abs(totales.diferencia) < 0.01
                                 ? 'text-green-600'
                                 : totales.diferencia > 0
@@ -1411,8 +1414,8 @@ export default function ModalTransaccionUnificado({
                             {Math.abs(totales.diferencia) < 0.01
                               ? '✓ Balanceado'
                               : totales.diferencia > 0
-                                ? `+${formatUSD(totales.diferencia)} (exceso)`
-                                : `${formatUSD(totales.diferencia)} (faltante)`}
+                                ? `+${formatAmount(totales.diferencia)} (exceso)`
+                                : `${formatAmount(totales.diferencia)} (faltante)`}
                           </div>
                         </div>
                       </div>
@@ -1524,7 +1527,8 @@ export default function ModalTransaccionUnificado({
                                 {producto.nombre}
                               </div>
                               <div className="text-sm text-gray-600">
-                                {producto.tipo} - {formatUSD(producto.precio)}
+                                {producto.tipo} -{' '}
+                                {formatAmount(producto.precio)}
                               </div>
                               {producto.descripcion && (
                                 <div className="mt-1 text-xs text-gray-500">
@@ -1559,7 +1563,7 @@ export default function ModalTransaccionUnificado({
                               {producto.nombre}
                             </div>
                             <div className="text-sm text-gray-600">
-                              {producto.tipo} - {formatUSD(producto.precio)}
+                              {producto.tipo} - {formatAmount(producto.precio)}
                             </div>
                           </div>
                           <Button

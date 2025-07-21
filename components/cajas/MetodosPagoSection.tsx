@@ -59,7 +59,13 @@ export default function MetodosPagoSection({
     formatARSFromNative,
     usdToArs,
     isExchangeRateValid,
+    formatDual,
   } = useCurrencyConverter();
+
+  // Helper function for dual currency display
+  const formatAmount = (amount: number): string => {
+    return isExchangeRateValid ? formatDual(amount) : formatUSD(amount);
+  };
 
   const getPaymentIcon = (tipo: string) => {
     switch (tipo) {
@@ -181,7 +187,7 @@ export default function MetodosPagoSection({
                   metodo.descuentoOriginalARS ? (
                     <>-{formatARSFromNative(metodo.descuentoOriginalARS)}</>
                   ) : (
-                    <>-{formatUSD(metodo.descuentoAplicado)}</>
+                    <>-{formatAmount(metodo.descuentoAplicado)}</>
                   )}
                 </div>
               )}
@@ -194,12 +200,12 @@ export default function MetodosPagoSection({
                       metodo.montoFinalOriginalARS || metodo.monto
                     )}
                     <div className="text-xs text-gray-500">
-                      ≈ {formatUSD(metodo.montoFinal)}
+                      ≈ {formatAmount(metodo.montoFinal)}
                     </div>
                   </>
                 ) : (
                   <>
-                    = {formatUSD(metodo.montoFinal)}
+                    = {formatAmount(metodo.montoFinal)}
                     <div className="text-xs text-gray-500">
                       ≈ {formatARS(metodo.montoFinal)}
                     </div>
@@ -258,12 +264,14 @@ export default function MetodosPagoSection({
         <div className="space-y-2 border-t pt-4">
           <div className="flex justify-between text-sm">
             <span>Total a Pagar:</span>
-            <span className="font-medium">{formatUSD(montoTotal)}</span>
+            <span className="font-medium">{formatAmount(montoTotal)}</span>
           </div>
           {totalDescuentos > 0 && (
             <div className="flex justify-between text-sm text-green-600">
               <span>Descuentos Aplicados:</span>
-              <span className="font-medium">-{formatUSD(totalDescuentos)}</span>
+              <span className="font-medium">
+                -{formatAmount(totalDescuentos)}
+              </span>
             </div>
           )}
 
@@ -285,7 +293,7 @@ export default function MetodosPagoSection({
                           ):
                         </span>
                         <span>
-                          {formatUSD(resumen.detallesPorMoneda.USD.total)}
+                          {formatAmount(resumen.detallesPorMoneda.USD.total)}
                         </span>
                       </div>
                     )}
@@ -319,7 +327,7 @@ export default function MetodosPagoSection({
           <div className="flex justify-between border-t pt-2 text-sm font-medium">
             <span>Total Pagado (USD):</span>
             <div className="text-right">
-              <div>{formatUSD(totalPagado)}</div>
+              <div>{formatAmount(totalPagado)}</div>
               {obtenerResumenDual &&
                 (() => {
                   const resumen = obtenerResumenDual();
@@ -342,7 +350,7 @@ export default function MetodosPagoSection({
               <span>Diferencia:</span>
               <span className="font-medium">
                 {totalPagado > montoTotal ? '+' : ''}
-                {formatUSD(totalPagado - montoTotal)}
+                {formatAmount(totalPagado - montoTotal)}
               </span>
             </div>
           )}

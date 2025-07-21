@@ -12,6 +12,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { formatDate, formatUSD } from '@/lib/utils';
+import { useCurrencyConverter } from '@/hooks/useCurrencyConverter';
 import { Comanda } from '@/types/caja';
 import {
   Calendar,
@@ -43,6 +44,12 @@ export default function TraspasoModal({
   comandas,
   trigger,
 }: TraspasoModalProps) {
+  const { formatUSD, formatDual, isExchangeRateValid } = useCurrencyConverter();
+
+  // Función helper para formatear montos con visualización dual
+  const formatAmount = (amount: number) => {
+    return isExchangeRateValid ? formatDual(amount) : formatUSD(amount);
+  };
   const getMetodoPagoColor = (metodo: string) => {
     switch (metodo.toLowerCase()) {
       case 'efectivo':
@@ -111,7 +118,7 @@ export default function TraspasoModal({
                 <div className="space-y-1">
                   <p className="text-sm text-gray-600">Monto Total</p>
                   <p className="font-medium text-green-600">
-                    {formatUSD(traspaso.montoTotal)}
+                    {formatAmount(traspaso.montoTotal)}
                   </p>
                 </div>
               </div>
@@ -121,7 +128,7 @@ export default function TraspasoModal({
                   <div className="flex items-center gap-2">
                     <Clock className="h-4 w-4 text-amber-600" />
                     <span className="text-sm font-medium text-amber-800">
-                      Traspaso Parcial: {formatUSD(traspaso.montoParcial)}
+                      Traspaso Parcial: {formatAmount(traspaso.montoParcial)}
                     </span>
                   </div>
                 </div>
@@ -195,7 +202,7 @@ export default function TraspasoModal({
                             {comanda.estado}
                           </Badge>
                           <span className="font-medium text-green-600">
-                            {formatUSD(comanda.totalFinal)}
+                            {formatAmount(comanda.totalFinal)}
                           </span>
                         </div>
                       </div>

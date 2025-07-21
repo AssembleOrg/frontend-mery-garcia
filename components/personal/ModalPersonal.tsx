@@ -200,37 +200,7 @@ export default function ModalPersonal({
                 </Select>
               </div>
 
-              {/* Vista previa */}
-              <Card>
-                <CardHeader>
-                  <CardTitle className="text-base">Vista Previa</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="rounded-lg border p-4">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <h3 className="font-medium">
-                          {nombre || 'Nombre del personal'}
-                        </h3>
-                        <div className="mt-2 flex items-center gap-2">
-                          <Badge
-                            variant={rol === 'admin' ? 'default' : 'secondary'}
-                            className="capitalize"
-                          >
-                            {rol}
-                          </Badge>
-                        </div>
-                      </div>
-                      <div className="text-right">
-                        <div className="font-mono text-green-600">
-                          {comision}%
-                        </div>
-                        <div className="text-sm text-gray-500">comisión</div>
-                      </div>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
+
             </div>
           </div>
 

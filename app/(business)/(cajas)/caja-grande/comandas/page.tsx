@@ -382,15 +382,12 @@ export default function ComandasTraspasadasPage() {
                     <CardContent>
                       <div className="space-y-4">
                         {traspasos.map((traspaso) => {
-                          const comandasDelTraspaso = comandasValidadas.filter(
-                            (c) => traspaso.comandasTraspasadas.includes(c.id)
+                          const comandasDelTraspaso = comandasValidadas.filter((c) =>
+                            traspaso.comandasTraspasadas.includes(c.id)
                           );
-
+                          
                           return (
-                            <Card
-                              key={traspaso.id}
-                              className="border border-gray-200"
-                            >
+                            <Card key={traspaso.id} className="border border-gray-200">
                               <CardContent className="p-4">
                                 <div className="flex items-center justify-between">
                                   <div className="flex items-center gap-4">
@@ -402,44 +399,34 @@ export default function ComandasTraspasadasPage() {
                                         {formatDate(traspaso.fechaTraspaso)}
                                       </p>
                                       <p className="text-sm text-gray-600">
-                                        {traspaso.comandasTraspasadas.length}{' '}
-                                        comandas •{' '}
-                                        {formatUSD(traspaso.montoTotal)}
+                                        {traspaso.comandasTraspasadas.length} comandas • {formatUSD(traspaso.montoTotal)}
                                       </p>
                                     </div>
                                   </div>
-
+                                  
                                   <TraspasoModal
                                     traspaso={{
                                       fecha: traspaso.fechaTraspaso,
-                                      numeroComandas:
-                                        traspaso.comandasTraspasadas.length,
+                                      numeroComandas: traspaso.comandasTraspasadas.length,
                                       montoTotal: traspaso.montoTotal,
                                       montoParcial: traspaso.montoParcial || 0,
                                       fechaInicio: traspaso.rangoFechas.desde,
                                       fechaFin: traspaso.rangoFechas.hasta,
-                                      metodosPago: comandasDelTraspaso.reduce(
-                                        (metodos, comanda) => {
-                                          if (comanda.metodosPago) {
-                                            comanda.metodosPago.forEach(
-                                              (mp) => {
-                                                if (
-                                                  !metodos.includes(mp.tipo)
-                                                ) {
-                                                  metodos.push(mp.tipo);
-                                                }
-                                              }
-                                            );
-                                          }
-                                          return metodos;
-                                        },
-                                        [] as string[]
-                                      ),
+                                      metodosPago: comandasDelTraspaso.reduce((metodos, comanda) => {
+                                        if (comanda.metodosPago) {
+                                          comanda.metodosPago.forEach(mp => {
+                                            if (!metodos.includes(mp.tipo)) {
+                                              metodos.push(mp.tipo);
+                                            }
+                                          });
+                                        }
+                                        return metodos;
+                                      }, [] as string[])
                                     }}
                                     comandas={comandasDelTraspaso}
                                     trigger={
                                       <Button variant="outline" size="sm">
-                                        <ArrowUpRight className="mr-2 h-4 w-4" />
+                                        <ArrowUpRight className="h-4 w-4 mr-2" />
                                         Ver Detalles
                                       </Button>
                                     }

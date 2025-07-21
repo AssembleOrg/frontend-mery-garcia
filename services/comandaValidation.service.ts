@@ -164,18 +164,42 @@ export class ComandaValidationService {
 
     let totalCompletados = 0;
     let totalPendientes = 0;
-    let totalIngresos = 0;
-    let totalEgresos = 0;
+    let totalIngresosUSD = 0;
+    let totalEgresosUSD = 0;
+    let totalIngresosARS = 0;
+    let totalEgresosARS = 0;
 
     comandas.forEach((c) => {
       const f = new Date(c.fecha);
       if (f >= desde && f <= hasta && c.estadoValidacion !== 'validado') {
         if (c.estado === 'completado') {
           totalCompletados += 1;
-          if (c.tipo === 'ingreso') {
-            totalIngresos += c.totalFinal;
+
+          // Calcular montos por moneda basado en métodos de pago
+          if (c.metodosPago && c.metodosPago.length > 0) {
+            c.metodosPago.forEach((metodo) => {
+              const moneda = metodo.moneda || 'USD';
+              if (c.tipo === 'ingreso') {
+                if (moneda === 'USD') {
+                  totalIngresosUSD += metodo.monto;
+                } else {
+                  totalIngresosARS += metodo.monto;
+                }
+              } else {
+                if (moneda === 'USD') {
+                  totalEgresosUSD += metodo.monto;
+                } else {
+                  totalEgresosARS += metodo.monto;
+                }
+              }
+            });
           } else {
-            totalEgresos += c.totalFinal;
+            // Fallback: asumir USD si no hay métodos de pago definidos
+            if (c.tipo === 'ingreso') {
+              totalIngresosUSD += c.totalFinal;
+            } else {
+              totalEgresosUSD += c.totalFinal;
+            }
           }
         } else {
           totalPendientes += 1;
@@ -183,15 +207,23 @@ export class ComandaValidationService {
       }
     });
 
-    const montoNeto = totalIngresos - totalEgresos;
+    const montoNetoUSD = totalIngresosUSD - totalEgresosUSD;
+    const montoNetoARS = totalIngresosARS - totalEgresosARS;
 
     return {
       totalCompletados,
       totalPendientes,
-      montoNeto,
-      totalIngresos,
-      totalEgresos,
-      montoDisponibleParaTraslado: Math.max(0, montoNeto),
+      montoNeto: montoNetoUSD, // Para compatibilidad
+      totalIngresos: totalIngresosUSD, // Para compatibilidad
+      totalEgresos: totalEgresosUSD, // Para compatibilidad
+      // Nuevos campos separados por moneda
+      totalIngresosUSD,
+      totalEgresosUSD,
+      totalIngresosARS,
+      totalEgresosARS,
+      montoNetoUSD,
+      montoNetoARS,
+      montoDisponibleParaTraslado: montoNetoUSD + montoNetoARS,
       montoParcialSeleccionado: undefined,
       montoResidual: undefined,
     };

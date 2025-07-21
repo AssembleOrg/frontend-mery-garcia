@@ -254,7 +254,7 @@ export default function TableFilters({
       {/* Advanced filters */}
       {showAdvancedFilters && (
         <div className="rounded-lg border border-gray-200 bg-gray-50 p-4">
-          <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-5">
             {/* Status filter */}
             <div>
               <label className="mb-2 block text-sm font-medium text-gray-700">
@@ -345,6 +345,46 @@ export default function TableFilters({
                     <div className="flex items-center gap-2">
                       <DollarSign className="h-4 w-4 text-orange-600" />
                       <span className="font-medium">Mixto</span>
+                    </div>
+                  </SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* Currency filter */}
+            <div>
+              <label className="mb-2 block text-sm font-medium text-gray-700">
+                Moneda
+              </label>
+              <Select
+                value={filters.moneda || 'todos'}
+                onValueChange={(value) =>
+                  onFiltersChange({
+                    ...filters,
+                    moneda: value === 'todos' ? undefined : value,
+                  })
+                }
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="todos">
+                    <div className="flex items-center gap-2">
+                      <DollarSign className="h-4 w-4" />
+                      Todas las Monedas
+                    </div>
+                  </SelectItem>
+                  <SelectItem value="USD">
+                    <div className="flex items-center gap-2">
+                      <DollarSign className="h-4 w-4 text-green-600" />
+                      <span className="font-medium">USD (Dólares)</span>
+                    </div>
+                  </SelectItem>
+                  <SelectItem value="ARS">
+                    <div className="flex items-center gap-2">
+                      <DollarSign className="h-4 w-4 text-blue-600" />
+                      <span className="font-medium">ARS (Pesos)</span>
                     </div>
                   </SelectItem>
                 </SelectContent>

@@ -20,6 +20,7 @@ import {
 } from 'lucide-react';
 import { useComandaStore } from '@/features/comandas/store/comandaStore';
 import { useConfiguracion } from '@/features/configuracion/store/configuracionStore';
+import { useCurrencyConverter } from '@/hooks/useCurrencyConverter';
 import { Comanda, EstadoComandaNegocio, EstadoValidacion } from '@/types/caja';
 
 interface ModalVerDetallesProps {
@@ -65,6 +66,13 @@ export default function ModalVerDetalles({
   const [comanda, setComanda] = useState<Comanda | null>(null);
   const { obtenerComandaPorId } = useComandaStore();
   const { descuentosPorMetodo } = useConfiguracion();
+  const {
+    formatDual,
+    formatUSD,
+    formatARS,
+    formatARSFromNative,
+    isExchangeRateValid,
+  } = useCurrencyConverter();
 
   useEffect(() => {
     if (isOpen && comandaId) {
@@ -89,10 +97,7 @@ export default function ModalVerDetalles({
   const IconoEstado = estadoConfig.icon;
 
   const formatAmount = (monto: number) => {
-    return new Intl.NumberFormat('es-AR', {
-      style: 'currency',
-      currency: 'USD',
-    }).format(monto);
+    return isExchangeRateValid ? formatDual(monto) : formatUSD(monto);
   };
 
   const formatDate = (fecha: Date | string) => {
@@ -345,6 +350,10 @@ export default function ModalVerDetalles({
                                         ? '📱 QR'
                                         : '🔄 Mixto'}
                             </span>
+                            {/* Mostrar moneda */}
+                            <span className="rounded bg-gray-100 px-2 py-1 text-xs font-medium text-gray-700">
+                              {metodo.moneda || 'USD'}
+                            </span>
                             {metodo.tipo === 'giftcard' && metodo.giftcard && (
                               <div className="text-xs text-gray-600">
                                 <div>Nombre: {metodo.giftcard.nombre}</div>
@@ -356,16 +365,41 @@ export default function ModalVerDetalles({
                             {/* Mostrar monto original si hay descuento */}
                             {descuentoAplicado > 0 && (
                               <p className="text-xs text-gray-500 line-through">
-                                {formatAmount(montoOriginal)}
+                                {metodo.moneda === 'ARS'
+                                  ? formatARSFromNative(
+                                      montoOriginal *
+                                        (comanda.tipoCambioAlCrear
+                                          ?.valorVenta || 1000)
+                                    )
+                                  : formatAmount(montoOriginal)}
                               </p>
                             )}
                             <p className="font-bold">
-                              {formatAmount(metodo.monto)}
+                              {metodo.moneda === 'ARS'
+                                ? formatARSFromNative(
+                                    metodo.monto *
+                                      (comanda.tipoCambioAlCrear?.valorVenta ||
+                                        1000)
+                                  )
+                                : formatAmount(metodo.monto)}
+                            </p>
+                            {/* Mostrar equivalente en la otra moneda */}
+                            <p className="text-xs text-gray-500">
+                              {metodo.moneda === 'ARS'
+                                ? `≈ ${formatAmount(metodo.monto)}`
+                                : `≈ ${formatARS(metodo.monto)}`}
                             </p>
                             {/* Mostrar descuento aplicado */}
                             {descuentoAplicado > 0 && (
                               <p className="text-xs text-green-600">
-                                Descuento: -{formatAmount(descuentoAplicado)}
+                                Descuento: -
+                                {metodo.moneda === 'ARS'
+                                  ? formatARSFromNative(
+                                      descuentoAplicado *
+                                        (comanda.tipoCambioAlCrear
+                                          ?.valorVenta || 1000)
+                                    )
+                                  : formatAmount(descuentoAplicado)}
                               </p>
                             )}
                           </div>
