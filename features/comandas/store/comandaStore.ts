@@ -18,6 +18,7 @@ interface ComandaState {
   filters: FiltrosComanda;
   cargando: boolean;
   error: string | null;
+  lastUpdate: number;
 
   // Acciones - Comandas
   agregarComanda: (comanda: Comanda) => void;
@@ -94,6 +95,7 @@ const estadoInicial = {
   filters: {},
   cargando: false,
   error: null,
+  lastUpdate: Date.now(),
 };
 
 // Storage helper que evita acceder a localStorage durante el render en servidor

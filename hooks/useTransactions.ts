@@ -103,6 +103,13 @@ export function useTransactions({
     itemsPorPagina,
   });
 
+  // Filter out validated commands for calculations (caja-chica reset after transfer)
+  const dataForCalculations = useMemo(() => {
+    return filteredData.filter(
+      (comanda) => comanda.estadoValidacion !== 'validado'
+    );
+  }, [filteredData]);
+
   // Calculate dual currency statistics
   const calculateDualCurrencyTotals = useMemo(() => {
     return (comandas: typeof filteredData) => {
@@ -151,18 +158,18 @@ export function useTransactions({
 
   // Calculate statistics
   const statistics = useMemo(() => {
-    const total = filteredData.reduce(
+    const total = dataForCalculations.reduce(
       (sum, comanda) => sum + comanda.totalFinal,
       0
     );
-    const transactionCount = filteredData.length;
+    const transactionCount = dataForCalculations.length;
     const uniqueClients = new Set(
-      filteredData.map((c) => c.cliente?.nombre).filter(Boolean)
+      dataForCalculations.map((c) => c.cliente?.nombre).filter(Boolean)
     ).size;
     const average = transactionCount > 0 ? total / transactionCount : 0;
 
     // Calculate dual currency totals
-    const dualCurrencyTotals = calculateDualCurrencyTotals(filteredData);
+    const dualCurrencyTotals = calculateDualCurrencyTotals(dataForCalculations);
 
     // Provide different naming based on type for backward compatibility
     const typeSpecificStats = {
@@ -183,20 +190,20 @@ export function useTransactions({
         dualCurrencyDetails: dualCurrencyTotals.detallesPorMoneda,
       }),
       ...(type === 'all' && {
-        totalIncoming: filteredData
+        totalIncoming: dataForCalculations
           .filter((c) => c.tipo === 'ingreso')
           .reduce((sum, c) => sum + c.totalFinal, 0),
-        totalOutgoing: filteredData
+        totalOutgoing: dataForCalculations
           .filter((c) => c.tipo === 'egreso')
           .reduce((sum, c) => sum + c.totalFinal, 0),
         clientCount: uniqueClients,
         providerCount: uniqueClients,
         // Add dual currency totals for all transactions
         incomingDualCurrency: calculateDualCurrencyTotals(
-          filteredData.filter((c) => c.tipo === 'ingreso')
+          dataForCalculations.filter((c) => c.tipo === 'ingreso')
         ),
         outgoingDualCurrency: calculateDualCurrencyTotals(
-          filteredData.filter((c) => c.tipo === 'egreso')
+          dataForCalculations.filter((c) => c.tipo === 'egreso')
         ),
       }),
     };
@@ -208,7 +215,7 @@ export function useTransactions({
       transactionCount,
       ...typeSpecificStats,
     };
-  }, [filteredData, type, calculateDualCurrencyTotals]);
+  }, [dataForCalculations, type, calculateDualCurrencyTotals]);
 
   // Generate filename based on type
   const getFilename = (extension: string) => {

@@ -1,11 +1,12 @@
 'use client';
+import { useState } from 'react';
 import MainLayout from '@/components/layout/MainLayout';
 import StandardPageBanner from '@/components/common/StandardPageBanner';
 import StandardBreadcrumbs from '@/components/common/StandardBreadcrumbs';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
 import Link from 'next/link';
 import { TrendingUp, TrendingDown, BarChart3, ArrowRight } from 'lucide-react';
-import { useInitializeComandaStore } from '@/hooks/useInitializeComandaStore';
 import {
   useResumenCaja,
   useComandaStore,
@@ -26,8 +27,9 @@ const breadcrumbItems = [
 // menuOptions se definirá dentro del componente
 
 export default function CajaChicaMenuPage() {
-  // Inicializa el store de comandas una única vez
-  useInitializeComandaStore();
+  // Estado para modal de movimientos manuales
+  const [showModalMovimiento, setShowModalMovimiento] = useState(false);
+
   // Obtener resumen del store y todas las comandas
   const { resumen } = useResumenCaja();
   const { comandas } = useComandaStore();

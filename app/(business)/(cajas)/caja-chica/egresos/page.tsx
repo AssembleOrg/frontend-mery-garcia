@@ -12,16 +12,18 @@ import { useTransactions } from '@/hooks/useTransactions';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Plus } from 'lucide-react';
-import { ColumnaCaja } from '@/types/caja';
+import { ColumnaCaja, Comanda } from '@/types/caja';
 import ModalTransaccionUnificado from '@/components/cajas/ModalTransaccionUnificado';
-import { useInitializeComandaStore } from '@/hooks/useInitializeComandaStore';
 import { Pagination } from '@/components/ui/pagination';
 import { DateRangePicker } from '@/components/ui/date-range-picker';
 import { DateRange } from 'react-day-picker';
 import ClientOnly from '@/components/common/ClientOnly';
 import Spinner from '@/components/common/Spinner';
-import SummaryCard from '@/components/common/SummaryCard';
+import SummaryCardDual from '@/components/common/SummaryCardDual';
+import SummaryCardCount from '@/components/common/SummaryCardCount';
 import ModalEditarTransaccion from '@/components/cajas/ModalEditarTransaccion';
+import { useCurrencyConverter } from '@/hooks/useCurrencyConverter';
+import { formatDate } from '@/lib/utils';
 
 const breadcrumbItems = [
   { label: 'Inicio', href: '/' },
@@ -47,11 +49,18 @@ const initialColumns: ColumnaCaja[] = [
     width: '100px',
   },
   {
-    key: 'cliente',
+    key: 'cliente.nombre',
     label: 'Proveedor',
     visible: true,
     sortable: true,
     width: '150px',
+  },
+  {
+    key: 'mainStaff.nombre',
+    label: 'Responsable',
+    visible: true,
+    sortable: true,
+    width: '120px',
   },
   {
     key: 'servicios',
@@ -61,29 +70,29 @@ const initialColumns: ColumnaCaja[] = [
     width: '200px',
   },
   {
-    key: 'total',
+    key: 'subtotal',
+    label: 'Subtotal',
+    visible: true,
+    sortable: true,
+    width: '120px',
+  },
+  {
+    key: 'totalFinal',
     label: 'Total',
     visible: true,
     sortable: true,
     width: '120px',
   },
   {
-    key: 'estado',
-    label: 'Estado',
-    visible: false, // Oculto por defecto, usuario puede habilitarlo
-    sortable: true,
-    width: '120px',
-  },
-  {
-    key: 'metodoPago',
+    key: 'metodosPago',
     label: 'Método Pago',
     visible: false, // Oculto por defecto, usuario puede habilitarlo
     sortable: true,
     width: '100px',
   },
   {
-    key: 'vendedor',
-    label: 'Responsable',
+    key: 'estado',
+    label: 'Estado',
     visible: false, // Oculto por defecto, usuario puede habilitarlo
     sortable: true,
     width: '120px',
@@ -98,12 +107,12 @@ const initialColumns: ColumnaCaja[] = [
 ];
 
 export default function EgresosPage() {
-  // Initialize store only once
-  const { isInitialized } = useInitializeComandaStore();
+  const { isInitialized } = useCurrencyConverter();
 
   // Date range filter state
   const [dateRange, setDateRange] = useState<DateRange | undefined>();
 
+  // Use clean hook for outgoing transactions
   const {
     data: transactions,
     statistics,
@@ -119,13 +128,20 @@ export default function EgresosPage() {
 
   // Local UI state
   const [columns, setColumns] = useState<ColumnaCaja[]>(initialColumns);
-  const hiddenColumns = columns.filter((c) => !c.visible).map((c) => c.key);
   const [showAddModal, setShowAddModal] = useState(false);
   const [showChangeStatusModal, setShowChangeStatusModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
   const [showViewModal, setShowViewModal] = useState(false);
   const [selectedTransactionId, setSelectedTransactionId] =
     useState<string>('');
+
+  if (!isInitialized) {
+    return (
+      <div className="flex min-h-screen items-center justify-center">
+        <Spinner />
+      </div>
+    );
+  }
 
   // Get the selected transaction for the modal
   const selectedTransaction = transactions.find(
@@ -156,20 +172,53 @@ export default function EgresosPage() {
     setShowViewModal(true);
   };
 
-  // Don't render until client-side and store is initialized
-  if (!isInitialized) {
-    return (
-      <MainLayout>
-        <div className="min-h-screen bg-gradient-to-br from-[#f9bbc4]/10 via-[#e8b4c6]/8 to-[#d4a7ca]/6">
-          <StandardPageBanner title="Transacciones de Egreso - Caja Chica" />
-          <div className="flex items-center justify-center py-12">
-            <Spinner />
-            <p className="ml-2 text-[#6b4c57]">Cargando transacciones...</p>
-          </div>
-        </div>
-      </MainLayout>
+  const hiddenColumns = columns.filter((c) => !c.visible).map((c) => c.key);
+
+  const agruparTransaccionesConTraspasos = () => {
+    const grupos: Array<{
+      tipo: 'transacciones';
+      fecha: string;
+      data: Comanda[];
+      key: string;
+    }> = [];
+
+    // Crear un Set para evitar duplicados de fechas de transacciones
+    const fechasTransaccionesProcesadas = new Set<string>();
+
+    // Agrupar transacciones por fecha
+    const transaccionesPorFecha = transactions.reduce(
+      (acc, transaction) => {
+        const fechaStr = formatDate(transaction.fecha);
+        if (!acc[fechaStr]) {
+          acc[fechaStr] = [];
+        }
+        acc[fechaStr].push(transaction);
+        return acc;
+      },
+      {} as Record<string, typeof transactions>
     );
-  }
+
+    Object.entries(transaccionesPorFecha).forEach(
+      ([fecha, transaccionesDeLaFecha]) => {
+        if (!fechasTransaccionesProcesadas.has(fecha)) {
+          grupos.push({
+            tipo: 'transacciones',
+            fecha,
+            data: transaccionesDeLaFecha,
+            key: `transacciones-${fecha}`,
+          });
+          fechasTransaccionesProcesadas.add(fecha);
+        }
+      }
+    );
+
+    // Ordenar por fecha descendente (más recientes primero)
+    return grupos.sort((a, b) => {
+      return new Date(b.fecha).getTime() - new Date(a.fecha).getTime();
+    });
+  };
+
+  const gruposOrdenados = agruparTransaccionesConTraspasos();
 
   return (
     <MainLayout>
@@ -184,7 +233,7 @@ export default function EgresosPage() {
           <StandardBreadcrumbs items={breadcrumbItems} />
 
           <div className="bg-gradient-to-b from-[#f9bbc4]/5 via-[#e8b4c6]/3 to-[#d4a7ca]/5">
-            <div className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
+            <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
               {/* Header with statistics */}
               <div className="mb-6">
                 <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
@@ -194,19 +243,32 @@ export default function EgresosPage() {
                       ✨ Gestión de Transacciones de Egreso
                     </h1>
                     <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
-                      <SummaryCard
+                      <SummaryCardDual
                         title="💰 Total Egresos"
-                        totalUSD={statistics.totalOutgoing ?? 0}
+                        totalUSD={statistics.totalOutgoingUSD ?? 0}
+                        totalARS={statistics.totalOutgoingARS ?? 0}
                         valueClassName="text-red-600"
+                        showTransactionCount={true}
+                        transactionCountUSD={
+                          statistics.dualCurrencyDetails?.USD?.transacciones ??
+                          0
+                        }
+                        transactionCountARS={
+                          statistics.dualCurrencyDetails?.ARS?.transacciones ??
+                          0
+                        }
                       />
-                      <SummaryCard
-                        title="Transacciones"
-                        totalUSD={statistics.transactionCount ?? 0}
-                      />
-                      <SummaryCard
-                        title="🏪 Proveedores"
-                        totalUSD={statistics.providerCount ?? 0}
+                      <SummaryCardCount
+                        title="📊 Transacciones"
+                        count={statistics.transactionCount ?? 0}
+                        subtitle="comandas realizadas"
                         valueClassName="text-blue-600"
+                      />
+                      <SummaryCardCount
+                        title="🏪 Proveedores"
+                        count={statistics.providerCount ?? 0}
+                        subtitle="proveedores únicos"
+                        valueClassName="text-purple-600"
                       />
                     </div>
                   </div>
@@ -270,6 +332,35 @@ export default function EgresosPage() {
               <div className="mb-6">
                 <Card className="border border-[#f9bbc4]/20 bg-white/80 shadow-sm">
                   <CardContent className="p-4">
+                    {/* Renderizar grupos ordenados - SIN TraspasoIndicator */}
+                    <div className="space-y-4">
+                      {gruposOrdenados.map((grupo) => (
+                        <div key={grupo.key}>
+                          {/* Solo mostrar tabla de transacciones */}
+                          <TransactionsTable
+                            data={grupo.data}
+                            onEdit={onEditTransaction}
+                            onDelete={handleDelete}
+                            onView={onViewTransaction}
+                            onChangeStatus={onChangeStatus}
+                            hiddenColumns={hiddenColumns}
+                          />
+                        </div>
+                      ))}
+
+                      {/* Si no hay grupos, mostrar tabla normal */}
+                      {gruposOrdenados.length === 0 && (
+                        <TransactionsTable
+                          data={transactions}
+                          onEdit={onEditTransaction}
+                          onDelete={handleDelete}
+                          onView={onViewTransaction}
+                          onChangeStatus={onChangeStatus}
+                          hiddenColumns={hiddenColumns}
+                        />
+                      )}
+                    </div>
+
                     {/* Pagination */}
                     <div className="mt-6">
                       <Pagination
@@ -336,15 +427,6 @@ export default function EgresosPage() {
             setSelectedTransactionId('');
           }}
           comandaId={selectedTransactionId}
-        />
-
-        <TransactionsTable
-          data={transactions}
-          onEdit={onEditTransaction}
-          onDelete={handleDelete}
-          onView={onViewTransaction}
-          onChangeStatus={onChangeStatus}
-          hiddenColumns={hiddenColumns}
         />
       </div>
     </MainLayout>

@@ -1,10 +1,12 @@
 'use client';
 
+import { useState } from 'react';
 import MainLayout from '@/components/layout/MainLayout';
 import StandardPageBanner from '@/components/common/StandardPageBanner';
 import StandardBreadcrumbs from '@/components/common/StandardBreadcrumbs';
 import SummaryCard from '@/components/common/SummaryCard';
 import ResumenCajaGrande from '@/components/cajas/ResumenCajaGrande';
+import ModalMovimientoSimple from '@/components/cajas/ModalMovimientoSimple';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import ClientOnly from '@/components/common/ClientOnly';
@@ -27,6 +29,8 @@ import {
   Download,
   FileText,
   Database,
+  Plus,
+  Minus,
 } from 'lucide-react';
 import Link from 'next/link';
 
@@ -41,6 +45,9 @@ export default function CajaGrandePage() {
   const { traspasos } = useRecordsStore();
   const { exportarDatos } = useEstadisticasRecords();
   const { formatUSD } = useCurrencyConverter();
+
+  // Estado para modal de movimientos manuales
+  const [showModalMovimiento, setShowModalMovimiento] = useState(false);
 
   // Hook para transacciones con funcionalidad de exportación
   const { exportToCSV, exportToPDF } = useTransactions({
@@ -280,6 +287,21 @@ export default function CajaGrandePage() {
                           </div>
                         </div>
 
+                        {/* Movimientos Manuales */}
+                        <div className="space-y-2">
+                          <p className="text-sm font-medium text-gray-700">
+                            💰 Movimientos Manuales
+                          </p>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => setShowModalMovimiento(true)}
+                            className="flex w-full items-center gap-2 border-purple-200 text-purple-700 hover:bg-purple-50"
+                          >
+                            ✨ Gestionar Movimientos
+                          </Button>
+                        </div>
+
                         {/* Controles de Exportación */}
                         <div className="space-y-2">
                           <p className="text-sm font-medium text-gray-700">
@@ -375,6 +397,17 @@ export default function CajaGrandePage() {
             </div>
           </ClientOnly>
         </ManagerOrAdminOnly>
+
+        {/* Modal de Movimientos Manuales */}
+        <ModalMovimientoSimple
+          abierto={showModalMovimiento}
+          onCerrar={() => setShowModalMovimiento(false)}
+          cajaActual="caja_2"
+          onExito={() => {
+            // Aquí podrías refrescar datos si es necesario
+            console.log('Movimiento registrado exitosamente');
+          }}
+        />
       </div>
     </MainLayout>
   );

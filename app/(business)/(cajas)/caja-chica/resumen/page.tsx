@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import MainLayout from '@/components/layout/MainLayout';
 import StandardPageBanner from '@/components/common/StandardPageBanner';
 import StandardBreadcrumbs from '@/components/common/StandardBreadcrumbs';
@@ -48,8 +48,11 @@ const breadcrumbItems = [
 export default function CajaChicaResumenPage() {
   const { formatDual, formatUSD, isExchangeRateValid } = useCurrencyConverter();
   const { tipoCambio } = useExchangeRate();
-  const { validarComandasParaTraspasoParcial, obtenerResumenConMontoParcial } =
-    useComandaStore();
+  const {
+    validarComandasParaTraspasoParcial,
+    obtenerResumenConMontoParcial,
+    lastUpdate,
+  } = useComandaStore();
   const { registrarTraspaso } = useRecordsStore();
   const [dateRange, setDateRange] = useState<DateRange | undefined>();
   const [loading, setLoading] = useState(false);
@@ -60,12 +63,18 @@ export default function CajaChicaResumenPage() {
     texto: string;
   } | null>(null);
 
-  const resumen = dateRange?.from
-    ? obtenerResumenConMontoParcial(
-        dateRange.from,
-        dateRange.to ?? dateRange.from
-      )
-    : null;
+  const resumen = useMemo(() => {
+    if (!dateRange?.from) return null;
+    return obtenerResumenConMontoParcial(
+      dateRange.from,
+      dateRange.to ?? dateRange.from
+    );
+  }, [
+    dateRange?.from,
+    dateRange?.to,
+    obtenerResumenConMontoParcial,
+    lastUpdate,
+  ]);
 
   const configuracionTraspaso =
     resumen && montoParcial
