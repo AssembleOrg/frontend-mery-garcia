@@ -135,6 +135,7 @@ export const useComandaStore = create<ComandaState>()(
           set((state) => ({
             comandas: [...state.comandas, comandaConTipoCambio],
             error: null,
+            lastUpdate: Date.now(),
           }));
         },
 
@@ -158,12 +159,14 @@ export const useComandaStore = create<ComandaState>()(
 
               return actualizada;
             }),
+            lastUpdate: Date.now(),
           }));
         },
 
         eliminarComanda: (id: string) => {
           set((state) => ({
             comandas: state.comandas.filter((c) => c.id !== id),
+            lastUpdate: Date.now(),
           }));
         },
 
@@ -393,7 +396,10 @@ export const useComandaStore = create<ComandaState>()(
               montoParcial
             );
 
-          set({ comandas: resultado.comandasActualizadas });
+          set({
+            comandas: resultado.comandasActualizadas,
+            lastUpdate: Date.now(), // Actualizar timestamp para trigger recálculos
+          });
 
           return {
             idsValidados: resultado.idsValidados,

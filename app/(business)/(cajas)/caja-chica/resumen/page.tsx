@@ -48,11 +48,8 @@ const breadcrumbItems = [
 export default function CajaChicaResumenPage() {
   const { formatDual, formatUSD, isExchangeRateValid } = useCurrencyConverter();
   const { tipoCambio } = useExchangeRate();
-  const {
-    validarComandasParaTraspasoParcial,
-    obtenerResumenConMontoParcial,
-    lastUpdate,
-  } = useComandaStore();
+  const { validarComandasParaTraspasoParcial, obtenerResumenConMontoParcial } =
+    useComandaStore();
   const { registrarTraspaso } = useRecordsStore();
   const [dateRange, setDateRange] = useState<DateRange | undefined>();
   const [loading, setLoading] = useState(false);
@@ -69,12 +66,7 @@ export default function CajaChicaResumenPage() {
       dateRange.from,
       dateRange.to ?? dateRange.from
     );
-  }, [
-    dateRange?.from,
-    dateRange?.to,
-    obtenerResumenConMontoParcial,
-    lastUpdate,
-  ]);
+  }, [dateRange?.from, dateRange?.to, obtenerResumenConMontoParcial]);
 
   const configuracionTraspaso =
     resumen && montoParcial
@@ -99,10 +91,8 @@ export default function CajaChicaResumenPage() {
       ? parseFloat(montoParcial) || 0
       : resumen.montoDisponibleParaTraslado;
 
-    if (montoATraslado <= 0) {
-      toast.error('El monto a trasladar debe ser mayor a 0');
-      return;
-    }
+    // Permitir traspasos independientemente del monto (incluso si es 0 o negativo)
+    // La lógica de negocio requiere permitir traspasos en cualquier situación
 
     setLoading(true);
     try {
@@ -259,70 +249,81 @@ export default function CajaChicaResumenPage() {
                         </div>
                       </div>
 
-                      {resumen.montoDisponibleParaTraslado > 0 && (
-                        <>
-                          <div className="my-6 border-t border-gray-200"></div>
-                          <div>
-                            <h3 className="mb-3 flex items-center gap-2 text-lg font-semibold text-gray-800">
-                              <Calculator className="h-5 w-5 text-purple-600" />
-                              Configuración de Traspaso
-                            </h3>
+                      {/* Mostrar configuración de traspaso siempre que haya un resumen */}
+                      <>
+                        <div className="my-6 border-t border-gray-200"></div>
+                        <div>
+                          <h3 className="mb-3 flex items-center gap-2 text-lg font-semibold text-gray-800">
+                            <Calculator className="h-5 w-5 text-purple-600" />
+                            Configuración de Traspaso
+                          </h3>
 
-                            <div className="space-y-4">
-                              <SummaryCardDual
-                                title="Monto Disponible para Traslado"
-                                totalUSD={resumen.montoDisponibleParaTraslado}
-                                totalARS={
-                                  isExchangeRateValid
-                                    ? resumen.montoDisponibleParaTraslado *
-                                      (tipoCambio?.valorVenta || 0)
-                                    : 0
-                                }
-                                showTransactionCount={false}
-                                valueClassName="text-blue-700"
-                              />
+                          <div className="space-y-4">
+                            <SummaryCardDual
+                              title="Monto Disponible para Traslado"
+                              totalUSD={resumen.montoDisponibleParaTraslado}
+                              totalARS={
+                                isExchangeRateValid
+                                  ? resumen.montoDisponibleParaTraslado *
+                                    (tipoCambio?.valorVenta || 0)
+                                  : 0
+                              }
+                              showTransactionCount={false}
+                              valueClassName={
+                                resumen.montoDisponibleParaTraslado >= 0
+                                  ? 'text-blue-700'
+                                  : 'text-red-700'
+                              }
+                            />
 
-                              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                                <div className="space-y-2">
-                                  <Label
-                                    htmlFor="montoParcial"
-                                    className="text-sm font-medium"
-                                  >
-                                    Monto Parcial a Trasladar (opcional)
-                                  </Label>
-                                  <Input
-                                    id="montoParcial"
-                                    type="text"
-                                    placeholder="Ingrese monto o deje vacío para traslado completo"
-                                    value={montoParcial}
-                                    onChange={(e) =>
-                                      handleMontoParcialChange(e.target.value)
-                                    }
-                                    className="border-[#f9bbc4]/30 focus:border-[#f9bbc4] focus:ring-[#f9bbc4]/20"
-                                  />
-                                  <p className="text-xs text-gray-500">
-                                    Máximo:{' '}
-                                    {formatDual(
-                                      resumen.montoDisponibleParaTraslado,
-                                      true
-                                    )}
-                                  </p>
-                                </div>
+                            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                              <div className="space-y-2">
+                                <Label
+                                  htmlFor="montoParcial"
+                                  className="text-sm font-medium"
+                                >
+                                  Monto Parcial a Trasladar (opcional)
+                                </Label>
+                                <Input
+                                  id="montoParcial"
+                                  type="text"
+                                  placeholder="Ingrese monto o deje vacío para traslado completo"
+                                  value={montoParcial}
+                                  onChange={(e) =>
+                                    handleMontoParcialChange(e.target.value)
+                                  }
+                                  className="border-[#f9bbc4]/30 focus:border-[#f9bbc4] focus:ring-[#f9bbc4]/20"
+                                />
+                                <p className="text-xs text-gray-500">
+                                  {resumen.montoDisponibleParaTraslado >= 0 ? (
+                                    <>
+                                      Máximo:{' '}
+                                      {formatDual(
+                                        resumen.montoDisponibleParaTraslado,
+                                        true
+                                      )}
+                                    </>
+                                  ) : (
+                                    <>
+                                      Balance negativo:{' '}
+                                      {formatDual(
+                                        resumen.montoDisponibleParaTraslado,
+                                        true
+                                      )}
+                                    </>
+                                  )}
+                                </p>
                               </div>
                             </div>
                           </div>
-                        </>
-                      )}
+                        </div>
+                      </>
                     </div>
                   )}
 
                   <div className="border-t border-gray-200 pt-4">
                     <Button
-                      disabled={
-                        !dateRange?.from ||
-                        loading ||
-                        (resumen?.montoDisponibleParaTraslado || 0) <= 0
-                      }
+                      disabled={!dateRange?.from || loading}
                       onClick={() => setShowConfirmModal(true)}
                       className="w-full bg-gradient-to-r from-[#f9bbc4] to-[#e292a3] text-white hover:from-[#e292a3] hover:to-[#d4869c] sm:w-auto"
                     >

@@ -1,10 +1,9 @@
 'use client';
-import { useState } from 'react';
+
 import MainLayout from '@/components/layout/MainLayout';
 import StandardPageBanner from '@/components/common/StandardPageBanner';
 import StandardBreadcrumbs from '@/components/common/StandardBreadcrumbs';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
 import Link from 'next/link';
 import { TrendingUp, TrendingDown, BarChart3, ArrowRight } from 'lucide-react';
 import {
@@ -27,9 +26,6 @@ const breadcrumbItems = [
 // menuOptions se definirá dentro del componente
 
 export default function CajaChicaMenuPage() {
-  // Estado para modal de movimientos manuales
-  const [showModalMovimiento, setShowModalMovimiento] = useState(false);
-
   // Obtener resumen del store y todas las comandas
   const { resumen } = useResumenCaja();
   const { comandas } = useComandaStore();
@@ -96,8 +92,10 @@ export default function CajaChicaMenuPage() {
       gradientFrom: 'from-[#f9bbc4]',
       gradientTo: 'to-[#e292a3]',
       accentColor: '#f9bbc4',
-      stats: `${resumenDelDia.cantidadIngresos} encomiendas hoy`,
-      amount: resumenDelDia.totalIncoming,
+      stats: `${(ingresoStats?.dualCurrencyDetails?.USD?.transacciones || 0) + (ingresoStats?.dualCurrencyDetails?.ARS?.transacciones || 0)} transacciones hoy`,
+      amount:
+        (ingresoStats?.totalIncomingUSD || 0) +
+        (ingresoStats?.totalIncomingARS || 0),
     },
     {
       title: 'Egresos',
@@ -107,8 +105,10 @@ export default function CajaChicaMenuPage() {
       gradientFrom: 'from-[#f7a8b8]',
       gradientTo: 'to-[#e087a3]',
       accentColor: '#f7a8b8',
-      stats: `${resumenDelDia.cantidadEgresos} movimientos hoy`,
-      amount: resumenDelDia.totalOutgoing,
+      stats: `${(egresoStats?.dualCurrencyDetails?.USD?.transacciones || 0) + (egresoStats?.dualCurrencyDetails?.ARS?.transacciones || 0)} transacciones hoy`,
+      amount:
+        (egresoStats?.totalOutgoingUSD || 0) +
+        (egresoStats?.totalOutgoingARS || 0),
     },
     {
       title: 'Resumen del Día',
@@ -118,8 +118,12 @@ export default function CajaChicaMenuPage() {
       gradientFrom: 'from-[#d4a7ca]',
       gradientTo: 'to-[#b8869e]',
       accentColor: '#d4a7ca',
-      stats: `${resumenDelDia.clientesAtendidos} clientes atendidos`,
-      amount: resumenDelDia.saldo,
+      stats: `${ingresoStats?.clientCount || 0} clientes únicos`,
+      amount:
+        (ingresoStats?.totalIncomingUSD || 0) +
+        (ingresoStats?.totalIncomingARS || 0) -
+        ((egresoStats?.totalOutgoingUSD || 0) +
+          (egresoStats?.totalOutgoingARS || 0)),
       isBalance: true,
     },
   ];

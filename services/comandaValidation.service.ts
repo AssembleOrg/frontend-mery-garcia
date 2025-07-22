@@ -233,7 +233,8 @@ export class ComandaValidationService {
     montoMaximo: number,
     montoParcial: number
   ): ConfiguracionTraspasoParcial {
-    const montoValidado = Math.max(0, Math.min(montoParcial, montoMaximo));
+    // Permitir valores negativos según la lógica de negocio
+    const montoValidado = Math.min(montoParcial, montoMaximo);
     const montoResidual = montoMaximo - montoValidado;
     const porcentajeSeleccionado =
       montoMaximo > 0 ? (montoValidado / montoMaximo) * 100 : 0;
@@ -281,11 +282,8 @@ export class ComandaValidationService {
       }
     });
 
-    // Validar monto parcial
-    const montoTrasladado = Math.max(
-      0,
-      Math.min(montoParcial, montoTotalDisponible)
-    );
+    // Validar monto parcial - permitir valores negativos según lógica de negocio
+    const montoTrasladado = Math.min(montoParcial, montoTotalDisponible);
     const montoResidual = montoTotalDisponible - montoTrasladado;
 
     // Marcar comandas como validadas

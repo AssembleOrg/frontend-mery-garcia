@@ -5,6 +5,7 @@ import MainLayout from '@/components/layout/MainLayout';
 import StandardPageBanner from '@/components/common/StandardPageBanner';
 import StandardBreadcrumbs from '@/components/common/StandardBreadcrumbs';
 import SummaryCard from '@/components/common/SummaryCard';
+import SummaryCardCount from '@/components/common/SummaryCardCount';
 import ResumenCajaGrande from '@/components/cajas/ResumenCajaGrande';
 import ModalMovimientoSimple from '@/components/cajas/ModalMovimientoSimple';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -29,8 +30,6 @@ import {
   Download,
   FileText,
   Database,
-  Plus,
-  Minus,
 } from 'lucide-react';
 import Link from 'next/link';
 
@@ -125,9 +124,9 @@ export default function CajaGrandePage() {
                     title="Saldo Neto"
                     totalUSD={resumenCaja.saldoNeto}
                   />
-                  <SummaryCard
+                  <SummaryCardCount
                     title="Comandas Validadas"
-                    totalUSD={resumenCaja.cantidadComandas}
+                    count={resumenCaja.cantidadComandas}
                   />
                 </div>
 
