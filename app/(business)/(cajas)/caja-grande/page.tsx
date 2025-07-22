@@ -4,7 +4,6 @@ import MainLayout from '@/components/layout/MainLayout';
 import StandardPageBanner from '@/components/common/StandardPageBanner';
 import StandardBreadcrumbs from '@/components/common/StandardBreadcrumbs';
 import SummaryCard from '@/components/common/SummaryCard';
-import SummaryCardCount from '@/components/common/SummaryCardCount';
 import ResumenCajaGrande from '@/components/cajas/ResumenCajaGrande';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -28,7 +27,6 @@ import {
   Download,
   FileText,
   Database,
-  Activity,
 } from 'lucide-react';
 import Link from 'next/link';
 
@@ -120,9 +118,9 @@ export default function CajaGrandePage() {
                     title="Saldo Neto"
                     totalUSD={resumenCaja.saldoNeto}
                   />
-                  <SummaryCardCount
+                  <SummaryCard
                     title="Comandas Validadas"
-                    count={resumenCaja.cantidadComandas}
+                    totalUSD={resumenCaja.cantidadComandas}
                   />
                 </div>
 
@@ -347,15 +345,6 @@ export default function CajaGrandePage() {
                               <span className="flex items-center gap-2">
                                 <Eye className="h-4 w-4" />
                                 Ver Comandas Validadas
-                              </span>
-                              <ArrowRight className="h-4 w-4" />
-                            </Button>
-                          </Link>
-                          <Link href="/caja-grande/auditoria">
-                            <Button className="w-full justify-between bg-[#8b5a6b] text-white hover:bg-[#7a4f5e]">
-                              <span className="flex items-center gap-2">
-                                <Activity className="h-4 w-4" />
-                                Auditoría del Sistema
                               </span>
                               <ArrowRight className="h-4 w-4" />
                             </Button>

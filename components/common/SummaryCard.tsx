@@ -24,20 +24,30 @@ export default function SummaryCard({
   const { formatUSD } = useCurrencyConverter();
 
   return (
-    <Card className={cn('border border-[#f9bbc4]/20 bg-white/80 shadow-sm', className)}>
+    <Card
+      className={cn(
+        'border border-[#f9bbc4]/20 bg-white/80 shadow-sm',
+        className
+      )}
+    >
       <CardContent className="p-4">
         <div className="space-y-3">
-          <h3 className={cn('text-sm font-medium text-[#4a3540]', titleClassName)}>
+          <h3
+            className={cn('text-sm font-medium text-[#4a3540]', titleClassName)}
+          >
             {title}
           </h3>
-          
+
           <div className="space-y-1">
-            <div className={cn('text-2xl font-bold text-[#6b4c57]', valueClassName)}>
+            <div
+              className={cn(
+                'text-2xl font-bold text-[#6b4c57]',
+                valueClassName
+              )}
+            >
               {formatUSD(totalUSD)}
             </div>
-            {subtitle && (
-              <p className="text-xs text-gray-500">{subtitle}</p>
-            )}
+            {subtitle && <p className="text-xs text-gray-500">{subtitle}</p>}
           </div>
         </div>
       </CardContent>

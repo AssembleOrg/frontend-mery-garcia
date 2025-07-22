@@ -10,10 +10,8 @@ import { Button } from '@/components/ui/button';
 import { DataTable } from '@/components/ui/data-table';
 import {
   formatDate as formatDateEs,
-  resolverMetodoPagoPrincipal,
   resolverMetodoPagoPrincipalConMoneda,
   formatearDetalleMetodosPago,
-  formatUSD,
   formatARS,
 } from '@/lib/utils';
 import { useCurrencyConverter } from '@/hooks/useCurrencyConverter';
@@ -53,7 +51,7 @@ export default function TransactionsTableTanStack({
     // Si la comanda tiene tipo de cambio almacenado, usarlo
     if (comanda.tipoCambioAlCrear?.valorVenta) {
       return {
-        usd: formatUSD(amountUSD),
+        usd: formatUSDCurrent(amountUSD),
         ars: formatARS(amountUSD, comanda.tipoCambioAlCrear.valorVenta),
       };
     }
@@ -193,10 +191,10 @@ export default function TransactionsTableTanStack({
         const metodoPrincipal =
           metodosPago && metodosPago.length > 0
             ? resolverMetodoPagoPrincipalConMoneda(
-                metodosPago.map((m) => ({ 
-                  tipo: m.tipo, 
-                  monto: m.monto, 
-                  moneda: (m as any).moneda || 'USD' 
+                metodosPago.map((m) => ({
+                  tipo: m.tipo,
+                  monto: m.monto,
+                  moneda: (m as { moneda?: string }).moneda || 'USD',
                 }))
               )
             : 'efectivo';
@@ -222,10 +220,10 @@ export default function TransactionsTableTanStack({
         const detalleTooltip =
           metodosPago && metodosPago.length > 0
             ? formatearDetalleMetodosPago(
-                metodosPago.map((m) => ({ 
-                  tipo: m.tipo, 
-                  monto: m.monto, 
-                  moneda: (m as any).moneda || 'USD' 
+                metodosPago.map((m) => ({
+                  tipo: m.tipo,
+                  monto: m.monto,
+                  moneda: (m as { moneda?: string }).moneda || 'USD',
                 }))
               )
             : metodoPrincipal;

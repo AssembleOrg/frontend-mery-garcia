@@ -26,7 +26,6 @@ const LAST_REFRESH_KEY = 'last_exchange_rate_refresh';
 
 export default function TipoCambioPage() {
   const [apiRate, setApiRate] = useState<ExchangeRate | null>(null);
-  const [apiHistorial, setApiHistorial] = useState<ExchangeRate[]>([]);
   const [historialInterno, setHistorialInterno] = useState<
     HistorialTipoCambio[]
   >([]);
@@ -70,7 +69,7 @@ export default function TipoCambioPage() {
       if (isManualRefresh) setRefreshing(true);
 
       try {
-        const [current, historial] = await Promise.all([
+        const [current] = await Promise.all([
           getPublicRate(),
           getHistorial(10),
         ]);
@@ -79,7 +78,6 @@ export default function TipoCambioPage() {
           setApiRate(current);
           console.log('Valores informativos API cargados:', current);
         }
-        if (historial) setApiHistorial(historial);
 
         if (isManualRefresh) {
           localStorage.setItem(LAST_REFRESH_KEY, new Date().toISOString());

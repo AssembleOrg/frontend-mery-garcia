@@ -12,7 +12,6 @@ import { X, Users, Receipt } from 'lucide-react';
 import ClientesTab from '@/components/clientes/ClientesTab';
 import TransactionsTable from '@/components/cajas/TransactionsTableTanStack';
 import { useTransactions } from '@/hooks/useTransactions';
-import { DateRange } from 'react-day-picker';
 
 interface ModalClientesTransaccionesProps {
   isOpen: boolean;
@@ -24,18 +23,10 @@ export default function ModalClientesTransacciones({
   onClose,
 }: ModalClientesTransaccionesProps) {
   const [activeTab, setActiveTab] = useState('clientes');
-  const [dateRange, setDateRange] = useState<DateRange | undefined>();
 
   // Hook para transacciones
-  const {
-    data: transactions,
-    statistics,
-    pagination,
-    filters,
-    actualizarFiltros,
-  } = useTransactions({
+  const { data: transactions, statistics } = useTransactions({
     type: 'ingreso',
-    dateRange,
   });
 
   return (

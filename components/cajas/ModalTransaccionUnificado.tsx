@@ -109,7 +109,6 @@ export default function ModalTransaccionUnificado({
   // Hook para métodos de pago con descuentos automáticos
   const {
     metodosPago,
-    totalPagado,
     agregarMetodoPago,
     eliminarMetodoPago,
     actualizarMetodoPago,
@@ -586,7 +585,7 @@ export default function ModalTransaccionUnificado({
 
       logger.info(`Guardando ${tipo}:`, nuevaComanda);
       agregarComanda(nuevaComanda);
-      
+
       // Registrar actividad en auditoría
       logActivity(
         'Crear',
@@ -601,7 +600,7 @@ export default function ModalTransaccionUnificado({
           cliente: clienteSeleccionado?.nombre || clienteProveedor,
         }
       );
-      
+
       resetForm();
       onClose();
     } catch (error) {

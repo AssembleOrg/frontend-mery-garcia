@@ -1,6 +1,5 @@
 'use client';
 
-import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import {
@@ -24,8 +23,27 @@ import { useCurrencyConverter } from '@/hooks/useCurrencyConverter';
 interface ModalResumenUnificadoProps {
   isOpen: boolean;
   onClose: () => void;
-  resumen: any; // Datos del resumen de caja
-  resumenDelDia: any; // Datos calculados del día
+  resumen: ResumenData; // Datos del resumen de caja
+  resumenDelDia: ResumenDelDia; // Datos calculados del día
+}
+
+interface ResumenData {
+  saldoUSD?: number;
+  saldoARS?: number;
+  dualCurrencyDetails?: {
+    USD?: { transacciones: number };
+    ARS?: { transacciones: number };
+  };
+}
+
+interface ResumenDelDia {
+  saldo: number;
+  totalIncoming: number;
+  totalOutgoing: number;
+  cantidadIngresos: number;
+  cantidadEgresos: number;
+  clientesAtendidos: number;
+  servicioMasVendido: string;
 }
 
 export default function ModalResumenUnificado({

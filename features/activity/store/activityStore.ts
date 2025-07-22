@@ -128,10 +128,18 @@ export const useActivityStore = create<ActivityStore>()(
           ) {
             return false;
           }
-          if (filters.module && filters.module !== 'all' && log.modulo !== filters.module) {
+          if (
+            filters.module &&
+            filters.module !== 'all' &&
+            log.modulo !== filters.module
+          ) {
             return false;
           }
-          if (filters.action && filters.action !== 'all' && log.accion !== filters.action) {
+          if (
+            filters.action &&
+            filters.action !== 'all' &&
+            log.accion !== filters.action
+          ) {
             return false;
           }
           if (filters.startDate) {

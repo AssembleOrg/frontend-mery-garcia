@@ -35,7 +35,6 @@ import { usePersonal } from '@/features/personal/hooks/usePersonal';
 import { usePaginacion } from '@/features/comandas/hooks/usePaginacion';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
-import Spinner from '@/components/common/Spinner';
 
 export default function AuditoriaPage() {
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(
@@ -43,7 +42,6 @@ export default function AuditoriaPage() {
   );
   const [selectedUser, setSelectedUser] = useState('');
   const [showUserSearch, setShowUserSearch] = useState(false);
-  const [userSearchTerm, setUserSearchTerm] = useState('');
 
   const { logs, statistics, exportToCSV } = useActivityLogs();
   const { clearAllLogs } = useActivityStore();
@@ -69,7 +67,7 @@ export default function AuditoriaPage() {
 
   // Filter personal for user search
   const filteredPersonal = personal.filter((person) =>
-    person.nombre.toLowerCase().includes(userSearchTerm.toLowerCase())
+    person.nombre.toLowerCase().includes(selectedUser.toLowerCase())
   );
 
   const handleExportCSV = () => {

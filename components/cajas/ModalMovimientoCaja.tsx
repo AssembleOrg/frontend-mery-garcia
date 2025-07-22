@@ -18,7 +18,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { formatUSD } from '@/lib/utils';
 import { useCurrencyConverter } from '@/hooks/useCurrencyConverter';
 
 interface MovimientoCaja {

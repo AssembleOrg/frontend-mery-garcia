@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -112,19 +112,22 @@ export default function ModalEditarTransaccion({
     return isExchangeRateValid ? formatDual(amount) : formatUSD(amount);
   };
 
-  const calcularMontoOriginal = (tipo: string, montoFinal: number) => {
-    // Excluir métodos que no tienen descuentos
-    if (tipo === 'mixto' || tipo === 'giftcard' || tipo === 'qr') {
-      return montoFinal;
-    }
+  const calcularMontoOriginal = useCallback(
+    (tipo: string, montoFinal: number) => {
+      // Excluir métodos que no tienen descuentos
+      if (tipo === 'mixto' || tipo === 'giftcard' || tipo === 'qr') {
+        return montoFinal;
+      }
 
-    const descuentoPorcentaje =
-      descuentosPorMetodo[tipo as keyof typeof descuentosPorMetodo] || 0;
-    if (descuentoPorcentaje > 0) {
-      return montoFinal / (1 - descuentoPorcentaje / 100);
-    }
-    return montoFinal;
-  };
+      const descuentoPorcentaje =
+        descuentosPorMetodo[tipo as keyof typeof descuentosPorMetodo] || 0;
+      if (descuentoPorcentaje > 0) {
+        return montoFinal / (1 - descuentoPorcentaje / 100);
+      }
+      return montoFinal;
+    },
+    [descuentosPorMetodo]
+  );
 
   useEffect(() => {
     if (isOpen && comandaId) {
@@ -137,14 +140,17 @@ export default function ModalEditarTransaccion({
         setClienteCuit(comandaEncontrada.cliente.cuit || '');
         setItems([...comandaEncontrada.items]);
         // Convertir MetodoPago a MetodoPagoForm
-        const metodosPagoForm = comandaEncontrada.metodosPago.map(metodo => {
-          const montoOriginal = calcularMontoOriginal(metodo.tipo, metodo.monto);
+        const metodosPagoForm = comandaEncontrada.metodosPago.map((metodo) => {
+          const montoOriginal = calcularMontoOriginal(
+            metodo.tipo,
+            metodo.monto
+          );
           const descuentoAplicado = montoOriginal - metodo.monto;
           return {
             ...metodo,
             montoFinal: metodo.monto,
             descuentoAplicado,
-            montoOriginal
+            montoOriginal,
           };
         });
         setMetodosPago(metodosPagoForm);
@@ -152,7 +158,7 @@ export default function ModalEditarTransaccion({
         setVendedorId(comandaEncontrada.mainStaff?.id || '');
       }
     }
-  }, [isOpen, comandaId, obtenerComandaPorId]);
+  }, [isOpen, comandaId, obtenerComandaPorId, calcularMontoOriginal]);
 
   if (!isOpen || !comanda) return null;
 
@@ -184,17 +190,18 @@ export default function ModalEditarTransaccion({
     0
   );
   const totalSeña = comanda.totalSeña || 0;
-  
+
   // Calcular descuentos por método de pago
   const descuentosPorMetodoPago = metodosPago.reduce((sum, metodo) => {
     const montoOriginal = metodo.montoOriginal || metodo.monto;
     const descuentoAplicado = montoOriginal - metodo.monto;
     return sum + descuentoAplicado;
   }, 0);
-  
+
   // El total final debe considerar los descuentos por método de pago
-  const totalFinal = subtotal - totalDescuentos - totalSeña - descuentosPorMetodoPago;
-  
+  const totalFinal =
+    subtotal - totalDescuentos - totalSeña - descuentosPorMetodoPago;
+
   // Calcular total de pagos convirtiendo ARS a USD
   const totalPagos = metodosPago.reduce((sum, metodo) => {
     if (metodo.moneda === 'ARS') {
@@ -202,7 +209,7 @@ export default function ModalEditarTransaccion({
     }
     return sum + metodo.monto;
   }, 0);
-  
+
   const diferencia = totalFinal - totalPagos;
 
   const agregarItem = () => {
@@ -267,29 +274,35 @@ export default function ModalEditarTransaccion({
   ) => {
     const nuevosMetodos = [...metodosPago];
     nuevosMetodos[index] = { ...nuevosMetodos[index], [campo]: valor };
-    
+
     // Si se actualiza el monto original o el tipo, recalcular el monto final
     if (campo === 'montoOriginal' || campo === 'tipo') {
       const metodo = nuevosMetodos[index];
-      const montoOriginal = campo === 'montoOriginal' ? Number(valor) : metodo.montoOriginal;
+      const montoOriginal =
+        campo === 'montoOriginal' ? Number(valor) : metodo.montoOriginal;
       const tipo = campo === 'tipo' ? String(valor) : metodo.tipo;
-      
-      const descuentoPorcentaje = descuentosPorMetodo[tipo as keyof typeof descuentosPorMetodo] || 0;
-      const tieneDescuento = descuentoPorcentaje > 0 && tipo !== 'mixto' && tipo !== 'giftcard' && tipo !== 'qr';
-      
-      const montoFinal = tieneDescuento 
+
+      const descuentoPorcentaje =
+        descuentosPorMetodo[tipo as keyof typeof descuentosPorMetodo] || 0;
+      const tieneDescuento =
+        descuentoPorcentaje > 0 &&
+        tipo !== 'mixto' &&
+        tipo !== 'giftcard' &&
+        tipo !== 'qr';
+
+      const montoFinal = tieneDescuento
         ? montoOriginal * (1 - descuentoPorcentaje / 100)
         : montoOriginal;
-      
+
       nuevosMetodos[index].monto = montoFinal;
       nuevosMetodos[index].montoFinal = montoFinal;
       nuevosMetodos[index].descuentoAplicado = montoOriginal - montoFinal;
-      
+
       if (campo === 'montoOriginal') {
         nuevosMetodos[index].montoOriginal = montoOriginal;
       }
     }
-    
+
     setMetodosPago(nuevosMetodos);
   };
 
@@ -322,8 +335,11 @@ export default function ModalEditarTransaccion({
       }
 
       // Convertir MetodoPagoForm a MetodoPago para guardar
-      const metodosPagoParaGuardar: MetodoPago[] = metodosPago.map(({ montoFinal, descuentoAplicado, montoOriginal, ...metodo }) => metodo);
-      
+      const metodosPagoParaGuardar: MetodoPago[] = metodosPago.map(
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
+        ({ montoFinal, descuentoAplicado, montoOriginal, ...metodo }) => metodo
+      );
+
       const comandaActualizada: Comanda = {
         ...comanda,
         cliente: {
@@ -855,11 +871,12 @@ export default function ModalEditarTransaccion({
                         <span>Desc. métodos pago:</span>
                         <div className="text-right">
                           <div>-{formatAmount(descuentosPorMetodoPago)}</div>
-                          {isExchangeRateValid && descuentosPorMetodoPago > 0 && (
-                            <div className="text-xs text-green-500">
-                              -{formatARS(descuentosPorMetodoPago)}
-                            </div>
-                          )}
+                          {isExchangeRateValid &&
+                            descuentosPorMetodoPago > 0 && (
+                              <div className="text-xs text-green-500">
+                                -{formatARS(descuentosPorMetodoPago)}
+                              </div>
+                            )}
                         </div>
                       </div>
                     )}
@@ -894,12 +911,11 @@ export default function ModalEditarTransaccion({
                         <span>Diferencia:</span>
                         <div className="text-right">
                           <div>{formatAmount(diferencia)}</div>
-                          {isExchangeRateValid &&
-                            Math.abs(diferencia) > 0 && (
-                              <div className="text-xs">
-                                {formatARS(diferencia)}
-                              </div>
-                            )}
+                          {isExchangeRateValid && Math.abs(diferencia) > 0 && (
+                            <div className="text-xs">
+                              {formatARS(diferencia)}
+                            </div>
+                          )}
                         </div>
                       </div>
                     )}

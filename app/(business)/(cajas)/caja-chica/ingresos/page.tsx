@@ -168,8 +168,14 @@ export default function IngresosPage() {
                         totalARS={statistics.totalIncomingARS ?? 0}
                         valueClassName="text-green-600"
                         showTransactionCount={true}
-                        transactionCountUSD={statistics.dualCurrencyDetails?.USD?.transacciones ?? 0}
-                        transactionCountARS={statistics.dualCurrencyDetails?.ARS?.transacciones ?? 0}
+                        transactionCountUSD={
+                          statistics.dualCurrencyDetails?.USD?.transacciones ??
+                          0
+                        }
+                        transactionCountARS={
+                          statistics.dualCurrencyDetails?.ARS?.transacciones ??
+                          0
+                        }
                       />
                       <SummaryCardCount
                         title="📊 Transacciones"

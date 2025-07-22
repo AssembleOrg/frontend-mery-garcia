@@ -22,7 +22,6 @@ import {
   DollarSign,
 } from 'lucide-react';
 import { METODOS_PAGO, MONEDAS, MONEDA_LABELS } from '@/lib/constants';
-import { formatUSD } from '@/lib/utils';
 import { useCurrencyConverter } from '@/hooks/useCurrencyConverter';
 import { MetodoPagoForm, ResumenDual } from '@/hooks/useMetodosPago';
 
@@ -57,7 +56,6 @@ export default function MetodosPagoSection({
     formatARS,
     formatUSD,
     formatARSFromNative,
-    usdToArs,
     isExchangeRateValid,
     formatDual,
   } = useCurrencyConverter();

@@ -193,11 +193,20 @@ export default function EgresosPage() {
                     <h1 className="text-2xl font-bold text-[#4a3540]">
                       ✨ Gestión de Transacciones de Egreso
                     </h1>
-                    <div className="grid grid-cols-1 gap-4 md:grid-cols-1">
+                    <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
                       <SummaryCard
                         title="💰 Total Egresos"
                         totalUSD={statistics.totalOutgoing ?? 0}
                         valueClassName="text-red-600"
+                      />
+                      <SummaryCard
+                        title="Transacciones"
+                        totalUSD={statistics.transactionCount ?? 0}
+                      />
+                      <SummaryCard
+                        title="🏪 Proveedores"
+                        totalUSD={statistics.providerCount ?? 0}
+                        valueClassName="text-blue-600"
                       />
                     </div>
                   </div>
@@ -261,15 +270,6 @@ export default function EgresosPage() {
               <div className="mb-6">
                 <Card className="border border-[#f9bbc4]/20 bg-white/80 shadow-sm">
                   <CardContent className="p-4">
-                    <TransactionsTable
-                      data={transactions}
-                      onEdit={onEditTransaction}
-                      onDelete={handleDelete}
-                      onView={onViewTransaction}
-                      onChangeStatus={onChangeStatus}
-                      hiddenColumns={hiddenColumns}
-                    />
-
                     {/* Pagination */}
                     <div className="mt-6">
                       <Pagination
@@ -336,6 +336,15 @@ export default function EgresosPage() {
             setSelectedTransactionId('');
           }}
           comandaId={selectedTransactionId}
+        />
+
+        <TransactionsTable
+          data={transactions}
+          onEdit={onEditTransaction}
+          onDelete={handleDelete}
+          onView={onViewTransaction}
+          onChangeStatus={onChangeStatus}
+          hiddenColumns={hiddenColumns}
         />
       </div>
     </MainLayout>

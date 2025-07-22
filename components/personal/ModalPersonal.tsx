@@ -11,8 +11,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
 import { X, Users, Percent } from 'lucide-react';
 import { PersonalSimple } from '@/types/caja';
 
@@ -199,8 +197,6 @@ export default function ModalPersonal({
                   </SelectContent>
                 </Select>
               </div>
-
-
             </div>
           </div>
 

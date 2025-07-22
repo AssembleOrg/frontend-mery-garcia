@@ -18,7 +18,6 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Separator } from '@/components/ui/separator';
-import { formatARS, formatUSD } from '@/lib/utils';
 import { useCurrencyConverter } from '@/hooks/useCurrencyConverter';
 import {
   Edit,

@@ -6,7 +6,6 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Percent, X, Calculator } from 'lucide-react';
-import { formatUSD } from '@/lib/utils';
 import { useCurrencyConverter } from '@/hooks/useCurrencyConverter';
 
 interface DiscountControlsProps {

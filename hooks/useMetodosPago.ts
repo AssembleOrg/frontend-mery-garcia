@@ -38,9 +38,10 @@ export interface UseMetodosPagoReturn {
   obtenerResumenDual: () => ResumenDual;
 }
 
-export function useMetodosPago(aplicarDescuentos: boolean = true): UseMetodosPagoReturn {
+export function useMetodosPago(
+  aplicarDescuentos: boolean = true
+): UseMetodosPagoReturn {
   const { descuentosPorMetodo } = useConfiguracion();
-  const { tipoCambio } = useExchangeRateStore();
   const { arsToUsd, usdToArs } = useCurrencyConverter();
 
   const [metodosPago, setMetodosPago] = useState<MetodoPagoForm[]>([
@@ -105,7 +106,7 @@ export function useMetodosPago(aplicarDescuentos: boolean = true): UseMetodosPag
         };
       }
     },
-    [descuentosPorMetodo, arsToUsd, tipoCambio, aplicarDescuentos]
+    [descuentosPorMetodo, arsToUsd, aplicarDescuentos]
   );
 
   const agregarMetodoPago = useCallback(() => {

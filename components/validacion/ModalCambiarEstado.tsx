@@ -11,7 +11,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { X, Clock, CheckCircle, XCircle } from 'lucide-react';
 import { useComandaStore } from '@/features/comandas/store/comandaStore';
 import { toast } from 'sonner';
@@ -95,10 +94,6 @@ export default function ModalCambiarEstado({
       setCargando(false);
     }
   };
-
-  const estadoSeleccionado = ESTADOS_OPCIONES.find(
-    (e) => e.value === nuevoEstado
-  );
 
   if (!isOpen) return null;
 
@@ -216,8 +211,6 @@ export default function ModalCambiarEstado({
                   rows={3}
                 />
               </div>
-
-
             </div>
           </div>
 
