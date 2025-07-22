@@ -264,28 +264,6 @@ export default function CajaGrandePage() {
                     </CardHeader>
                     <CardContent>
                       <div className="space-y-4">
-                        {/* Estadísticas rápidas */}
-                        <div className="grid grid-cols-2 gap-4">
-                          <div className="rounded-lg bg-blue-50 p-4 text-center">
-                            <Shield className="mx-auto mb-2 h-8 w-8 text-blue-600" />
-                            <p className="text-2xl font-bold text-blue-600">
-                              {comandasValidadas.length}
-                            </p>
-                            <p className="text-sm text-blue-700">
-                              Comandas validadas
-                            </p>
-                          </div>
-                          <div className="rounded-lg bg-green-50 p-4 text-center">
-                            <DollarSign className="mx-auto mb-2 h-8 w-8 text-green-600" />
-                            <p className="text-lg font-bold text-green-600">
-                              {formatUSD(resumenCaja.totalIngresos)}
-                            </p>
-                            <p className="text-sm text-green-700">
-                              Total acumulado
-                            </p>
-                          </div>
-                        </div>
-
                         {/* Movimientos Manuales */}
                         <div className="space-y-2">
                           <p className="text-sm font-medium text-gray-700">
@@ -326,37 +304,6 @@ export default function CajaGrandePage() {
                               PDF
                             </Button>
                           </div>
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => {
-                              const today = new Date()
-                                .toISOString()
-                                .split('T')[0];
-                              const firstDay = new Date(
-                                new Date().getFullYear(),
-                                new Date().getMonth(),
-                                1
-                              )
-                                .toISOString()
-                                .split('T')[0];
-                              const data = exportarDatos(firstDay, today);
-                              const blob = new Blob(
-                                [JSON.stringify(data, null, 2)],
-                                { type: 'application/json' }
-                              );
-                              const url = URL.createObjectURL(blob);
-                              const a = document.createElement('a');
-                              a.href = url;
-                              a.download = `caja-grande-${today}.json`;
-                              a.click();
-                              URL.revokeObjectURL(url);
-                            }}
-                            className="flex w-full items-center gap-2"
-                          >
-                            <Database className="h-4 w-4" />
-                            Exportar Completo (JSON)
-                          </Button>
                         </div>
 
                         {/* Acciones */}

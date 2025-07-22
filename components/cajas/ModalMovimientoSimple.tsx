@@ -20,6 +20,9 @@ import {
 } from '@/components/ui/select';
 import { useCurrencyConverter } from '@/hooks/useCurrencyConverter';
 import { useLogActivity } from '@/features/activity/store/activityStore';
+import { useComandaStore } from '@/features/comandas/store/comandaStore';
+import { useExchangeRateStore } from '@/features/exchange-rate/store/exchangeRateStore';
+import { Comanda, MetodoPago } from '@/types/caja';
 import { toast } from 'sonner';
 
 interface MovimientoSimple {
@@ -45,6 +48,8 @@ export default function ModalMovimientoSimple({
 }: ModalMovimientoSimpleProps) {
   const { formatUSD, formatDual, isExchangeRateValid } = useCurrencyConverter();
   const logActivity = useLogActivity();
+  const { agregarComanda, obtenerProximoNumero } = useComandaStore();
+  const { tipoCambio } = useExchangeRateStore();
   const [loading, setLoading] = useState(false);
 
   const [formData, setFormData] = useState<MovimientoSimple>({
@@ -58,6 +63,76 @@ export default function ModalMovimientoSimple({
   // Helper function for dual currency display
   const formatAmount = (amount: number) => {
     return isExchangeRateValid ? formatDual(amount) : formatUSD(amount);
+  };
+
+  // Helper function to create manual comandas
+  const crearComandaManual = (
+    tipo: 'ingreso' | 'egreso',
+    monto: number,
+    detalle: string
+  ): Comanda => {
+    const numeroComanda = obtenerProximoNumero(tipo);
+    const fechaActual = new Date();
+
+    // Cliente genérico para movimientos manuales
+    const clienteManual = {
+      id: 'manual-movement',
+      nombre: 'Movimiento Manual',
+      señasDisponibles: 0,
+      fechaRegistro: fechaActual,
+    };
+
+    // Personal genérico para movimientos manuales
+    const personalManual = {
+      id: 'admin-manual',
+      nombre: 'Administrador',
+      activo: true,
+      unidadesDisponibles: ['tattoo', 'estilismo', 'formacion'] as const,
+      fechaIngreso: fechaActual,
+    };
+
+    // Método de pago por defecto (efectivo)
+    const metodoPago: MetodoPago = {
+      tipo: 'efectivo',
+      monto: monto,
+      moneda: 'USD',
+    };
+
+    const comanda: Comanda = {
+      id: `manual-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+      numero: numeroComanda,
+      fecha: fechaActual,
+      businessUnit: 'tattoo',
+      cliente: clienteManual,
+      mainStaff: personalManual,
+      items: [
+        {
+          productoServicioId: 'manual-movement',
+          nombre: detalle,
+          tipo: 'servicio',
+          precio: monto,
+          precioOriginalUSD: monto,
+          cantidad: 1,
+          descuento: 0,
+          subtotal: monto,
+          categoria: 'Movimiento Manual',
+        },
+      ],
+      metodosPago: [metodoPago],
+      subtotal: monto,
+      totalDescuentos: 0,
+      totalSeña: 0,
+      totalFinal: monto,
+      moneda: 'USD',
+      estado: 'completado',
+      tipo: tipo,
+      estadoNegocio: 'completado',
+      estadoValidacion: 'validado', // ¡IMPORTANTE! Marcamos como validado
+      observaciones: `Movimiento manual: ${detalle}`,
+      tipoCambioAlCrear: tipoCambio.valorVenta > 0 ? tipoCambio : undefined,
+    };
+
+    return comanda;
   };
 
   const resetForm = () => {
@@ -85,13 +160,22 @@ export default function ModalMovimientoSimple({
       await new Promise((resolve) => setTimeout(resolve, 1000));
 
       if (formData.tipoOperacion === 'transferencia') {
-        // Simular llamada de transferencia
-        console.log('Simulando transferencia:', {
-          cajaOrigen: formData.cajaOrigen,
-          cajaDestino: formData.cajaDestino,
-          monto: formData.monto,
-          observaciones: formData.detalle,
-        });
+        // Para transferencias, creamos dos comandas: un egreso en la caja origen y un ingreso en la caja destino
+        const egresoTransferencia = crearComandaManual(
+          'egreso',
+          formData.monto,
+          `Transferencia hacia ${getCajaLabel(formData.cajaDestino!)}: ${formData.detalle}`
+        );
+
+        const ingresoTransferencia = crearComandaManual(
+          'ingreso',
+          formData.monto,
+          `Transferencia desde ${getCajaLabel(formData.cajaOrigen!)}: ${formData.detalle}`
+        );
+
+        // Agregar ambas comandas al store
+        agregarComanda(egresoTransferencia);
+        agregarComanda(ingresoTransferencia);
 
         // Log de auditoría para transferencia
         logActivity(
@@ -108,20 +192,22 @@ export default function ModalMovimientoSimple({
             cajaOrigen: formData.cajaOrigen,
             cajaDestino: formData.cajaDestino,
             detalle: formData.detalle,
+            comandaEgresoId: egresoTransferencia.id,
+            comandaIngresoId: ingresoTransferencia.id,
           }
         );
 
         toast.success('Transferencia registrada exitosamente');
       } else {
-        // Simular llamada de movimiento de caja
-        console.log('Simulando movimiento:', {
-          tipo: formData.tipoOperacion,
-          monto: formData.monto,
-          concepto: formData.detalle,
-          caja: cajaActual,
-          metodoPago: 'efectivo',
-          observaciones: `Movimiento manual: ${formData.detalle}`,
-        });
+        // Para ingresos y egresos simples, crear una sola comanda
+        const comandaManual = crearComandaManual(
+          formData.tipoOperacion,
+          formData.monto,
+          formData.detalle
+        );
+
+        // Agregar la comanda al store
+        agregarComanda(comandaManual);
 
         // Log de auditoría para ingreso/egreso
         logActivity(
@@ -133,6 +219,7 @@ export default function ModalMovimientoSimple({
             monto: formData.monto,
             caja: cajaActual,
             detalle: formData.detalle,
+            comandaId: comandaManual.id,
           }
         );
 
