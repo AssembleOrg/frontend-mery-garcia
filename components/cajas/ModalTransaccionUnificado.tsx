@@ -676,7 +676,7 @@ export default function ModalTransaccionUnificado({
                 <div className="flex items-center gap-2 rounded-lg bg-gray-50 px-3 py-2">
                   <TrendingUp className="h-4 w-4 text-gray-600" />
                   <span className="text-sm font-medium text-gray-800">
-                    USD: {formatAmount(exchangeRate)}
+                    USD: {formatDual(exchangeRate, false)}
                   </span>
                 </div>
               )}

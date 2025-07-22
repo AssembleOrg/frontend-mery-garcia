@@ -1,6 +1,5 @@
 import { useState, useCallback } from 'react';
 import { useConfiguracion } from '@/features/configuracion/store/configuracionStore';
-import { useExchangeRateStore } from '@/features/exchange-rate/store/exchangeRateStore';
 import { useCurrencyConverter } from '@/hooks/useCurrencyConverter';
 import { MetodoPago, MetodoPagoForm } from '@/types/caja';
 import { MONEDAS } from '@/lib/constants';
