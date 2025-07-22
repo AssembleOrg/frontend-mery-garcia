@@ -39,6 +39,7 @@ export default function ManagerOrAdminOnly({
       isAuthenticated &&
       (!hasAccess || isEncargadoWithCaja2Restriction)
     ) {
+      console.warn('Acceso denegado a la sección solicitada');
     }
   }, [
     isAuthenticated,

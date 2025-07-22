@@ -349,6 +349,15 @@ export default function CajaGrandePage() {
                               <ArrowRight className="h-4 w-4" />
                             </Button>
                           </Link>
+                          <Link href="/caja-grande/auditoria">
+                            <Button className="mt-2 w-full justify-between bg-[#8b5a6b] text-white hover:bg-[#7a4f5e]">
+                              <span className="flex items-center gap-2">
+                                <Shield className="h-4 w-4" />
+                                Auditoría del Sistema
+                              </span>
+                              <ArrowRight className="h-4 w-4" />
+                            </Button>
+                          </Link>
                         </div>
                       </div>
                     </CardContent>
