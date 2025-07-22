@@ -27,6 +27,19 @@ export const METODOS_PAGO = {
 
 export type MetodoPago = (typeof METODOS_PAGO)[keyof typeof METODOS_PAGO];
 
+// Monedas soportadas
+export const MONEDAS = {
+  USD: 'USD',
+  ARS: 'ARS',
+} as const;
+
+export type Moneda = (typeof MONEDAS)[keyof typeof MONEDAS];
+
+export const MONEDA_LABELS = {
+  [MONEDAS.USD]: 'USD ($)',
+  [MONEDAS.ARS]: 'ARS ($)',
+} as const;
+
 // Labels para estados
 export const ESTADO_LABELS = {
   [ESTADOS_COMANDA.PENDIENTE]: '⏳ Pendiente',

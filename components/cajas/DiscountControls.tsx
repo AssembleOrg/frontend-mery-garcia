@@ -6,7 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Percent, X, Calculator } from 'lucide-react';
-import { formatUSD } from '@/lib/utils';
+import { useCurrencyConverter } from '@/hooks/useCurrencyConverter';
 
 interface DiscountControlsProps {
   descuentoPorcentaje: number;
@@ -31,10 +31,16 @@ export function DiscountControls({
   maxDescuento = 50,
   disabled = false,
 }: DiscountControlsProps) {
+  const { formatUSD, formatDual, isExchangeRateValid } = useCurrencyConverter();
   const [porcentajeInput, setPorcentajeInput] = useState(
     descuentoPorcentaje.toString()
   );
   const [mostrarInput, setMostrarInput] = useState(false);
+
+  // Helper function for dual currency display
+  const formatAmount = (amount: number) => {
+    return isExchangeRateValid ? formatDual(amount) : formatUSD(amount);
+  };
 
   const handleAplicar = () => {
     const porcentaje = parseFloat(porcentajeInput);
@@ -78,7 +84,7 @@ export function DiscountControls({
                   className="border-green-200 bg-green-100 text-green-800"
                 >
                   <Percent className="mr-1 h-3 w-3" />
-                  {descuentoPorcentaje}% (-{formatUSD(montoDescuento)})
+                  {descuentoPorcentaje}% (-{formatAmount(montoDescuento)})
                 </Badge>
                 <Button
                   type="button"

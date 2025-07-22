@@ -73,6 +73,26 @@ export function useTransactions({
         return false;
       }
 
+      // Filter by payment method
+      if (filters.metodoPago && filters.metodoPago !== 'todos') {
+        const hasPaymentMethod = comanda.metodosPago.some((mp) => {
+          if (filters.metodoPago === 'mixto') {
+            // For mixed payments, check if there are multiple payment methods
+            return comanda.metodosPago.length > 1;
+          }
+          return mp.tipo === filters.metodoPago;
+        });
+        if (!hasPaymentMethod) return false;
+      }
+
+      // Filter by currency (ARS/USD)
+      if (filters.moneda && filters.moneda !== 'todos') {
+        const hasCurrency = comanda.metodosPago.some(
+          (mp) => mp.moneda === filters.moneda
+        );
+        if (!hasCurrency) return false;
+      }
+
       return true;
     });
   }, [comandas, filters, isDateInRange, type]);
@@ -82,6 +102,52 @@ export function useTransactions({
     data: filteredData,
     itemsPorPagina,
   });
+
+  // Calculate dual currency statistics
+  const calculateDualCurrencyTotals = useMemo(() => {
+    return (comandas: typeof filteredData) => {
+      const totals = {
+        totalUSD: 0,
+        totalARS: 0,
+        detallesPorMoneda: {
+          USD: { total: 0, transacciones: 0 },
+          ARS: { total: 0, transacciones: 0 },
+        },
+      };
+
+      comandas.forEach((comanda) => {
+        // Separar los métodos de pago por moneda
+        const metodosUSD = comanda.metodosPago.filter(
+          (mp) => mp.moneda === 'USD'
+        );
+        const metodosARS = comanda.metodosPago.filter(
+          (mp) => mp.moneda === 'ARS'
+        );
+
+        if (metodosUSD.length > 0) {
+          const totalUSDComanda = metodosUSD.reduce(
+            (sum, mp) => sum + mp.monto,
+            0
+          );
+          totals.totalUSD += totalUSDComanda;
+          totals.detallesPorMoneda.USD.total += totalUSDComanda;
+          totals.detallesPorMoneda.USD.transacciones += 1;
+        }
+
+        if (metodosARS.length > 0) {
+          const totalARSComanda = metodosARS.reduce(
+            (sum, mp) => sum + mp.monto,
+            0
+          );
+          totals.totalARS += totalARSComanda;
+          totals.detallesPorMoneda.ARS.total += totalARSComanda;
+          totals.detallesPorMoneda.ARS.transacciones += 1;
+        }
+      });
+
+      return totals;
+    };
+  }, []);
 
   // Calculate statistics
   const statistics = useMemo(() => {
@@ -95,15 +161,26 @@ export function useTransactions({
     ).size;
     const average = transactionCount > 0 ? total / transactionCount : 0;
 
+    // Calculate dual currency totals
+    const dualCurrencyTotals = calculateDualCurrencyTotals(filteredData);
+
     // Provide different naming based on type for backward compatibility
     const typeSpecificStats = {
       ...(type === 'ingreso' && {
         totalIncoming: total,
         clientCount: uniqueClients,
+        // Add dual currency totals for incoming transactions
+        totalIncomingUSD: dualCurrencyTotals.totalUSD,
+        totalIncomingARS: dualCurrencyTotals.totalARS,
+        dualCurrencyDetails: dualCurrencyTotals.detallesPorMoneda,
       }),
       ...(type === 'egreso' && {
         totalOutgoing: total,
         providerCount: uniqueClients,
+        // Add dual currency totals for outgoing transactions
+        totalOutgoingUSD: dualCurrencyTotals.totalUSD,
+        totalOutgoingARS: dualCurrencyTotals.totalARS,
+        dualCurrencyDetails: dualCurrencyTotals.detallesPorMoneda,
       }),
       ...(type === 'all' && {
         totalIncoming: filteredData
@@ -114,6 +191,13 @@ export function useTransactions({
           .reduce((sum, c) => sum + c.totalFinal, 0),
         clientCount: uniqueClients,
         providerCount: uniqueClients,
+        // Add dual currency totals for all transactions
+        incomingDualCurrency: calculateDualCurrencyTotals(
+          filteredData.filter((c) => c.tipo === 'ingreso')
+        ),
+        outgoingDualCurrency: calculateDualCurrencyTotals(
+          filteredData.filter((c) => c.tipo === 'egreso')
+        ),
       }),
     };
 
@@ -124,7 +208,7 @@ export function useTransactions({
       transactionCount,
       ...typeSpecificStats,
     };
-  }, [filteredData, type]);
+  }, [filteredData, type, calculateDualCurrencyTotals]);
 
   // Generate filename based on type
   const getFilename = (extension: string) => {

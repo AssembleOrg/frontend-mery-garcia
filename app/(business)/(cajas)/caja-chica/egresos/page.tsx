@@ -196,19 +196,16 @@ export default function EgresosPage() {
                     <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
                       <SummaryCard
                         title="💰 Total Egresos"
-                        value={statistics.totalOutgoing ?? 0}
-                        format="currency"
+                        totalUSD={statistics.totalOutgoing ?? 0}
                         valueClassName="text-red-600"
                       />
                       <SummaryCard
                         title="Transacciones"
-                        value={statistics.transactionCount ?? 0}
-                        format="number"
+                        totalUSD={statistics.transactionCount ?? 0}
                       />
                       <SummaryCard
                         title="🏪 Proveedores"
-                        value={statistics.providerCount ?? 0}
-                        format="number"
+                        totalUSD={statistics.providerCount ?? 0}
                         valueClassName="text-blue-600"
                       />
                     </div>

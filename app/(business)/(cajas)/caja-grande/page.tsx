@@ -4,12 +4,17 @@ import MainLayout from '@/components/layout/MainLayout';
 import StandardPageBanner from '@/components/common/StandardPageBanner';
 import StandardBreadcrumbs from '@/components/common/StandardBreadcrumbs';
 import SummaryCard from '@/components/common/SummaryCard';
+import ResumenCajaGrande from '@/components/cajas/ResumenCajaGrande';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import ClientOnly from '@/components/common/ClientOnly';
 import ManagerOrAdminOnly from '@/components/auth/ManagerOrAdminOnly';
 import { useComandaStore } from '@/features/comandas/store/comandaStore';
-import { useRecordsStore } from '@/features/records/store/recordsStore';
+import {
+  useRecordsStore,
+  useEstadisticasRecords,
+} from '@/features/records/store/recordsStore';
+import { useTransactions } from '@/hooks/useTransactions';
 import { useCurrencyConverter } from '@/hooks/useCurrencyConverter';
 import { formatDate } from '@/lib/utils';
 import {
@@ -19,6 +24,9 @@ import {
   Eye,
   Calendar,
   DollarSign,
+  Download,
+  FileText,
+  Database,
 } from 'lucide-react';
 import Link from 'next/link';
 
@@ -31,7 +39,17 @@ const breadcrumbItems = [
 export default function CajaGrandePage() {
   const { comandas } = useComandaStore();
   const { traspasos } = useRecordsStore();
+  const { exportarDatos } = useEstadisticasRecords();
   const { formatUSD } = useCurrencyConverter();
+
+  // Hook para transacciones con funcionalidad de exportación
+  const { exportToCSV, exportToPDF } = useTransactions({
+    type: 'all',
+    dateRange: {
+      from: new Date(new Date().getFullYear(), new Date().getMonth(), 1),
+      to: new Date(),
+    },
+  });
 
   const comandasValidadas = comandas.filter(
     (c) => c.estadoValidacion === 'validado'
@@ -90,22 +108,19 @@ export default function CajaGrandePage() {
                 <div className="mb-8 grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4">
                   <SummaryCard
                     title="Total Ingresos"
-                    value={resumenCaja.totalIngresos}
-                    format="currency"
+                    totalUSD={resumenCaja.totalIngresos}
                   />
                   <SummaryCard
                     title="Total Egresos"
-                    value={resumenCaja.totalEgresos}
-                    format="currency"
+                    totalUSD={resumenCaja.totalEgresos}
                   />
                   <SummaryCard
                     title="Saldo Neto"
-                    value={resumenCaja.saldoNeto}
-                    format="currency"
+                    totalUSD={resumenCaja.saldoNeto}
                   />
                   <SummaryCard
                     title="Comandas Validadas"
-                    value={resumenCaja.cantidadComandas}
+                    totalUSD={resumenCaja.cantidadComandas}
                   />
                 </div>
 
@@ -265,6 +280,64 @@ export default function CajaGrandePage() {
                           </div>
                         </div>
 
+                        {/* Controles de Exportación */}
+                        <div className="space-y-2">
+                          <p className="text-sm font-medium text-gray-700">
+                            Exportar Datos
+                          </p>
+                          <div className="grid grid-cols-2 gap-2">
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={exportToCSV}
+                              className="flex items-center gap-2"
+                            >
+                              <FileText className="h-4 w-4" />
+                              CSV
+                            </Button>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={exportToPDF}
+                              className="flex items-center gap-2"
+                            >
+                              <Download className="h-4 w-4" />
+                              PDF
+                            </Button>
+                          </div>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => {
+                              const today = new Date()
+                                .toISOString()
+                                .split('T')[0];
+                              const firstDay = new Date(
+                                new Date().getFullYear(),
+                                new Date().getMonth(),
+                                1
+                              )
+                                .toISOString()
+                                .split('T')[0];
+                              const data = exportarDatos(firstDay, today);
+                              const blob = new Blob(
+                                [JSON.stringify(data, null, 2)],
+                                { type: 'application/json' }
+                              );
+                              const url = URL.createObjectURL(blob);
+                              const a = document.createElement('a');
+                              a.href = url;
+                              a.download = `caja-grande-${today}.json`;
+                              a.click();
+                              URL.revokeObjectURL(url);
+                            }}
+                            className="flex w-full items-center gap-2"
+                          >
+                            <Database className="h-4 w-4" />
+                            Exportar Completo (JSON)
+                          </Button>
+                        </div>
+
                         {/* Acciones */}
                         <div className="space-y-3">
                           <Link href="/caja-grande/comandas">
@@ -280,6 +353,14 @@ export default function CajaGrandePage() {
                       </div>
                     </CardContent>
                   </Card>
+                </div>
+
+                {/* Resumen Detallado de Caja Grande */}
+                <div className="mt-8">
+                  <ResumenCajaGrande
+                    comandasValidadas={comandasValidadas}
+                    traspasos={traspasos}
+                  />
                 </div>
               </div>
             </div>

@@ -21,9 +21,9 @@ import {
   QrCode,
   DollarSign,
 } from 'lucide-react';
-import { METODOS_PAGO } from '@/lib/constants';
-import { formatUSD } from '@/lib/utils';
-import { MetodoPagoForm } from '@/hooks/useMetodosPago';
+import { METODOS_PAGO, MONEDAS, MONEDA_LABELS } from '@/lib/constants';
+import { useCurrencyConverter } from '@/hooks/useCurrencyConverter';
+import { MetodoPagoForm, ResumenDual } from '@/hooks/useMetodosPago';
 
 interface MetodosPagoSectionProps {
   metodosPago: MetodoPagoForm[];
@@ -38,6 +38,7 @@ interface MetodosPagoSectionProps {
     valor: string | number | { nombre: string; codigo: string }
   ) => void;
   className?: string;
+  obtenerResumenDual?: () => ResumenDual;
 }
 
 export default function MetodosPagoSection({
@@ -49,7 +50,21 @@ export default function MetodosPagoSection({
   onEliminarMetodo,
   onActualizarMetodo,
   className = '',
+  obtenerResumenDual,
 }: MetodosPagoSectionProps) {
+  const {
+    formatARS,
+    formatUSD,
+    formatARSFromNative,
+    isExchangeRateValid,
+    formatDual,
+  } = useCurrencyConverter();
+
+  // Helper function for dual currency display
+  const formatAmount = (amount: number): string => {
+    return isExchangeRateValid ? formatDual(amount) : formatUSD(amount);
+  };
+
   const getPaymentIcon = (tipo: string) => {
     switch (tipo) {
       case METODOS_PAGO.EFECTIVO:
@@ -122,7 +137,27 @@ export default function MetodosPagoSection({
                     Gift Card
                   </SelectItem>
                   <SelectItem value={METODOS_PAGO.QR}>QR</SelectItem>
-                  <SelectItem value={METODOS_PAGO.MIXTO}>Mixto</SelectItem>
+                </SelectContent>
+              </Select>
+
+              {/* Selector de Moneda */}
+              <Select
+                value={metodo.moneda || MONEDAS.USD}
+                onValueChange={(value) =>
+                  onActualizarMetodo?.(index, 'moneda', value)
+                }
+                disabled={isReadOnly}
+              >
+                <SelectTrigger className="w-[80px]">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value={MONEDAS.USD}>
+                    {MONEDA_LABELS[MONEDAS.USD]}
+                  </SelectItem>
+                  <SelectItem value={MONEDAS.ARS}>
+                    {MONEDA_LABELS[MONEDAS.ARS]}
+                  </SelectItem>
                 </SelectContent>
               </Select>
 
@@ -146,12 +181,34 @@ export default function MetodosPagoSection({
               {/* Mostrar descuento aplicado si existe */}
               {metodo.descuentoAplicado > 0 && (
                 <div className="min-w-[60px] text-xs text-green-600">
-                  -{formatUSD(metodo.descuentoAplicado)}
+                  {metodo.moneda === MONEDAS.ARS &&
+                  metodo.descuentoOriginalARS ? (
+                    <>-{formatARSFromNative(metodo.descuentoOriginalARS)}</>
+                  ) : (
+                    <>-{formatAmount(metodo.descuentoAplicado)}</>
+                  )}
                 </div>
               )}
 
               <div className="min-w-[80px] text-sm font-medium">
-                = {formatUSD(metodo.montoFinal)}
+                {metodo.moneda === MONEDAS.ARS ? (
+                  <>
+                    ={' '}
+                    {formatARSFromNative(
+                      metodo.montoFinalOriginalARS || metodo.monto
+                    )}
+                    <div className="text-xs text-gray-500">
+                      ≈ {formatAmount(metodo.montoFinal)}
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    = {formatAmount(metodo.montoFinal)}
+                    <div className="text-xs text-gray-500">
+                      ≈ {formatARS(metodo.montoFinal)}
+                    </div>
+                  </>
+                )}
               </div>
 
               {!isReadOnly && metodosPago.length > 1 && (
@@ -201,21 +258,86 @@ export default function MetodosPagoSection({
           </div>
         ))}
 
-        {/* Resumen con descuentos */}
+        {/* Resumen con descuentos y dual currency */}
         <div className="space-y-2 border-t pt-4">
           <div className="flex justify-between text-sm">
             <span>Total a Pagar:</span>
-            <span className="font-medium">{formatUSD(montoTotal)}</span>
+            <span className="font-medium">{formatAmount(montoTotal)}</span>
           </div>
           {totalDescuentos > 0 && (
             <div className="flex justify-between text-sm text-green-600">
               <span>Descuentos Aplicados:</span>
-              <span className="font-medium">-{formatUSD(totalDescuentos)}</span>
+              <span className="font-medium">
+                -{formatAmount(totalDescuentos)}
+              </span>
             </div>
           )}
+
+          {/* Resumen Dual USD/ARS */}
+          {obtenerResumenDual && (
+            <div className="space-y-1 border-t pt-2">
+              {(() => {
+                const resumen = obtenerResumenDual();
+                return (
+                  <>
+                    <div className="text-xs font-medium text-gray-600">
+                      Resumen por Moneda:
+                    </div>
+                    {resumen.detallesPorMoneda.USD.metodos > 0 && (
+                      <div className="flex justify-between text-xs">
+                        <span>
+                          USD ({resumen.detallesPorMoneda.USD.metodos} método
+                          {resumen.detallesPorMoneda.USD.metodos > 1 ? 's' : ''}
+                          ):
+                        </span>
+                        <span>
+                          {formatAmount(resumen.detallesPorMoneda.USD.total)}
+                        </span>
+                      </div>
+                    )}
+                    {resumen.detallesPorMoneda.ARS.metodos > 0 && (
+                      <div className="flex justify-between text-xs">
+                        <span>
+                          ARS ({resumen.detallesPorMoneda.ARS.metodos} método
+                          {resumen.detallesPorMoneda.ARS.metodos > 1 ? 's' : ''}
+                          ):
+                        </span>
+                        <span>
+                          {formatARSFromNative(
+                            resumen.detallesPorMoneda.ARS.total
+                          )}
+                        </span>
+                      </div>
+                    )}
+                    {(resumen.totalPagadoUSD > 0 ||
+                      resumen.totalPagadoARS > 0) && (
+                      <div className="flex justify-between border-t pt-1 text-xs text-gray-500">
+                        <span>Total Equivalente ARS:</span>
+                        <span>{formatARSFromNative(resumen.totalARS)}</span>
+                      </div>
+                    )}
+                  </>
+                );
+              })()}
+            </div>
+          )}
+
           <div className="flex justify-between border-t pt-2 text-sm font-medium">
-            <span>Total Pagado:</span>
-            <span>{formatUSD(totalPagado)}</span>
+            <span>Total Pagado (USD):</span>
+            <div className="text-right">
+              <div>{formatAmount(totalPagado)}</div>
+              {obtenerResumenDual &&
+                (() => {
+                  const resumen = obtenerResumenDual();
+                  return (
+                    resumen.totalPagadoARS > 0 && (
+                      <div className="text-xs text-gray-500">
+                        ≈ {formatARSFromNative(resumen.totalARS)}
+                      </div>
+                    )
+                  );
+                })()}
+            </div>
           </div>
           {Math.abs(totalPagado - montoTotal) > 0.01 && (
             <div
@@ -226,7 +348,7 @@ export default function MetodosPagoSection({
               <span>Diferencia:</span>
               <span className="font-medium">
                 {totalPagado > montoTotal ? '+' : ''}
-                {formatUSD(totalPagado - montoTotal)}
+                {formatAmount(totalPagado - montoTotal)}
               </span>
             </div>
           )}

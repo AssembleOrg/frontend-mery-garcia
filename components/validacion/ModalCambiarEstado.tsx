@@ -11,7 +11,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { X, Clock, CheckCircle, XCircle } from 'lucide-react';
 import { useComandaStore } from '@/features/comandas/store/comandaStore';
 import { toast } from 'sonner';
@@ -95,10 +94,6 @@ export default function ModalCambiarEstado({
       setCargando(false);
     }
   };
-
-  const estadoSeleccionado = ESTADOS_OPCIONES.find(
-    (e) => e.value === nuevoEstado
-  );
 
   if (!isOpen) return null;
 
@@ -216,39 +211,6 @@ export default function ModalCambiarEstado({
                   rows={3}
                 />
               </div>
-
-              {/* Vista previa */}
-              {estadoSeleccionado && nuevoEstado !== estadoActual && (
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="text-base">Vista Previa</CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="flex items-center gap-3 rounded-lg border p-3">
-                      <span className="text-lg">
-                        {estadoSeleccionado.emoji}
-                      </span>
-                      <estadoSeleccionado.icon
-                        className={`h-5 w-5 ${estadoSeleccionado.color}`}
-                      />
-                      <div className="flex-1">
-                        <div className="font-medium">
-                          {estadoSeleccionado.label}
-                        </div>
-                        <div className="text-sm text-gray-500">
-                          {estadoSeleccionado.description}
-                        </div>
-                        {observaciones && (
-                          <div className="mt-2 text-sm">
-                            <span className="font-medium">Observaciones:</span>{' '}
-                            {observaciones}
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              )}
             </div>
           </div>
 

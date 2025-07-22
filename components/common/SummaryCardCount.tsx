@@ -1,28 +1,27 @@
 'use client';
 
 import { Card, CardContent } from '@/components/ui/card';
-import { useCurrencyConverter } from '@/hooks/useCurrencyConverter';
 import { cn } from '@/lib/utils';
 
-interface SummaryCardProps {
+interface SummaryCardCountProps {
   title: string;
-  totalUSD: number;
+  count: number;
   className?: string;
   titleClassName?: string;
   valueClassName?: string;
   subtitle?: string;
+  icon?: string;
 }
 
-export default function SummaryCard({
+export default function SummaryCardCount({
   title,
-  totalUSD,
+  count,
   className,
   titleClassName,
   valueClassName,
   subtitle,
-}: SummaryCardProps) {
-  const { formatUSD } = useCurrencyConverter();
-
+  icon,
+}: SummaryCardCountProps) {
   return (
     <Card
       className={cn(
@@ -35,19 +34,25 @@ export default function SummaryCard({
           <h3
             className={cn('text-sm font-medium text-[#4a3540]', titleClassName)}
           >
+            {icon && <span className="mr-1">{icon}</span>}
             {title}
           </h3>
 
-          <div className="space-y-1">
+          <div className="text-center">
             <div
               className={cn(
-                'text-2xl font-bold text-[#6b4c57]',
+                'text-2xl font-bold text-[#4a3540]',
                 valueClassName
               )}
             >
-              {formatUSD(totalUSD)}
+              {count.toLocaleString('es-ES')}
             </div>
-            {subtitle && <p className="text-xs text-gray-500">{subtitle}</p>}
+            {subtitle && (
+              <div className="mt-1 text-xs text-gray-500">{subtitle}</div>
+            )}
+            {count === 0 && (
+              <div className="mt-1 text-xs text-gray-400">Sin registros</div>
+            )}
           </div>
         </div>
       </CardContent>

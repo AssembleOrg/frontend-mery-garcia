@@ -10,9 +10,8 @@ import { Button } from '@/components/ui/button';
 import { DataTable } from '@/components/ui/data-table';
 import {
   formatDate as formatDateEs,
-  resolverMetodoPagoPrincipal,
+  resolverMetodoPagoPrincipalConMoneda,
   formatearDetalleMetodosPago,
-  formatUSD,
   formatARS,
 } from '@/lib/utils';
 import { useCurrencyConverter } from '@/hooks/useCurrencyConverter';
@@ -52,7 +51,7 @@ export default function TransactionsTableTanStack({
     // Si la comanda tiene tipo de cambio almacenado, usarlo
     if (comanda.tipoCambioAlCrear?.valorVenta) {
       return {
-        usd: formatUSD(amountUSD),
+        usd: formatUSDCurrent(amountUSD),
         ars: formatARS(amountUSD, comanda.tipoCambioAlCrear.valorVenta),
       };
     }
@@ -191,8 +190,12 @@ export default function TransactionsTableTanStack({
         // Resolver método principal
         const metodoPrincipal =
           metodosPago && metodosPago.length > 0
-            ? resolverMetodoPagoPrincipal(
-                metodosPago.map((m) => ({ tipo: m.tipo, monto: m.monto }))
+            ? resolverMetodoPagoPrincipalConMoneda(
+                metodosPago.map((m) => ({
+                  tipo: m.tipo,
+                  monto: m.monto,
+                  moneda: (m as { moneda?: string }).moneda || 'USD',
+                }))
               )
             : 'efectivo';
 
@@ -216,7 +219,13 @@ export default function TransactionsTableTanStack({
 
         const detalleTooltip =
           metodosPago && metodosPago.length > 0
-            ? formatearDetalleMetodosPago(metodosPago)
+            ? formatearDetalleMetodosPago(
+                metodosPago.map((m) => ({
+                  tipo: m.tipo,
+                  monto: m.monto,
+                  moneda: (m as { moneda?: string }).moneda || 'USD',
+                }))
+              )
             : metodoPrincipal;
 
         return (
@@ -224,7 +233,7 @@ export default function TransactionsTableTanStack({
             className={`rounded-md px-2 py-1 text-xs font-medium ${style(metodoPrincipal)} cursor-help`}
             title={detalleTooltip}
           >
-            {metodoPrincipal}
+            💰 {metodoPrincipal}
           </span>
         );
       },

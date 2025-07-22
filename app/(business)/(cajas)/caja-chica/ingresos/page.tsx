@@ -19,7 +19,8 @@ import { DateRangePicker } from '@/components/ui/date-range-picker';
 import { DateRange } from 'react-day-picker';
 import ClientOnly from '@/components/common/ClientOnly';
 import Spinner from '@/components/common/Spinner';
-import SummaryCard from '@/components/common/SummaryCard';
+import SummaryCardDual from '@/components/common/SummaryCardDual';
+import SummaryCardCount from '@/components/common/SummaryCardCount';
 import ModalEditarTransaccion from '@/components/cajas/ModalEditarTransaccion';
 import { useCurrencyConverter } from '@/hooks/useCurrencyConverter';
 import { formatDate } from '@/lib/utils';
@@ -161,21 +162,32 @@ export default function IngresosPage() {
                       ✨ Gestión de Transacciones de Ingreso
                     </h1>
                     <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
-                      <SummaryCard
+                      <SummaryCardDual
                         title="💰 Total Ingresos"
-                        value={statistics.totalIncoming ?? 0}
-                        format="currency"
+                        totalUSD={statistics.totalIncomingUSD ?? 0}
+                        totalARS={statistics.totalIncomingARS ?? 0}
                         valueClassName="text-green-600"
+                        showTransactionCount={true}
+                        transactionCountUSD={
+                          statistics.dualCurrencyDetails?.USD?.transacciones ??
+                          0
+                        }
+                        transactionCountARS={
+                          statistics.dualCurrencyDetails?.ARS?.transacciones ??
+                          0
+                        }
                       />
-                      <SummaryCard
-                        title="Transacciones"
-                        value={statistics.transactionCount ?? 0}
-                        format="number"
-                      />
-                      <SummaryCard
-                        title="👥 Clientes"
-                        value={statistics.clientCount ?? 0}
+                      <SummaryCardCount
+                        title="📊 Transacciones"
+                        count={statistics.transactionCount ?? 0}
+                        subtitle="comandas realizadas"
                         valueClassName="text-blue-600"
+                      />
+                      <SummaryCardCount
+                        title="👥 Clientes"
+                        count={statistics.clientCount ?? 0}
+                        subtitle="clientes únicos"
+                        valueClassName="text-purple-600"
                       />
                     </div>
                   </div>
@@ -365,11 +377,18 @@ const initialColumns: ColumnaCaja[] = [
     width: '100px',
   },
   {
-    key: 'cliente',
+    key: 'cliente.nombre',
     label: 'Cliente',
     visible: true,
     sortable: true,
     width: '150px',
+  },
+  {
+    key: 'mainStaff.nombre',
+    label: 'Vendedor',
+    visible: true, // Cambiado a visible para probar el filtro
+    sortable: true,
+    width: '120px',
   },
   {
     key: 'servicios',
@@ -379,29 +398,29 @@ const initialColumns: ColumnaCaja[] = [
     width: '200px',
   },
   {
-    key: 'total',
+    key: 'subtotal',
+    label: 'Subtotal',
+    visible: true,
+    sortable: true,
+    width: '120px',
+  },
+  {
+    key: 'totalFinal',
     label: 'Total',
     visible: true,
     sortable: true,
     width: '120px',
   },
   {
-    key: 'estado',
-    label: 'Estado',
-    visible: false, // Oculto por defecto, usuario puede habilitarlo
-    sortable: true,
-    width: '120px',
-  },
-  {
-    key: 'metodoPago',
+    key: 'metodosPago',
     label: 'Método Pago',
     visible: false, // Oculto por defecto, usuario puede habilitarlo
     sortable: true,
     width: '100px',
   },
   {
-    key: 'vendedor',
-    label: 'Vendedor',
+    key: 'estado',
+    label: 'Estado',
     visible: false, // Oculto por defecto, usuario puede habilitarlo
     sortable: true,
     width: '120px',

@@ -26,7 +26,6 @@ const LAST_REFRESH_KEY = 'last_exchange_rate_refresh';
 
 export default function TipoCambioPage() {
   const [apiRate, setApiRate] = useState<ExchangeRate | null>(null);
-  const [apiHistorial, setApiHistorial] = useState<ExchangeRate[]>([]);
   const [historialInterno, setHistorialInterno] = useState<
     HistorialTipoCambio[]
   >([]);
@@ -70,7 +69,7 @@ export default function TipoCambioPage() {
       if (isManualRefresh) setRefreshing(true);
 
       try {
-        const [current, historial] = await Promise.all([
+        const [current] = await Promise.all([
           getPublicRate(),
           getHistorial(10),
         ]);
@@ -79,7 +78,6 @@ export default function TipoCambioPage() {
           setApiRate(current);
           console.log('Valores informativos API cargados:', current);
         }
-        if (historial) setApiHistorial(historial);
 
         if (isManualRefresh) {
           localStorage.setItem(LAST_REFRESH_KEY, new Date().toISOString());
@@ -255,8 +253,8 @@ export default function TipoCambioPage() {
             {/* 🎯 Valor operativo actual (source of truth) */}
             <SummaryCard
               title="Valor Operativo Vigente (ARS/USD)"
-              value={tipoCambio.valorVenta}
-              format="currency"
+              totalUSD={tipoCambio.valorVenta}
+              subtitle="Valor usado para conversiones en la aplicación"
             />
 
             {/* 🎯 Cotización API (solo informativa) */}
@@ -264,13 +262,13 @@ export default function TipoCambioPage() {
               <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                 <SummaryCard
                   title="Compra (API - Informativo)"
-                  value={apiRate.compra}
-                  format="currency"
+                  totalUSD={apiRate.compra}
+                  subtitle="Valor de referencia de la API"
                 />
                 <SummaryCard
                   title="Venta (API - Informativo)"
-                  value={apiRate.venta ?? apiRate.compra}
-                  format="currency"
+                  totalUSD={apiRate.venta ?? apiRate.compra}
+                  subtitle="Valor de referencia de la API"
                 />
               </div>
             )}
@@ -375,31 +373,6 @@ export default function TipoCambioPage() {
                 )}
               </CardContent>
             </Card>
-
-            {/* Historial API (informativo) */}
-            {apiHistorial.length > 0 && (
-              <Card className="border border-[#f9bbc4]/30 bg-white/90">
-                <CardHeader>
-                  <CardTitle>Historial API (Informativo)</CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-2">
-                  {apiHistorial.slice(0, 5).map((h, idx) => (
-                    <div
-                      key={idx}
-                      className="flex items-center justify-between border-b pb-2 text-sm last:border-b-0"
-                    >
-                      <span className="text-gray-600">
-                        {new Date(h.fechaActualizacion).toLocaleString('es-ES')}
-                      </span>
-                      <span className="font-medium">
-                        Compra: ${h.compra.toLocaleString()} | Venta: $
-                        {(h.venta ?? h.compra).toLocaleString()}
-                      </span>
-                    </div>
-                  ))}
-                </CardContent>
-              </Card>
-            )}
           </div>
         </div>
       </div>

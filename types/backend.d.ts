@@ -328,6 +328,58 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  '/api/dolar/cotizacion': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** Obtener cotización actual del dólar blue */
+    get: operations['DolarController_obtenerCotizacion'];
+    put?: never;
+    /** Crear cotización del dólar */
+    post: operations['DolarController_actualizarCotizacion'];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/api/dolar/ultimo': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** Obtener el último update de dólar guardado en el sistema */
+    get: operations['DolarController_obtenerUltimoUpdate'];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/api/dolar/historial': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** Obtener historial de cotizaciones del dólar */
+    get: operations['DolarController_obtenerHistorial'];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   '/api/auth/login': {
     parameters: {
       query?: never;
@@ -354,7 +406,7 @@ export interface paths {
     };
     get?: never;
     put?: never;
-    /** Registrar nuevo usuario (solo administradores) */
+    /** Registrar nuevo usuario (solo administradores Reba Puto) */
     post: operations['AuthController_register'];
     delete?: never;
     options?: never;
@@ -456,40 +508,6 @@ export interface paths {
     };
     /** Obtener balance de todas las cajas */
     get: operations['CajaController_obtenerBalanceTodasLasCajas'];
-    put?: never;
-    post?: never;
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
-  '/api/dolar/cotizacion': {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    /** Obtener cotización actual del dólar blue */
-    get: operations['DolarController_obtenerCotizacion'];
-    put?: never;
-    post?: never;
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
-  '/api/dolar/historial': {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    /** Obtener historial de cotizaciones del dólar */
-    get: operations['DolarController_obtenerHistorial'];
     put?: never;
     post?: never;
     delete?: never;
@@ -700,6 +718,11 @@ export interface components {
       tipoId?: string;
       /** @description Observaciones */
       observaciones?: string;
+      /**
+       * @description Precio en dólares
+       * @example 100
+       */
+      precioDolar?: number;
     };
     CrearTipoComandaDto: {
       /**
@@ -794,6 +817,38 @@ export interface components {
        * @example true
        */
       activo?: boolean;
+    };
+    ActualizarDolarDto: {
+      /**
+       * @description Precio de compra del dólar blue
+       * @example 1190
+       */
+      compra: number;
+      /**
+       * @description Precio de venta del dólar blue
+       * @example 1210
+       */
+      venta: number;
+      /**
+       * @description Casa de cambio
+       * @example Manual
+       */
+      casa?: string;
+      /**
+       * @description Nombre de la cotización
+       * @example Blue Manual
+       */
+      nombre?: string;
+      /**
+       * @description Tipo de moneda
+       * @example USD
+       */
+      moneda?: string;
+      /**
+       * @description Observaciones sobre la cotización
+       * @example Cotización ingresada manualmente por el administrador
+       */
+      observaciones?: string;
     };
     LoginDto: {
       /**
@@ -1795,6 +1850,164 @@ export interface operations {
       };
     };
   };
+  DolarController_obtenerCotizacion: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Cotización del dólar obtenida exitosamente */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': {
+            /** @example 1190 */
+            compra?: number;
+            /** @example 1210 */
+            venta?: number;
+            /** @example blue */
+            casa?: string;
+            /** @example Blue */
+            nombre?: string;
+            /** @example USD */
+            moneda?: string;
+            /** @example 2025-06-29T20:57:00.000Z */
+            fechaActualizacion?: string;
+          };
+        };
+      };
+      /** @description Error interno del servidor */
+      500: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+    };
+  };
+  DolarController_actualizarCotizacion: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['ActualizarDolarDto'];
+      };
+    };
+    responses: {
+      201: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+    };
+  };
+  DolarController_obtenerUltimoUpdate: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Último update de dólar obtenido exitosamente */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': {
+            /** @example 1190 */
+            compra?: number;
+            /** @example 1210 */
+            venta?: number;
+            /** @example blue */
+            casa?: string;
+            /** @example Blue */
+            nombre?: string;
+            /** @example USD */
+            moneda?: string;
+            /** @example 2025-06-29T20:57:00.000Z */
+            fechaActualizacion?: string;
+          };
+        };
+      };
+      /** @description No se encontró ningún update de dólar */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Error interno del servidor */
+      500: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+    };
+  };
+  DolarController_obtenerHistorial: {
+    parameters: {
+      query?: {
+        /** @description Número máximo de registros a retornar (default: 10) */
+        limit?: number;
+      };
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Historial de cotizaciones obtenido exitosamente */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': {
+            /** @example 1190 */
+            compra?: number;
+            /** @example 1210 */
+            venta?: number;
+            /** @example blue */
+            casa?: string;
+            /** @example Blue */
+            nombre?: string;
+            /** @example USD */
+            moneda?: string;
+            /** @example 2025-06-29T20:57:00.000Z */
+            fechaActualizacion?: string;
+          }[];
+        };
+      };
+      /** @description No se encontró ningún update de dólar */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Error interno del servidor */
+      500: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+    };
+  };
   AuthController_login: {
     parameters: {
       query?: never;
@@ -2046,89 +2259,6 @@ export interface operations {
       };
       /** @description Acceso denegado */
       403: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content?: never;
-      };
-    };
-  };
-  DolarController_obtenerCotizacion: {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    requestBody?: never;
-    responses: {
-      /** @description Cotización del dólar obtenida exitosamente */
-      200: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          'application/json': {
-            /** @example 1190 */
-            compra?: number;
-            /** @example 1210 */
-            venta?: number;
-            /** @example blue */
-            casa?: string;
-            /** @example Blue */
-            nombre?: string;
-            /** @example USD */
-            moneda?: string;
-            /** @example 2025-06-29T20:57:00.000Z */
-            fechaActualizacion?: string;
-          };
-        };
-      };
-      /** @description Error interno del servidor */
-      500: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content?: never;
-      };
-    };
-  };
-  DolarController_obtenerHistorial: {
-    parameters: {
-      query?: {
-        /** @description Número máximo de registros a retornar (default: 10) */
-        limit?: number;
-      };
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    requestBody?: never;
-    responses: {
-      /** @description Historial de cotizaciones obtenido exitosamente */
-      200: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          'application/json': {
-            /** @example 1190 */
-            compra?: number;
-            /** @example 1210 */
-            venta?: number;
-            /** @example blue */
-            casa?: string;
-            /** @example Blue */
-            nombre?: string;
-            /** @example USD */
-            moneda?: string;
-            /** @example 2025-06-29T20:57:00.000Z */
-            fechaActualizacion?: string;
-          }[];
-        };
-      };
-      /** @description Error interno del servidor */
-      500: {
         headers: {
           [name: string]: unknown;
         };

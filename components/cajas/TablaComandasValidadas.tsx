@@ -24,9 +24,14 @@ interface TablaComandasValidadasProps {
 export default function TablaComandasValidadas({
   comandas,
 }: TablaComandasValidadasProps) {
-  const { formatUSD } = useCurrencyConverter();
+  const { formatUSD, formatDual, isExchangeRateValid } = useCurrencyConverter();
   const [filtro, setFiltro] = useState('');
   // const [comandaSeleccionada, setComandaSeleccionada] = useState<string | null>(null);
+
+  // Helper function for dual currency display
+  const formatAmount = (amount: number) => {
+    return isExchangeRateValid ? formatDual(amount) : formatUSD(amount);
+  };
 
   const comandasFiltradas = comandas.filter(
     (comanda) =>
@@ -120,7 +125,7 @@ export default function TablaComandasValidadas({
                     <TableCell>{comanda.cliente.nombre}</TableCell>
                     <TableCell>{comanda.mainStaff.nombre}</TableCell>
                     <TableCell className="text-right font-medium">
-                      {formatUSD(comanda.totalFinal)}
+                      {formatAmount(comanda.totalFinal)}
                     </TableCell>
                     <TableCell>
                       <Badge className="bg-green-100 text-green-800">
