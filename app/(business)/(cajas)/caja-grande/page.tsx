@@ -13,10 +13,7 @@ import { Button } from '@/components/ui/button';
 import ClientOnly from '@/components/common/ClientOnly';
 import ManagerOrAdminOnly from '@/components/auth/ManagerOrAdminOnly';
 import { useComandaStore } from '@/features/comandas/store/comandaStore';
-import {
-  useRecordsStore,
-  useEstadisticasRecords,
-} from '@/features/records/store/recordsStore';
+import { useRecordsStore } from '@/features/records/store/recordsStore';
 import { useTransactions } from '@/hooks/useTransactions';
 import { useCurrencyConverter } from '@/hooks/useCurrencyConverter';
 import { formatDate } from '@/lib/utils';
@@ -26,10 +23,8 @@ import {
   Shield,
   Eye,
   Calendar,
-  DollarSign,
   Download,
   FileText,
-  Database,
 } from 'lucide-react';
 import Link from 'next/link';
 
@@ -42,7 +37,6 @@ const breadcrumbItems = [
 export default function CajaGrandePage() {
   const { comandas } = useComandaStore();
   const { traspasos } = useRecordsStore();
-  const { exportarDatos } = useEstadisticasRecords();
   const { formatUSD } = useCurrencyConverter();
 
   // Estado para modal de movimientos manuales

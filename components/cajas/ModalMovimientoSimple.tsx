@@ -22,7 +22,7 @@ import { useCurrencyConverter } from '@/hooks/useCurrencyConverter';
 import { useLogActivity } from '@/features/activity/store/activityStore';
 import { useComandaStore } from '@/features/comandas/store/comandaStore';
 import { useExchangeRateStore } from '@/features/exchange-rate/store/exchangeRateStore';
-import { Comanda, MetodoPago } from '@/types/caja';
+import { Comanda, MetodoPago, UnidadNegocio } from '@/types/caja';
 import { toast } from 'sonner';
 
 interface MovimientoSimple {
@@ -87,7 +87,11 @@ export default function ModalMovimientoSimple({
       id: 'admin-manual',
       nombre: 'Administrador',
       activo: true,
-      unidadesDisponibles: ['tattoo', 'estilismo', 'formacion'] as const,
+      unidadesDisponibles: [
+        'tattoo',
+        'estilismo',
+        'formacion',
+      ] as UnidadNegocio[],
       fechaIngreso: fechaActual,
     };
 
