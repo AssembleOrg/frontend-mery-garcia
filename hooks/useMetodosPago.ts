@@ -66,11 +66,13 @@ export function useMetodosPago(
         return {
           montoFinal: montoUSD,
           descuentoAplicado: 0,
+          // Para egresos ARS, preservar monto original nativo
+          montoFinalOriginalARS: moneda === MONEDAS.ARS ? monto : undefined,
         };
       }
 
-      if (tipo === 'mixto' || tipo === 'giftcard' || tipo === 'qr') {
-        // Para estos tipos no hay descuento
+      if (tipo === 'mixto' || tipo === 'giftcard' || tipo === 'qr' || tipo === 'precio_lista') {
+        // Para estos tipos no hay descuento (precio_lista es igual que tarjeta sin descuento)
         const montoUSD = moneda === MONEDAS.ARS ? arsToUsd(monto) : monto;
         return {
           montoFinal: montoUSD,
@@ -211,10 +213,15 @@ export function useMetodosPago(
 
   const convertirParaPersistencia = useCallback((): MetodoPago[] => {
     return metodosPago.map((metodo) => {
+      const monedaActual = metodo.moneda || MONEDAS.USD;
+      
       const metodoPersistencia: MetodoPago = {
         tipo: metodo.tipo,
-        monto: metodo.montoFinal, // Siempre en USD
-        moneda: metodo.moneda,
+        // Guardar monto en su moneda nativa - SOLUCIÓN DEFINITIVA
+        monto: monedaActual === MONEDAS.ARS 
+          ? (metodo.montoFinalOriginalARS || 0) // Valor nativo ARS
+          : metodo.montoFinal, // Valor nativo USD
+        moneda: monedaActual,
       };
 
       if (metodo.tipo === 'giftcard' && metodo.giftcard) {

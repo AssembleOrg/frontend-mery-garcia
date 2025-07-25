@@ -24,7 +24,7 @@ export const useCliente = () => {
   // Wrapper para agregar cliente con seña inicial
   const agregarCliente = (
     clienteData: Omit<Cliente, 'id' | 'fechaRegistro' | 'señasDisponibles'>,
-    señaInicial?: number
+    señaInicial?: { ars: number; usd: number }
   ) => {
     agregarClienteStore(clienteData, señaInicial);
   };
@@ -33,7 +33,7 @@ export const useCliente = () => {
   const actualizarCliente = (
     id: string,
     clienteData: Omit<Cliente, 'id' | 'fechaRegistro' | 'señasDisponibles'>,
-    señasActuales?: number
+    señasActuales?: { ars: number; usd: number }
   ) => {
     const datosActualizados: Partial<Cliente> = {
       ...clienteData,

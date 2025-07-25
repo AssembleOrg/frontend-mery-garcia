@@ -143,8 +143,24 @@ export default function TransactionsTableTanStack({
       header: 'Subtotal',
       cell: ({ getValue, row }) => {
         const subtotal = getValue() as number;
-        const formatted = formatWithExchangeRate(subtotal, row.original);
         const isValidated = row.original.estadoValidacion === 'validado';
+        const isManualMovement = row.original.cliente.nombre === 'Movimiento Manual';
+        
+        if (isManualMovement) {
+          // Para movimientos manuales, mostrar solo el valor simple
+          const moneda = row.original.moneda || 'USD';
+          return (
+            <div className="text-right">
+              <div
+                className={`font-medium ${isValidated ? 'text-gray-500' : 'text-green-600'}`}
+              >
+                {moneda}: ${subtotal.toFixed(2)}
+              </div>
+            </div>
+          );
+        }
+        
+        const formatted = formatWithExchangeRate(subtotal, row.original);
         return (
           <div className="text-right">
             <div
@@ -166,8 +182,22 @@ export default function TransactionsTableTanStack({
       header: 'Total',
       cell: ({ getValue, row }) => {
         const total = getValue() as number;
-        const formatted = formatWithExchangeRate(total, row.original);
         const isValidated = row.original.estadoValidacion === 'validado';
+        const isManualMovement = row.original.cliente.nombre === 'Movimiento Manual';
+        
+        if (isManualMovement) {
+          // Para movimientos manuales, mostrar solo el valor simple
+          const moneda = row.original.moneda || 'USD';
+          return (
+            <div
+              className={`text-right font-semibold ${isValidated ? 'text-gray-500' : 'text-green-600'}`}
+            >
+              {moneda}: ${total.toFixed(2)}
+            </div>
+          );
+        }
+        
+        const formatted = formatWithExchangeRate(total, row.original);
         return (
           <div
             className={`text-right font-semibold ${isValidated ? 'text-gray-500' : 'text-green-600'}`}

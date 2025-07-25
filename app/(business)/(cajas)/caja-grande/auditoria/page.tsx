@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import MainLayout from '@/components/layout/MainLayout';
 import StandardPageBanner from '@/components/common/StandardPageBanner';
 import StandardBreadcrumbs from '@/components/common/StandardBreadcrumbs';
@@ -35,6 +35,9 @@ import { usePersonal } from '@/features/personal/hooks/usePersonal';
 import { usePaginacion } from '@/features/comandas/hooks/usePaginacion';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
+import { useComandaStore } from '@/features/comandas/store/comandaStore';
+import { useCurrencyConverter } from '@/hooks/useCurrencyConverter';
+import ModalVerDetalles from '@/components/validacion/ModalVerDetalles';
 
 export default function AuditoriaPage() {
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(
@@ -42,10 +45,14 @@ export default function AuditoriaPage() {
   );
   const [selectedUser, setSelectedUser] = useState('');
   const [showUserSearch, setShowUserSearch] = useState(false);
+  const [showModalDetalles, setShowModalDetalles] = useState(false);
+  const [comandaSeleccionada, setComandaSeleccionada] = useState<string | null>(null);
 
   const { logs, statistics, exportToCSV } = useActivityLogs();
   const { clearAllLogs } = useActivityStore();
   const { personal } = usePersonal();
+  const { comandas } = useComandaStore();
+  const { formatUSD, formatARSFromNative } = useCurrencyConverter();
 
   // Filter logs based on selected date and user
   const filteredLogs = logs.filter((log) => {
@@ -59,9 +66,60 @@ export default function AuditoriaPage() {
     return matchesDate && matchesUser;
   });
 
-  // Pagination for filtered logs
+  // Filtrar movimientos manuales de caja-grande
+  const movimientosManuales = comandas.filter(comanda => {
+    // Solo movimientos manuales
+    if (comanda.cliente.nombre !== 'Movimiento Manual') return false;
+    
+    // Solo los que ORIGINAN en caja-grande (evita duplicación)
+    if (comanda.metadata?.cajaOrigen !== 'caja_2') return false;
+
+    // Filtrar por fecha si está seleccionada
+    if (selectedDate) {
+      const comandaDate = new Date(comanda.fecha);
+      return comandaDate.toDateString() === selectedDate.toDateString();
+    }
+    
+    return true;
+  });
+
+  // Combinar logs y movimientos manuales en una sola lista
+  const actividadesUnificadas = useMemo(() => {
+    const logActividades = filteredLogs.map(log => ({
+      id: log.id,
+      fecha: new Date(log.fecha),
+      tipo: 'log' as const,
+      descripcion: log.descripcion,
+      usuario: log.usuario,
+      modulo: log.modulo,
+      data: log
+    }));
+    
+    const movimientosActividades = movimientosManuales.map(movimiento => ({
+      id: movimiento.id,
+      fecha: new Date(movimiento.fecha),
+      tipo: 'movimiento' as const,
+      descripcion: `${movimiento.tipo}: ${movimiento.observaciones}`,
+      usuario: movimiento.mainStaff?.nombre || 'Sistema', // Usar el nombre del staff que hizo el movimiento
+      modulo: 'Movimiento Manual',
+      data: movimiento
+    }));
+    
+    // Combinar y ordenar por fecha descendente
+    return [...logActividades, ...movimientosActividades].sort(
+      (a, b) => b.fecha.getTime() - a.fecha.getTime()
+    );
+  }, [filteredLogs, movimientosManuales]);
+
+  // Función para ver detalles de movimiento manual
+  const handleVerDetallesMovimiento = (comandaId: string) => {
+    setComandaSeleccionada(comandaId);
+    setShowModalDetalles(true);
+  };
+
+  // Pagination for unified activities
   const pagination = usePaginacion({
-    data: filteredLogs,
+    data: actividadesUnificadas,
     itemsPorPagina: 10,
   });
 
@@ -260,11 +318,11 @@ export default function AuditoriaPage() {
                 <Card className="border border-[#f9bbc4]/20 bg-white shadow-sm">
                   <CardHeader className="bg-white">
                     <CardTitle className="text-lg text-[#4a3540]">
-                      Actividades ({filteredLogs.length})
+                      Actividades ({actividadesUnificadas.length})
                     </CardTitle>
                   </CardHeader>
                   <CardContent className="bg-white">
-                    {filteredLogs.length === 0 ? (
+                    {actividadesUnificadas.length === 0 ? (
                       <div className="py-12 text-center">
                         <Activity className="mx-auto h-12 w-12 text-gray-400" />
                         <h3 className="mt-2 text-sm font-medium text-gray-900">
@@ -283,30 +341,35 @@ export default function AuditoriaPage() {
                               <TableRow>
                                 <TableHead>Fecha y Hora</TableHead>
                                 <TableHead>Usuario</TableHead>
-                                <TableHead>Acción</TableHead>
+                                <TableHead>Tipo</TableHead>
                                 <TableHead>Módulo</TableHead>
                                 <TableHead>Descripción</TableHead>
+                                <TableHead>Acciones</TableHead>
                               </TableRow>
                             </TableHeader>
                             <TableBody>
-                              {pagination.datosPaginados.map((log) => (
-                                <TableRow key={log.id}>
+                              {pagination.datosPaginados.map((actividad) => (
+                                <TableRow key={actividad.id}>
                                   <TableCell className="font-mono text-sm">
                                     {format(
-                                      new Date(log.fecha),
+                                      actividad.fecha,
                                       'dd/MM/yyyy HH:mm:ss',
                                       { locale: es }
                                     )}
                                   </TableCell>
                                   <TableCell className="font-medium">
-                                    {log.usuario}
+                                    {actividad.usuario}
                                   </TableCell>
                                   <TableCell>
                                     <Badge
                                       variant="outline"
-                                      className="text-xs font-medium"
+                                      className={
+                                        actividad.tipo === 'movimiento'
+                                          ? 'border-orange-200 text-orange-700'
+                                          : 'border-blue-200 text-blue-700'
+                                      }
                                     >
-                                      {log.accion}
+                                      {actividad.tipo === 'movimiento' ? 'Movimiento' : 'Log Sistema'}
                                     </Badge>
                                   </TableCell>
                                   <TableCell>
@@ -314,11 +377,25 @@ export default function AuditoriaPage() {
                                       variant="secondary"
                                       className="text-xs"
                                     >
-                                      {log.modulo}
+                                      {actividad.modulo}
                                     </Badge>
                                   </TableCell>
                                   <TableCell className="max-w-xs truncate text-sm text-gray-600">
-                                    {log.descripcion}
+                                    {actividad.descripcion}
+                                  </TableCell>
+                                  <TableCell>
+                                    {actividad.tipo === 'movimiento' ? (
+                                      <Button
+                                        variant="ghost"
+                                        size="sm"
+                                        onClick={() => handleVerDetallesMovimiento(actividad.id)}
+                                        className="text-[#8b5a6b] hover:text-[#6b3d4f]"
+                                      >
+                                        Ver detalles
+                                      </Button>
+                                    ) : (
+                                      <span className="text-gray-400 text-sm">-</span>
+                                    )}
                                   </TableCell>
                                 </TableRow>
                               ))}
@@ -327,7 +404,7 @@ export default function AuditoriaPage() {
                         </div>
 
                         {/* Pagination */}
-                        {filteredLogs.length > 10 && (
+                        {actividadesUnificadas.length > 10 && (
                           <div className="mt-6">
                             <Pagination
                               paginaActual={pagination.paginaActual}
@@ -349,10 +426,23 @@ export default function AuditoriaPage() {
                     )}
                   </CardContent>
                 </Card>
+
               </div>
             </div>
           </ClientOnly>
         </div>
+
+        {/* Modal de detalles de movimiento manual */}
+        {showModalDetalles && comandaSeleccionada && (
+          <ModalVerDetalles
+            isOpen={showModalDetalles}
+            comandaId={comandaSeleccionada}
+            onClose={() => {
+              setShowModalDetalles(false);
+              setComandaSeleccionada(null);
+            }}
+          />
+        )}
       </ManagerOrAdminOnly>
     </MainLayout>
   );

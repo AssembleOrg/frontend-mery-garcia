@@ -1,10 +1,10 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import MainLayout from '@/components/layout/MainLayout';
 import StandardPageBanner from '@/components/common/StandardPageBanner';
 import StandardBreadcrumbs from '@/components/common/StandardBreadcrumbs';
-import SummaryCard from '@/components/common/SummaryCard';
+import SummaryCardDual from '@/components/common/SummaryCardDual';
 import SummaryCardCount from '@/components/common/SummaryCardCount';
 import ResumenCajaGrande from '@/components/cajas/ResumenCajaGrande';
 import ModalMovimientoSimple from '@/components/cajas/ModalMovimientoSimple';
@@ -37,7 +37,7 @@ const breadcrumbItems = [
 export default function CajaGrandePage() {
   const { comandas } = useComandaStore();
   const { traspasos } = useRecordsStore();
-  const { formatUSD } = useCurrencyConverter();
+  const { formatUSD, formatARS, formatARSFromNative } = useCurrencyConverter();
 
   // Estado para modal de movimientos manuales
   const [showModalMovimiento, setShowModalMovimiento] = useState(false);
@@ -51,22 +51,82 @@ export default function CajaGrandePage() {
     },
   });
 
-  const comandasValidadas = comandas.filter(
-    (c) => c.estadoValidacion === 'validado'
-  );
+  // Hooks para estadísticas de caja-grande (solo comandas validadas)
+  const { statistics: ingresoStats } = useTransactions({
+    type: 'ingreso',
+    validatedOnly: true,
+  });
 
-  const resumenCaja = {
-    totalIngresos: comandasValidadas
-      .filter((c) => c.tipo === 'ingreso')
-      .reduce((sum, c) => sum + c.totalFinal, 0),
-    totalEgresos: comandasValidadas
-      .filter((c) => c.tipo === 'egreso')
-      .reduce((sum, c) => sum + c.totalFinal, 0),
-    saldoNeto: comandasValidadas.reduce((sum, c) => {
-      return c.tipo === 'ingreso' ? sum + c.totalFinal : sum - c.totalFinal;
-    }, 0),
-    cantidadComandas: comandasValidadas.length,
-  };
+  const { statistics: egresoStats } = useTransactions({
+    type: 'egreso',
+    validatedOnly: true,
+  });
+
+  const { statistics: allStats } = useTransactions({
+    type: 'all',
+    validatedOnly: true,
+  });
+
+  // Filtrar comandas validadas con lógica específica para caja-grande
+  const comandasValidadas = comandas.filter((c) => {
+    if (c.estadoValidacion !== 'validado') return false;
+    
+    // Filtro especial para movimientos manuales
+    if (c.cliente.nombre === 'Movimiento Manual') {
+      const metadata = c.metadata;
+      if (!metadata) return false;
+      
+      // Solo mostrar en caja-grande:
+      // 1. Ingresos/egresos directos a/desde caja-grande
+      if ((c.tipo === 'ingreso' && metadata.cajaDestino === 'caja_2' && metadata.cajaOrigen === 'caja_2') ||
+          (c.tipo === 'egreso' && metadata.cajaOrigen === 'caja_2' && metadata.cajaDestino === 'caja_2')) {
+        return true;
+      }
+      
+      // 2. Transferencias desde caja-chica hacia caja-grande (solo ingresos)
+      if (c.tipo === 'ingreso' && metadata.cajaOrigen === 'caja_1' && metadata.cajaDestino === 'caja_2') {
+        return true;
+      }
+      
+      // Excluir transferencias desde caja-grande hacia caja-chica
+      return false;
+    }
+    
+    // Transacciones normales (no manuales) se incluyen siempre
+    return true;
+  });
+
+  // Calcular resumen basado en comandas filtradas específicamente para caja-grande
+  const resumenCaja = useMemo(() => {
+    const ingresos = comandasValidadas.filter(c => c.tipo === 'ingreso');
+    const egresos = comandasValidadas.filter(c => c.tipo === 'egreso');
+    
+    const calcularTotalesPorMoneda = (comandas: typeof comandasValidadas) => {
+      return comandas.reduce((acc, comanda) => {
+        comanda.metodosPago.forEach(metodo => {
+          if (metodo.moneda === 'USD') {
+            acc.totalUSD += metodo.monto;
+          } else if (metodo.moneda === 'ARS') {
+            acc.totalARS += metodo.monto;
+          }
+        });
+        return acc;
+      }, { totalUSD: 0, totalARS: 0 });
+    };
+    
+    const ingresosTotal = calcularTotalesPorMoneda(ingresos);
+    const egresosTotal = calcularTotalesPorMoneda(egresos);
+    
+    return {
+      totalIngresosUSD: ingresosTotal.totalUSD,
+      totalIngresosARS: ingresosTotal.totalARS,
+      totalEgresosUSD: egresosTotal.totalUSD,
+      totalEgresosARS: egresosTotal.totalARS,
+      cantidadComandas: comandasValidadas.length,
+      saldoNetoUSD: ingresosTotal.totalUSD - egresosTotal.totalUSD,
+      saldoNetoARS: ingresosTotal.totalARS - egresosTotal.totalARS,
+    };
+  }, [comandasValidadas]);
 
   const ultimoTraspaso = traspasos[0];
 
@@ -81,7 +141,8 @@ export default function CajaGrandePage() {
           (acc, comanda) => {
             if (comanda.metodosPago) {
               comanda.metodosPago.forEach((metodo) => {
-                acc[metodo.tipo] = (acc[metodo.tipo] || 0) + metodo.monto;
+                const key = `${metodo.tipo}_${metodo.moneda}`;
+                acc[key] = (acc[key] || 0) + metodo.monto;
               });
             }
             return acc;
@@ -95,28 +156,45 @@ export default function CajaGrandePage() {
 
   return (
     <MainLayout>
-      <div className="min-h-screen bg-gradient-to-br from-[#fef7f0] to-[#fdf2f8]">
+      <div className="min-h-screen bg-gradient-to-br from-[#f9bbc4]/10 via-[#e8b4c6]/8 to-[#d4a7ca]/6">
         <StandardPageBanner title="Caja Grande" />
+        
+        <div className="relative -mt-12 h-12 bg-gradient-to-b from-transparent to-[#f9bbc4]/8" />
 
         <ManagerOrAdminOnly>
           <ClientOnly>
-            <div className="container mx-auto px-4 py-6">
-              <div className="mx-auto max-w-7xl">
-                <StandardBreadcrumbs items={breadcrumbItems} />
+            <StandardBreadcrumbs items={breadcrumbItems} />
+            
+            <div className="bg-gradient-to-b from-[#f9bbc4]/5 via-[#e8b4c6]/3 to-[#d4a7ca]/5">
+              <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+                <div className="container mx-auto py-6">
 
                 {/* Resumen de Caja */}
                 <div className="mb-8 grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4">
-                  <SummaryCard
+                  <SummaryCardDual
                     title="Total Ingresos"
-                    totalUSD={resumenCaja.totalIngresos}
+                    totalUSD={resumenCaja.totalIngresosUSD}
+                    totalARS={resumenCaja.totalIngresosARS}
+                    showTransactionCount={false}
+                    valueClassName="text-green-700"
                   />
-                  <SummaryCard
+                  <SummaryCardDual
                     title="Total Egresos"
-                    totalUSD={resumenCaja.totalEgresos}
+                    totalUSD={resumenCaja.totalEgresosUSD}
+                    totalARS={resumenCaja.totalEgresosARS}
+                    showTransactionCount={false}
+                    valueClassName="text-red-700"
                   />
-                  <SummaryCard
+                  <SummaryCardDual
                     title="Saldo Neto"
-                    totalUSD={resumenCaja.saldoNeto}
+                    totalUSD={resumenCaja.saldoNetoUSD}
+                    totalARS={resumenCaja.saldoNetoARS}
+                    showTransactionCount={false}
+                    valueClassName={
+                      resumenCaja.saldoNetoUSD + resumenCaja.saldoNetoARS >= 0
+                        ? 'text-green-700'
+                        : 'text-red-700'
+                    }
                   />
                   <SummaryCardCount
                     title="Comandas Validadas"
@@ -165,26 +243,24 @@ export default function CajaGrandePage() {
                           </div>
 
                           {/* Montos */}
-                          <div className="grid grid-cols-2 gap-4">
-                            <div>
-                              <p className="text-sm text-gray-600">
-                                Monto Total
-                              </p>
-                              <p className="font-medium text-green-600">
-                                {formatUSD(ultimoTraspaso.montoTotal)}
-                              </p>
+                          <div>
+                            <p className="mb-2 text-sm text-gray-600">
+                              Monto Total
+                            </p>
+                            <div className="space-y-1">
+                              <div className="flex justify-between text-sm">
+                                <span>USD:</span>
+                                <span className="font-medium text-green-600">
+                                  {formatUSD(ultimoTraspaso.montoTotalUSD || 0)}
+                                </span>
+                              </div>
+                              <div className="flex justify-between text-sm">
+                                <span>ARS:</span>
+                                <span className="font-medium text-green-600">
+                                  {formatARSFromNative(ultimoTraspaso.montoTotalARS || 0)}
+                                </span>
+                              </div>
                             </div>
-                            {ultimoTraspaso.esTraspasoParcial &&
-                              ultimoTraspaso.montoParcial && (
-                                <div>
-                                  <p className="text-sm text-gray-600">
-                                    Monto Parcial
-                                  </p>
-                                  <p className="font-medium text-blue-600">
-                                    {formatUSD(ultimoTraspaso.montoParcial)}
-                                  </p>
-                                </div>
-                              )}
                           </div>
 
                           {/* Métodos de pago */}
@@ -197,19 +273,33 @@ export default function CajaGrandePage() {
                               <div className="space-y-1">
                                 {Object.entries(
                                   resumenMetodosPagoUltimoTraspaso
-                                ).map(([metodo, monto]) => (
-                                  <div
-                                    key={metodo}
-                                    className="flex justify-between text-sm"
-                                  >
-                                    <span className="capitalize">
-                                      {metodo}:
-                                    </span>
-                                    <span className="font-medium">
-                                      {formatUSD(monto)}
-                                    </span>
-                                  </div>
-                                ))}
+                                ).map(([metodoMoneda, monto]) => {
+                                  const [metodo, moneda] =
+                                    metodoMoneda.split('_');
+                                  const metodoNombre = {
+                                    efectivo: 'Efectivo',
+                                    tarjeta: 'Tarjeta',
+                                    transferencia: 'Transferencia',
+                                    giftcard: 'Gift Card',
+                                    qr: 'QR',
+                                    mixto: 'Mixto',
+                                    precio_lista: 'Precio de Lista'
+                                  }[metodo] || metodo;
+                                  
+                                  return (
+                                    <div
+                                      key={metodoMoneda}
+                                      className="flex justify-between text-sm"
+                                    >
+                                      <span className="capitalize">
+                                        {metodoNombre} {moneda}:
+                                      </span>
+                                      <span className="font-medium">
+                                        {moneda === 'USD' ? formatUSD(monto) : formatARSFromNative(monto)}
+                                      </span>
+                                    </div>
+                                  );
+                                })}
                               </div>
                             </div>
                           )}
@@ -332,6 +422,7 @@ export default function CajaGrandePage() {
                     comandasValidadas={comandasValidadas}
                     traspasos={traspasos}
                   />
+                </div>
                 </div>
               </div>
             </div>

@@ -204,7 +204,14 @@ export const useActivityStore = create<ActivityStore>()(
           return;
         }
 
-        const headers = ['Fecha', 'Usuario', 'Acción', 'Módulo', 'Descripción'];
+        // Función para normalizar texto y remover tildes
+        const normalizarTexto = (texto: string) => {
+          return texto
+            .normalize('NFD')
+            .replace(/[\u0300-\u036f]/g, '');
+        };
+
+        const headers = ['Fecha', 'Usuario', 'Accion', 'Modulo', 'Descripcion'].map(normalizarTexto);
         const csvContent = [
           headers.join(','),
           ...filteredLogs.map((log) =>

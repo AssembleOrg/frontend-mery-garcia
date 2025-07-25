@@ -23,6 +23,7 @@ export const METODOS_PAGO = {
   GIFTCARD: 'giftcard',
   QR: 'qr',
   MIXTO: 'mixto',
+  PRECIO_LISTA: 'precio_lista',
 } as const;
 
 export type MetodoPago = (typeof METODOS_PAGO)[keyof typeof METODOS_PAGO];
@@ -59,6 +60,7 @@ export const METODO_PAGO_LABELS = {
   [METODOS_PAGO.GIFTCARD]: 'Gift Card',
   [METODOS_PAGO.QR]: 'QR',
   [METODOS_PAGO.MIXTO]: 'Mixto',
+  [METODOS_PAGO.PRECIO_LISTA]: 'Precio de Lista',
 } as const;
 
 // Colores para estados

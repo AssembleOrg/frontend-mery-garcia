@@ -13,12 +13,14 @@ interface UseTransactionsOptions {
   type: TransactionType;
   dateRange?: DateRange;
   itemsPorPagina?: number;
+  validatedOnly?: boolean; // Nueva opción para caja-grande
 }
 
 export function useTransactions({
   type,
   dateRange,
   itemsPorPagina = 10,
+  validatedOnly = false,
 }: UseTransactionsOptions) {
   const { comandas } = useComandas();
   const { filters, actualizarFiltros } = useFiltrosComanda();
@@ -103,12 +105,20 @@ export function useTransactions({
     itemsPorPagina,
   });
 
-  // Filter out validated commands for calculations (caja-chica reset after transfer)
+  // Filter commands based on validation status
   const dataForCalculations = useMemo(() => {
-    return filteredData.filter(
-      (comanda) => comanda.estadoValidacion !== 'validado'
-    );
-  }, [filteredData]);
+    if (validatedOnly) {
+      // For caja-grande: only include validated commands
+      return filteredData.filter(
+        (comanda) => comanda.estadoValidacion === 'validado'
+      );
+    } else {
+      // For caja-chica: exclude validated commands (reset after transfer)
+      return filteredData.filter(
+        (comanda) => comanda.estadoValidacion !== 'validado'
+      );
+    }
+  }, [filteredData, validatedOnly]);
 
   // Calculate dual currency statistics
   const calculateDualCurrencyTotals = useMemo(() => {
@@ -143,14 +153,19 @@ export function useTransactions({
 
         if (metodosARS.length > 0) {
           const totalARSComanda = metodosARS.reduce(
-            (sum, mp) => sum + mp.monto,
+            (sum, mp) => {
+              // Usar valores ARS tal como están almacenados (ya son nativos)
+              return sum + mp.monto;
+            },
             0
           );
           totals.totalARS += totalARSComanda;
           totals.detallesPorMoneda.ARS.total += totalARSComanda;
           totals.detallesPorMoneda.ARS.transacciones += 1;
         }
+
       });
+
 
       return totals;
     };
@@ -278,7 +293,7 @@ export function useTransactions({
       logger.debug(`Export ${type} transactions to CSV`);
       const options = getExportOptions();
 
-      exportComandasToCSV(filteredData, {
+      exportComandasToCSV(filteredData, exchangeRate, {
         filename: getFilename('csv'),
         ...options,
       });

@@ -22,8 +22,8 @@ interface ModalClienteProps {
   cliente?: Cliente | null;
   onSave: (
     cliente: Omit<Cliente, 'id' | 'fechaRegistro' | 'señasDisponibles'>,
-    señaInicial?: number,
-    señasActuales?: number
+    señaInicial?: { ars: number; usd: number },
+    señasActuales?: { ars: number; usd: number }
   ) => void;
 }
 
@@ -40,15 +40,15 @@ export default function ModalCliente({
   const [cuit, setCuit] = useState('');
 
   // Estados para señas
-  const [señaInicial, setSeñaInicial] = useState('');
-  const [señasActuales, setSeñasActuales] = useState('');
+  const [señaArs, setSeñaArs] = useState('0');
+  const [señaUsd, setSeñaUsd] = useState('0');
 
   // Estados de validación
   const [errores, setErrores] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(false);
 
   // Hook para conversión de moneda
-  const { formatARS } = useCurrencyConverter();
+  const { formatARSFromNative } = useCurrencyConverter();
 
   const esEdicion = !!cliente;
 
@@ -61,8 +61,8 @@ export default function ModalCliente({
         setTelefono(cliente.telefono || '');
         setEmail(cliente.email || '');
         setCuit(cliente.cuit || '');
-        setSeñaInicial('');
-        setSeñasActuales(cliente.señasDisponibles.toString());
+        setSeñaArs(String(cliente.señasDisponibles?.ars || 0));
+        setSeñaUsd(String(cliente.señasDisponibles?.usd || 0));
       } else {
         // Modo creación
         clearForm();
@@ -76,8 +76,8 @@ export default function ModalCliente({
     setTelefono('');
     setEmail('');
     setCuit('');
-    setSeñaInicial('');
-    setSeñasActuales('');
+    setSeñaArs('0');
+    setSeñaUsd('0');
     setErrores({});
   };
 
@@ -101,14 +101,12 @@ export default function ModalCliente({
         'CUIT inválido (formato: 20-12345678-9 o 20123456789)';
     }
 
-    // Validar seña inicial solo si se ingresó un valor
-    if (señaInicial && parseFloat(señaInicial) < 0) {
-      nuevosErrores.señaInicial = 'La seña no puede ser negativa';
+    if (parseFloat(señaArs) < 0) {
+      nuevosErrores.señaArs = 'La seña no puede ser negativa';
     }
 
-    // Validar señas actuales en modo edición
-    if (esEdicion && señasActuales && parseFloat(señasActuales) < 0) {
-      nuevosErrores.señasActuales = 'Las señas no pueden ser negativas';
+    if (parseFloat(señaUsd) < 0) {
+      nuevosErrores.señaUsd = 'La seña no puede ser negativa';
     }
 
     setErrores(nuevosErrores);
@@ -131,19 +129,15 @@ export default function ModalCliente({
         cuit: cuit.trim() || undefined,
       };
 
+      const señas = {
+        ars: parseFloat(señaArs) || 0,
+        usd: parseFloat(señaUsd) || 0,
+      };
+
       if (esEdicion) {
-        // En modo edición, pasar las señas actuales
-        const señasActualesMonto = señasActuales
-          ? parseFloat(señasActuales)
-          : 0;
-        onSave(clienteData, undefined, señasActualesMonto);
+        onSave(clienteData, undefined, señas);
       } else {
-        // En modo creación, pasar la seña inicial
-        const señaInicialMonto =
-          señaInicial && parseFloat(señaInicial) > 0
-            ? parseFloat(señaInicial)
-            : undefined;
-        onSave(clienteData, señaInicialMonto);
+        onSave(clienteData, señas);
       }
 
       // Simular delay de guardado
@@ -286,80 +280,53 @@ export default function ModalCliente({
                 </div>
               </div>
 
-              {/* Seña inicial (solo en creación) */}
-              {!esEdicion && (
+              {/* Señas */}
+              <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <Label
-                    htmlFor="señaInicial"
-                    className="font-medium text-[#4a3540]"
-                  >
-                    Seña Inicial (USD)
-                    {errores.señaInicial && (
+                  <Label htmlFor="seña-ars" className="font-medium text-[#4a3540]">
+                    Seña (ARS)
+                    {errores.señaArs && (
                       <span className="ml-1 text-xs text-red-500">
-                        ({errores.señaInicial})
+                        ({errores.señaArs})
                       </span>
                     )}
                   </Label>
                   <div className="relative mt-1">
-                    <DollarSign className="absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-green-600" />
+                    <span className="absolute top-1/2 left-3 text-sm font-semibold text-[#8b5a6b]">ARS</span>
                     <Input
-                      id="señaInicial"
-                      value={señaInicial}
-                      onChange={(e) => setSeñaInicial(e.target.value)}
-                      placeholder="0"
-                      className={`pl-10 ${errores.señaInicial ? 'border-red-300' : 'border-[#f9bbc4]/30 focus:border-[#f9bbc4]'}`}
+                      id="seña-ars"
+                      type="number"
+                      value={señaArs}
+                      onChange={(e) => setSeñaArs(e.target.value)}
+                      placeholder="0.00"
+                      className={`pl-12 ${errores.señaArs ? 'border-red-300' : 'border-[#f9bbc4]/30 focus:border-[#f9bbc4]'}`}
                     />
                   </div>
-                  <div className="mt-1 space-y-1">
-                    <p className="text-xs text-[#8b5a6b]">
-                      Monto disponible para descontar en futuras compras
-                      (opcional)
-                    </p>
-                    {señaInicial && parseFloat(señaInicial) > 0 && (
-                      <p className="text-xs text-green-600">
-                        Equivale a: {formatARS(parseFloat(señaInicial))}
-                      </p>
+                </div>
+                <div>
+                  <Label htmlFor="seña-usd" className="font-medium text-[#4a3540]">
+                    Seña (USD)
+                    {errores.señaUsd && (
+                      <span className="ml-1 text-xs text-red-500">
+                        ({errores.señaUsd})
+                      </span>
                     )}
+                  </Label>
+                  <div className="relative mt-1">
+                    <DollarSign className="absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-[#8b5a6b]" />
+                    <Input
+                      id="seña-usd"
+                      type="number"
+                      value={señaUsd}
+                      onChange={(e) => setSeñaUsd(e.target.value)}
+                      placeholder="0.00"
+                      className={`pl-10 ${errores.señaUsd ? 'border-red-300' : 'border-[#f9bbc4]/30 focus:border-[#f9bbc4]'}`}
+                    />
                   </div>
                 </div>
-              )}
+              </div>
 
-              {/* Señas actuales (solo en edición) */}
-              {esEdicion && (
-                <div>
-                  <Label
-                    htmlFor="señasActuales"
-                    className="font-medium text-[#4a3540]"
-                  >
-                    Señas Disponibles (USD)
-                    {errores.señasActuales && (
-                      <span className="ml-1 text-xs text-red-500">
-                        ({errores.señasActuales})
-                      </span>
-                    )}
-                  </Label>
-                  <div className="relative mt-1">
-                    <DollarSign className="absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-green-600" />
-                    <Input
-                      id="señasActuales"
-                      value={señasActuales}
-                      onChange={(e) => setSeñasActuales(e.target.value)}
-                      placeholder="0"
-                      className={`pl-10 ${errores.señasActuales ? 'border-red-300' : 'border-[#f9bbc4]/30 focus:border-[#f9bbc4]'}`}
-                    />
-                  </div>
-                  <div className="mt-1 space-y-1">
-                    <p className="text-xs text-[#8b5a6b]">
-                      Monto disponible para descontar en futuras compras
-                    </p>
-                    {señasActuales && parseFloat(señasActuales) > 0 && (
-                      <p className="text-xs text-green-600">
-                        Equivale a: {formatARS(parseFloat(señasActuales))}
-                      </p>
-                    )}
-                  </div>
-                </div>
-              )}
+
             </div>
           </div>
 

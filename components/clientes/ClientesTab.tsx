@@ -53,7 +53,7 @@ export default function ClientesTab() {
     eliminarCliente,
     buscarCliente,
   } = useCliente();
-  const { formatUSD, formatARS } = useCurrencyConverter();
+  const { formatUSD, formatARSFromNative } = useCurrencyConverter();
   const [modalAbierto, setModalAbierto] = useState(false);
   const [clienteEditando, setClienteEditando] = useState<Cliente | null>(null);
   const [alertaEliminar, setAlertaEliminar] = useState<Cliente | null>(null);
@@ -85,8 +85,8 @@ export default function ClientesTab() {
 
   const handleGuardarCliente = (
     clienteData: Omit<Cliente, 'id' | 'fechaRegistro' | 'señasDisponibles'>,
-    señaInicial?: number,
-    señasActuales?: number
+    señaInicial?: { ars: number; usd: number },
+    señasActuales?: { ars: number; usd: number }
   ) => {
     if (clienteEditando) {
       // Modo edición
@@ -102,9 +102,10 @@ export default function ClientesTab() {
   // Estadísticas
   const totalClientes = clientes.length;
   const clientesConSeñas = clientes.filter(
-    (c) => c.señasDisponibles > 0
+    (c) => c.señasDisponibles.ars > 0 || c.señasDisponibles.usd > 0
   ).length;
-  const totalSeñas = clientes.reduce((sum, c) => sum + c.señasDisponibles, 0);
+  const totalSeñasArs = clientes.reduce((sum, c) => sum + c.señasDisponibles.ars, 0);
+  const totalSeñasUsd = clientes.reduce((sum, c) => sum + c.señasDisponibles.usd, 0);
 
   return (
     <div className="space-y-6">
@@ -151,11 +152,11 @@ export default function ClientesTab() {
               <div>
                 <p className="text-sm text-[#6b4c57]">Total Señas</p>
                 <div className="space-y-1">
-                  <p className="text-lg font-bold text-green-700">
-                    {formatUSD(totalSeñas)}
+                  <p className="text-lg font-bold text-blue-700">
+                    {formatARSFromNative(totalSeñasArs)}
                   </p>
-                  <p className="text-xs text-green-600">
-                    {formatARS(totalSeñas)}
+                  <p className="text-lg font-bold text-green-700">
+                    {formatUSD(totalSeñasUsd)}
                   </p>
                 </div>
               </div>
@@ -219,7 +220,7 @@ export default function ClientesTab() {
                     Contacto
                   </TableHead>
                   <TableHead className="font-semibold text-[#4a3540]">
-                    Señas
+                    Señas (ARS / USD)
                   </TableHead>
                   <TableHead className="font-semibold text-[#4a3540]">
                     Registro
@@ -264,26 +265,17 @@ export default function ClientesTab() {
                       </div>
                     </TableCell>
                     <TableCell>
-                      <div className="space-y-1">
+                      <div className="flex flex-col space-y-1">
                         <Badge
-                          variant={
-                            cliente.señasDisponibles > 0
-                              ? 'default'
-                              : 'secondary'
-                          }
-                          className={`font-mono ${
-                            cliente.señasDisponibles > 0
-                              ? 'border-green-300 bg-green-100 text-green-800'
-                              : 'bg-gray-100 text-gray-600'
-                          }`}
-                        >
-                          {formatUSD(cliente.señasDisponibles)}
+                          variant={'outline'}
+                          className={`font-mono ${cliente.señasDisponibles.ars > 0 ? 'border-blue-300 bg-blue-100 text-blue-800' : 'bg-gray-100 text-gray-600'}`}>
+                          {formatARSFromNative(cliente.señasDisponibles.ars)}
                         </Badge>
-                        {cliente.señasDisponibles > 0 && (
-                          <div className="text-xs text-green-600">
-                            {formatARS(cliente.señasDisponibles)}
-                          </div>
-                        )}
+                        <Badge
+                          variant={'outline'}
+                          className={`font-mono ${cliente.señasDisponibles.usd > 0 ? 'border-green-300 bg-green-100 text-green-800' : 'bg-gray-100 text-gray-600'}`}>
+                          {formatUSD(cliente.señasDisponibles.usd)}
+                        </Badge>
                       </div>
                     </TableCell>
                     <TableCell>

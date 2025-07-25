@@ -36,7 +36,7 @@ import {
   X,
   Columns,
 } from 'lucide-react';
-import { FiltrosEncomienda, ColumnaCaja, PersonalSimple } from '@/types/caja';
+import { FiltrosEncomienda, ColumnaCaja, PersonalSimple, UnidadNegocio } from '@/types/caja';
 import { ESTADO_LABELS } from '@/lib/constants';
 import { useHasMounted } from '@/hooks/useHasMounted';
 import { usePersonal } from '@/features/personal/hooks/usePersonal';
@@ -90,13 +90,13 @@ export default function TableFilters({
   const mounted = useHasMounted();
 
   return mounted ? (
-    <div className="space-y-4">
+    <div className="space-y-6">
       {/* Main filters bar */}
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between rounded-lg bg-white/50 p-4 backdrop-blur-sm">
         {/* Search and main filters */}
-        <div className="flex flex-1 flex-col gap-2 sm:flex-row sm:items-center">
+        <div className="flex flex-1 flex-col gap-3 sm:flex-row sm:items-center sm:gap-4">
           {/* Search */}
-          <div className="relative flex-1 sm:max-w-xs">
+          <div className="relative flex-1 min-w-0 sm:max-w-xs">
             <Search className="absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-gray-400" />
             <Input
               placeholder="Buscar transacciones..."
@@ -104,28 +104,29 @@ export default function TableFilters({
               onChange={(e) =>
                 onFiltersChange({ ...filters, busqueda: e.target.value })
               }
-              className="border-gray-200 pl-10 focus:border-[#f9bbc4] focus:ring-[#f9bbc4]"
+              className="h-11 border-gray-200 bg-white/80 pl-10 shadow-sm transition-all hover:bg-white focus:border-[#f9bbc4] focus:ring-2 focus:ring-[#f9bbc4]/20"
             />
           </div>
         </div>
 
         {/* Action buttons */}
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           {/* Active filters badge */}
           {hasActiveFilters && (
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 animate-in fade-in duration-300">
               <Badge
                 variant="secondary"
-                className="border-[#f9bbc4]/30 bg-[#f9bbc4]/20 text-[#8b5a6b]"
+                className="border-[#f9bbc4]/30 bg-gradient-to-r from-[#f9bbc4]/20 to-[#e292a3]/20 text-[#8b5a6b] font-semibold shadow-sm"
               >
-                {activeFilterCount} filtro{activeFilterCount > 1 ? 's' : ''}{' '}
+                ✨ {activeFilterCount} filtro{activeFilterCount > 1 ? 's' : ''}{' '}
                 activo{activeFilterCount > 1 ? 's' : ''}
               </Badge>
               <Button
                 variant="ghost"
                 size="sm"
                 onClick={clearFilters}
-                className="h-8 px-2 text-gray-500 hover:text-gray-700"
+                className="h-8 px-2 text-gray-500 hover:text-red-600 hover:bg-red-50 transition-colors rounded-full"
+                title="Limpiar filtros"
               >
                 <X className="h-4 w-4" />
               </Button>
@@ -137,16 +138,21 @@ export default function TableFilters({
             variant="outline"
             size="sm"
             onClick={() => setShowAdvancedFilters(!showAdvancedFilters)}
-            className="border-2 bg-white/80 font-medium shadow-sm transition-all hover:bg-white hover:shadow-md"
-            style={{
-              borderColor: accentColor,
-              color: '#4a3540',
-            }}
+            className={`border-2 font-semibold shadow-sm transition-all duration-200 hover:shadow-md whitespace-nowrap ${
+              showAdvancedFilters 
+                ? 'bg-gradient-to-r from-[#f9bbc4] to-[#e292a3] text-white border-[#f9bbc4] hover:from-[#e292a3] hover:to-[#d4a7ca]'
+                : 'bg-white/80 hover:bg-white border-[#f9bbc4] text-[#4a3540]'
+            }`}
           >
             <Filter className="mr-2 h-4 w-4" />
-            🔍 Filtros
+            <span className="hidden sm:inline">
+              {showAdvancedFilters ? '⚙️ Ocultar Filtros' : '🔍 Mostrar Filtros'}
+            </span>
+            <span className="sm:hidden">
+              {showAdvancedFilters ? '⚙️' : '🔍'}
+            </span>
             <ChevronDown
-              className={`ml-2 h-4 w-4 transition-transform ${
+              className={`ml-2 h-4 w-4 transition-transform duration-200 ${
                 showAdvancedFilters ? 'rotate-180' : ''
               }`}
             />
@@ -158,14 +164,15 @@ export default function TableFilters({
               <Button
                 variant="outline"
                 size="sm"
-                className="border-2 bg-white/80 font-medium shadow-sm transition-all hover:bg-white hover:shadow-md"
+                className="border-2 bg-white/80 font-medium shadow-sm transition-all hover:bg-white hover:shadow-md whitespace-nowrap"
                 style={{
                   borderColor: accentColor,
                   color: '#4a3540',
                 }}
               >
                 <Columns className="mr-2 h-4 w-4" />
-                📋 Columnas
+                <span className="hidden sm:inline">📋 Columnas</span>
+                <span className="sm:hidden">📋</span>
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent
@@ -218,14 +225,15 @@ export default function TableFilters({
               <Button
                 variant="outline"
                 size="sm"
-                className="border-2 bg-white/80 font-medium shadow-sm transition-all hover:bg-white hover:shadow-md"
+                className="border-2 bg-white/80 font-medium shadow-sm transition-all hover:bg-white hover:shadow-md whitespace-nowrap"
                 style={{
                   borderColor: accentColor,
                   color: '#4a3540',
                 }}
               >
                 <Download className="mr-2 h-4 w-4" />
-                📤 Exportar
+                <span className="hidden sm:inline">📤 Exportar</span>
+                <span className="sm:hidden">📤</span>
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent
@@ -253,11 +261,16 @@ export default function TableFilters({
 
       {/* Advanced filters */}
       {showAdvancedFilters && (
-        <div className="rounded-lg border border-gray-200 bg-gray-50 p-4">
-          <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-5">
+        <div className="animate-in slide-in-from-top-2 duration-200 rounded-xl border border-gray-200/60 bg-gradient-to-br from-gray-50/80 via-white/90 to-gray-50/80 p-6 shadow-lg backdrop-blur-sm">
+          <div className="mb-4">
+            <h3 className="text-lg font-semibold text-gray-800 mb-1">Filtros Avanzados</h3>
+            <p className="text-sm text-gray-600">Personaliza tu búsqueda con estos filtros</p>
+          </div>
+          <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
             {/* Status filter */}
-            <div>
-              <label className="mb-2 block text-sm font-medium text-gray-700">
+            <div className="space-y-2">
+              <label className="block text-sm font-semibold text-gray-800 flex items-center gap-2">
+                <div className="h-1.5 w-1.5 rounded-full bg-blue-500"></div>
                 Estado
               </label>
               <Select
@@ -269,8 +282,8 @@ export default function TableFilters({
                   })
                 }
               >
-                <SelectTrigger>
-                  <SelectValue />
+                <SelectTrigger className="h-10 border-gray-300 bg-white shadow-sm hover:border-gray-400 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20">
+                  <SelectValue placeholder="Seleccionar estado" />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="todos">Todos los Estados</SelectItem>
@@ -288,8 +301,9 @@ export default function TableFilters({
             </div>
 
             {/* Payment method filter */}
-            <div>
-              <label className="mb-2 block text-sm font-medium text-gray-700">
+            <div className="space-y-2">
+              <label className="block text-sm font-semibold text-gray-800 flex items-center gap-2">
+                <div className="h-1.5 w-1.5 rounded-full bg-green-500"></div>
                 Método de Pago
               </label>
               <Select
@@ -301,7 +315,7 @@ export default function TableFilters({
                   })
                 }
               >
-                <SelectTrigger>
+                <SelectTrigger className="h-10 border-gray-300 bg-white shadow-sm hover:border-gray-400 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -341,6 +355,12 @@ export default function TableFilters({
                       <span className="font-medium">QR</span>
                     </div>
                   </SelectItem>
+                  <SelectItem value="precio_lista">
+                    <div className="flex items-center gap-2">
+                      <Package className="h-4 w-4 text-purple-600" />
+                      <span className="font-medium">Precio de Lista</span>
+                    </div>
+                  </SelectItem>
                   <SelectItem value="mixto">
                     <div className="flex items-center gap-2">
                       <DollarSign className="h-4 w-4 text-orange-600" />
@@ -352,8 +372,9 @@ export default function TableFilters({
             </div>
 
             {/* Currency filter */}
-            <div>
-              <label className="mb-2 block text-sm font-medium text-gray-700">
+            <div className="space-y-2">
+              <label className="block text-sm font-semibold text-gray-800 flex items-center gap-2">
+                <div className="h-1.5 w-1.5 rounded-full bg-yellow-500"></div>
                 Moneda
               </label>
               <Select
@@ -365,7 +386,7 @@ export default function TableFilters({
                   })
                 }
               >
-                <SelectTrigger>
+                <SelectTrigger className="h-10 border-gray-300 bg-white shadow-sm hover:border-gray-400 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -391,8 +412,9 @@ export default function TableFilters({
               </Select>
             </div>
 
-            <div>
-              <label className="mb-2 block text-sm font-medium text-gray-700">
+            <div className="space-y-2">
+              <label className="block text-sm font-semibold text-gray-800 flex items-center gap-2">
+                <div className="h-1.5 w-1.5 rounded-full bg-purple-500"></div>
                 Miembro del Personal
               </label>
               <Select
@@ -404,7 +426,7 @@ export default function TableFilters({
                   })
                 }
               >
-                <SelectTrigger>
+                <SelectTrigger className="h-10 border-gray-300 bg-white shadow-sm hover:border-gray-400 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -427,9 +449,57 @@ export default function TableFilters({
               </Select>
             </div>
 
+            {/* Business Unit filter */}
+            <div className="space-y-2">
+              <label className="block text-sm font-semibold text-gray-800 flex items-center gap-2">
+                <div className="h-1.5 w-1.5 rounded-full bg-red-500"></div>
+                Unidad de Negocio
+              </label>
+              <Select
+                value={filters.businessUnit || 'todos'}
+                onValueChange={(value) =>
+                  onFiltersChange({
+                    ...filters,
+                    businessUnit: value === 'todos' ? undefined : (value as UnidadNegocio),
+                  })
+                }
+              >
+                <SelectTrigger className="h-10 border-gray-300 bg-white shadow-sm hover:border-gray-400 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="todos">
+                    <div className="flex items-center gap-2">
+                      <Package className="h-4 w-4 text-gray-600" />
+                      <span>Todas las Unidades</span>
+                    </div>
+                  </SelectItem>
+                  <SelectItem value="tattoo">
+                    <div className="flex items-center gap-2">
+                      <div className="h-2 w-2 rounded-full bg-purple-500" />
+                      <span>🎨 Tattoo</span>
+                    </div>
+                  </SelectItem>
+                  <SelectItem value="estilismo">
+                    <div className="flex items-center gap-2">
+                      <div className="h-2 w-2 rounded-full bg-pink-500" />
+                      <span>💄 Estilismo</span>
+                    </div>
+                  </SelectItem>
+                  <SelectItem value="formacion">
+                    <div className="flex items-center gap-2">
+                      <div className="h-2 w-2 rounded-full bg-blue-500" />
+                      <span>📚 Formación</span>
+                    </div>
+                  </SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
             {/* Client filter */}
-            <div>
-              <label className="mb-2 block text-sm font-medium text-gray-700">
+            <div className="space-y-2">
+              <label className="block text-sm font-semibold text-gray-800 flex items-center gap-2">
+                <div className="h-1.5 w-1.5 rounded-full bg-teal-500"></div>
                 Cliente
               </label>
               <Input
@@ -438,6 +508,7 @@ export default function TableFilters({
                 onChange={(e) =>
                   onFiltersChange({ ...filters, cliente: e.target.value })
                 }
+                className="h-10 border-gray-300 bg-white shadow-sm hover:border-gray-400 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20"
               />
             </div>
           </div>

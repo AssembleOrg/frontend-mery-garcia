@@ -22,12 +22,14 @@ import { useCurrencyConverter } from '@/hooks/useCurrencyConverter';
 import { useLogActivity } from '@/features/activity/store/activityStore';
 import { useComandaStore } from '@/features/comandas/store/comandaStore';
 import { useExchangeRateStore } from '@/features/exchange-rate/store/exchangeRateStore';
+import { useAuth } from '@/features/auth/hooks/useAuth';
 import { Comanda, MetodoPago, UnidadNegocio } from '@/types/caja';
 import { toast } from 'sonner';
 
 interface MovimientoSimple {
   tipoOperacion: 'ingreso' | 'egreso' | 'transferencia';
-  monto: number;
+  montoUSD: number;
+  montoARS: number;
   detalle: string;
   cajaOrigen?: 'caja_1' | 'caja_2';
   cajaDestino?: 'caja_1' | 'caja_2';
@@ -50,11 +52,13 @@ export default function ModalMovimientoSimple({
   const logActivity = useLogActivity();
   const { agregarComanda, obtenerProximoNumero } = useComandaStore();
   const { tipoCambio } = useExchangeRateStore();
+  const { user } = useAuth();
   const [loading, setLoading] = useState(false);
 
   const [formData, setFormData] = useState<MovimientoSimple>({
     tipoOperacion: 'ingreso',
-    monto: 0,
+    montoUSD: 0,
+    montoARS: 0,
     detalle: '',
     cajaOrigen: cajaActual,
     cajaDestino: cajaActual === 'caja_1' ? 'caja_2' : 'caja_1',
@@ -69,7 +73,9 @@ export default function ModalMovimientoSimple({
   const crearComandaManual = (
     tipo: 'ingreso' | 'egreso',
     monto: number,
-    detalle: string
+    detalle: string,
+    moneda: 'USD' | 'ARS' = 'USD',
+    cajaDestino?: string
   ): Comanda => {
     const numeroComanda = obtenerProximoNumero(tipo);
     const fechaActual = new Date();
@@ -78,14 +84,28 @@ export default function ModalMovimientoSimple({
     const clienteManual = {
       id: 'manual-movement',
       nombre: 'Movimiento Manual',
-      señasDisponibles: 0,
+      señasDisponibles: { ars: 0, usd: 0 },
       fechaRegistro: fechaActual,
     };
 
-    // Personal genérico para movimientos manuales
+    // Personal genérico para movimientos manuales - usar localStorage como logActivity
+    let usuarioActual = { id: 'admin-manual', nombre: 'Sistema' };
+    try {
+      const userStr = typeof window !== 'undefined' ? localStorage.getItem('user') : null;
+      if (userStr) {
+        const userData = JSON.parse(userStr);
+        usuarioActual = {
+          id: userData.id || 'admin-manual',
+          nombre: userData.nombre || 'Sistema'
+        };
+      }
+    } catch (error) {
+      console.warn('Error al obtener usuario del localStorage:', error);
+    }
+
     const personalManual = {
-      id: 'admin-manual',
-      nombre: 'Administrador',
+      id: usuarioActual.id,
+      nombre: usuarioActual.nombre,
       activo: true,
       unidadesDisponibles: [
         'tattoo',
@@ -99,7 +119,7 @@ export default function ModalMovimientoSimple({
     const metodoPago: MetodoPago = {
       tipo: 'efectivo',
       monto: monto,
-      moneda: 'USD',
+      moneda: moneda,
     };
 
     const comanda: Comanda = {
@@ -126,14 +146,23 @@ export default function ModalMovimientoSimple({
       subtotal: monto,
       totalDescuentos: 0,
       totalSeña: 0,
+      totalSeñaUSD: 0,
+      totalSeñaARS: 0,
       totalFinal: monto,
-      moneda: 'USD',
+      moneda: moneda,
       estado: 'completado',
       tipo: tipo,
       estadoNegocio: 'completado',
-      estadoValidacion: 'validado', // ¡IMPORTANTE! Marcamos como validado
+      estadoValidacion: 'validado', // ¡IMPORTANTE! Siempre validado para movimientos manuales
       observaciones: `Movimiento manual: ${detalle}`,
       tipoCambioAlCrear: tipoCambio.valorVenta > 0 ? tipoCambio : undefined,
+      // Metadata para identificar caja destino de movimientos manuales
+      metadata: {
+        movimientoManual: true,
+        cajaOrigen: cajaActual,
+        cajaDestino: cajaDestino || cajaActual,
+        tipoMovimiento: tipo,
+      },
     };
 
     return comanda;
@@ -142,7 +171,8 @@ export default function ModalMovimientoSimple({
   const resetForm = () => {
     setFormData({
       tipoOperacion: 'ingreso',
-      monto: 0,
+      montoUSD: 0,
+      montoARS: 0,
       detalle: '',
       cajaOrigen: cajaActual,
       cajaDestino: cajaActual === 'caja_1' ? 'caja_2' : 'caja_1',
@@ -152,8 +182,8 @@ export default function ModalMovimientoSimple({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (formData.monto <= 0 || !formData.detalle.trim()) {
-      toast.error('Por favor complete todos los campos requeridos');
+    if ((formData.montoUSD <= 0 && formData.montoARS <= 0) || !formData.detalle.trim()) {
+      toast.error('Por favor ingrese al menos un monto y complete el detalle');
       return;
     }
 
@@ -165,65 +195,118 @@ export default function ModalMovimientoSimple({
 
       if (formData.tipoOperacion === 'transferencia') {
         // Para transferencias, creamos dos comandas: un egreso en la caja origen y un ingreso en la caja destino
-        const egresoTransferencia = crearComandaManual(
-          'egreso',
-          formData.monto,
-          `Transferencia hacia ${getCajaLabel(formData.cajaDestino!)}: ${formData.detalle}`
-        );
+        // Crear comandas separadas por moneda para transferencias
+        const comandasCreadas = [];
+        
+        if (formData.montoUSD > 0) {
+          const egresoUSD = crearComandaManual(
+            'egreso',
+            formData.montoUSD,
+            `Transferencia hacia ${getCajaLabel(formData.cajaDestino!)}: ${formData.detalle} (USD)`,
+            'USD',
+            formData.cajaOrigen // El egreso va de la caja origen
+          );
+          const ingresoUSD = crearComandaManual(
+            'ingreso',
+            formData.montoUSD,
+            `Transferencia desde ${getCajaLabel(formData.cajaOrigen!)}: ${formData.detalle} (USD)`,
+            'USD',
+            formData.cajaDestino // El ingreso va a la caja destino
+          );
+          comandasCreadas.push(egresoUSD, ingresoUSD);
+        }
 
-        const ingresoTransferencia = crearComandaManual(
-          'ingreso',
-          formData.monto,
-          `Transferencia desde ${getCajaLabel(formData.cajaOrigen!)}: ${formData.detalle}`
-        );
+        if (formData.montoARS > 0) {
+          const egresoARS = crearComandaManual(
+            'egreso',
+            formData.montoARS,
+            `Transferencia hacia ${getCajaLabel(formData.cajaDestino!)}: ${formData.detalle} (ARS)`,
+            'ARS',
+            formData.cajaOrigen // El egreso va de la caja origen
+          );
+          const ingresoARS = crearComandaManual(
+            'ingreso',
+            formData.montoARS,
+            `Transferencia desde ${getCajaLabel(formData.cajaOrigen!)}: ${formData.detalle} (ARS)`,
+            'ARS',
+            formData.cajaDestino // El ingreso va a la caja destino
+          );
+          comandasCreadas.push(egresoARS, ingresoARS);
+        }
 
-        // Agregar ambas comandas al store
-        agregarComanda(egresoTransferencia);
-        agregarComanda(ingresoTransferencia);
+        // Agregar todas las comandas al store
+        comandasCreadas.forEach(comanda => agregarComanda(comanda));
 
         // Log de auditoría para transferencia
+        const montoTexto = [];
+        if (formData.montoUSD > 0) montoTexto.push(`USD: $${formData.montoUSD.toFixed(2)}`);
+        if (formData.montoARS > 0) montoTexto.push(`ARS: $${formData.montoARS.toFixed(2)}`);
+        
         logActivity(
           'Transferencia Manual',
           cajaActual === 'caja_1' ? 'Caja Chica' : 'Caja Grande',
-          `Transferencia de ${formatAmount(formData.monto)} desde ${
+          `Transferencia de ${montoTexto.join(' + ')} desde ${
             formData.cajaOrigen === 'caja_1' ? 'Caja Chica' : 'Caja Grande'
           } hacia ${
             formData.cajaDestino === 'caja_1' ? 'Caja Chica' : 'Caja Grande'
           }. Detalle: ${formData.detalle}`,
           {
             tipoOperacion: 'transferencia',
-            monto: formData.monto,
+            montoUSD: formData.montoUSD,
+            montoARS: formData.montoARS,
             cajaOrigen: formData.cajaOrigen,
             cajaDestino: formData.cajaDestino,
             detalle: formData.detalle,
-            comandaEgresoId: egresoTransferencia.id,
-            comandaIngresoId: ingresoTransferencia.id,
+            comandasCreadas: comandasCreadas.length,
           }
         );
 
         toast.success('Transferencia registrada exitosamente');
       } else {
-        // Para ingresos y egresos simples, crear una sola comanda
-        const comandaManual = crearComandaManual(
-          formData.tipoOperacion,
-          formData.monto,
-          formData.detalle
-        );
+        // Para ingresos y egresos, crear comandas separadas por moneda
+        const comandasCreadas = [];
+        
+        if (formData.montoUSD > 0) {
+          const comandaUSD = crearComandaManual(
+            formData.tipoOperacion,
+            formData.montoUSD,
+            `${formData.detalle} (USD)`,
+            'USD',
+            cajaActual // Para ingresos/egresos simples, la caja destino es la caja actual
+          );
+          comandasCreadas.push(comandaUSD);
+        }
 
-        // Agregar la comanda al store
-        agregarComanda(comandaManual);
+        if (formData.montoARS > 0) {
+          const comandaARS = crearComandaManual(
+            formData.tipoOperacion,
+            formData.montoARS,
+            `${formData.detalle} (ARS)`,
+            'ARS',
+            cajaActual // Para ingresos/egresos simples, la caja destino es la caja actual
+          );
+          comandasCreadas.push(comandaARS);
+        }
+
+        // Agregar todas las comandas al store
+        comandasCreadas.forEach(comanda => agregarComanda(comanda));
 
         // Log de auditoría para ingreso/egreso
+        const montoTexto = [];
+        if (formData.montoUSD > 0) montoTexto.push(`USD: $${formData.montoUSD.toFixed(2)}`);
+        if (formData.montoARS > 0) montoTexto.push(`ARS: $${formData.montoARS.toFixed(2)}`);
+        
         logActivity(
           `${formData.tipoOperacion === 'ingreso' ? 'Ingreso' : 'Egreso'} Manual`,
           cajaActual === 'caja_1' ? 'Caja Chica' : 'Caja Grande',
-          `${formData.tipoOperacion === 'ingreso' ? 'Ingreso' : 'Egreso'} manual de ${formatAmount(formData.monto)}. Detalle: ${formData.detalle}`,
+          `${formData.tipoOperacion === 'ingreso' ? 'Ingreso' : 'Egreso'} manual de ${montoTexto.join(' + ')}. Detalle: ${formData.detalle}`,
           {
             tipoOperacion: formData.tipoOperacion,
-            monto: formData.monto,
+            montoUSD: formData.montoUSD,
+            montoARS: formData.montoARS,
             caja: cajaActual,
             detalle: formData.detalle,
-            comandaId: comandaManual.id,
+            comandasCreadas: comandasCreadas.length,
           }
         );
 
@@ -275,7 +358,7 @@ export default function ModalMovimientoSimple({
 
   return (
     <Dialog open={abierto} onOpenChange={onCerrar}>
-      <DialogContent className="sm:max-w-md">
+      <DialogContent className="sm:max-w-md bg-white border border-gray-200 shadow-xl z-50">
         <DialogHeader>
           <DialogTitle>{getTitulo()}</DialogTitle>
         </DialogHeader>
@@ -356,29 +439,53 @@ export default function ModalMovimientoSimple({
             </>
           )}
 
-          {/* Monto */}
-          <div className="space-y-2">
-            <Label htmlFor="monto">Monto</Label>
-            <Input
-              id="monto"
-              type="number"
-              step="0.01"
-              min="0.01"
-              value={formData.monto || ''}
-              onChange={(e) =>
-                setFormData({
-                  ...formData,
-                  monto: parseFloat(e.target.value) || 0,
-                })
-              }
-              placeholder="0.00"
-              required
-            />
-            {formData.monto > 0 && (
-              <p className="text-sm text-gray-600">
-                {formatAmount(formData.monto)}
-              </p>
-            )}
+          {/* Montos Duales */}
+          <div className="space-y-4">
+            <Label>Montos (al menos uno debe ser mayor a 0)</Label>
+            
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-2">
+                <Label htmlFor="montoUSD" className="text-sm font-medium text-blue-700">
+                  💵 USD
+                </Label>
+                <Input
+                  id="montoUSD"
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  value={formData.montoUSD || ''}
+                  onChange={(e) =>
+                    setFormData({
+                      ...formData,
+                      montoUSD: parseFloat(e.target.value) || 0,
+                    })
+                  }
+                  placeholder="0.00"
+                  className="border-blue-200 focus:border-blue-400"
+                />
+              </div>
+              
+              <div className="space-y-2">
+                <Label htmlFor="montoARS" className="text-sm font-medium text-green-700">
+                  💰 ARS
+                </Label>
+                <Input
+                  id="montoARS"
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  value={formData.montoARS || ''}
+                  onChange={(e) =>
+                    setFormData({
+                      ...formData,
+                      montoARS: parseFloat(e.target.value) || 0,
+                    })
+                  }
+                  placeholder="0.00"
+                  className="border-green-200 focus:border-green-400"
+                />
+              </div>
+            </div>
           </div>
 
           {/* Detalle */}
@@ -397,11 +504,16 @@ export default function ModalMovimientoSimple({
           </div>
 
           {/* Resumen para transferencias */}
-          {formData.tipoOperacion === 'transferencia' && formData.monto > 0 && (
+          {formData.tipoOperacion === 'transferencia' && (formData.montoUSD > 0 || formData.montoARS > 0) && (
             <div className="rounded-lg border border-blue-200 bg-blue-50 p-3">
               <p className="text-sm text-blue-800">
                 <strong>Resumen:</strong> Transferir{' '}
-                {formatAmount(formData.monto)} desde{' '}
+                {(() => {
+                  const montos = [];
+                  if (formData.montoUSD > 0) montos.push(`USD: $${formData.montoUSD.toFixed(2)}`);
+                  if (formData.montoARS > 0) montos.push(`ARS: $${formData.montoARS.toFixed(2)}`);
+                  return montos.join(' + ');
+                })()} desde{' '}
                 <strong>{getCajaLabel(formData.cajaOrigen!)}</strong> hacia{' '}
                 <strong>{getCajaLabel(formData.cajaDestino!)}</strong>
               </p>
@@ -421,7 +533,7 @@ export default function ModalMovimientoSimple({
             <Button
               type="submit"
               className={`flex-1 ${getButtonColor()} text-white`}
-              disabled={!formData.monto || !formData.detalle.trim() || loading}
+              disabled={(formData.montoUSD <= 0 && formData.montoARS <= 0) || !formData.detalle.trim() || loading}
             >
               {loading ? 'Procesando...' : 'Registrar'}
             </Button>

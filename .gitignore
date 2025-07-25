@@ -43,3 +43,5 @@ next-env.d.ts
 # extra
 .trae
 *.md
+.claude
+.gitignore
