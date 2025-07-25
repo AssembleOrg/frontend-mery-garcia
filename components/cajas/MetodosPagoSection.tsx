@@ -39,6 +39,7 @@ interface MetodosPagoSectionProps {
   ) => void;
   className?: string;
   obtenerResumenDual?: () => ResumenDual;
+  isManualMovement?: boolean; // Nueva prop para detectar movimientos manuales
 }
 
 export default function MetodosPagoSection({
@@ -51,6 +52,7 @@ export default function MetodosPagoSection({
   onActualizarMetodo,
   className = '',
   obtenerResumenDual,
+  isManualMovement = false,
 }: MetodosPagoSectionProps) {
   const {
     formatARS,
@@ -77,6 +79,8 @@ export default function MetodosPagoSection({
         return <Gift className="h-4 w-4" />;
       case METODOS_PAGO.QR:
         return <QrCode className="h-4 w-4" />;
+      case METODOS_PAGO.PRECIO_LISTA:
+        return <CreditCard className="h-4 w-4" />;
       default:
         return <DollarSign className="h-4 w-4" />;
     }
@@ -137,6 +141,9 @@ export default function MetodosPagoSection({
                     Gift Card
                   </SelectItem>
                   <SelectItem value={METODOS_PAGO.QR}>QR</SelectItem>
+                  <SelectItem value={METODOS_PAGO.PRECIO_LISTA}>
+                    Precio de Lista
+                  </SelectItem>
                 </SelectContent>
               </Select>
 

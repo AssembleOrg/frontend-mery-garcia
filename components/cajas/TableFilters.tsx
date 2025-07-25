@@ -341,6 +341,12 @@ export default function TableFilters({
                       <span className="font-medium">QR</span>
                     </div>
                   </SelectItem>
+                  <SelectItem value="precio_lista">
+                    <div className="flex items-center gap-2">
+                      <Package className="h-4 w-4 text-purple-600" />
+                      <span className="font-medium">Precio de Lista</span>
+                    </div>
+                  </SelectItem>
                   <SelectItem value="mixto">
                     <div className="flex items-center gap-2">
                       <DollarSign className="h-4 w-4 text-orange-600" />

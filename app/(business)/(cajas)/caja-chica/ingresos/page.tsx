@@ -104,8 +104,18 @@ export default function IngresosPage() {
     // Crear un Set para evitar duplicados de fechas de transacciones
     const fechasTransaccionesProcesadas = new Set<string>();
 
-    // Agrupar transacciones por fecha
-    const transaccionesPorFecha = transactions.reduce(
+    // Filtrar transacciones: mostrar solo las que corresponden a caja-chica
+    const transaccionesFiltradas = transactions.filter(transaction => {
+      // Si es un movimiento manual, verificar que el destino sea caja-chica
+      if (transaction.cliente.nombre === 'Movimiento Manual') {
+        return transaction.metadata?.cajaDestino === 'caja_1';
+      }
+      // Las transacciones normales se muestran siempre
+      return true;
+    });
+
+    // Agrupar transacciones filtradas por fecha
+    const transaccionesPorFecha = transaccionesFiltradas.reduce(
       (acc, transaction) => {
         const fechaStr = formatDate(transaction.fecha);
         if (!acc[fechaStr]) {
@@ -114,8 +124,22 @@ export default function IngresosPage() {
         acc[fechaStr].push(transaction);
         return acc;
       },
-      {} as Record<string, typeof transactions>
+      {} as Record<string, typeof transaccionesFiltradas>
     );
+
+    // Ordenar transacciones dentro de cada fecha: no validadas primero, validadas al final
+    Object.keys(transaccionesPorFecha).forEach(fecha => {
+      transaccionesPorFecha[fecha].sort((a, b) => {
+        // Primero ordenar por estado de validación (no validadas primero)
+        const aValidada = a.estadoValidacion === 'validado' ? 1 : 0;
+        const bValidada = b.estadoValidacion === 'validado' ? 1 : 0;
+        if (aValidada !== bValidada) {
+          return aValidada - bValidada;
+        }
+        // Luego por fecha descendente (más recientes primero) como criterio secundario
+        return new Date(b.fecha).getTime() - new Date(a.fecha).getTime();
+      });
+    });
 
     Object.entries(transaccionesPorFecha).forEach(
       ([fecha, transaccionesDeLaFecha]) => {

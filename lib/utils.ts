@@ -231,6 +231,8 @@ function abreviarTipoMetodo(tipo: string): string {
       return 'GIFT';
     case 'qr':
       return 'QR';
+    case 'precio_lista':
+      return 'LISTA';
     case 'mixto':
       return 'MIXTO';
     default:

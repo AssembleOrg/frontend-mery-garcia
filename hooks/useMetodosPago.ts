@@ -71,8 +71,8 @@ export function useMetodosPago(
         };
       }
 
-      if (tipo === 'mixto' || tipo === 'giftcard' || tipo === 'qr') {
-        // Para estos tipos no hay descuento
+      if (tipo === 'mixto' || tipo === 'giftcard' || tipo === 'qr' || tipo === 'precio_lista') {
+        // Para estos tipos no hay descuento (precio_lista es igual que tarjeta sin descuento)
         const montoUSD = moneda === MONEDAS.ARS ? arsToUsd(monto) : monto;
         return {
           montoFinal: montoUSD,

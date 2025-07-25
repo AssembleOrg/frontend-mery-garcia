@@ -748,6 +748,9 @@ export default function ModalEditarTransaccion({
                                 🏦 Transferencia
                               </SelectItem>
                               <SelectItem value="qr">📱 QR</SelectItem>
+                              <SelectItem value="precio_lista">
+                                📋 Precio de Lista
+                              </SelectItem>
                               <SelectItem value="giftcard">
                                 🎁 Giftcard
                               </SelectItem>
@@ -833,7 +836,7 @@ export default function ModalEditarTransaccion({
                       <span>Subtotal:</span>
                       <div className="text-right">
                         <div>{formatAmount(subtotal)}</div>
-                        {isExchangeRateValid && subtotal > 0 && (
+                        {isExchangeRateValid && subtotal > 0 && comanda.cliente.nombre !== 'Movimiento Manual' && (
                           <div className="text-xs text-gray-600">
                             {formatARSFromNative(subtotal)}
                           </div>
@@ -872,7 +875,7 @@ export default function ModalEditarTransaccion({
                         <div className="text-right">
                           <div>-{formatAmount(descuentosPorMetodoPago)}</div>
                           {isExchangeRateValid &&
-                            descuentosPorMetodoPago > 0 && (
+                            descuentosPorMetodoPago > 0 && comanda.cliente.nombre !== 'Movimiento Manual' && (
                               <div className="text-xs text-green-500">
                                 -{formatARSFromNative(descuentosPorMetodoPago)}
                               </div>
@@ -884,7 +887,7 @@ export default function ModalEditarTransaccion({
                       <span>Total Final:</span>
                       <div className="text-right">
                         <div>{formatAmount(totalFinal)}</div>
-                        {isExchangeRateValid && totalFinal > 0 && (
+                        {isExchangeRateValid && totalFinal > 0 && comanda.cliente.nombre !== 'Movimiento Manual' && (
                           <div className="text-xs font-medium">
                             {formatARSFromNative(totalFinal)}
                           </div>

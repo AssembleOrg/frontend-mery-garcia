@@ -69,7 +69,7 @@ export interface Seña {
 }
 
 export interface MetodoPago {
-  tipo: 'efectivo' | 'tarjeta' | 'transferencia' | 'giftcard' | 'qr' | 'mixto';
+  tipo: 'efectivo' | 'tarjeta' | 'transferencia' | 'giftcard' | 'qr' | 'mixto' | 'precio_lista';
   monto: number; // Monto en la moneda especificada
   moneda: 'USD' | 'ARS'; // Moneda del pago (obligatorio)
   giftcard?: {
@@ -104,6 +104,12 @@ export interface Comanda {
   estadoNegocio?: EstadoComandaNegocio;
   estadoValidacion?: EstadoValidacion;
   tipoCambioAlCrear?: TipoCambio;
+  metadata?: {
+    movimientoManual?: boolean;
+    cajaOrigen?: string;
+    cajaDestino?: string;
+    tipoMovimiento?: 'ingreso' | 'egreso' | 'transferencia';
+  };
 }
 
 // Tipo de cambio

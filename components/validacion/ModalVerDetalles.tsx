@@ -348,7 +348,9 @@ export default function ModalVerDetalles({
                                       ? '🎁 Giftcard'
                                       : metodo.tipo === 'qr'
                                         ? '📱 QR'
-                                        : '🔄 Mixto'}
+                                        : metodo.tipo === 'precio_lista'
+                                          ? '📋 Precio de Lista'
+                                          : '🔄 Mixto'}
                             </span>
                             {/* Mostrar moneda */}
                             <span className="rounded bg-gray-100 px-2 py-1 text-xs font-medium text-gray-700">
@@ -375,12 +377,14 @@ export default function ModalVerDetalles({
                                 ? formatARSFromNative(metodo.monto)
                                 : formatAmount(metodo.monto)}
                             </p>
-                            {/* Mostrar equivalente en la otra moneda */}
-                            <p className="text-xs text-gray-500">
-                              {metodo.moneda === 'ARS'
-                                ? `≈ ${formatAmount(metodo.monto)}`
-                                : `≈ ${formatARSFromNative(metodo.monto)}`}
-                            </p>
+                            {/* Mostrar equivalente en la otra moneda - NO para movimientos manuales */}
+                            {comanda.cliente.nombre !== 'Movimiento Manual' && (
+                              <p className="text-xs text-gray-500">
+                                {metodo.moneda === 'ARS'
+                                  ? `≈ ${formatAmount(metodo.monto)}`
+                                  : `≈ ${formatARSFromNative(metodo.monto)}`}
+                              </p>
+                            )}
                             {/* Mostrar descuento aplicado */}
                             {descuentoAplicado > 0 && (
                               <p className="text-xs text-green-600">
@@ -411,14 +415,22 @@ export default function ModalVerDetalles({
                     {/* Mostrar subtotal antes de descuentos */}
                     <div className="flex justify-between text-gray-600">
                       <span>Subtotal:</span>
-                      <span>{formatAmount(comanda.subtotal)}</span>
+                      <span>
+                        {comanda.cliente.nombre === 'Movimiento Manual'
+                          ? `${comanda.moneda || 'USD'}: $${comanda.subtotal.toFixed(2)}`
+                          : formatAmount(comanda.subtotal)}
+                      </span>
                     </div>
 
                     {/* Mostrar descuentos en items */}
                     {comanda.totalDescuentos > 0 && (
                       <div className="flex justify-between text-red-600">
                         <span>Descuentos en items:</span>
-                        <span>-{formatAmount(comanda.totalDescuentos)}</span>
+                        <span>
+                          -{comanda.cliente.nombre === 'Movimiento Manual'
+                            ? `${comanda.moneda || 'USD'}: $${comanda.totalDescuentos.toFixed(2)}`
+                            : formatAmount(comanda.totalDescuentos)}
+                        </span>
                       </div>
                     )}
 
@@ -426,7 +438,11 @@ export default function ModalVerDetalles({
                     {totalDescuentosMetodo > 0 && (
                       <div className="flex justify-between text-green-600">
                         <span>Descuento por efectivo:</span>
-                        <span>-{formatAmount(totalDescuentosMetodo)}</span>
+                        <span>
+                          -{comanda.cliente.nombre === 'Movimiento Manual'
+                            ? `${comanda.moneda || 'USD'}: $${totalDescuentosMetodo.toFixed(2)}`
+                            : formatAmount(totalDescuentosMetodo)}
+                        </span>
                       </div>
                     )}
 
@@ -434,14 +450,22 @@ export default function ModalVerDetalles({
                     {(comanda.totalSeña || 0) > 0 && (
                       <div className="flex justify-between text-blue-600">
                         <span>Seña:</span>
-                        <span>-{formatAmount(comanda.totalSeña)}</span>
+                        <span>
+                          -{comanda.cliente.nombre === 'Movimiento Manual'
+                            ? `${comanda.moneda || 'USD'}: $${comanda.totalSeña.toFixed(2)}`
+                            : formatAmount(comanda.totalSeña)}
+                        </span>
                       </div>
                     )}
 
                     {/* Total final */}
                     <div className="flex justify-between border-t pt-2 font-bold">
                       <span>Total:</span>
-                      <span>{formatAmount(comanda.totalFinal)}</span>
+                      <span>
+                        {comanda.cliente.nombre === 'Movimiento Manual'
+                          ? `${comanda.moneda || 'USD'}: $${comanda.totalFinal.toFixed(2)}`
+                          : formatAmount(comanda.totalFinal)}
+                      </span>
                     </div>
                   </div>
                 </CardContent>

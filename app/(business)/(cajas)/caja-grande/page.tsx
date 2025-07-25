@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import MainLayout from '@/components/layout/MainLayout';
 import StandardPageBanner from '@/components/common/StandardPageBanner';
 import StandardBreadcrumbs from '@/components/common/StandardBreadcrumbs';
@@ -67,20 +67,66 @@ export default function CajaGrandePage() {
     validatedOnly: true,
   });
 
-  const comandasValidadas = comandas.filter(
-    (c) => c.estadoValidacion === 'validado'
-  );
+  // Filtrar comandas validadas con lógica específica para caja-grande
+  const comandasValidadas = comandas.filter((c) => {
+    if (c.estadoValidacion !== 'validado') return false;
+    
+    // Filtro especial para movimientos manuales
+    if (c.cliente.nombre === 'Movimiento Manual') {
+      const metadata = c.metadata;
+      if (!metadata) return false;
+      
+      // Solo mostrar en caja-grande:
+      // 1. Ingresos/egresos directos a/desde caja-grande
+      if ((c.tipo === 'ingreso' && metadata.cajaDestino === 'caja_2' && metadata.cajaOrigen === 'caja_2') ||
+          (c.tipo === 'egreso' && metadata.cajaOrigen === 'caja_2' && metadata.cajaDestino === 'caja_2')) {
+        return true;
+      }
+      
+      // 2. Transferencias desde caja-chica hacia caja-grande (solo ingresos)
+      if (c.tipo === 'ingreso' && metadata.cajaOrigen === 'caja_1' && metadata.cajaDestino === 'caja_2') {
+        return true;
+      }
+      
+      // Excluir transferencias desde caja-grande hacia caja-chica
+      return false;
+    }
+    
+    // Transacciones normales (no manuales) se incluyen siempre
+    return true;
+  });
 
-  // Calcular resumen separado por monedas usando los hooks
-  const resumenCaja = {
-    totalIngresosUSD: ingresoStats.totalIncomingUSD || 0,
-    totalIngresosARS: ingresoStats.totalIncomingARS || 0,
-    totalEgresosUSD: egresoStats.totalOutgoingUSD || 0,
-    totalEgresosARS: egresoStats.totalOutgoingARS || 0,
-    cantidadComandas: comandasValidadas.length,
-    saldoNetoUSD: (ingresoStats.totalIncomingUSD || 0) - (egresoStats.totalOutgoingUSD || 0),
-    saldoNetoARS: (ingresoStats.totalIncomingARS || 0) - (egresoStats.totalOutgoingARS || 0),
-  };
+  // Calcular resumen basado en comandas filtradas específicamente para caja-grande
+  const resumenCaja = useMemo(() => {
+    const ingresos = comandasValidadas.filter(c => c.tipo === 'ingreso');
+    const egresos = comandasValidadas.filter(c => c.tipo === 'egreso');
+    
+    const calcularTotalesPorMoneda = (comandas: typeof comandasValidadas) => {
+      return comandas.reduce((acc, comanda) => {
+        comanda.metodosPago.forEach(metodo => {
+          if (metodo.moneda === 'USD') {
+            acc.totalUSD += metodo.monto;
+          } else if (metodo.moneda === 'ARS') {
+            acc.totalARS += metodo.monto;
+          }
+        });
+        return acc;
+      }, { totalUSD: 0, totalARS: 0 });
+    };
+    
+    const ingresosTotal = calcularTotalesPorMoneda(ingresos);
+    const egresosTotal = calcularTotalesPorMoneda(egresos);
+    
+    return {
+      totalIngresosUSD: ingresosTotal.totalUSD,
+      totalIngresosARS: ingresosTotal.totalARS,
+      totalEgresosUSD: egresosTotal.totalUSD,
+      totalEgresosARS: egresosTotal.totalARS,
+      cantidadComandas: comandasValidadas.length,
+      saldoNetoUSD: ingresosTotal.totalUSD - egresosTotal.totalUSD,
+      saldoNetoARS: ingresosTotal.totalARS - egresosTotal.totalARS,
+    };
+  }, [comandasValidadas]);
 
   const ultimoTraspaso = traspasos[0];
 
@@ -232,7 +278,8 @@ export default function CajaGrandePage() {
                                     transferencia: 'Transferencia',
                                     giftcard: 'Gift Card',
                                     qr: 'QR',
-                                    mixto: 'Mixto'
+                                    mixto: 'Mixto',
+                                    precio_lista: 'Precio de Lista'
                                   }[metodo] || metodo;
                                   
                                   return (

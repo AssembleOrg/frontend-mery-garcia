@@ -63,9 +63,9 @@ export default function ComandasTraspasadasPage() {
     null
   );
 
-  // Filtrar comandas validadas (traspasadas)
+  // Filtrar comandas validadas (traspasadas) EXCLUYENDO movimientos manuales
   const comandasValidadas = comandas.filter(
-    (c) => c.estadoValidacion === 'validado'
+    (c) => c.estadoValidacion === 'validado' && c.cliente.nombre !== 'Movimiento Manual'
   );
 
   // Filtrar por búsqueda y traspaso
