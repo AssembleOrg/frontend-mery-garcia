@@ -66,6 +66,8 @@ export function useMetodosPago(
         return {
           montoFinal: montoUSD,
           descuentoAplicado: 0,
+          // Para egresos ARS, preservar monto original nativo
+          montoFinalOriginalARS: moneda === MONEDAS.ARS ? monto : undefined,
         };
       }
 
