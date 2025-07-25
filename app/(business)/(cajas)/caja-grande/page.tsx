@@ -156,14 +156,18 @@ export default function CajaGrandePage() {
 
   return (
     <MainLayout>
-      <div className="min-h-screen bg-gradient-to-br from-[#fef7f0] to-[#fdf2f8]">
+      <div className="min-h-screen bg-gradient-to-br from-[#f9bbc4]/10 via-[#e8b4c6]/8 to-[#d4a7ca]/6">
         <StandardPageBanner title="Caja Grande" />
+        
+        <div className="relative -mt-12 h-12 bg-gradient-to-b from-transparent to-[#f9bbc4]/8" />
 
         <ManagerOrAdminOnly>
           <ClientOnly>
-            <div className="container mx-auto px-4 py-6">
-              <div className="mx-auto max-w-7xl">
-                <StandardBreadcrumbs items={breadcrumbItems} />
+            <StandardBreadcrumbs items={breadcrumbItems} />
+            
+            <div className="bg-gradient-to-b from-[#f9bbc4]/5 via-[#e8b4c6]/3 to-[#d4a7ca]/5">
+              <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+                <div className="container mx-auto py-6">
 
                 {/* Resumen de Caja */}
                 <div className="mb-8 grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4">
@@ -418,6 +422,7 @@ export default function CajaGrandePage() {
                     comandasValidadas={comandasValidadas}
                     traspasos={traspasos}
                   />
+                </div>
                 </div>
               </div>
             </div>

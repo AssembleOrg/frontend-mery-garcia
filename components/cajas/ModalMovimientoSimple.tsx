@@ -22,6 +22,7 @@ import { useCurrencyConverter } from '@/hooks/useCurrencyConverter';
 import { useLogActivity } from '@/features/activity/store/activityStore';
 import { useComandaStore } from '@/features/comandas/store/comandaStore';
 import { useExchangeRateStore } from '@/features/exchange-rate/store/exchangeRateStore';
+import { useAuth } from '@/features/auth/hooks/useAuth';
 import { Comanda, MetodoPago, UnidadNegocio } from '@/types/caja';
 import { toast } from 'sonner';
 
@@ -51,6 +52,7 @@ export default function ModalMovimientoSimple({
   const logActivity = useLogActivity();
   const { agregarComanda, obtenerProximoNumero } = useComandaStore();
   const { tipoCambio } = useExchangeRateStore();
+  const { user } = useAuth();
   const [loading, setLoading] = useState(false);
 
   const [formData, setFormData] = useState<MovimientoSimple>({
@@ -86,10 +88,24 @@ export default function ModalMovimientoSimple({
       fechaRegistro: fechaActual,
     };
 
-    // Personal genérico para movimientos manuales
+    // Personal genérico para movimientos manuales - usar localStorage como logActivity
+    let usuarioActual = { id: 'admin-manual', nombre: 'Sistema' };
+    try {
+      const userStr = typeof window !== 'undefined' ? localStorage.getItem('user') : null;
+      if (userStr) {
+        const userData = JSON.parse(userStr);
+        usuarioActual = {
+          id: userData.id || 'admin-manual',
+          nombre: userData.nombre || 'Sistema'
+        };
+      }
+    } catch (error) {
+      console.warn('Error al obtener usuario del localStorage:', error);
+    }
+
     const personalManual = {
-      id: 'admin-manual',
-      nombre: 'Administrador',
+      id: usuarioActual.id,
+      nombre: usuarioActual.nombre,
       activo: true,
       unidadesDisponibles: [
         'tattoo',
@@ -342,7 +358,7 @@ export default function ModalMovimientoSimple({
 
   return (
     <Dialog open={abierto} onOpenChange={onCerrar}>
-      <DialogContent className="sm:max-w-md">
+      <DialogContent className="sm:max-w-md bg-white border border-gray-200 shadow-xl z-50">
         <DialogHeader>
           <DialogTitle>{getTitulo()}</DialogTitle>
         </DialogHeader>

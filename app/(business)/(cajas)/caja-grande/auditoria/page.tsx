@@ -100,7 +100,7 @@ export default function AuditoriaPage() {
       fecha: new Date(movimiento.fecha),
       tipo: 'movimiento' as const,
       descripcion: `${movimiento.tipo}: ${movimiento.observaciones}`,
-      usuario: 'Administrador', // Los movimientos manuales los hace el admin
+      usuario: movimiento.mainStaff?.nombre || 'Sistema', // Usar el nombre del staff que hizo el movimiento
       modulo: 'Movimiento Manual',
       data: movimiento
     }));
