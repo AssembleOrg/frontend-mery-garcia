@@ -366,39 +366,27 @@ export default function ModalVerDetalles({
                             {descuentoAplicado > 0 && (
                               <p className="text-xs text-gray-500 line-through">
                                 {metodo.moneda === 'ARS'
-                                  ? formatARSFromNative(
-                                      montoOriginal *
-                                        (comanda.tipoCambioAlCrear
-                                          ?.valorVenta || 1000)
-                                    )
+                                  ? formatARSFromNative(montoOriginal)
                                   : formatAmount(montoOriginal)}
                               </p>
                             )}
                             <p className="font-bold">
                               {metodo.moneda === 'ARS'
-                                ? formatARSFromNative(
-                                    metodo.monto *
-                                      (comanda.tipoCambioAlCrear?.valorVenta ||
-                                        1000)
-                                  )
+                                ? formatARSFromNative(metodo.monto)
                                 : formatAmount(metodo.monto)}
                             </p>
                             {/* Mostrar equivalente en la otra moneda */}
                             <p className="text-xs text-gray-500">
                               {metodo.moneda === 'ARS'
                                 ? `≈ ${formatAmount(metodo.monto)}`
-                                : `≈ ${formatARS(metodo.monto)}`}
+                                : `≈ ${formatARSFromNative(metodo.monto)}`}
                             </p>
                             {/* Mostrar descuento aplicado */}
                             {descuentoAplicado > 0 && (
                               <p className="text-xs text-green-600">
                                 Descuento: -
                                 {metodo.moneda === 'ARS'
-                                  ? formatARSFromNative(
-                                      descuentoAplicado *
-                                        (comanda.tipoCambioAlCrear
-                                          ?.valorVenta || 1000)
-                                    )
+                                  ? formatARSFromNative(descuentoAplicado)
                                   : formatAmount(descuentoAplicado)}
                               </p>
                             )}

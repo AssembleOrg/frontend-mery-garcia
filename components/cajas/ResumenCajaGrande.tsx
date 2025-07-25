@@ -31,18 +31,20 @@ export default function ResumenCajaGrande({
       }
 
       acc[unidad].cantidad++;
+      
+      // Calcular valores reales basándose en los métodos de pago
+      const metodosUSD = comanda.metodosPago.filter(mp => mp.moneda === 'USD');
+      const metodosARS = comanda.metodosPago.filter(mp => mp.moneda === 'ARS');
+      
+      const totalUSDComanda = metodosUSD.reduce((sum, mp) => sum + mp.monto, 0);
+      const totalARSComanda = metodosARS.reduce((sum, mp) => sum + mp.monto, 0);
+      
       if (comanda.tipo === 'ingreso') {
-        if (comanda.moneda === 'USD') {
-          acc[unidad].ingresosUSD += comanda.totalFinal;
-        } else {
-          acc[unidad].ingresosARS += comanda.totalFinal;
-        }
+        acc[unidad].ingresosUSD += totalUSDComanda;
+        acc[unidad].ingresosARS += totalARSComanda;
       } else {
-        if (comanda.moneda === 'USD') {
-          acc[unidad].egresosUSD += comanda.totalFinal;
-        } else {
-          acc[unidad].egresosARS += comanda.totalFinal;
-        }
+        acc[unidad].egresosUSD += totalUSDComanda;
+        acc[unidad].egresosARS += totalARSComanda;
       }
 
       return acc;
@@ -67,11 +69,17 @@ export default function ResumenCajaGrande({
         acc[personal] = { cantidad: 0, totalUSD: 0, totalARS: 0 };
       }
       acc[personal].cantidad++;
-      if (comanda.moneda === 'USD') {
-        acc[personal].totalUSD += comanda.totalFinal;
-      } else {
-        acc[personal].totalARS += comanda.totalFinal;
-      }
+      
+      // Calcular valores reales basándose en los métodos de pago
+      const metodosUSD = comanda.metodosPago.filter(mp => mp.moneda === 'USD');
+      const metodosARS = comanda.metodosPago.filter(mp => mp.moneda === 'ARS');
+      
+      const totalUSDComanda = metodosUSD.reduce((sum, mp) => sum + mp.monto, 0);
+      const totalARSComanda = metodosARS.reduce((sum, mp) => sum + mp.monto, 0);
+      
+      acc[personal].totalUSD += totalUSDComanda;
+      acc[personal].totalARS += totalARSComanda;
+      
       return acc;
     },
     {} as Record<

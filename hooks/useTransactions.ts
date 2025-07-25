@@ -154,14 +154,8 @@ export function useTransactions({
         if (metodosARS.length > 0) {
           const totalARSComanda = metodosARS.reduce(
             (sum, mp) => {
-              // SOLUCIÓN DEFINITIVA: Detectar datos que necesitan migración
-              // Solo convertir si el valor es claramente USD (pequeño) almacenado como ARS
-              const isLegacyUSDData = mp.monto > 0 && mp.monto < 100; // Más restrictivo para evitar reconversiones
-              const montoARSNativo = isLegacyUSDData 
-                ? mp.monto * 2640 // Migrar datos antiguos con tipo fijo
-                : mp.monto; // Usar valores nativos (ya sean ARS nativos o USD)
-              
-              return sum + montoARSNativo;
+              // Usar valores ARS tal como están almacenados (ya son nativos)
+              return sum + mp.monto;
             },
             0
           );

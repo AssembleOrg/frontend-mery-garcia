@@ -4,6 +4,7 @@ import autoTable from 'jspdf-autotable';
 import { Comanda, FiltrosComanda, UnidadNegocio } from '@/types/caja';
 import {
   formatARS as formatARSUtil,
+  formatARSNative as formatARSFromNativeUtil,
   formatUSD as formatUSDUtil,
 } from '@/lib/utils';
 
@@ -24,7 +25,7 @@ export const exportComandasToCSV = (
   const timestamp = new Date().toISOString().split('T')[0];
   const filename = options.filename || `comandas_${timestamp}`;
 
-  const { formatUSD, formatARS } = createCurrencyFormatter(exchangeRate);
+  const { formatUSD, formatARS, formatARSFromNative } = createCurrencyFormatter(exchangeRate);
 
   const calcularValoresPorMoneda = (
     comanda: Comanda
@@ -73,7 +74,7 @@ export const exportComandasToCSV = (
       USD: valores.usd > 0 ? formatUSD(valores.usd) : '-',
       ARS:
         valores.ars > 0
-          ? formatARS(valores.ars).replace(/[^\d.,\-]/g, '')
+          ? formatARSFromNative(valores.ars).replace(/[^\d.,\-]/g, '')
           : '-',
       Estado: comanda.estado,
       'Metodo de Pago': obtenerMetodosPago(comanda),
@@ -120,7 +121,7 @@ export const exportComandasToCSV = (
       Tipo: '' as any,
       Estado: '' as any,
       USD: formatUSD(totalesIngresos.totalUSD),
-      ARS: formatARS(totalesIngresos.totalARS).replace(/[^\d.,\-]/g, ''),
+      ARS: formatARSFromNative(totalesIngresos.totalARS).replace(/[^\d.,\-]/g, ''),
       'Metodo de Pago': '',
       Observaciones: '',
     },
@@ -133,7 +134,7 @@ export const exportComandasToCSV = (
       Tipo: '' as any,
       Estado: '' as any,
       USD: formatUSD(totalesEgresos.totalUSD),
-      ARS: formatARS(totalesEgresos.totalARS).replace(/[^\d.,\-]/g, ''),
+      ARS: formatARSFromNative(totalesEgresos.totalARS).replace(/[^\d.,\-]/g, ''),
       'Metodo de Pago': '',
       Observaciones: '',
     },
@@ -146,7 +147,7 @@ export const exportComandasToCSV = (
       Tipo: '' as any,
       Estado: '' as any,
       USD: formatUSD(totalesIngresos.totalUSD - totalesEgresos.totalUSD),
-      ARS: formatARS(
+      ARS: formatARSFromNative(
         totalesIngresos.totalARS - totalesEgresos.totalARS
       ).replace(/[^\d.,\-]/g, ''),
       'Metodo de Pago': '',
@@ -170,6 +171,7 @@ export const exportComandasToCSV = (
 const createCurrencyFormatter = (exchangeRate: number) => ({
   formatUSD: (amount: number) => formatUSDUtil(amount),
   formatARS: (amount: number) => formatARSUtil(amount, exchangeRate),
+  formatARSFromNative: (amount: number) => formatARSFromNativeUtil(amount),
 });
 
 export const exportComandasToPDF = (
@@ -177,7 +179,7 @@ export const exportComandasToPDF = (
   exchangeRate: number,
   options: ExportOptions = {}
 ) => {
-  const { formatUSD, formatARS } = createCurrencyFormatter(exchangeRate);
+  const { formatUSD, formatARS, formatARSFromNative } = createCurrencyFormatter(exchangeRate);
   const timestamp = new Date().toISOString().split('T')[0];
   const filename = options.filename || `comandas_${timestamp}`;
 
@@ -294,7 +296,7 @@ export const exportComandasToPDF = (
       comanda.businessUnit,
       comanda.tipo,
       valores.usd > 0 ? formatUSD(valores.usd) : '-',
-      valores.ars > 0 ? formatARS(valores.ars) : '-',
+      valores.ars > 0 ? formatARSFromNative(valores.ars) : '-',
       obtenerMetodosPago(comanda),
       comanda.estado,
     ];
@@ -380,14 +382,14 @@ export const exportComandasToPDF = (
   doc.text('INGRESOS:', 20, summaryY);
   doc.setFont('helvetica', 'normal');
   doc.text(`USD: ${formatUSD(totalesIngresos.totalUSD)}`, 35, summaryY + 8);
-  doc.text(`ARS: ${formatARS(totalesIngresos.totalARS)}`, 35, summaryY + 16);
+  doc.text(`ARS: ${formatARSFromNative(totalesIngresos.totalARS)}`, 35, summaryY + 16);
 
   // Egresos
   doc.setFont('helvetica', 'bold');
   doc.text('EGRESOS:', 110, summaryY);
   doc.setFont('helvetica', 'normal');
   doc.text(`USD: ${formatUSD(totalesEgresos.totalUSD)}`, 125, summaryY + 8);
-  doc.text(`ARS: ${formatARS(totalesEgresos.totalARS)}`, 125, summaryY + 16);
+  doc.text(`ARS: ${formatARSFromNative(totalesEgresos.totalARS)}`, 125, summaryY + 16);
 
   // Saldo neto
   summaryY += 30;
@@ -404,7 +406,7 @@ export const exportComandasToPDF = (
   doc.text(`USD: ${formatUSD(saldoNetoUSD)}`, 35, summaryY + 10);
 
   doc.setTextColor(saldoNetoARS >= 0 ? 0 : 255, saldoNetoARS >= 0 ? 128 : 0, 0);
-  doc.text(`ARS: ${formatARS(saldoNetoARS)}`, 35, summaryY + 18);
+  doc.text(`ARS: ${formatARSFromNative(saldoNetoARS)}`, 35, summaryY + 18);
 
   // Información adicional
   doc.setTextColor(100, 100, 100);
