@@ -13,6 +13,7 @@ export interface Personal {
 export interface PersonalSimple {
   id: string;
   nombre: string;
+  activo: boolean;
   comision: number;
   rol: 'admin' | 'vendedor';
 }
@@ -24,7 +25,10 @@ export interface Cliente {
   telefono?: string;
   email?: string;
   cuit?: string;
-  señasDisponibles: number;
+  señasDisponibles: {
+    ars: number;
+    usd: number;
+  };
   fechaRegistro: Date;
 }
 // Productos y Servicios
@@ -56,10 +60,10 @@ export interface ItemComanda {
   categoria?: string;
 }
 
-// Seña
+// Seña - Siguiendo el mismo patrón que MetodoPago
 export interface Seña {
   monto: number;
-  moneda: 'pesos' | 'dolares';
+  moneda: 'USD' | 'ARS'; // Unificado con el resto del sistema
   fecha: Date;
   observaciones?: string;
 }
@@ -87,7 +91,11 @@ export interface Comanda {
   metodosPago: MetodoPago[];
   subtotal: number;
   totalDescuentos: number;
-  totalSeña: number;
+  totalSeña: number; // Mantener para compatibilidad
+  totalSeñaUSD: number;
+  totalSeñaARS: number;
+  montoSeñaAplicadaArs?: number;
+  montoSeñaAplicadaUsd?: number;
   totalFinal: number;
   moneda?: 'USD' | 'ARS'; // Moneda principal de la transacción
   estado: 'pendiente' | 'completado' | 'cancelado';
@@ -242,6 +250,13 @@ export interface TraspasoInfo {
   montoParcial?: number;
   montoResidual?: number;
   esTraspasoParcial?: boolean;
+  // Nuevos campos para monedas separadas
+  montoTotalUSD?: number;
+  montoTotalARS?: number;
+  montoParcialUSD?: number;
+  montoParcialARS?: number;
+  montoResidualUSD?: number;
+  montoResidualARS?: number;
 }
 
 export interface ResumenConMontoParcial {
@@ -250,16 +265,23 @@ export interface ResumenConMontoParcial {
   montoNeto: number;
   totalIngresos: number;
   totalEgresos: number;
-  // Nuevos campos separados por moneda
-  totalIngresosUSD?: number;
-  totalEgresosUSD?: number;
-  totalIngresosARS?: number;
-  totalEgresosARS?: number;
-  montoNetoUSD?: number;
-  montoNetoARS?: number;
+  // Campos separados por moneda
+  totalIngresosUSD: number;
+  totalEgresosUSD: number;
+  totalIngresosARS: number;
+  totalEgresosARS: number;
+  montoNetoUSD: number;
+  montoNetoARS: number;
   montoDisponibleParaTraslado: number;
+  // Campos para traspaso parcial por moneda
+  montoDisponibleTrasladoUSD: number;
+  montoDisponibleTrasladoARS: number;
   montoParcialSeleccionado?: number;
+  montoParcialSeleccionadoUSD?: number;
+  montoParcialSeleccionadoARS?: number;
   montoResidual?: number;
+  montoResidualUSD?: number;
+  montoResidualARS?: number;
 }
 
 export interface ConfiguracionTraspasoParcial {
@@ -267,6 +289,15 @@ export interface ConfiguracionTraspasoParcial {
   montoParcial: number;
   montoResidual: number;
   porcentajeSeleccionado: number;
+  // Campos separados por moneda
+  montoMaximoUSD: number;
+  montoMaximoARS: number;
+  montoParcialUSD: number;
+  montoParcialARS: number;
+  montoResidualUSD: number;
+  montoResidualARS: number;
+  porcentajeSeleccionadoUSD: number;
+  porcentajeSeleccionadoARS: number;
 }
 
 // Encomienda (para compatibilidad)

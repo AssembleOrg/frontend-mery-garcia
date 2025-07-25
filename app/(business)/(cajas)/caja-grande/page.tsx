@@ -4,7 +4,7 @@ import { useState } from 'react';
 import MainLayout from '@/components/layout/MainLayout';
 import StandardPageBanner from '@/components/common/StandardPageBanner';
 import StandardBreadcrumbs from '@/components/common/StandardBreadcrumbs';
-import SummaryCard from '@/components/common/SummaryCard';
+import SummaryCardDual from '@/components/common/SummaryCardDual';
 import SummaryCardCount from '@/components/common/SummaryCardCount';
 import ResumenCajaGrande from '@/components/cajas/ResumenCajaGrande';
 import ModalMovimientoSimple from '@/components/cajas/ModalMovimientoSimple';
@@ -37,7 +37,7 @@ const breadcrumbItems = [
 export default function CajaGrandePage() {
   const { comandas } = useComandaStore();
   const { traspasos } = useRecordsStore();
-  const { formatUSD } = useCurrencyConverter();
+  const { formatUSD, formatARS, formatARSFromNative } = useCurrencyConverter();
 
   // Estado para modal de movimientos manuales
   const [showModalMovimiento, setShowModalMovimiento] = useState(false);
@@ -51,21 +51,35 @@ export default function CajaGrandePage() {
     },
   });
 
+  // Hooks para estadísticas de caja-grande (solo comandas validadas)
+  const { statistics: ingresoStats } = useTransactions({
+    type: 'ingreso',
+    validatedOnly: true,
+  });
+
+  const { statistics: egresoStats } = useTransactions({
+    type: 'egreso',
+    validatedOnly: true,
+  });
+
+  const { statistics: allStats } = useTransactions({
+    type: 'all',
+    validatedOnly: true,
+  });
+
   const comandasValidadas = comandas.filter(
     (c) => c.estadoValidacion === 'validado'
   );
 
+  // Calcular resumen separado por monedas usando los hooks
   const resumenCaja = {
-    totalIngresos: comandasValidadas
-      .filter((c) => c.tipo === 'ingreso')
-      .reduce((sum, c) => sum + c.totalFinal, 0),
-    totalEgresos: comandasValidadas
-      .filter((c) => c.tipo === 'egreso')
-      .reduce((sum, c) => sum + c.totalFinal, 0),
-    saldoNeto: comandasValidadas.reduce((sum, c) => {
-      return c.tipo === 'ingreso' ? sum + c.totalFinal : sum - c.totalFinal;
-    }, 0),
+    totalIngresosUSD: ingresoStats.totalIncomingUSD || 0,
+    totalIngresosARS: ingresoStats.totalIncomingARS || 0,
+    totalEgresosUSD: egresoStats.totalOutgoingUSD || 0,
+    totalEgresosARS: egresoStats.totalOutgoingARS || 0,
     cantidadComandas: comandasValidadas.length,
+    saldoNetoUSD: (ingresoStats.totalIncomingUSD || 0) - (egresoStats.totalOutgoingUSD || 0),
+    saldoNetoARS: (ingresoStats.totalIncomingARS || 0) - (egresoStats.totalOutgoingARS || 0),
   };
 
   const ultimoTraspaso = traspasos[0];
@@ -81,7 +95,8 @@ export default function CajaGrandePage() {
           (acc, comanda) => {
             if (comanda.metodosPago) {
               comanda.metodosPago.forEach((metodo) => {
-                acc[metodo.tipo] = (acc[metodo.tipo] || 0) + metodo.monto;
+                const key = `${metodo.tipo}_${metodo.moneda}`;
+                acc[key] = (acc[key] || 0) + metodo.monto;
               });
             }
             return acc;
@@ -106,17 +121,30 @@ export default function CajaGrandePage() {
 
                 {/* Resumen de Caja */}
                 <div className="mb-8 grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4">
-                  <SummaryCard
+                  <SummaryCardDual
                     title="Total Ingresos"
-                    totalUSD={resumenCaja.totalIngresos}
+                    totalUSD={resumenCaja.totalIngresosUSD}
+                    totalARS={resumenCaja.totalIngresosARS}
+                    showTransactionCount={false}
+                    valueClassName="text-green-700"
                   />
-                  <SummaryCard
+                  <SummaryCardDual
                     title="Total Egresos"
-                    totalUSD={resumenCaja.totalEgresos}
+                    totalUSD={resumenCaja.totalEgresosUSD}
+                    totalARS={resumenCaja.totalEgresosARS}
+                    showTransactionCount={false}
+                    valueClassName="text-red-700"
                   />
-                  <SummaryCard
+                  <SummaryCardDual
                     title="Saldo Neto"
-                    totalUSD={resumenCaja.saldoNeto}
+                    totalUSD={resumenCaja.saldoNetoUSD}
+                    totalARS={resumenCaja.saldoNetoARS}
+                    showTransactionCount={false}
+                    valueClassName={
+                      resumenCaja.saldoNetoUSD + resumenCaja.saldoNetoARS >= 0
+                        ? 'text-green-700'
+                        : 'text-red-700'
+                    }
                   />
                   <SummaryCardCount
                     title="Comandas Validadas"
@@ -165,26 +193,24 @@ export default function CajaGrandePage() {
                           </div>
 
                           {/* Montos */}
-                          <div className="grid grid-cols-2 gap-4">
-                            <div>
-                              <p className="text-sm text-gray-600">
-                                Monto Total
-                              </p>
-                              <p className="font-medium text-green-600">
-                                {formatUSD(ultimoTraspaso.montoTotal)}
-                              </p>
+                          <div>
+                            <p className="mb-2 text-sm text-gray-600">
+                              Monto Total
+                            </p>
+                            <div className="space-y-1">
+                              <div className="flex justify-between text-sm">
+                                <span>USD:</span>
+                                <span className="font-medium text-green-600">
+                                  {formatUSD(ultimoTraspaso.montoTotalUSD || 0)}
+                                </span>
+                              </div>
+                              <div className="flex justify-between text-sm">
+                                <span>ARS:</span>
+                                <span className="font-medium text-green-600">
+                                  {formatARSFromNative(ultimoTraspaso.montoTotalARS || 0)}
+                                </span>
+                              </div>
                             </div>
-                            {ultimoTraspaso.esTraspasoParcial &&
-                              ultimoTraspaso.montoParcial && (
-                                <div>
-                                  <p className="text-sm text-gray-600">
-                                    Monto Parcial
-                                  </p>
-                                  <p className="font-medium text-blue-600">
-                                    {formatUSD(ultimoTraspaso.montoParcial)}
-                                  </p>
-                                </div>
-                              )}
                           </div>
 
                           {/* Métodos de pago */}
@@ -197,19 +223,32 @@ export default function CajaGrandePage() {
                               <div className="space-y-1">
                                 {Object.entries(
                                   resumenMetodosPagoUltimoTraspaso
-                                ).map(([metodo, monto]) => (
-                                  <div
-                                    key={metodo}
-                                    className="flex justify-between text-sm"
-                                  >
-                                    <span className="capitalize">
-                                      {metodo}:
-                                    </span>
-                                    <span className="font-medium">
-                                      {formatUSD(monto)}
-                                    </span>
-                                  </div>
-                                ))}
+                                ).map(([metodoMoneda, monto]) => {
+                                  const [metodo, moneda] =
+                                    metodoMoneda.split('_');
+                                  const metodoNombre = {
+                                    efectivo: 'Efectivo',
+                                    tarjeta: 'Tarjeta',
+                                    transferencia: 'Transferencia',
+                                    giftcard: 'Gift Card',
+                                    qr: 'QR',
+                                    mixto: 'Mixto'
+                                  }[metodo] || metodo;
+                                  
+                                  return (
+                                    <div
+                                      key={metodoMoneda}
+                                      className="flex justify-between text-sm"
+                                    >
+                                      <span className="capitalize">
+                                        {metodoNombre} {moneda}:
+                                      </span>
+                                      <span className="font-medium">
+                                        {moneda === 'USD' ? formatUSD(monto) : formatARSFromNative(monto)}
+                                      </span>
+                                    </div>
+                                  );
+                                })}
                               </div>
                             </div>
                           )}

@@ -78,7 +78,7 @@ export default function ModalMovimientoSimple({
     const clienteManual = {
       id: 'manual-movement',
       nombre: 'Movimiento Manual',
-      señasDisponibles: 0,
+      señasDisponibles: { ars: 0, usd: 0 },
       fechaRegistro: fechaActual,
     };
 
@@ -126,6 +126,8 @@ export default function ModalMovimientoSimple({
       subtotal: monto,
       totalDescuentos: 0,
       totalSeña: 0,
+      totalSeñaUSD: 0,
+      totalSeñaARS: 0,
       totalFinal: monto,
       moneda: 'USD',
       estado: 'completado',

@@ -6,6 +6,7 @@ import StandardBreadcrumbs from '@/components/common/StandardBreadcrumbs';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import Link from 'next/link';
 import { TrendingUp, TrendingDown, BarChart3, ArrowRight } from 'lucide-react';
+import { cn } from '@/lib/utils';
 import {
   useResumenCaja,
   useComandaStore,
@@ -29,7 +30,8 @@ export default function CajaChicaMenuPage() {
   // Obtener resumen del store y todas las comandas
   const { resumen } = useResumenCaja();
   const { comandas } = useComandaStore();
-  const { formatUSD, formatDual, isExchangeRateValid } = useCurrencyConverter();
+  const { formatUSD, formatARSFromNative, formatDual, isExchangeRateValid } =
+    useCurrencyConverter();
 
   // Hook para obtener estadísticas de transacciones con separación por moneda
   const { statistics: ingresoStats } = useTransactions({
@@ -43,6 +45,7 @@ export default function CajaChicaMenuPage() {
   const formatAmount = (monto: number) => {
     return isExchangeRateValid ? formatDual(monto) : formatUSD(monto);
   };
+
 
   // Calcular servicio más vendido del día
   const today = new Date().toISOString().split('T')[0];
@@ -93,9 +96,8 @@ export default function CajaChicaMenuPage() {
       gradientTo: 'to-[#e292a3]',
       accentColor: '#f9bbc4',
       stats: `${(ingresoStats?.dualCurrencyDetails?.USD?.transacciones || 0) + (ingresoStats?.dualCurrencyDetails?.ARS?.transacciones || 0)} transacciones hoy`,
-      amount:
-        (ingresoStats?.totalIncomingUSD || 0) +
-        (ingresoStats?.totalIncomingARS || 0),
+      amountUSD: ingresoStats?.totalIncomingUSD || 0,
+      amountARS: ingresoStats?.totalIncomingARS || 0,
     },
     {
       title: 'Egresos',
@@ -106,9 +108,8 @@ export default function CajaChicaMenuPage() {
       gradientTo: 'to-[#e087a3]',
       accentColor: '#f7a8b8',
       stats: `${(egresoStats?.dualCurrencyDetails?.USD?.transacciones || 0) + (egresoStats?.dualCurrencyDetails?.ARS?.transacciones || 0)} transacciones hoy`,
-      amount:
-        (egresoStats?.totalOutgoingUSD || 0) +
-        (egresoStats?.totalOutgoingARS || 0),
+      amountUSD: egresoStats?.totalOutgoingUSD || 0,
+      amountARS: egresoStats?.totalOutgoingARS || 0,
     },
     {
       title: 'Resumen del Día',
@@ -119,11 +120,12 @@ export default function CajaChicaMenuPage() {
       gradientTo: 'to-[#b8869e]',
       accentColor: '#d4a7ca',
       stats: `${ingresoStats?.clientCount || 0} clientes únicos`,
-      amount:
-        (ingresoStats?.totalIncomingUSD || 0) +
+      amountUSD:
+        (ingresoStats?.totalIncomingUSD || 0) -
+        (egresoStats?.totalOutgoingUSD || 0),
+      amountARS:
         (ingresoStats?.totalIncomingARS || 0) -
-        ((egresoStats?.totalOutgoingUSD || 0) +
-          (egresoStats?.totalOutgoingARS || 0)),
+        (egresoStats?.totalOutgoingARS || 0),
       isBalance: true,
     },
   ];
@@ -250,10 +252,48 @@ export default function CajaChicaMenuPage() {
                             {option.description}
                           </p>
                           <div className="space-y-2">
-                            <div
-                              className={`text-base font-bold ${option.isBalance && option.amount >= 0 ? 'text-green-600' : option.isBalance && option.amount < 0 ? 'text-red-600' : 'text-[#4a3540]'}`}
-                            >
-                              {formatAmount(option.amount)}
+                            {/* Visualización inline de montos */}
+                            <div className="space-y-1">
+                              <div className="flex items-center justify-between">
+                                <span className="text-xs text-gray-600">
+                                  USD:
+                                </span>
+                                <div
+                                  className={cn(
+                                    'text-base font-bold',
+                                    option.isBalance &&
+                                      option.amountUSD + option.amountARS >= 0
+                                      ? 'text-green-600'
+                                      : option.isBalance &&
+                                          option.amountUSD + option.amountARS <
+                                            0
+                                        ? 'text-red-600'
+                                        : 'text-[#4a3540]'
+                                  )}
+                                >
+                                  {formatUSD(option.amountUSD)}
+                                </div>
+                              </div>
+                              <div className="flex items-center justify-between">
+                                <span className="text-xs text-gray-600">
+                                  ARS:
+                                </span>
+                                <div
+                                  className={cn(
+                                    'text-base font-bold',
+                                    option.isBalance &&
+                                      option.amountUSD + option.amountARS >= 0
+                                      ? 'text-green-600'
+                                      : option.isBalance &&
+                                          option.amountARS + option.amountUSD <
+                                            0
+                                        ? 'text-red-600'
+                                        : 'text-[#4a3540]'
+                                  )}
+                                >
+                                  {formatARSFromNative(option.amountARS)}
+                                </div>
+                              </div>
                             </div>
                             <p className="text-sm text-[#8b6b75]">
                               {option.stats}

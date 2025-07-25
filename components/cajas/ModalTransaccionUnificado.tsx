@@ -95,6 +95,8 @@ export default function ModalTransaccionUnificado({
     formatARS,
     formatUSD,
     formatDual,
+    formatARSFromNative,
+    arsToUsd,
   } = useCurrencyConverter();
 
   // Helper function for dual currency display
@@ -138,7 +140,10 @@ export default function ModalTransaccionUnificado({
     useState<Cliente | null>(null);
   const [clienteProveedor, setClienteProveedor] = useState('');
   const [telefono, setTelefono] = useState('');
-  const [señaAplicada, setSeñaAplicada] = useState(0);
+  const [montoSeñaAplicada, setMontoSeñaAplicada] = useState(0);
+  const [monedaSeñaAplicada, setMonedaSeñaAplicada] = useState<
+    'ars' | 'usd' | null
+  >(null);
   const [mostrarSelectorCliente, setMostrarSelectorCliente] = useState(false);
   const [busquedaCliente, setBusquedaCliente] = useState('');
   const [unidadNegocio, setUnidadNegocio] =
@@ -213,16 +218,31 @@ export default function ModalTransaccionUnificado({
     setTelefono(cliente.telefono || '');
     setMostrarSelectorCliente(false);
     setBusquedaCliente('');
+    // Resetear seña al cambiar de cliente
+    setMontoSeñaAplicada(0);
+    setMonedaSeñaAplicada(null);
   };
 
   // Manejar aplicación de seña
-  const handleAplicarSeña = (monto: number) => {
-    if (!clienteSeleccionado) return;
+  const handleAplicarSeña = (moneda: 'ars' | 'usd') => {
+    if (clienteSeleccionado) {
+      const señas = obtenerSeñasDisponibles(clienteSeleccionado.id);
+      const montoSeña = señas[moneda];
 
-    const señasDisponibles = obtenerSeñasDisponibles(clienteSeleccionado.id);
-    if (monto <= señasDisponibles) {
-      setSeñaAplicada(monto);
+      if (montoSeña > 0) {
+        setMontoSeñaAplicada(montoSeña);
+        setMonedaSeñaAplicada(moneda);
+      } else {
+        logger.info(
+          `El cliente no tiene señas disponibles en ${moneda.toUpperCase()}.`
+        );
+      }
     }
+  };
+
+  const handleQuitarSeña = () => {
+    setMontoSeñaAplicada(0);
+    setMonedaSeñaAplicada(null);
   };
 
   const productosServiciosFiltrados = useMemo(() => {
@@ -419,8 +439,22 @@ export default function ModalTransaccionUnificado({
 
     // El total final debe ser el subtotal menos la seña menos los descuentos por método de pago
     // para que coincida con lo que realmente se debe pagar
+    const montoSeñaEnUSD =
+      monedaSeñaAplicada === 'ars'
+        ? arsToUsd(montoSeñaAplicada)
+        : montoSeñaAplicada;
+
+    const totalSeñaUSD = monedaSeñaAplicada === 'usd' ? montoSeñaAplicada : 0;
+    const totalSeñaARS = monedaSeñaAplicada === 'ars' ? montoSeñaAplicada : 0;
+
+    // Los totales están en USD, convertir seña ARS a USD solo para el cálculo
+    const montoSeñaARestar =
+      monedaSeñaAplicada === 'ars'
+        ? arsToUsd(montoSeñaAplicada)
+        : montoSeñaAplicada;
+
     const totalFinalConDescuentos =
-      subtotalConDescuentosItems - señaAplicada - descuentosPorMetodo;
+      subtotalConDescuentosItems - montoSeñaARestar - descuentosPorMetodo;
 
     const diferencia = totalPagadoConDescuentos - totalFinalConDescuentos;
 
@@ -432,7 +466,7 @@ export default function ModalTransaccionUnificado({
       totalPagadoConDescuentos,
       diferencia,
       descuentosPorMetodo,
-      señaAplicada,
+      montoSeñaAplicada,
     };
   };
 
@@ -538,7 +572,7 @@ export default function ModalTransaccionUnificado({
           telefono: telefono || undefined,
           email: undefined,
           cuit: undefined,
-          señasDisponibles: 0,
+          señasDisponibles: { ars: 0, usd: 0 },
           fechaRegistro: new Date(),
         },
         mainStaff: responsable
@@ -564,7 +598,21 @@ export default function ModalTransaccionUnificado({
         metodosPago: metodosPagoComanda,
         subtotal: totales.subtotalConDescuentosItems,
         totalDescuentos: totales.totalDescuentos,
-        totalSeña: señaAplicada,
+        // Guardar seña siguiendo el patrón de métodos de pago
+        seña: monedaSeñaAplicada && montoSeñaAplicada > 0 ? {
+          monto: montoSeñaAplicada,
+          moneda: monedaSeñaAplicada.toUpperCase() as 'USD' | 'ARS',
+          fecha: new Date()
+        } : undefined,
+        // Mantener campos legacy para compatibilidad
+        totalSeña:
+          monedaSeñaAplicada === 'ars'
+            ? arsToUsd(montoSeñaAplicada)
+            : montoSeñaAplicada,
+        totalSeñaUSD: monedaSeñaAplicada === 'usd' ? montoSeñaAplicada : 0,
+        totalSeñaARS: monedaSeñaAplicada === 'ars' ? montoSeñaAplicada : 0,
+        montoSeñaAplicadaArs:
+          monedaSeñaAplicada === 'ars' ? montoSeñaAplicada : 0,
         totalFinal: totales.totalFinal,
         estado: 'pendiente',
         observaciones: observaciones || undefined,
@@ -579,8 +627,8 @@ export default function ModalTransaccionUnificado({
         },
       };
 
-      if (clienteSeleccionado && señaAplicada > 0) {
-        usarSeña(clienteSeleccionado.id, señaAplicada);
+      if (clienteSeleccionado && monedaSeñaAplicada && montoSeñaAplicada > 0) {
+        usarSeña(clienteSeleccionado.id, montoSeñaAplicada, monedaSeñaAplicada);
       }
 
       logger.info(`Guardando ${tipo}:`, nuevaComanda);
@@ -618,7 +666,8 @@ export default function ModalTransaccionUnificado({
     setClienteSeleccionado(null);
     setClienteProveedor('');
     setTelefono('');
-    setSeñaAplicada(0);
+    setMontoSeñaAplicada(0);
+    setMonedaSeñaAplicada(null);
     setMostrarSelectorCliente(false);
     setBusquedaCliente('');
     setUnidadNegocio('estilismo');
@@ -833,13 +882,15 @@ export default function ModalTransaccionUnificado({
                                       <span className="font-medium">
                                         {cliente.nombre}
                                       </span>
-                                      {cliente.señasDisponibles > 0 && (
+                                      {(cliente.señasDisponibles.ars > 0 ||
+                                        cliente.señasDisponibles.usd > 0) && (
                                         <Badge
                                           variant="outline"
                                           className="text-xs"
                                         >
                                           <DollarSign className="mr-1 h-3 w-3" />
-                                          ${cliente.señasDisponibles}
+                                          ARS: {cliente.señasDisponibles.ars} /
+                                          USD: {cliente.señasDisponibles.usd}
                                         </Badge>
                                       )}
                                     </div>
@@ -861,54 +912,89 @@ export default function ModalTransaccionUnificado({
 
                           {/* Información de señas disponibles */}
                           {clienteSeleccionado &&
-                            clienteSeleccionado.señasDisponibles > 0 && (
-                              <div className="rounded-lg bg-green-50 p-3">
-                                <div className="flex items-center justify-between">
-                                  <div>
-                                    <p className="text-sm font-medium text-green-800">
-                                      Señas disponibles: $
-                                      {clienteSeleccionado.señasDisponibles}
-                                    </p>
-                                    <p className="text-xs text-green-600">
-                                      Puedes aplicar una seña a esta comanda
-                                    </p>
-                                  </div>
-                                  <div className="flex items-center gap-2">
-                                    <Input
-                                      type="number"
-                                      placeholder="Monto"
-                                      className="w-20 text-sm"
-                                      max={clienteSeleccionado.señasDisponibles}
-                                      onChange={(e) => {
-                                        const monto =
-                                          parseFloat(e.target.value) || 0;
-                                        handleAplicarSeña(monto);
-                                      }}
-                                    />
-                                    <Button
-                                      type="button"
-                                      size="sm"
-                                      variant="outline"
-                                      className="border-green-300 text-green-700 hover:bg-green-50"
-                                      onClick={() =>
-                                        handleAplicarSeña(
-                                          clienteSeleccionado.señasDisponibles
-                                        )
-                                      }
-                                    >
-                                      Aplicar toda
-                                    </Button>
+                            (clienteSeleccionado.señasDisponibles.ars > 0 ||
+                              clienteSeleccionado.señasDisponibles.usd > 0) && (
+                              <div className="space-y-3 rounded-lg bg-green-50 p-3">
+                                <div>
+                                  <p className="mb-2 text-sm font-medium text-green-800">
+                                    Señas disponibles:
+                                  </p>
+                                  <div className="flex items-center gap-4">
+                                    {clienteSeleccionado.señasDisponibles.ars >
+                                      0 && (
+                                      <div className="flex items-center gap-2">
+                                        <Badge color="blue">ARS</Badge>
+                                        <span className="font-semibold">
+                                          {formatARSFromNative(
+                                            clienteSeleccionado.señasDisponibles
+                                              .ars
+                                          )}
+                                        </span>
+                                        <Button
+                                          size="sm"
+                                          variant="outline"
+                                          onClick={() =>
+                                            handleAplicarSeña('ars')
+                                          }
+                                          disabled={
+                                            monedaSeñaAplicada === 'usd'
+                                          }
+                                        >
+                                          Aplicar
+                                        </Button>
+                                      </div>
+                                    )}
+                                    {clienteSeleccionado.señasDisponibles.usd >
+                                      0 && (
+                                      <div className="flex items-center gap-2">
+                                        <Badge color="green">USD</Badge>
+                                        <span className="font-semibold">
+                                          {formatUSD(
+                                            clienteSeleccionado.señasDisponibles
+                                              .usd
+                                          )}
+                                        </span>
+                                        <Button
+                                          size="sm"
+                                          variant="outline"
+                                          onClick={() =>
+                                            handleAplicarSeña('usd')
+                                          }
+                                          disabled={
+                                            monedaSeñaAplicada === 'ars'
+                                          }
+                                        >
+                                          Aplicar
+                                        </Button>
+                                      </div>
+                                    )}
                                   </div>
                                 </div>
-                                {señaAplicada > 0 && (
-                                  <div className="mt-2 rounded bg-green-100 p-2">
-                                    <p className="text-sm font-medium text-green-800">
-                                      Seña aplicada:{' '}
-                                      {formatAmount(señaAplicada)}
-                                    </p>
-                                    <p className="text-xs text-green-600">
-                                      Equivale a: {formatARS(señaAplicada)}
-                                    </p>
+
+                                {montoSeñaAplicada > 0 && (
+                                  <div className="mt-2 flex items-center justify-between rounded bg-green-100 p-2">
+                                    <div>
+                                      <p className="text-sm font-medium text-green-800">
+                                        Seña aplicada:{' '}
+                                        {monedaSeñaAplicada === 'ars'
+                                          ? formatARSFromNative(
+                                              montoSeñaAplicada
+                                            )
+                                          : formatUSD(montoSeñaAplicada)}
+                                      </p>
+                                      <p className="text-xs text-green-600">
+                                        {monedaSeñaAplicada === 'ars'
+                                          ? `Equivale a ${formatUSD(arsToUsd(montoSeñaAplicada))}`
+                                          : `Equivale a ${formatARSFromNative(montoSeñaAplicada * tipoCambio.valorVenta)}`}
+                                      </p>
+                                    </div>
+                                    <Button
+                                      size="sm"
+                                      variant="destructive"
+                                      onClick={handleQuitarSeña}
+                                    >
+                                      Quitar
+                                    </Button>
                                   </div>
                                 )}
                               </div>
@@ -1324,18 +1410,26 @@ export default function ModalTransaccionUnificado({
                       )}
 
                       {/* Seña aplicada */}
-                      {señaAplicada > 0 && (
+                      {montoSeñaAplicada > 0 && monedaSeñaAplicada && (
                         <div className="flex items-center justify-between rounded-lg bg-purple-50 p-3">
                           <div className="text-sm text-purple-700">
-                            Seña aplicada
+                            Seña aplicada ({monedaSeñaAplicada.toUpperCase()})
                           </div>
                           <div className="text-right">
                             <div className="text-sm font-semibold text-purple-700">
-                              -{formatAmount(señaAplicada)}
+                              -{' '}
+                              {monedaSeñaAplicada === 'ars'
+                                ? formatARSFromNative(montoSeñaAplicada)
+                                : formatUSD(montoSeñaAplicada)}
                             </div>
-                            {isExchangeRateValid && señaAplicada > 0 && (
+                            {isExchangeRateValid && (
                               <div className="text-xs text-purple-600">
-                                -{formatARS(señaAplicada)}
+                                -{' '}
+                                {formatAmount(
+                                  monedaSeñaAplicada === 'ars'
+                                    ? arsToUsd(montoSeñaAplicada)
+                                    : montoSeñaAplicada
+                                )}
                               </div>
                             )}
                           </div>

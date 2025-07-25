@@ -31,16 +31,16 @@ interface ClienteState {
   // Acciones CRUD
   agregarCliente: (
     cliente: Omit<Cliente, 'id' | 'fechaRegistro' | 'señasDisponibles'>,
-    señaInicial?: number
+    señaInicial?: { ars: number; usd: number }
   ) => void;
   actualizarCliente: (id: string, cliente: Partial<Cliente>) => void;
   eliminarCliente: (id: string) => void;
   obtenerClientePorId: (id: string) => Cliente | undefined;
 
   // Gestión de señas
-  agregarSeña: (clienteId: string, monto: number) => void;
-  usarSeña: (clienteId: string, monto: number) => boolean;
-  obtenerSeñasDisponibles: (clienteId: string) => number;
+  agregarSeña: (clienteId: string, monto: number, moneda: 'ars' | 'usd') => void;
+  usarSeña: (clienteId: string, monto: number, moneda: 'ars' | 'usd') => boolean;
+  obtenerSeñasDisponibles: (clienteId: string) => { ars: number; usd: number };
 
   // Consultas
   buscarCliente: (query: string) => Cliente[];
@@ -70,7 +70,7 @@ export const useClienteStore = create<ClienteState>()(
             Cliente,
             'id' | 'fechaRegistro' | 'señasDisponibles'
           >,
-          señaInicial?: number
+          señaInicial?: { ars: number; usd: number }
         ) => {
           const idGenerado = `cliente-${Date.now()}-${Math.random()
             .toString(36)
@@ -79,7 +79,7 @@ export const useClienteStore = create<ClienteState>()(
           const nuevoCliente: Cliente = {
             ...clienteData,
             id: idGenerado,
-            señasDisponibles: señaInicial || 0, // Usar la seña inicial si se proporciona
+            señasDisponibles: señaInicial || { ars: 0, usd: 0 }, // Usar la seña inicial si se proporciona
             fechaRegistro: new Date(),
           };
 
@@ -120,44 +120,55 @@ export const useClienteStore = create<ClienteState>()(
         },
 
         // === GESTIÓN DE SEÑAS ===
-        agregarSeña: (clienteId: string, monto: number) => {
+        agregarSeña: (clienteId: string, monto: number, moneda: 'ars' | 'usd') => {
           set((state) => ({
-            clientes: state.clientes.map((c) =>
-              c.id === clienteId
-                ? { ...c, señasDisponibles: c.señasDisponibles + monto }
-                : c
-            ),
+            clientes: state.clientes.map((c) => {
+              if (c.id === clienteId) {
+                const señasActuales = c.señasDisponibles || { ars: 0, usd: 0 };
+                const señasActualizadas = {
+                  ...señasActuales,
+                  [moneda]: (señasActuales[moneda] || 0) + monto,
+                };
+                return { ...c, señasDisponibles: señasActualizadas };
+              }
+              return c;
+            }),
             error: null,
           }));
 
-          logger.info('Seña agregada:', { clienteId, monto });
+          logger.info('Seña agregada:', { clienteId, monto, moneda });
         },
 
-        usarSeña: (clienteId: string, monto: number) => {
+        usarSeña: (clienteId: string, monto: number, moneda: 'ars' | 'usd') => {
           const { clientes } = get();
           const cliente = clientes.find((c) => c.id === clienteId);
 
-          if (!cliente || cliente.señasDisponibles < monto) {
+          if (!cliente || (cliente.señasDisponibles?.[moneda] ?? 0) < monto) {
             return false;
           }
 
           set((state) => ({
-            clientes: state.clientes.map((c) =>
-              c.id === clienteId
-                ? { ...c, señasDisponibles: c.señasDisponibles - monto }
-                : c
-            ),
+            clientes: state.clientes.map((c) => {
+              if (c.id === clienteId) {
+                const señasActualizadas = {
+                  ...c.señasDisponibles,
+                  [moneda]: c.señasDisponibles![moneda] - monto,
+                };
+                return { ...c, señasDisponibles: señasActualizadas };
+              }
+              return c;
+            }),
             error: null,
           }));
 
-          logger.info('Seña utilizada:', { clienteId, monto });
+          logger.info('Seña utilizada:', { clienteId, monto, moneda });
           return true;
         },
 
         obtenerSeñasDisponibles: (clienteId: string) => {
           const { clientes } = get();
           const cliente = clientes.find((c) => c.id === clienteId);
-          return cliente?.señasDisponibles || 0;
+          return cliente?.señasDisponibles || { ars: 0, usd: 0 };
         },
 
         // === CONSULTAS ===

@@ -86,6 +86,7 @@ export default function ModalPersonal({
         nombre: nombre.trim(),
         comision,
         rol,
+        activo: true,
       };
 
       onSave(personalData);

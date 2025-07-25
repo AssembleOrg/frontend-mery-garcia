@@ -52,7 +52,7 @@ const breadcrumbItems = [
 export default function ComandasTraspasadasPage() {
   const { comandas } = useComandaStore();
   const { traspasos } = useRecordsStore();
-  const { formatUSD } = useCurrencyConverter();
+  const { formatUSD, formatARS, formatARSFromNative } = useCurrencyConverter();
 
   // Estados locales
   const [busqueda, setBusqueda] = useState('');
@@ -88,10 +88,15 @@ export default function ComandasTraspasadasPage() {
     return coincideBusqueda && perteneceAlTraspaso;
   });
 
-  // Estadísticas
+  // Estadísticas separadas por moneda
   const estadisticas = {
     totalComandas: comandasValidadas.length,
-    montoTotal: comandasValidadas.reduce((sum, c) => sum + c.totalFinal, 0),
+    montoTotalUSD: comandasValidadas
+      .filter((c) => c.moneda === 'USD')
+      .reduce((sum, c) => sum + c.totalFinal, 0),
+    montoTotalARS: comandasValidadas
+      .filter((c) => c.moneda === 'ARS')
+      .reduce((sum, c) => sum + c.totalFinal, 0),
     totalTraspasos: traspasos.length,
     ultimoTraspaso: traspasos[0]?.fechaTraspaso || null,
   };
@@ -168,9 +173,14 @@ export default function ComandasTraspasadasPage() {
                         </div>
                         <div>
                           <p className="text-sm text-gray-600">Monto Total</p>
-                          <p className="text-xl font-bold text-[#6b4c57]">
-                            {formatUSD(estadisticas.montoTotal)}
-                          </p>
+                          <div className="space-y-1">
+                            <p className="text-sm font-bold text-[#6b4c57]">
+                              USD: {formatUSD(estadisticas.montoTotalUSD)}
+                            </p>
+                            <p className="text-sm font-bold text-[#6b4c57]">
+                              ARS: {formatARSFromNative(estadisticas.montoTotalARS)}
+                            </p>
+                          </div>
                         </div>
                       </div>
                     </CardContent>
@@ -283,15 +293,12 @@ export default function ComandasTraspasadasPage() {
                         </TableHeader>
                         <TableBody>
                           {comandasFiltradas.map((comanda) => {
-                            const metodoPrincipal =
-                              comanda.metodosPago?.length > 0
-                                ? resolverMetodoPagoPrincipal(
-                                    comanda.metodosPago.map((m) => ({
-                                      tipo: m.tipo,
-                                      monto: m.monto,
-                                    }))
-                                  )
-                                : 'efectivo';
+                            // Obtener todos los métodos de pago únicos con sus monedas
+                            const metodosPagoUnicos = comanda.metodosPago?.length > 0
+                              ? Array.from(new Set(
+                                  comanda.metodosPago.map(m => `${m.tipo.charAt(0).toUpperCase() + m.tipo.slice(1)} - ${m.moneda}`)
+                                )).join(', ')
+                              : `Efectivo - ${comanda.moneda}`;
 
                             return (
                               <TableRow
@@ -320,16 +327,17 @@ export default function ComandasTraspasadasPage() {
                                   </span>
                                 </TableCell>
                                 <TableCell className="font-medium text-green-600">
-                                  {formatUSD(comanda.totalFinal)}
+                                  {comanda.moneda === 'USD' 
+                                    ? formatUSD(comanda.totalFinal)
+                                    : formatARSFromNative(comanda.totalFinal)
+                                  }
                                 </TableCell>
                                 <TableCell>
-                                  <Badge
-                                    className={getMetodoPagoColor(
-                                      metodoPrincipal
-                                    )}
-                                  >
-                                    {metodoPrincipal}
-                                  </Badge>
+                                  <div className="max-w-[200px]">
+                                    <span className="text-xs text-gray-700">
+                                      {metodosPagoUnicos}
+                                    </span>
+                                  </div>
                                 </TableCell>
                                 <TableCell>
                                   <Badge
@@ -401,11 +409,16 @@ export default function ComandasTraspasadasPage() {
                                       <p className="font-medium">
                                         {formatDate(traspaso.fechaTraspaso)}
                                       </p>
-                                      <p className="text-sm text-gray-600">
-                                        {traspaso.comandasTraspasadas.length}{' '}
-                                        comandas •{' '}
-                                        {formatUSD(traspaso.montoTotal)}
-                                      </p>
+                                      <div className="space-y-1 text-sm text-gray-600">
+                                        <p>
+                                          {traspaso.comandasTraspasadas.length}{' '}
+                                          comandas
+                                        </p>
+                                        <p>
+                                          USD: {formatUSD(traspaso.montoTotalUSD || 0)}{' '}
+                                          • ARS: {formatARSFromNative(traspaso.montoTotalARS || 0)}
+                                        </p>
+                                      </div>
                                     </div>
                                   </div>
 
@@ -415,6 +428,8 @@ export default function ComandasTraspasadasPage() {
                                       numeroComandas:
                                         traspaso.comandasTraspasadas.length,
                                       montoTotal: traspaso.montoTotal,
+                                      montoTotalUSD: traspaso.montoTotalUSD || 0,
+                                      montoTotalARS: traspaso.montoTotalARS || 0,
                                       montoParcial: traspaso.montoParcial || 0,
                                       fechaInicio: traspaso.rangoFechas.desde,
                                       fechaFin: traspaso.rangoFechas.hasta,

@@ -73,11 +73,16 @@ interface ComandaState {
   validarComandasParaTraspasoParcial: (
     fechaDesde: Date,
     fechaHasta: Date,
-    montoParcial: number
+    montoParcialUSD: number,
+    montoParcialARS: number
   ) => Promise<{
     idsValidados: string[];
-    montoTrasladado: number;
-    montoResidual: number;
+    montoTrasladadoUSD: number;
+    montoTrasladadoARS: number;
+    montoResidualUSD: number;
+    montoResidualARS: number;
+    success: boolean;
+    comandasValidadas: number;
   }>;
 
   obtenerResumenCajaRango: (
@@ -385,7 +390,8 @@ export const useComandaStore = create<ComandaState>()(
         validarComandasParaTraspasoParcial: async (
           fechaDesde: Date,
           fechaHasta: Date,
-          montoParcial: number
+          montoParcialUSD: number,
+          montoParcialARS: number
         ) => {
           const { comandas } = get();
           const resultado =
@@ -393,7 +399,8 @@ export const useComandaStore = create<ComandaState>()(
               comandas,
               fechaDesde,
               fechaHasta,
-              montoParcial
+              montoParcialUSD,
+              montoParcialARS
             );
 
           set({
@@ -403,8 +410,12 @@ export const useComandaStore = create<ComandaState>()(
 
           return {
             idsValidados: resultado.idsValidados,
-            montoTrasladado: resultado.montoTrasladado,
-            montoResidual: resultado.montoResidual,
+            montoTrasladadoUSD: resultado.montoTrasladadoUSD,
+            montoTrasladadoARS: resultado.montoTrasladadoARS,
+            montoResidualUSD: resultado.montoResidualUSD,
+            montoResidualARS: resultado.montoResidualARS,
+            success: true,
+            comandasValidadas: resultado.idsValidados.length,
           };
         },
 

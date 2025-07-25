@@ -15,33 +15,47 @@ export default function ResumenCajaGrande({
   comandasValidadas,
   traspasos,
 }: ResumenCajaGrandeProps) {
-  const { formatUSD, formatDual, isExchangeRateValid } = useCurrencyConverter();
-
-  // Función helper para formatear montos con visualización dual
-  const formatAmount = (amount: number) => {
-    return isExchangeRateValid ? formatDual(amount) : formatUSD(amount);
-  };
-
-  // Estadísticas por unidad de negocio
+  const { formatUSD, formatARS, formatARSFromNative } = useCurrencyConverter();
+  // Estadísticas por unidad de negocio separadas por moneda
   const estadisticasPorUnidad = comandasValidadas.reduce(
     (acc, comanda) => {
       const unidad = comanda.businessUnit;
       if (!acc[unidad]) {
-        acc[unidad] = { ingresos: 0, egresos: 0, cantidad: 0 };
+        acc[unidad] = {
+          ingresosUSD: 0,
+          egresosUSD: 0,
+          ingresosARS: 0,
+          egresosARS: 0,
+          cantidad: 0,
+        };
       }
 
       acc[unidad].cantidad++;
       if (comanda.tipo === 'ingreso') {
-        acc[unidad].ingresos += comanda.totalFinal;
+        if (comanda.moneda === 'USD') {
+          acc[unidad].ingresosUSD += comanda.totalFinal;
+        } else {
+          acc[unidad].ingresosARS += comanda.totalFinal;
+        }
       } else {
-        acc[unidad].egresos += comanda.totalFinal;
+        if (comanda.moneda === 'USD') {
+          acc[unidad].egresosUSD += comanda.totalFinal;
+        } else {
+          acc[unidad].egresosARS += comanda.totalFinal;
+        }
       }
 
       return acc;
     },
     {} as Record<
       string,
-      { ingresos: number; egresos: number; cantidad: number }
+      {
+        ingresosUSD: number;
+        egresosUSD: number;
+        ingresosARS: number;
+        egresosARS: number;
+        cantidad: number;
+      }
     >
   );
 
@@ -50,13 +64,20 @@ export default function ResumenCajaGrande({
     (acc, comanda) => {
       const personal = comanda.mainStaff.nombre;
       if (!acc[personal]) {
-        acc[personal] = { cantidad: 0, total: 0 };
+        acc[personal] = { cantidad: 0, totalUSD: 0, totalARS: 0 };
       }
       acc[personal].cantidad++;
-      acc[personal].total += comanda.totalFinal;
+      if (comanda.moneda === 'USD') {
+        acc[personal].totalUSD += comanda.totalFinal;
+      } else {
+        acc[personal].totalARS += comanda.totalFinal;
+      }
       return acc;
     },
-    {} as Record<string, { cantidad: number; total: number }>
+    {} as Record<
+      string,
+      { cantidad: number; totalUSD: number; totalARS: number }
+    >
   );
 
   const personalMasActivo = Object.entries(personalStats).sort(
@@ -97,10 +118,15 @@ export default function ResumenCajaGrande({
                     </p>
                   </div>
                   <div className="text-right">
-                    <p className="font-medium">
-                      {formatAmount(traspaso.montoTotal)}
-                    </p>
-                    <Badge variant="outline" className="text-xs">
+                    <div className="space-y-1">
+                      <p className="text-sm font-medium">
+                        USD: {formatUSD(traspaso.montoTotalUSD || 0)}
+                      </p>
+                      <p className="text-sm font-medium">
+                        ARS: {formatARSFromNative(traspaso.montoTotalARS || 0)}
+                      </p>
+                    </div>
+                    <Badge variant="outline" className="mt-1 text-xs">
                       {traspaso.rangoFechas.desde} -{' '}
                       {traspaso.rangoFechas.hasta}
                     </Badge>
@@ -124,35 +150,74 @@ export default function ResumenCajaGrande({
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
             {Object.entries(estadisticasPorUnidad).map(([unidad, stats]) => (
               <div key={unidad} className="rounded-lg bg-gray-50 p-4">
-                <h4 className="mb-2 font-medium capitalize">{unidad}</h4>
-                <div className="space-y-1 text-sm">
+                <h4 className="mb-3 font-medium capitalize">{unidad}</h4>
+                <div className="space-y-2 text-sm">
                   <div className="flex justify-between">
                     <span>Comandas:</span>
                     <span className="font-medium">{stats.cantidad}</span>
                   </div>
-                  <div className="flex justify-between text-green-600">
-                    <span>Ingresos:</span>
-                    <span className="font-medium">
-                      {formatAmount(stats.ingresos)}
-                    </span>
+
+                  {/* Ingresos */}
+                  <div className="border-t pt-2">
+                    <p className="mb-1 text-xs text-gray-500">Ingresos:</p>
+                    <div className="flex justify-between text-green-600">
+                      <span>USD:</span>
+                      <span className="font-medium">
+                        {formatUSD(stats.ingresosUSD)}
+                      </span>
+                    </div>
+                    <div className="flex justify-between text-green-600">
+                      <span>ARS:</span>
+                      <span className="font-medium">
+                        {formatARSFromNative(stats.ingresosARS)}
+                      </span>
+                    </div>
                   </div>
-                  <div className="flex justify-between text-red-600">
-                    <span>Egresos:</span>
-                    <span className="font-medium">
-                      {formatAmount(stats.egresos)}
-                    </span>
+
+                  {/* Egresos */}
+                  <div className="border-t pt-2">
+                    <p className="mb-1 text-xs text-gray-500">Egresos:</p>
+                    <div className="flex justify-between text-red-600">
+                      <span>USD:</span>
+                      <span className="font-medium">
+                        {formatUSD(stats.egresosUSD)}
+                      </span>
+                    </div>
+                    <div className="flex justify-between text-red-600">
+                      <span>ARS:</span>
+                      <span className="font-medium">
+                        {formatARSFromNative(stats.egresosARS)}
+                      </span>
+                    </div>
                   </div>
-                  <div className="flex justify-between border-t pt-1">
-                    <span>Neto:</span>
-                    <span
-                      className={`font-medium ${
-                        stats.ingresos - stats.egresos >= 0
-                          ? 'text-green-600'
-                          : 'text-red-600'
-                      }`}
-                    >
-                      {formatAmount(stats.ingresos - stats.egresos)}
-                    </span>
+
+                  {/* Neto */}
+                  <div className="border-t pt-2">
+                    <p className="mb-1 text-xs text-gray-500">Neto:</p>
+                    <div className="flex justify-between">
+                      <span>USD:</span>
+                      <span
+                        className={`font-medium ${
+                          stats.ingresosUSD - stats.egresosUSD >= 0
+                            ? 'text-green-600'
+                            : 'text-red-600'
+                        }`}
+                      >
+                        {formatUSD(stats.ingresosUSD - stats.egresosUSD)}
+                      </span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span>ARS:</span>
+                      <span
+                        className={`font-medium ${
+                          stats.ingresosARS - stats.egresosARS >= 0
+                            ? 'text-green-600'
+                            : 'text-red-600'
+                        }`}
+                      >
+                        {formatARSFromNative(stats.ingresosARS - stats.egresosARS)}
+                      </span>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -180,9 +245,10 @@ export default function ResumenCajaGrande({
                 <p className="font-medium">
                   {personalMasActivo[1].cantidad} comandas
                 </p>
-                <p className="text-sm text-gray-600">
-                  {formatAmount(personalMasActivo[1].total)}
-                </p>
+                <div className="space-y-1 text-sm text-gray-600">
+                  <p>USD: {formatUSD(personalMasActivo[1].totalUSD)}</p>
+                  <p>ARS: {formatARSFromNative(personalMasActivo[1].totalARS)}</p>
+                </div>
               </div>
             </div>
           </CardContent>

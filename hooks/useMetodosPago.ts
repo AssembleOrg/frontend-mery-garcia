@@ -211,10 +211,15 @@ export function useMetodosPago(
 
   const convertirParaPersistencia = useCallback((): MetodoPago[] => {
     return metodosPago.map((metodo) => {
+      const monedaActual = metodo.moneda || MONEDAS.USD;
+      
       const metodoPersistencia: MetodoPago = {
         tipo: metodo.tipo,
-        monto: metodo.montoFinal, // Siempre en USD
-        moneda: metodo.moneda,
+        // Guardar monto en su moneda nativa - SOLUCIÓN DEFINITIVA
+        monto: monedaActual === MONEDAS.ARS 
+          ? (metodo.montoFinalOriginalARS || 0) // Valor nativo ARS
+          : metodo.montoFinal, // Valor nativo USD
+        moneda: monedaActual,
       };
 
       if (metodo.tipo === 'giftcard' && metodo.giftcard) {

@@ -27,6 +27,8 @@ interface TraspasoData {
   fecha: string;
   numeroComandas: number;
   montoTotal: number;
+  montoTotalUSD?: number;
+  montoTotalARS?: number;
   montoParcial: number;
   fechaInicio: string;
   fechaFin: string;
@@ -44,11 +46,14 @@ export default function TraspasoModal({
   comandas,
   trigger,
 }: TraspasoModalProps) {
-  const { formatUSD, formatDual, isExchangeRateValid } = useCurrencyConverter();
+  const { formatUSD, formatARSFromNative, isExchangeRateValid } = useCurrencyConverter();
 
-  // Función helper para formatear montos con visualización dual
-  const formatAmount = (amount: number) => {
-    return isExchangeRateValid ? formatDual(amount) : formatUSD(amount);
+  // Función helper para formatear montos según la moneda
+  const formatAmount = (amount: number, currency?: string) => {
+    if (currency === 'ARS') {
+      return formatARSFromNative(amount);
+    }
+    return formatUSD(amount);
   };
   const getMetodoPagoColor = (metodo: string) => {
     switch (metodo.toLowerCase()) {
@@ -117,9 +122,14 @@ export default function TraspasoModal({
                 </div>
                 <div className="space-y-1">
                   <p className="text-sm text-gray-600">Monto Total</p>
-                  <p className="font-medium text-green-600">
-                    {formatAmount(traspaso.montoTotal)}
-                  </p>
+                  <div className="space-y-1">
+                    <p className="font-medium text-green-600">
+                      USD: {formatUSD(traspaso.montoTotalUSD || 0)}
+                    </p>
+                    <p className="font-medium text-green-600">
+                      ARS: {formatARSFromNative(traspaso.montoTotalARS || 0)}
+                    </p>
+                  </div>
                 </div>
               </div>
 
@@ -202,7 +212,7 @@ export default function TraspasoModal({
                             {comanda.estado}
                           </Badge>
                           <span className="font-medium text-green-600">
-                            {formatAmount(comanda.totalFinal)}
+                            {formatAmount(comanda.totalFinal, comanda.moneda)}
                           </span>
                         </div>
                       </div>

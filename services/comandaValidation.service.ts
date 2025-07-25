@@ -151,6 +151,21 @@ export class ComandaValidationService {
       totalIngresos,
       totalEgresos,
       montoDisponibleParaTraslado: balanceNeto > 0 ? balanceNeto : 0,
+      // Campos separados por moneda (valores por defecto para compatibilidad)
+      totalIngresosUSD: totalIngresos,
+      totalEgresosUSD: totalEgresos,
+      totalIngresosARS: 0,
+      totalEgresosARS: 0,
+      montoNetoUSD: balanceNeto,
+      montoNetoARS: 0,
+      montoDisponibleTrasladoUSD: balanceNeto > 0 ? balanceNeto : 0,
+      montoDisponibleTrasladoARS: 0,
+      montoParcialSeleccionado: undefined,
+      montoParcialSeleccionadoUSD: undefined,
+      montoParcialSeleccionadoARS: undefined,
+      montoResidual: undefined,
+      montoResidualUSD: undefined,
+      montoResidualARS: undefined,
     };
   }
 
@@ -179,17 +194,27 @@ export class ComandaValidationService {
           if (c.metodosPago && c.metodosPago.length > 0) {
             c.metodosPago.forEach((metodo) => {
               const moneda = metodo.moneda || 'USD';
+              
+              // SOLUCIÓN DEFINITIVA: Aplicar misma lógica restrictiva que useTransactions
+              let montoNativo = metodo.monto;
+              const isLegacyUSDData = moneda === 'ARS' && metodo.monto > 0 && metodo.monto < 100;
+              
+              if (isLegacyUSDData) {
+                // Migrar datos antiguos (USD almacenado como ARS) usando mismo tipo de cambio que useTransactions
+                montoNativo = metodo.monto * 2640; // Usar tipo de cambio fijo para consistencia
+              }
+              
               if (c.tipo === 'ingreso') {
                 if (moneda === 'USD') {
-                  totalIngresosUSD += metodo.monto;
+                  totalIngresosUSD += montoNativo;
                 } else {
-                  totalIngresosARS += metodo.monto;
+                  totalIngresosARS += montoNativo;
                 }
               } else {
                 if (moneda === 'USD') {
-                  totalEgresosUSD += metodo.monto;
+                  totalEgresosUSD += montoNativo;
                 } else {
-                  totalEgresosARS += metodo.monto;
+                  totalEgresosARS += montoNativo;
                 }
               }
             });
@@ -209,6 +234,8 @@ export class ComandaValidationService {
 
     const montoNetoUSD = totalIngresosUSD - totalEgresosUSD;
     const montoNetoARS = totalIngresosARS - totalEgresosARS;
+    const montoDisponibleTrasladoUSD = montoNetoUSD > 0 ? montoNetoUSD : 0;
+    const montoDisponibleTrasladoARS = montoNetoARS > 0 ? montoNetoARS : 0;
 
     return {
       totalCompletados,
@@ -216,34 +243,63 @@ export class ComandaValidationService {
       montoNeto: montoNetoUSD, // Para compatibilidad
       totalIngresos: totalIngresosUSD, // Para compatibilidad
       totalEgresos: totalEgresosUSD, // Para compatibilidad
-      // Nuevos campos separados por moneda
+      // Campos separados por moneda
       totalIngresosUSD,
       totalEgresosUSD,
       totalIngresosARS,
       totalEgresosARS,
       montoNetoUSD,
       montoNetoARS,
-      montoDisponibleParaTraslado: montoNetoUSD + montoNetoARS,
+      montoDisponibleParaTraslado:
+        montoDisponibleTrasladoUSD + montoDisponibleTrasladoARS,
+      montoDisponibleTrasladoUSD,
+      montoDisponibleTrasladoARS,
       montoParcialSeleccionado: undefined,
+      montoParcialSeleccionadoUSD: undefined,
+      montoParcialSeleccionadoARS: undefined,
       montoResidual: undefined,
+      montoResidualUSD: undefined,
+      montoResidualARS: undefined,
     };
   }
 
   static calcularConfiguracionTraspasoParcial(
-    montoMaximo: number,
-    montoParcial: number
+    resumen: ResumenConMontoParcial,
+    montoUSD: number,
+    montoARS: number
   ): ConfiguracionTraspasoParcial {
-    // Permitir valores negativos según la lógica de negocio
-    const montoValidado = Math.min(montoParcial, montoMaximo);
-    const montoResidual = montoMaximo - montoValidado;
-    const porcentajeSeleccionado =
-      montoMaximo > 0 ? (montoValidado / montoMaximo) * 100 : 0;
+    const montoDisponibleUSD = resumen.montoDisponibleTrasladoUSD || 0;
+    const montoDisponibleARS = resumen.montoDisponibleTrasladoARS || 0;
+
+    const montoValidadoUSD = Math.min(montoUSD, montoDisponibleUSD);
+    const montoValidadoARS = Math.min(montoARS, montoDisponibleARS);
+
+    const montoResidualUSD = montoDisponibleUSD - montoValidadoUSD;
+    const montoResidualARS = montoDisponibleARS - montoValidadoARS;
+
+    const porcentajeSeleccionadoUSD =
+      montoDisponibleUSD > 0
+        ? (montoValidadoUSD / montoDisponibleUSD) * 100
+        : 0;
+    const porcentajeSeleccionadoARS =
+      montoDisponibleARS > 0
+        ? (montoValidadoARS / montoDisponibleARS) * 100
+        : 0;
 
     return {
-      montoMaximo,
-      montoParcial: montoValidado,
-      montoResidual,
-      porcentajeSeleccionado,
+      montoMaximo: montoDisponibleUSD + montoDisponibleARS,
+      montoParcial: montoValidadoUSD + montoValidadoARS,
+      montoResidual: montoResidualUSD + montoResidualARS,
+      porcentajeSeleccionado:
+        (porcentajeSeleccionadoUSD + porcentajeSeleccionadoARS) / 2,
+      montoMaximoUSD: montoDisponibleUSD,
+      montoMaximoARS: montoDisponibleARS,
+      montoParcialUSD: montoValidadoUSD,
+      montoParcialARS: montoValidadoARS,
+      montoResidualUSD,
+      montoResidualARS,
+      porcentajeSeleccionadoUSD,
+      porcentajeSeleccionadoARS,
     };
   }
 
@@ -251,12 +307,15 @@ export class ComandaValidationService {
     comandas: Comanda[],
     fechaDesde: Date,
     fechaHasta: Date,
-    montoParcial: number
+    montoParcialUSD: number,
+    montoParcialARS: number
   ): {
     comandasActualizadas: Comanda[];
     idsValidados: string[];
-    montoTrasladado: number;
-    montoResidual: number;
+    montoTrasladadoUSD: number;
+    montoTrasladadoARS: number;
+    montoResidualUSD: number;
+    montoResidualARS: number;
   } {
     const desde = new Date(fechaDesde);
     const hasta = new Date(fechaHasta);
@@ -272,19 +331,49 @@ export class ComandaValidationService {
       );
     });
 
-    // Calcular monto total disponible
-    let montoTotalDisponible = 0;
+    // Calcular montos totales disponibles por moneda
+    let montoTotalDisponibleUSD = 0;
+    let montoTotalDisponibleARS = 0;
+
     comandasCompletadas.forEach((c) => {
-      if (c.tipo === 'ingreso') {
-        montoTotalDisponible += c.totalFinal;
+      if (c.metodosPago && c.metodosPago.length > 0) {
+        c.metodosPago.forEach((metodo) => {
+          const moneda = metodo.moneda || 'USD';
+          if (c.tipo === 'ingreso') {
+            if (moneda === 'USD') {
+              montoTotalDisponibleUSD += metodo.monto;
+            } else {
+              montoTotalDisponibleARS += metodo.monto;
+            }
+          } else {
+            if (moneda === 'USD') {
+              montoTotalDisponibleUSD -= metodo.monto;
+            } else {
+              montoTotalDisponibleARS -= metodo.monto;
+            }
+          }
+        });
       } else {
-        montoTotalDisponible -= c.totalFinal;
+        // Fallback: asumir USD si no hay métodos de pago definidos
+        if (c.tipo === 'ingreso') {
+          montoTotalDisponibleUSD += c.totalFinal;
+        } else {
+          montoTotalDisponibleUSD -= c.totalFinal;
+        }
       }
     });
 
-    // Validar monto parcial - permitir valores negativos según lógica de negocio
-    const montoTrasladado = Math.min(montoParcial, montoTotalDisponible);
-    const montoResidual = montoTotalDisponible - montoTrasladado;
+    // Validar montos parciales por moneda
+    const montoTrasladadoUSD = Math.min(
+      montoParcialUSD,
+      montoTotalDisponibleUSD
+    );
+    const montoTrasladadoARS = Math.min(
+      montoParcialARS,
+      montoTotalDisponibleARS
+    );
+    const montoResidualUSD = montoTotalDisponibleUSD - montoTrasladadoUSD;
+    const montoResidualARS = montoTotalDisponibleARS - montoTrasladadoARS;
 
     // Marcar comandas como validadas
     const idsAValidar: string[] = [];
@@ -304,15 +393,17 @@ export class ComandaValidationService {
 
     if (idsAValidar.length > 0) {
       logger.success(
-        `✅ Validadas ${idsAValidar.length} comandas para traspaso parcial de ${montoTrasladado}`
+        `✅ Validadas ${idsAValidar.length} comandas para traspaso parcial de USD ${montoTrasladadoUSD.toFixed(2)}, ARS ${montoTrasladadoARS.toFixed(2)}`
       );
     }
 
     return {
       comandasActualizadas,
       idsValidados: idsAValidar,
-      montoTrasladado,
-      montoResidual,
+      montoTrasladadoUSD,
+      montoTrasladadoARS,
+      montoResidualUSD,
+      montoResidualARS,
     };
   }
 

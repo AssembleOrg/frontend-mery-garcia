@@ -27,7 +27,7 @@ export default function SummaryCardDual({
   transactionCountUSD = 0,
   transactionCountARS = 0,
 }: SummaryCardDualProps) {
-  const { formatUSD, formatARS } = useCurrencyConverter();
+  const { formatUSD, formatARSFromNative } = useCurrencyConverter();
 
   return (
     <Card
@@ -66,7 +66,7 @@ export default function SummaryCardDual({
               <span className="text-xs text-gray-600">ARS:</span>
               <div className="text-right">
                 <div className={cn('text-sm font-bold', valueClassName)}>
-                  {formatARS(totalARS)}
+                  {formatARSFromNative(totalARS)}
                 </div>
                 {showTransactionCount && transactionCountARS > 0 && (
                   <div className="text-xs text-gray-500">

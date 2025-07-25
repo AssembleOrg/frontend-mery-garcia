@@ -104,7 +104,7 @@ export default function ModalEditarTransaccion({
   const { obtenerComandaPorId, actualizarComanda } = useComandaStore();
   const { personal } = usePersonal();
   const { productosServicios } = useProductosServicios();
-  const { formatUSD, formatARS, formatDual, isExchangeRateValid, arsToUsd } =
+  const { formatUSD, formatARSFromNative, formatDual, isExchangeRateValid, arsToUsd } =
     useCurrencyConverter();
 
   // Helper para formatear montos con dual currency
@@ -835,7 +835,7 @@ export default function ModalEditarTransaccion({
                         <div>{formatAmount(subtotal)}</div>
                         {isExchangeRateValid && subtotal > 0 && (
                           <div className="text-xs text-gray-600">
-                            {formatARS(subtotal)}
+                            {formatARSFromNative(subtotal)}
                           </div>
                         )}
                       </div>
@@ -847,7 +847,7 @@ export default function ModalEditarTransaccion({
                           <div>-{formatAmount(totalDescuentos)}</div>
                           {isExchangeRateValid && totalDescuentos > 0 && (
                             <div className="text-xs text-red-500">
-                              -{formatARS(totalDescuentos)}
+                              -{formatARSFromNative(totalDescuentos)}
                             </div>
                           )}
                         </div>
@@ -860,7 +860,7 @@ export default function ModalEditarTransaccion({
                           <div>-{formatAmount(totalSeña)}</div>
                           {isExchangeRateValid && totalSeña > 0 && (
                             <div className="text-xs text-blue-500">
-                              -{formatARS(totalSeña)}
+                              -{formatARSFromNative(totalSeña)}
                             </div>
                           )}
                         </div>
@@ -874,7 +874,7 @@ export default function ModalEditarTransaccion({
                           {isExchangeRateValid &&
                             descuentosPorMetodoPago > 0 && (
                               <div className="text-xs text-green-500">
-                                -{formatARS(descuentosPorMetodoPago)}
+                                -{formatARSFromNative(descuentosPorMetodoPago)}
                               </div>
                             )}
                         </div>
@@ -886,7 +886,7 @@ export default function ModalEditarTransaccion({
                         <div>{formatAmount(totalFinal)}</div>
                         {isExchangeRateValid && totalFinal > 0 && (
                           <div className="text-xs font-medium">
-                            {formatARS(totalFinal)}
+                            {formatARSFromNative(totalFinal)}
                           </div>
                         )}
                       </div>
@@ -902,7 +902,7 @@ export default function ModalEditarTransaccion({
                       >
                         <div>{formatAmount(totalPagos)}</div>
                         {isExchangeRateValid && totalPagos > 0 && (
-                          <div className="text-xs">{formatARS(totalPagos)}</div>
+                          <div className="text-xs">{formatARSFromNative(totalPagos)}</div>
                         )}
                       </div>
                     </div>
@@ -913,7 +913,7 @@ export default function ModalEditarTransaccion({
                           <div>{formatAmount(diferencia)}</div>
                           {isExchangeRateValid && Math.abs(diferencia) > 0 && (
                             <div className="text-xs">
-                              {formatARS(diferencia)}
+                              {formatARSFromNative(diferencia)}
                             </div>
                           )}
                         </div>
