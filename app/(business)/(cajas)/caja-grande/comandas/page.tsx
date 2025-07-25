@@ -88,19 +88,43 @@ export default function ComandasTraspasadasPage() {
     return coincideBusqueda && perteneceAlTraspaso;
   });
 
-  // Estadísticas separadas por moneda
+  // Estadísticas separadas por moneda usando métodos de pago reales
+  const calcularTotalesPorMoneda = (comandas: typeof comandasValidadas) => {
+    let totalUSD = 0;
+    let totalARS = 0;
+    
+    comandas.forEach((comanda) => {
+      const metodosUSD = comanda.metodosPago.filter((mp) => mp.moneda === 'USD');
+      const metodosARS = comanda.metodosPago.filter((mp) => mp.moneda === 'ARS');
+      
+      totalUSD += metodosUSD.reduce((sum, mp) => sum + mp.monto, 0);
+      totalARS += metodosARS.reduce((sum, mp) => sum + mp.monto, 0);
+    });
+    
+    return { totalUSD, totalARS };
+  };
+
+  const { totalUSD, totalARS } = calcularTotalesPorMoneda(comandasValidadas);
+
   const estadisticas = {
     totalComandas: comandasValidadas.length,
-    montoTotalUSD: comandasValidadas
-      .filter((c) => c.moneda === 'USD')
-      .reduce((sum, c) => sum + c.totalFinal, 0),
-    montoTotalARS: comandasValidadas
-      .filter((c) => c.moneda === 'ARS')
-      .reduce((sum, c) => sum + c.totalFinal, 0),
+    montoTotalUSD: totalUSD,
+    montoTotalARS: totalARS,
     totalTraspasos: traspasos.length,
     ultimoTraspaso: traspasos[0]?.fechaTraspaso || null,
   };
 
+  // Función helper para calcular montos por moneda de una comanda
+  const calcularMontosComanda = (comanda: typeof comandasValidadas[0]) => {
+    const metodosUSD = comanda.metodosPago.filter((mp) => mp.moneda === 'USD');
+    const metodosARS = comanda.metodosPago.filter((mp) => mp.moneda === 'ARS');
+    
+    const totalUSD = metodosUSD.reduce((sum, mp) => sum + mp.monto, 0);
+    const totalARS = metodosARS.reduce((sum, mp) => sum + mp.monto, 0);
+    
+    return { totalUSD, totalARS };
+  };
+  
   const handleVerDetalles = (comandaId: string) => {
     setComandaSeleccionada(comandaId);
     setShowModalDetalles(true);
@@ -300,6 +324,9 @@ export default function ComandasTraspasadasPage() {
                                 )).join(', ')
                               : `Efectivo - ${comanda.moneda}`;
 
+                            // Calcular montos reales por moneda
+                            const { totalUSD, totalARS } = calcularMontosComanda(comanda);
+
                             return (
                               <TableRow
                                 key={comanda.id}
@@ -327,10 +354,17 @@ export default function ComandasTraspasadasPage() {
                                   </span>
                                 </TableCell>
                                 <TableCell className="font-medium text-green-600">
-                                  {comanda.moneda === 'USD' 
-                                    ? formatUSD(comanda.totalFinal)
-                                    : formatARSFromNative(comanda.totalFinal)
-                                  }
+                                  <div className="space-y-1">
+                                    {totalUSD > 0 && (
+                                      <div>{formatUSD(totalUSD)}</div>
+                                    )}
+                                    {totalARS > 0 && (
+                                      <div>{formatARSFromNative(totalARS)}</div>
+                                    )}
+                                    {totalUSD === 0 && totalARS === 0 && (
+                                      <div>$0.00</div>
+                                    )}
+                                  </div>
                                 </TableCell>
                                 <TableCell>
                                   <div className="max-w-[200px]">
