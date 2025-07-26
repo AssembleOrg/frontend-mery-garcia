@@ -292,7 +292,7 @@ export default function ModalCliente({
                     )}
                   </Label>
                   <div className="relative mt-1">
-                    <span className="absolute top-1/2 left-3 text-sm font-semibold text-[#8b5a6b]">ARS</span>
+                    <span className="absolute top-1/2 left-3 -translate-y-1/2 text-sm font-semibold text-[#8b5a6b]">ARS</span>
                     <Input
                       id="seña-ars"
                       type="number"

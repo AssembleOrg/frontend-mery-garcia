@@ -142,7 +142,7 @@ export default function ModalVerDetalles({
       {/* Modal */}
       <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
         <div
-          className="flex max-h-[90vh] w-full max-w-4xl flex-col rounded-lg bg-white shadow-2xl"
+          className="flex max-h-[90vh] w-full max-w-4xl flex-col rounded-lg bg-white/95 shadow-2xl backdrop-blur-sm"
           onClick={(e) => e.stopPropagation()}
         >
           {/* Header */}
@@ -172,7 +172,7 @@ export default function ModalVerDetalles({
               {/* Estados y Información General */}
               <div className="grid gap-4 lg:grid-cols-2">
                 {/* Estados */}
-                <Card>
+                <Card className="bg-white/80 border-[#f9bbc4]/20">
                   <CardHeader className="pb-3">
                     <CardTitle className="flex items-center gap-2 text-lg">
                       <Shield className="h-5 w-5" />
@@ -206,7 +206,7 @@ export default function ModalVerDetalles({
                 </Card>
 
                 {/* Información General */}
-                <Card>
+                <Card className="bg-white/80 border-[#f9bbc4]/20">
                   <CardHeader className="pb-3">
                     <CardTitle className="flex items-center gap-2 text-lg">
                       <Calendar className="h-5 w-5" />
@@ -233,7 +233,7 @@ export default function ModalVerDetalles({
               {/* Cliente y Personal */}
               <div className="grid gap-4 lg:grid-cols-2">
                 {/* Cliente */}
-                <Card>
+                <Card className="bg-white/80 border-[#f9bbc4]/20">
                   <CardHeader className="pb-3">
                     <CardTitle className="flex items-center gap-2 text-lg">
                       <User className="h-5 w-5" />
@@ -261,7 +261,7 @@ export default function ModalVerDetalles({
                 </Card>
 
                 {/* Personal */}
-                <Card>
+                <Card className="bg-white/80 border-[#f9bbc4]/20">
                   <CardHeader className="pb-3">
                     <CardTitle className="flex items-center gap-2 text-lg">
                       <User className="h-5 w-5" />
@@ -473,7 +473,7 @@ export default function ModalVerDetalles({
 
               {/* Observaciones */}
               {comanda.observaciones && (
-                <Card>
+                <Card className="bg-white/80 border-[#f9bbc4]/20">
                   <CardHeader className="pb-3">
                     <CardTitle className="flex items-center gap-2 text-lg">
                       <FileText className="h-5 w-5" />

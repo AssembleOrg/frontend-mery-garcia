@@ -24,6 +24,8 @@ import SummaryCardCount from '@/components/common/SummaryCardCount';
 import ModalEditarTransaccion from '@/components/cajas/ModalEditarTransaccion';
 import { useCurrencyConverter } from '@/hooks/useCurrencyConverter';
 import { formatDate } from '@/lib/utils';
+import { useRecordsStore } from '@/features/records/store/recordsStore';
+import ResidualDisplay from '@/components/cajas/ResidualDisplay';
 
 const breadcrumbItems = [
   { label: 'Inicio', href: '/' },
@@ -112,6 +114,16 @@ export default function EgresosPage() {
   // Date range filter state
   const [dateRange, setDateRange] = useState<DateRange | undefined>();
 
+  // Get traspasos for residual display
+  const { traspasos } = useRecordsStore();
+
+  // Find last transfer with residual
+  const ultimoResidual = traspasos
+    .filter(t => t.esTraspasoParcial && 
+                ((t.montoResidualUSD || 0) > 0 || (t.montoResidualARS || 0) > 0))
+    .sort((a, b) => new Date(b.fechaTraspaso).getTime() - 
+                   new Date(a.fechaTraspaso).getTime())[0];
+
   // Use clean hook for outgoing transactions
   const {
     data: transactions,
@@ -119,6 +131,7 @@ export default function EgresosPage() {
     pagination,
     filters,
     actualizarFiltros,
+    limpiarFiltros,
     exportToPDF,
     exportToCSV,
   } = useTransactions({
@@ -187,9 +200,11 @@ export default function EgresosPage() {
 
     // Filtrar transacciones: mostrar solo las que corresponden a caja-chica
     const transaccionesFiltradas = transactions.filter(transaction => {
-      // Si es un movimiento manual, verificar que el origen sea caja-chica
+      // Si es un movimiento manual, verificar que sea un egreso real de caja-chica
       if (transaction.cliente.nombre === 'Movimiento Manual') {
-        return transaction.metadata?.cajaOrigen === 'caja_1';
+        // Solo mostrar egresos reales de caja-chica (no ingresos de transferencias)
+        return transaction.tipo === 'egreso' && 
+               transaction.metadata?.cajaOrigen === 'caja_1';
       }
       // Las transacciones normales se muestran siempre
       return true;
@@ -266,7 +281,7 @@ export default function EgresosPage() {
                     <h1 className="text-2xl font-bold text-[#4a3540]">
                       ✨ Gestión de Transacciones de Egreso
                     </h1>
-                    <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+                    <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
                       <SummaryCardDual
                         title="💰 Total Egresos"
                         totalUSD={statistics.totalOutgoingUSD ?? 0}
@@ -294,6 +309,13 @@ export default function EgresosPage() {
                         subtitle="proveedores únicos"
                         valueClassName="text-purple-600"
                       />
+                      {ultimoResidual && (
+                        <ResidualDisplay
+                          residualUSD={ultimoResidual.montoResidualUSD || 0}
+                          residualARS={ultimoResidual.montoResidualARS || 0}
+                          fecha={ultimoResidual.fechaTraspaso}
+                        />
+                      )}
                     </div>
                   </div>
 
@@ -328,6 +350,7 @@ export default function EgresosPage() {
                         <TableFilters
                           filters={filters}
                           onFiltersChange={actualizarFiltros}
+                          onClearFilters={limpiarFiltros}
                           columns={columns}
                           onColumnsChange={setColumns}
                           exportToPDF={exportToPDF}

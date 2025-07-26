@@ -121,12 +121,31 @@ export class ComandaValidationService {
     fechaDesde: Date,
     fechaHasta: Date
   ): ResumenConMontoParcial {
-    // Filtrar comandas en el rango de fechas y que NO estén validadas
+    // Filtrar comandas en el rango de fechas
     const comandasEnRango = comandas.filter((comanda) => {
       const fechaComanda = new Date(comanda.fecha);
       const enRango = fechaComanda >= fechaDesde && fechaComanda <= fechaHasta;
-      const noValidada = comanda.estadoValidacion !== 'validado';
-      return enRango && noValidada;
+      
+      if (!enRango) return false;
+      
+      // Incluir comandas no validadas (flujo normal)
+      if (comanda.estadoValidacion !== 'validado') {
+        return true;
+      }
+      
+      // Incluir movimientos manuales que corresponden a caja-chica aunque sean 'validado'
+      if (comanda.cliente.nombre === 'Movimiento Manual' && comanda.metadata) {
+        // Incluir ingresos a caja-chica (transferencias desde caja-grande)
+        if (comanda.tipo === 'ingreso' && comanda.metadata.cajaDestino === 'caja_1') {
+          return true;
+        }
+        // Incluir egresos directos de caja-chica
+        if (comanda.tipo === 'egreso' && comanda.metadata.cajaOrigen === 'caja_1' && comanda.metadata.cajaDestino === 'caja_1') {
+          return true;
+        }
+      }
+      
+      return false;
     });
 
     // Separar por tipo
@@ -186,7 +205,26 @@ export class ComandaValidationService {
 
     comandas.forEach((c) => {
       const f = new Date(c.fecha);
-      if (f >= desde && f <= hasta && c.estadoValidacion !== 'validado') {
+      const enRango = f >= desde && f <= hasta;
+      
+      if (!enRango) return;
+      
+      // Incluir comandas no validadas (flujo normal)
+      let incluir = c.estadoValidacion !== 'validado';
+      
+      // Incluir movimientos manuales que corresponden a caja-chica aunque sean 'validado'
+      if (!incluir && c.cliente.nombre === 'Movimiento Manual' && c.metadata) {
+        // Incluir ingresos a caja-chica (transferencias desde caja-grande)
+        if (c.tipo === 'ingreso' && c.metadata.cajaDestino === 'caja_1') {
+          incluir = true;
+        }
+        // Incluir egresos directos de caja-chica
+        if (c.tipo === 'egreso' && c.metadata.cajaOrigen === 'caja_1' && c.metadata.cajaDestino === 'caja_1') {
+          incluir = true;
+        }
+      }
+      
+      if (incluir) {
         if (c.estado === 'completado') {
           totalCompletados += 1;
 
@@ -323,12 +361,28 @@ export class ComandaValidationService {
     // Obtener comandas completadas en el rango
     const comandasCompletadas = comandas.filter((c) => {
       const f = new Date(c.fecha);
-      return (
-        f >= desde &&
-        f <= hasta &&
-        c.estado === 'completado' &&
-        c.estadoValidacion !== 'validado'
-      );
+      const enRango = f >= desde && f <= hasta && c.estado === 'completado';
+      
+      if (!enRango) return false;
+      
+      // Incluir comandas no validadas (flujo normal)
+      if (c.estadoValidacion !== 'validado') {
+        return true;
+      }
+      
+      // Incluir movimientos manuales que corresponden a caja-chica aunque sean 'validado'
+      if (c.cliente.nombre === 'Movimiento Manual' && c.metadata) {
+        // Incluir ingresos a caja-chica (transferencias desde caja-grande)
+        if (c.tipo === 'ingreso' && c.metadata.cajaDestino === 'caja_1') {
+          return true;
+        }
+        // Incluir egresos directos de caja-chica
+        if (c.tipo === 'egreso' && c.metadata.cajaOrigen === 'caja_1' && c.metadata.cajaDestino === 'caja_1') {
+          return true;
+        }
+      }
+      
+      return false;
     });
 
     // Calcular montos totales disponibles por moneda
@@ -379,15 +433,44 @@ export class ComandaValidationService {
     const idsAValidar: string[] = [];
     const comandasActualizadas = comandas.map((c) => {
       const f = new Date(c.fecha);
-      if (
-        f >= desde &&
-        f <= hasta &&
-        c.estado === 'completado' &&
-        c.estadoValidacion !== 'validado'
-      ) {
+      const enRango = f >= desde && f <= hasta && c.estado === 'completado';
+      
+      if (!enRango) return c;
+      
+      // Caso 1: Comandas normales (no validadas) - flujo estándar
+      if (c.estadoValidacion !== 'validado') {
         idsAValidar.push(c.id);
         return { ...c, estadoValidacion: 'validado' as const };
       }
+      
+      // Caso 2: Movimientos manuales de caja-chica (ya validados) - incluir en traspaso
+      if (c.cliente.nombre === 'Movimiento Manual' && c.metadata) {
+        // Incluir ingresos a caja-chica (transferencias desde caja-grande)
+        if (c.tipo === 'ingreso' && c.metadata.cajaDestino === 'caja_1') {
+          idsAValidar.push(c.id);
+          // Cambiar cajaDestino para indicar que ahora pertenece a caja-grande
+          return { 
+            ...c, 
+            metadata: { 
+              ...c.metadata, 
+              cajaDestino: 'caja_2' 
+            } 
+          };
+        }
+        // Incluir egresos directos de caja-chica
+        if (c.tipo === 'egreso' && c.metadata.cajaOrigen === 'caja_1' && c.metadata.cajaDestino === 'caja_1') {
+          idsAValidar.push(c.id);
+          // Cambiar cajaDestino para indicar que ahora pertenece a caja-grande
+          return { 
+            ...c, 
+            metadata: { 
+              ...c.metadata, 
+              cajaDestino: 'caja_2' 
+            } 
+          };
+        }
+      }
+      
       return c;
     });
 

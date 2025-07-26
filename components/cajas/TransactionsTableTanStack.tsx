@@ -199,10 +199,17 @@ export default function TransactionsTableTanStack({
         
         const formatted = formatWithExchangeRate(total, row.original);
         return (
-          <div
-            className={`text-right font-semibold ${isValidated ? 'text-gray-500' : 'text-green-600'}`}
-          >
-            {formatted.usd}
+          <div className="text-right">
+            <div
+              className={`font-semibold ${isValidated ? 'text-gray-500' : 'text-green-600'}`}
+            >
+              {formatted.usd}
+            </div>
+            <div
+              className={`text-xs ${isValidated ? 'text-gray-400' : 'text-muted-foreground'}`}
+            >
+              {formatted.ars}
+            </div>
           </div>
         );
       },
@@ -239,6 +246,12 @@ export default function TransactionsTableTanStack({
             case 'tarjeta':
               return 'bg-blue-100 text-blue-800';
             case 'transferencia':
+              return 'bg-purple-100 text-purple-800';
+            case 'giftcard':
+              return 'bg-pink-100 text-pink-800';
+            case 'qr':
+              return 'bg-indigo-100 text-indigo-800';
+            case 'precio_lista':
               return 'bg-purple-100 text-purple-800';
             case 'mixto':
               return 'bg-orange-100 text-orange-800';

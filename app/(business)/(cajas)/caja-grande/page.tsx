@@ -27,6 +27,8 @@ import {
   FileText,
 } from 'lucide-react';
 import Link from 'next/link';
+import { DateRangePicker } from '@/components/ui/date-range-picker';
+import { DateRange } from 'react-day-picker';
 
 const breadcrumbItems = [
   { label: 'Inicio', href: '/' },
@@ -41,14 +43,18 @@ export default function CajaGrandePage() {
 
   // Estado para modal de movimientos manuales
   const [showModalMovimiento, setShowModalMovimiento] = useState(false);
+  
+  // Estado para filtro de fechas
+  const [dateRange, setDateRange] = useState<DateRange | undefined>();
 
   // Hook para transacciones con funcionalidad de exportación
   const { exportToCSV, exportToPDF } = useTransactions({
     type: 'all',
-    dateRange: {
+    dateRange: dateRange || {
       from: new Date(new Date().getFullYear(), new Date().getMonth(), 1),
       to: new Date(),
     },
+    validatedOnly: true,
   });
 
   // Hooks para estadísticas de caja-grande (solo comandas validadas)
@@ -101,21 +107,49 @@ export default function CajaGrandePage() {
     const ingresos = comandasValidadas.filter(c => c.tipo === 'ingreso');
     const egresos = comandasValidadas.filter(c => c.tipo === 'egreso');
     
-    const calcularTotalesPorMoneda = (comandas: typeof comandasValidadas) => {
-      return comandas.reduce((acc, comanda) => {
-        comanda.metodosPago.forEach(metodo => {
-          if (metodo.moneda === 'USD') {
-            acc.totalUSD += metodo.monto;
-          } else if (metodo.moneda === 'ARS') {
-            acc.totalARS += metodo.monto;
+    const calcularTotalesPorMonedaConResiduales = (comandas: typeof comandasValidadas) => {
+      const totales = { totalUSD: 0, totalARS: 0 };
+      const traspasosCalculados = new Set<string>();
+      
+      comandas.forEach(comanda => {
+        // Para movimientos manuales, usar el monto completo
+        if (comanda.cliente.nombre === 'Movimiento Manual') {
+          comanda.metodosPago.forEach(metodo => {
+            if (metodo.moneda === 'USD') {
+              totales.totalUSD += metodo.monto;
+            } else if (metodo.moneda === 'ARS') {
+              totales.totalARS += metodo.monto;
+            }
+          });
+          return;
+        }
+        
+        // Para comandas de traspasos, usar el monto transferido directo
+        const traspasoDeComanda = traspasos.find(t => 
+          t.comandasTraspasadas.includes(comanda.id)
+        );
+        
+        if (traspasoDeComanda && !traspasosCalculados.has(traspasoDeComanda.fechaTraspaso)) {
+          // Marcar este traspaso como calculado para evitar duplicados
+          traspasosCalculados.add(traspasoDeComanda.fechaTraspaso);
+          
+          if (traspasoDeComanda.esTraspasoParcial) {
+            // Si es traspaso parcial, usar montoParcial (monto real transferido)
+            totales.totalUSD += traspasoDeComanda.montoParcialUSD || 0;
+            totales.totalARS += traspasoDeComanda.montoParcialARS || 0;
+          } else {
+            // Si es traspaso completo, usar montoTotal
+            totales.totalUSD += traspasoDeComanda.montoTotalUSD || 0;
+            totales.totalARS += traspasoDeComanda.montoTotalARS || 0;
           }
-        });
-        return acc;
-      }, { totalUSD: 0, totalARS: 0 });
+        }
+      });
+      
+      return totales;
     };
     
-    const ingresosTotal = calcularTotalesPorMoneda(ingresos);
-    const egresosTotal = calcularTotalesPorMoneda(egresos);
+    const ingresosTotal = calcularTotalesPorMonedaConResiduales(ingresos);
+    const egresosTotal = calcularTotalesPorMonedaConResiduales(egresos);
     
     return {
       totalIngresosUSD: ingresosTotal.totalUSD,
@@ -126,7 +160,7 @@ export default function CajaGrandePage() {
       saldoNetoUSD: ingresosTotal.totalUSD - egresosTotal.totalUSD,
       saldoNetoARS: ingresosTotal.totalARS - egresosTotal.totalARS,
     };
-  }, [comandasValidadas]);
+  }, [comandasValidadas, traspasos]);
 
   const ultimoTraspaso = traspasos[0];
 
@@ -262,6 +296,30 @@ export default function CajaGrandePage() {
                               </div>
                             </div>
                           </div>
+                          {/* Residual (solo si es traspaso parcial) */}
+                          {ultimoTraspaso.esTraspasoParcial && 
+                           ((ultimoTraspaso.montoResidualUSD || 0) > 0 || (ultimoTraspaso.montoResidualARS || 0) > 0) && (
+                            <div>
+                              <p className="mb-2 text-sm text-gray-600">Residual en Caja Chica</p>
+                              <div className="space-y-1">
+                                <div className="flex justify-between text-sm">
+                                  <span>USD:</span>
+                                  <span className="font-medium text-orange-600">
+                                    {formatUSD(ultimoTraspaso.montoResidualUSD || 0)}
+                                  </span>
+                                </div>
+                                <div className="flex justify-between text-sm">
+                                  <span>ARS:</span>
+                                  <span className="font-medium text-orange-600">
+                                    {formatARSFromNative(ultimoTraspaso.montoResidualARS || 0)}
+                                  </span>
+                                </div>
+                              </div>
+                              <p className="mt-1 text-xs text-gray-500">
+                                ⚠️ Monto que quedó en Caja Chica del traspaso parcial
+                              </p>
+                            </div>
+                          )}
 
                           {/* Métodos de pago */}
                           {Object.keys(resumenMetodosPagoUltimoTraspaso)
@@ -348,6 +406,19 @@ export default function CajaGrandePage() {
                     </CardHeader>
                     <CardContent>
                       <div className="space-y-4">
+                        {/* Filtro de fechas para exportación */}
+                        <div className="space-y-2">
+                          <p className="text-sm font-medium text-gray-700">
+                            📅 Período para exportar
+                          </p>
+                          <DateRangePicker
+                            dateRange={dateRange}
+                            onDateRangeChange={setDateRange}
+                            placeholder="Seleccionar período"
+                            accentColor="#f9bbc4"
+                          />
+                        </div>
+
                         {/* Movimientos Manuales */}
                         <div className="space-y-2">
                           <p className="text-sm font-medium text-gray-700">
