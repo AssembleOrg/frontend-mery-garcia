@@ -37,10 +37,14 @@ import {
   Filter,
   ArrowUpRight,
   Shield,
+  Download,
 } from 'lucide-react';
 
 import ModalVerDetalles from '@/components/validacion/ModalVerDetalles';
 import TraspasoModal from '@/components/cajas/TraspasoModal';
+import { DateRangePicker } from '@/components/ui/date-range-picker';
+import { DateRange } from 'react-day-picker';
+import { exportComandasToCSV, exportComandasToPDF } from '@/lib/exportUtils';
 
 const breadcrumbItems = [
   { label: 'Inicio', href: '/' },
@@ -52,7 +56,7 @@ const breadcrumbItems = [
 export default function ComandasTraspasadasPage() {
   const { comandas } = useComandaStore();
   const { traspasos } = useRecordsStore();
-  const { formatUSD, formatARS, formatARSFromNative } = useCurrencyConverter();
+  const { formatUSD, formatARS, formatARSFromNative, exchangeRate } = useCurrencyConverter();
 
   // Estados locales
   const [busqueda, setBusqueda] = useState('');
@@ -62,21 +66,37 @@ export default function ComandasTraspasadasPage() {
   const [comandaSeleccionada, setComandaSeleccionada] = useState<string | null>(
     null
   );
+  const [dateRange, setDateRange] = useState<DateRange | undefined>();
 
   // Filtrar comandas validadas (traspasadas) EXCLUYENDO movimientos manuales
   const comandasValidadas = comandas.filter(
     (c) => c.estadoValidacion === 'validado' && c.cliente.nombre !== 'Movimiento Manual'
   );
 
-  // Filtrar por búsqueda y traspaso
+  // Filtrar por búsqueda, traspaso y fechas
   const comandasFiltradas = comandasValidadas.filter((comanda) => {
     const coincideBusqueda =
       comanda.numero.toLowerCase().includes(busqueda.toLowerCase()) ||
       comanda.cliente.nombre.toLowerCase().includes(busqueda.toLowerCase()) ||
       comanda.mainStaff.nombre.toLowerCase().includes(busqueda.toLowerCase());
 
+    // Filtro por rango de fechas
+    const coincideFecha = dateRange ? 
+      (() => {
+        const comandaDate = new Date(comanda.fecha);
+        const fromDate = dateRange.from;
+        const toDate = dateRange.to;
+        
+        if (fromDate && toDate) {
+          return comandaDate >= fromDate && comandaDate <= toDate;
+        } else if (fromDate) {
+          return comandaDate >= fromDate;
+        }
+        return true;
+      })() : true;
+
     if (traspasoSeleccionado === 'todos') {
-      return coincideBusqueda;
+      return coincideBusqueda && coincideFecha;
     }
 
     // Verificar si la comanda pertenece al traspaso seleccionado
@@ -85,7 +105,7 @@ export default function ComandasTraspasadasPage() {
       comanda.id
     );
 
-    return coincideBusqueda && perteneceAlTraspaso;
+    return coincideBusqueda && coincideFecha && perteneceAlTraspaso;
   });
 
   // Estadísticas separadas por moneda usando métodos de pago reales
@@ -130,6 +150,21 @@ export default function ComandasTraspasadasPage() {
     setShowModalDetalles(true);
   };
 
+  // Funciones de exportación
+  const handleExportCSV = () => {
+    exportComandasToCSV(comandasFiltradas, exchangeRate, {
+      filename: `comandas_traspasadas_${new Date().toISOString().split('T')[0]}.csv`,
+      dateRange: dateRange ? { from: dateRange.from!, to: dateRange.to } : undefined,
+    });
+  };
+
+  const handleExportPDF = () => {
+    exportComandasToPDF(comandasFiltradas, exchangeRate, {
+      filename: `comandas_traspasadas_${new Date().toISOString().split('T')[0]}.pdf`,
+      dateRange: dateRange ? { from: dateRange.from!, to: dateRange.to } : undefined,
+    });
+  };
+
   const getEstadoColor = (estado: string) => {
     switch (estado) {
       case 'completado':
@@ -160,13 +195,16 @@ export default function ComandasTraspasadasPage() {
 
   return (
     <MainLayout>
-      <div className="min-h-screen bg-gradient-to-br from-[#fef7f0] to-[#fdf2f8]">
+      <div className="min-h-screen bg-gradient-to-br from-[#f9bbc4]/10 via-[#e8b4c6]/8 to-[#d4a7ca]/6">
         <StandardPageBanner title="Comandas Traspasadas" />
+        
+        <div className="relative -mt-12 h-12 bg-gradient-to-b from-transparent to-[#f9bbc4]/8" />
 
         <ManagerOrAdminOnly>
           <ClientOnly>
-            <div className="container mx-auto px-4 py-6">
-              <div className="mx-auto max-w-7xl">
+            <div className="bg-gradient-to-b from-[#f9bbc4]/5 via-[#e8b4c6]/3 to-[#d4a7ca]/5">
+              <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+                <div className="container mx-auto py-6">
                 <StandardBreadcrumbs items={breadcrumbItems} />
 
                 {/* Estadísticas */}
@@ -252,41 +290,88 @@ export default function ComandasTraspasadasPage() {
                 {/* Filtros */}
                 <Card className="mb-6 border border-[#f9bbc4]/20 bg-white/80">
                   <CardContent className="p-4">
-                    <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-                      {/* Búsqueda */}
-                      <div className="relative max-w-md flex-1">
-                        <Search className="absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-gray-400" />
-                        <Input
-                          placeholder="Buscar por número, cliente o vendedor..."
-                          value={busqueda}
-                          onChange={(e) => setBusqueda(e.target.value)}
-                          className="pl-10"
-                        />
+                    <div className="space-y-4">
+                      <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+                        {/* Búsqueda */}
+                        <div className="relative max-w-md flex-1">
+                          <Search className="absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-gray-400" />
+                          <Input
+                            placeholder="Buscar por número, cliente o vendedor..."
+                            value={busqueda}
+                            onChange={(e) => setBusqueda(e.target.value)}
+                            className="pl-10"
+                          />
+                        </div>
+
+                        {/* Filtro por traspaso */}
+                        <div className="flex items-center gap-2">
+                          <Filter className="h-4 w-4 text-gray-500" />
+                          <Select
+                            value={traspasoSeleccionado}
+                            onValueChange={setTraspasoSeleccionado}
+                          >
+                            <SelectTrigger className="w-48">
+                              <SelectValue placeholder="Filtrar por traspaso" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="todos">
+                                Todos los traspasos
+                              </SelectItem>
+                              {traspasos.map((traspaso) => (
+                                <SelectItem key={traspaso.id} value={traspaso.id}>
+                                  {formatDate(traspaso.fechaTraspaso)} -{' '}
+                                  {traspaso.comandasTraspasadas.length} comandas
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
                       </div>
 
-                      {/* Filtro por traspaso */}
-                      <div className="flex items-center gap-2">
-                        <Filter className="h-4 w-4 text-gray-500" />
-                        <Select
-                          value={traspasoSeleccionado}
-                          onValueChange={setTraspasoSeleccionado}
-                        >
-                          <SelectTrigger className="w-48">
-                            <SelectValue placeholder="Filtrar por traspaso" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="todos">
-                              Todos los traspasos
-                            </SelectItem>
-                            {traspasos.map((traspaso) => (
-                              <SelectItem key={traspaso.id} value={traspaso.id}>
-                                {formatDate(traspaso.fechaTraspaso)} -{' '}
-                                {traspaso.comandasTraspasadas.length} comandas
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
+                      {/* Segunda fila con filtro de fechas y exportación */}
+                      <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+                        {/* Filtro de fechas */}
+                        <div className="max-w-xs">
+                          <DateRangePicker
+                            dateRange={dateRange}
+                            onDateRangeChange={setDateRange}
+                            placeholder="Filtrar por fecha"
+                            accentColor="#f9bbc4"
+                          />
+                        </div>
+
+                        {/* Botones de exportación */}
+                        <div className="flex items-center gap-2">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={handleExportCSV}
+                            className="border-[#f9bbc4] text-[#4a3540] hover:bg-[#f9bbc4]/10"
+                          >
+                            <Download className="mr-2 h-4 w-4" />
+                            CSV
+                          </Button>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={handleExportPDF}
+                            className="border-[#f9bbc4] text-[#4a3540] hover:bg-[#f9bbc4]/10"
+                          >
+                            <Download className="mr-2 h-4 w-4" />
+                            PDF
+                          </Button>
+                        </div>
                       </div>
+
+                      {/* Indicador de filtros activos */}
+                      {(dateRange || busqueda || traspasoSeleccionado !== 'todos') && (
+                        <div className="flex items-center gap-2 text-xs text-[#6b4c57]">
+                          <div className="h-2 w-2 rounded-full bg-[#f9bbc4]"></div>
+                          <span>
+                            Filtros activos: {comandasFiltradas.length} de {comandasValidadas.length} comandas
+                          </span>
+                        </div>
+                      )}
                     </div>
                   </CardContent>
                 </Card>
@@ -484,6 +569,9 @@ export default function ComandasTraspasadasPage() {
                                         },
                                         [] as string[]
                                       ),
+                                      esTraspasoParcial: traspaso.esTraspasoParcial,
+                                      montoResidualUSD: traspaso.montoResidualUSD || 0,
+                                      montoResidualARS: traspaso.montoResidualARS || 0,
                                     }}
                                     comandas={comandasDelTraspaso}
                                     trigger={
@@ -502,6 +590,7 @@ export default function ComandasTraspasadasPage() {
                     </CardContent>
                   </Card>
                 )}
+                </div>
               </div>
             </div>
           </ClientOnly>

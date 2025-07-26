@@ -44,6 +44,7 @@ import { usePersonal } from '@/features/personal/hooks/usePersonal';
 interface TableFiltersProps {
   filters: FiltrosEncomienda;
   onFiltersChange: (filters: FiltrosEncomienda) => void;
+  onClearFilters?: () => void;
   columns: ColumnaCaja[];
   onColumnsChange: (columns: ColumnaCaja[]) => void;
   accentColor?: string;
@@ -54,6 +55,7 @@ interface TableFiltersProps {
 export default function TableFilters({
   filters,
   onFiltersChange,
+  onClearFilters,
   columns,
   onColumnsChange,
   exportToPDF,
@@ -72,7 +74,21 @@ export default function TableFilters({
   };
 
   const clearFilters = () => {
-    onFiltersChange({});
+    if (onClearFilters) {
+      // Use the dedicated clear function if provided
+      onClearFilters();
+    } else {
+      // Fallback: Clear all filter properties by setting them to undefined
+      const clearedFilters: FiltrosEncomienda = {};
+      Object.keys(filters).forEach(key => {
+        if (key !== 'busqueda') {
+          (clearedFilters as any)[key] = undefined;
+        }
+      });
+      // Also clear the search term
+      clearedFilters.busqueda = undefined;
+      onFiltersChange(clearedFilters);
+    }
   };
 
   const hasActiveFilters = Object.keys(filters).some(

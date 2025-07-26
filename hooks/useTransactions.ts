@@ -23,7 +23,7 @@ export function useTransactions({
   validatedOnly = false,
 }: UseTransactionsOptions) {
   const { comandas } = useComandas();
-  const { filters, actualizarFiltros } = useFiltrosComanda();
+  const { filters, actualizarFiltros, limpiarFiltros } = useFiltrosComanda();
   const { exchangeRate } = useCurrencyConverter();
 
   // Check if date is in range
@@ -113,10 +113,28 @@ export function useTransactions({
         (comanda) => comanda.estadoValidacion === 'validado'
       );
     } else {
-      // For caja-chica: exclude validated commands (reset after transfer)
-      return filteredData.filter(
-        (comanda) => comanda.estadoValidacion !== 'validado'
-      );
+      // For caja-chica: exclude validated commands but include manual movements for caja-chica
+      return filteredData.filter((comanda) => {
+        // Include non-validated commands (normal transactions)
+        if (comanda.estadoValidacion !== 'validado') {
+          return true;
+        }
+        
+        // For manual movements, include only those that belong to caja-chica
+        if (comanda.cliente.nombre === 'Movimiento Manual' && comanda.metadata) {
+          // Include ingresos that have caja-chica as destination
+          if (comanda.tipo === 'ingreso' && comanda.metadata.cajaDestino === 'caja_1') {
+            return true;
+          }
+          // Include egresos that have caja-chica as origin (and destination for direct operations)
+          if (comanda.tipo === 'egreso' && 
+              (comanda.metadata.cajaOrigen === 'caja_1' || comanda.metadata.cajaDestino === 'caja_1')) {
+            return true;
+          }
+        }
+        
+        return false;
+      });
     }
   }, [filteredData, validatedOnly]);
 
@@ -266,6 +284,7 @@ export function useTransactions({
     pagination,
     filters,
     actualizarFiltros,
+    limpiarFiltros,
 
     // Actions
     handleDelete: (id: string) => {

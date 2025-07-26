@@ -31,6 +31,7 @@ export interface Cliente {
   };
   fechaRegistro: Date;
 }
+
 // Productos y Servicios
 export interface ProductoServicio {
   id: string;
@@ -40,8 +41,8 @@ export interface ProductoServicio {
   businessUnit: UnidadNegocio;
   descripcion?: string;
   activo: boolean;
-  duracion?: number; // minutos para servicios
-  codigoBarras?: string; // para productos
+  duracion?: number;
+  codigoBarras?: string;
 }
 
 // Item seleccionado en la comanda
@@ -69,9 +70,16 @@ export interface Seña {
 }
 
 export interface MetodoPago {
-  tipo: 'efectivo' | 'tarjeta' | 'transferencia' | 'giftcard' | 'qr' | 'mixto' | 'precio_lista';
-  monto: number; // Monto en la moneda especificada
-  moneda: 'USD' | 'ARS'; // Moneda del pago (obligatorio)
+  tipo:
+    | 'efectivo'
+    | 'tarjeta'
+    | 'transferencia'
+    | 'giftcard'
+    | 'qr'
+    | 'mixto'
+    | 'precio_lista';
+  monto: number;
+  moneda: 'USD' | 'ARS';
   giftcard?: {
     nombre: string;
     codigo: string;

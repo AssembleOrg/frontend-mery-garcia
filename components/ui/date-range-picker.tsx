@@ -105,34 +105,24 @@ export function DateRangePicker({
             onSelect={handleDateChange}
             numberOfMonths={2}
           />
-          <div className="border-t p-3">
-            <div className="flex justify-between">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={handleReset}
-                className="border-2 bg-white/80 font-medium shadow-sm transition-all hover:bg-white hover:shadow-md"
-                style={{
-                  borderColor: accentColor,
-                  color: '#4a3540',
-                }}
-              >
-                🗑️ Reiniciar
-              </Button>
-              <div className="flex gap-2">
+          <div className="border-t p-4 space-y-4">
+            {/* Layout responsivo mejorado */}
+            <div className="space-y-3">
+              {/* Primera fila: Opciones básicas (centradas) */}
+              <div className="flex flex-wrap justify-center gap-3">
                 <Button
                   variant="outline"
                   size="sm"
                   onClick={() => {
                     const today = new Date();
-                    // Asegurar que la fecha sea el inicio del día
-                    today.setHours(0, 0, 0, 0);
+                    const startOfDay = new Date(today);
+                    startOfDay.setHours(0, 0, 0, 0);
                     const endOfDay = new Date(today);
                     endOfDay.setHours(23, 59, 59, 999);
-                    handleDateChange({ from: today, to: endOfDay });
+                    handleDateChange({ from: startOfDay, to: endOfDay });
                     setIsOpen(false);
                   }}
-                  className="border-2 bg-white/80 font-medium shadow-sm transition-all hover:bg-white hover:shadow-md"
+                  className="border-2 bg-white/80 font-medium shadow-sm transition-all hover:bg-white hover:shadow-md min-w-[90px]"
                   style={{
                     borderColor: accentColor,
                     color: '#4a3540',
@@ -153,7 +143,7 @@ export function DateRangePicker({
                     handleDateChange({ from: weekAgo, to: today });
                     setIsOpen(false);
                   }}
-                  className="border-2 bg-white/80 font-medium shadow-sm transition-all hover:bg-white hover:shadow-md"
+                  className="border-2 bg-white/80 font-medium shadow-sm transition-all hover:bg-white hover:shadow-md min-w-[120px]"
                   style={{
                     borderColor: accentColor,
                     color: '#4a3540',
@@ -174,7 +164,7 @@ export function DateRangePicker({
                     handleDateChange({ from: monthAgo, to: today });
                     setIsOpen(false);
                   }}
-                  className="border-2 bg-white/80 font-medium shadow-sm transition-all hover:bg-white hover:shadow-md"
+                  className="border-2 bg-white/80 font-medium shadow-sm transition-all hover:bg-white hover:shadow-md min-w-[110px]"
                   style={{
                     borderColor: accentColor,
                     color: '#4a3540',
@@ -183,6 +173,67 @@ export function DateRangePicker({
                   📈 Último mes
                 </Button>
               </div>
+
+              {/* Segunda fila: Opciones mensuales (centradas) */}
+              <div className="flex flex-wrap justify-center gap-3">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    const today = new Date();
+                    const firstDayOfMonth = new Date(today.getFullYear(), today.getMonth(), 1);
+                    // Asegurar que las fechas sean el inicio y fin del día
+                    firstDayOfMonth.setHours(0, 0, 0, 0);
+                    today.setHours(23, 59, 59, 999);
+                    handleDateChange({ from: firstDayOfMonth, to: today });
+                    setIsOpen(false);
+                  }}
+                  className="border-2 bg-white/80 font-medium shadow-sm transition-all hover:bg-white hover:shadow-md min-w-[100px]"
+                  style={{
+                    borderColor: accentColor,
+                    color: '#4a3540',
+                  }}
+                >
+                  📊 Este mes
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    const today = new Date();
+                    const firstDayOfLastMonth = new Date(today.getFullYear(), today.getMonth() - 1, 1);
+                    const lastDayOfLastMonth = new Date(today.getFullYear(), today.getMonth(), 0);
+                    // Asegurar que las fechas sean el inicio y fin del día
+                    firstDayOfLastMonth.setHours(0, 0, 0, 0);
+                    lastDayOfLastMonth.setHours(23, 59, 59, 999);
+                    handleDateChange({ from: firstDayOfLastMonth, to: lastDayOfLastMonth });
+                    setIsOpen(false);
+                  }}
+                  className="border-2 bg-white/80 font-medium shadow-sm transition-all hover:bg-white hover:shadow-md min-w-[120px]"
+                  style={{
+                    borderColor: accentColor,
+                    color: '#4a3540',
+                  }}
+                >
+                  📈 Mes anterior
+                </Button>
+              </div>
+            </div>
+
+            {/* Botón Reiniciar separado */}
+            <div className="flex justify-center pt-3 border-t border-gray-100">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleReset}
+                className="border-2 bg-white/80 font-medium shadow-sm transition-all hover:bg-white hover:shadow-md px-8"
+                style={{
+                  borderColor: accentColor,
+                  color: '#4a3540',
+                }}
+              >
+                🗑️ Reiniciar
+              </Button>
             </div>
           </div>
         </PopoverContent>

@@ -22,12 +22,20 @@ import {
 import { Badge } from '@/components/ui/badge';
 import { Pagination } from '@/components/ui/pagination';
 import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import {
   Search,
   Download,
   Trash2,
   Calendar,
   Users,
   Activity,
+  Package,
 } from 'lucide-react';
 import { useActivityLogs } from '@/hooks/useActivityLogs';
 import { useActivityStore } from '@/features/activity/store/activityStore';
@@ -44,6 +52,7 @@ export default function AuditoriaPage() {
     new Date()
   );
   const [selectedUser, setSelectedUser] = useState('');
+  const [selectedTipo, setSelectedTipo] = useState<'todos' | 'ingreso' | 'egreso' | 'transferencia' | 'sistema'>('todos');
   const [showUserSearch, setShowUserSearch] = useState(false);
   const [showModalDetalles, setShowModalDetalles] = useState(false);
   const [comandaSeleccionada, setComandaSeleccionada] = useState<string | null>(null);
@@ -54,67 +63,111 @@ export default function AuditoriaPage() {
   const { comandas } = useComandaStore();
   const { formatUSD, formatARSFromNative } = useCurrencyConverter();
 
-  // Filter logs based on selected date and user
-  const filteredLogs = logs.filter((log) => {
-    const logDate = new Date(log.fecha);
-    const matchesDate = selectedDate
-      ? logDate.toDateString() === selectedDate.toDateString()
-      : true;
-    const matchesUser = selectedUser
-      ? log.usuario.toLowerCase().includes(selectedUser.toLowerCase())
-      : true;
-    return matchesDate && matchesUser;
-  });
-
-  // Filtrar movimientos manuales de caja-grande
-  const movimientosManuales = comandas.filter(comanda => {
-    // Solo movimientos manuales
-    if (comanda.cliente.nombre !== 'Movimiento Manual') return false;
+  // Función para determinar el tipo detallado de actividad
+  const determinarTipo = (actividad: any): 'ingreso' | 'egreso' | 'transferencia' | 'sistema' => {
+    if (actividad.tipo === 'movimiento') return 'transferencia';
     
-    // Solo los que ORIGINAN en caja-grande (evita duplicación)
-    if (comanda.metadata?.cajaOrigen !== 'caja_2') return false;
-
-    // Filtrar por fecha si está seleccionada
-    if (selectedDate) {
-      const comandaDate = new Date(comanda.fecha);
-      return comandaDate.toDateString() === selectedDate.toDateString();
-    }
+    // Para logs del sistema, analizar la descripción y metadata
+    if (actividad.data?.metadata?.tipo === 'ingreso') return 'ingreso';
+    if (actividad.data?.metadata?.tipo === 'egreso') return 'egreso';
     
-    return true;
-  });
+    // Analizar la descripción para detectar ingresos/egresos
+    const descripcion = actividad.descripcion?.toLowerCase() || '';
+    if (descripcion.includes('ingreso') || descripcion.includes('comanda creada') && descripcion.includes('ingreso')) return 'ingreso';
+    if (descripcion.includes('egreso') || descripcion.includes('comanda creada') && descripcion.includes('egreso')) return 'egreso';
+    
+    return 'sistema';
+  };
 
-  // Combinar logs y movimientos manuales en una sola lista
+  // Combinar logs y movimientos manuales aplicando TODOS los filtros
   const actividadesUnificadas = useMemo(() => {
-    const logActividades = filteredLogs.map(log => ({
-      id: log.id,
-      fecha: new Date(log.fecha),
-      tipo: 'log' as const,
-      descripcion: log.descripcion,
-      usuario: log.usuario,
-      modulo: log.modulo,
-      data: log
-    }));
+    // Preparar actividades de logs del sistema
+    const logActividades = logs
+      .map(log => {
+        const actividadTemp = {
+          id: log.id,
+          fecha: new Date(log.fecha),
+          tipo: 'log' as const,
+          descripcion: log.descripcion,
+          usuario: log.usuario,
+          modulo: log.modulo,
+          data: log,
+          tipoDetallado: determinarTipo({ tipo: 'log', data: log }),
+          comandaId: log.metadata?.comandaId || null
+        };
+        return actividadTemp;
+      })
+      .filter((actividad) => {
+        // Filtro por fecha
+        const matchesDate = selectedDate
+          ? actividad.fecha.toDateString() === selectedDate.toDateString()
+          : true;
+        
+        // Filtro por usuario
+        const matchesUser = selectedUser
+          ? actividad.usuario.toLowerCase().includes(selectedUser.toLowerCase())
+          : true;
+          
+        // Filtro por tipo detallado
+        const matchesType = selectedTipo === 'todos' || selectedTipo === actividad.tipoDetallado;
+        
+        return matchesDate && matchesUser && matchesType;
+      });
     
-    const movimientosActividades = movimientosManuales.map(movimiento => ({
-      id: movimiento.id,
-      fecha: new Date(movimiento.fecha),
-      tipo: 'movimiento' as const,
-      descripcion: `${movimiento.tipo}: ${movimiento.observaciones}`,
-      usuario: movimiento.mainStaff?.nombre || 'Sistema', // Usar el nombre del staff que hizo el movimiento
-      modulo: 'Movimiento Manual',
-      data: movimiento
-    }));
+    // Preparar actividades de movimientos manuales
+    const movimientosActividades = comandas
+      .map(comanda => {
+        // Solo procesar movimientos manuales de caja-grande
+        if (comanda.cliente.nombre !== 'Movimiento Manual') return null;
+        if (comanda.metadata?.cajaOrigen !== 'caja_2') return null;
+
+        const actividadTemp = {
+          id: comanda.id,
+          fecha: new Date(comanda.fecha),
+          tipo: 'movimiento' as const,
+          descripcion: `${comanda.tipo}: ${comanda.observaciones}`,
+          usuario: comanda.mainStaff?.nombre || 'Sistema',
+          modulo: 'Movimiento Manual',
+          data: comanda,
+          tipoDetallado: 'transferencia' as const,
+          comandaId: comanda.id
+        };
+        return actividadTemp;
+      })
+      .filter((actividad) => {
+        if (!actividad) return false;
+        
+        // Filtro por fecha
+        const matchesDate = selectedDate
+          ? actividad.fecha.toDateString() === selectedDate.toDateString()
+          : true;
+          
+        // Filtro por usuario
+        const matchesUser = selectedUser
+          ? actividad.usuario.toLowerCase().includes(selectedUser.toLowerCase())
+          : true;
+          
+        // Filtro por tipo detallado
+        const matchesType = selectedTipo === 'todos' || selectedTipo === actividad.tipoDetallado;
+        
+        return matchesDate && matchesUser && matchesType;
+      }) as any[];
     
     // Combinar y ordenar por fecha descendente
     return [...logActividades, ...movimientosActividades].sort(
       (a, b) => b.fecha.getTime() - a.fecha.getTime()
     );
-  }, [filteredLogs, movimientosManuales]);
+  }, [logs, comandas, selectedDate, selectedUser, selectedTipo]);
 
-  // Función para ver detalles de movimiento manual
-  const handleVerDetallesMovimiento = (comandaId: string) => {
+  // Función para ver detalles (universal para todos los tipos con comandaId)
+  const handleVerDetalles = (comandaId: string) => {
     setComandaSeleccionada(comandaId);
     setShowModalDetalles(true);
+  };
+
+  // Función para determinar si una actividad tiene detalles disponibles
+  const tieneDetallesDisponibles = (actividad: any): boolean => {
+    return actividad.comandaId && ['ingreso', 'egreso', 'transferencia'].includes(actividad.tipoDetallado);
   };
 
   // Pagination for unified activities
@@ -161,7 +214,8 @@ export default function AuditoriaPage() {
             <div className="bg-gradient-to-b from-[#f9bbc4]/5 via-[#e8b4c6]/3 to-[#d4a7ca]/5">
               <div className="w-full px-4 py-6 sm:px-6 lg:px-8">
                 {/* Statistics Cards */}
-                <div className="mb-6 grid grid-cols-1 gap-4 md:grid-cols-3">
+                <div className="mx-auto max-w-4xl">
+                  <div className="mb-6 grid grid-cols-1 gap-4 md:grid-cols-3">
                   <Card className="border border-[#f9bbc4]/20 bg-white shadow-sm">
                     <CardContent className="p-4">
                       <div className="flex items-center justify-between">
@@ -170,7 +224,7 @@ export default function AuditoriaPage() {
                             Actividades
                           </p>
                           <p className="text-2xl font-bold text-[#4a3540]">
-                            {filteredLogs.length}
+                            {actividadesUnificadas.length}
                           </p>
                         </div>
                         <Activity className="h-8 w-8 text-[#f9bbc4]" />
@@ -213,17 +267,17 @@ export default function AuditoriaPage() {
                       </div>
                     </CardContent>
                   </Card>
-                </div>
+                  </div>
 
-                {/* Filters */}
-                <Card className="mb-6 border border-[#f9bbc4]/20 bg-white shadow-sm">
+                  {/* Filters */}
+                  <Card className="mb-6 border border-[#f9bbc4]/20 bg-white shadow-sm">
                   <CardHeader className="bg-white">
                     <CardTitle className="text-lg text-[#4a3540]">
                       Consultar Actividades
                     </CardTitle>
                   </CardHeader>
                   <CardContent className="space-y-4 bg-white">
-                    <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                    <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
                       {/* Date Filter */}
                       <div>
                         <Label htmlFor="date-filter" className="text-gray-700">
@@ -277,6 +331,55 @@ export default function AuditoriaPage() {
                           )}
                         </div>
                       </div>
+
+                      {/* Type Filter */}
+                      <div>
+                        <Label htmlFor="type-filter" className="text-gray-700">
+                          Tipo
+                        </Label>
+                        <Select
+                          value={selectedTipo}
+                          onValueChange={(value: 'todos' | 'ingreso' | 'egreso' | 'transferencia' | 'sistema') =>
+                            setSelectedTipo(value)
+                          }
+                        >
+                          <SelectTrigger className="border-gray-300 bg-white">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="todos">
+                              <div className="flex items-center gap-2">
+                                <Package className="h-4 w-4 text-gray-600" />
+                                <span>Todos</span>
+                              </div>
+                            </SelectItem>
+                            <SelectItem value="ingreso">
+                              <div className="flex items-center gap-2">
+                                <div className="h-2 w-2 rounded-full bg-green-500" />
+                                <span>Ingresos</span>
+                              </div>
+                            </SelectItem>
+                            <SelectItem value="egreso">
+                              <div className="flex items-center gap-2">
+                                <div className="h-2 w-2 rounded-full bg-red-500" />
+                                <span>Egresos</span>
+                              </div>
+                            </SelectItem>
+                            <SelectItem value="transferencia">
+                              <div className="flex items-center gap-2">
+                                <div className="h-2 w-2 rounded-full bg-orange-500" />
+                                <span>Transferencias</span>
+                              </div>
+                            </SelectItem>
+                            <SelectItem value="sistema">
+                              <div className="flex items-center gap-2">
+                                <div className="h-2 w-2 rounded-full bg-blue-500" />
+                                <span>Sistema</span>
+                              </div>
+                            </SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
                     </div>
 
                     {/* Action Buttons */}
@@ -287,6 +390,7 @@ export default function AuditoriaPage() {
                         onClick={() => {
                           setSelectedDate(undefined);
                           setSelectedUser('');
+                          setSelectedTipo('todos');
                         }}
                         className="border-gray-300 text-gray-700 hover:bg-gray-50"
                       >
@@ -312,7 +416,8 @@ export default function AuditoriaPage() {
                       </Button>
                     </div>
                   </CardContent>
-                </Card>
+                  </Card>
+                </div>
 
                 {/* Activities Table */}
                 <Card className="border border-[#f9bbc4]/20 bg-white shadow-sm">
@@ -364,12 +469,19 @@ export default function AuditoriaPage() {
                                     <Badge
                                       variant="outline"
                                       className={
-                                        actividad.tipo === 'movimiento'
-                                          ? 'border-orange-200 text-orange-700'
-                                          : 'border-blue-200 text-blue-700'
+                                        actividad.tipoDetallado === 'ingreso'
+                                          ? 'border-green-200 text-green-700 bg-green-50'
+                                          : actividad.tipoDetallado === 'egreso'
+                                          ? 'border-red-200 text-red-700 bg-red-50'
+                                          : actividad.tipoDetallado === 'transferencia'
+                                          ? 'border-orange-200 text-orange-700 bg-orange-50'
+                                          : 'border-blue-200 text-blue-700 bg-blue-50'
                                       }
                                     >
-                                      {actividad.tipo === 'movimiento' ? 'Movimiento' : 'Log Sistema'}
+                                      {actividad.tipoDetallado === 'ingreso' && 'Ingreso'}
+                                      {actividad.tipoDetallado === 'egreso' && 'Egreso'}
+                                      {actividad.tipoDetallado === 'transferencia' && 'Transferencia'}
+                                      {actividad.tipoDetallado === 'sistema' && 'Sistema'}
                                     </Badge>
                                   </TableCell>
                                   <TableCell>
@@ -384,11 +496,11 @@ export default function AuditoriaPage() {
                                     {actividad.descripcion}
                                   </TableCell>
                                   <TableCell>
-                                    {actividad.tipo === 'movimiento' ? (
+                                    {tieneDetallesDisponibles(actividad) ? (
                                       <Button
                                         variant="ghost"
                                         size="sm"
-                                        onClick={() => handleVerDetallesMovimiento(actividad.id)}
+                                        onClick={() => handleVerDetalles(actividad.comandaId!)}
                                         className="text-[#8b5a6b] hover:text-[#6b3d4f]"
                                       >
                                         Ver detalles

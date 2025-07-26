@@ -130,7 +130,7 @@ export default function CajaChicaResumenPage() {
           hasta: fechaFin,
         },
         observaciones: esTraspasoParcial
-          ? `Traspaso parcial USD: ${resultado.montoTrasladadoUSD}, ARS: ${resultado.montoTrasladadoARS} (residual USD: ${resultado.montoResidualUSD}, ARS: ${resultado.montoResidualARS})`
+          ? `Traspaso parcial USD: ${resultado.montoTrasladadoUSD.toFixed(2)}, ARS: ${resultado.montoTrasladadoARS.toFixed(2)} (residual USD: ${resultado.montoResidualUSD.toFixed(2)}, ARS: ${resultado.montoResidualARS.toFixed(2)})`
           : `Traspaso completo del ${fechaInicio} al ${fechaFin}`,
         // campos para traspaso parcial
         montoParcialUSD: esTraspasoParcial

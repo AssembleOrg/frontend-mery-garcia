@@ -30,9 +30,14 @@ interface TraspasoData {
   montoTotalUSD?: number;
   montoTotalARS?: number;
   montoParcial: number;
+  montoParcialUSD?: number;
+  montoParcialARS?: number;
   fechaInicio: string;
   fechaFin: string;
   metodosPago: string[];
+  esTraspasoParcial?: boolean;
+  montoResidualUSD?: number;
+  montoResidualARS?: number;
 }
 
 interface TraspasoModalProps {
@@ -46,7 +51,8 @@ export default function TraspasoModal({
   comandas,
   trigger,
 }: TraspasoModalProps) {
-  const { formatUSD, formatARSFromNative, isExchangeRateValid } = useCurrencyConverter();
+  const { formatUSD, formatARSFromNative, isExchangeRateValid } =
+    useCurrencyConverter();
 
   // Función helper para formatear montos según la moneda
   const formatAmount = (amount: number, currency?: string) => {
@@ -86,7 +92,7 @@ export default function TraspasoModal({
   return (
     <Dialog>
       <DialogTrigger asChild>{trigger}</DialogTrigger>
-      <DialogContent className="max-h-[90vh] max-w-4xl overflow-y-auto">
+      <DialogContent className="max-h-[95vh] max-w-[95vw] w-[95vw] h-[95vh] overflow-y-auto bg-white/95 backdrop-blur-sm" style={{ width: '95vw', height: '95vh', maxWidth: '95vw', maxHeight: '95vh' }}>
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2 text-xl">
             <Package className="h-6 w-6 text-blue-600" />
@@ -96,7 +102,7 @@ export default function TraspasoModal({
 
         <div className="space-y-6">
           {/* Información del traspaso */}
-          <Card>
+          <Card className="border-[#f9bbc4]/20 bg-white/80">
             <CardHeader>
               <CardTitle className="flex items-center gap-2 text-lg">
                 <Calendar className="h-5 w-5" />
@@ -121,13 +127,23 @@ export default function TraspasoModal({
                   <p className="font-medium">{traspaso.numeroComandas}</p>
                 </div>
                 <div className="space-y-1">
-                  <p className="text-sm text-gray-600">Monto Total</p>
+                  <p className="text-sm text-gray-600">
+                    {traspaso.esTraspasoParcial ? 'Monto Transferido' : 'Monto Total'}
+                  </p>
                   <div className="space-y-1">
                     <p className="font-medium text-green-600">
-                      USD: {formatUSD(traspaso.montoTotalUSD || 0)}
+                      USD: {formatUSD(
+                        traspaso.esTraspasoParcial && traspaso.montoParcialUSD !== undefined
+                          ? traspaso.montoParcialUSD
+                          : traspaso.montoTotalUSD || 0
+                      )}
                     </p>
                     <p className="font-medium text-green-600">
-                      ARS: {formatARSFromNative(traspaso.montoTotalARS || 0)}
+                      ARS: {formatARSFromNative(
+                        traspaso.esTraspasoParcial && traspaso.montoParcialARS !== undefined
+                          ? traspaso.montoParcialARS
+                          : traspaso.montoTotalARS || 0
+                      )}
                     </p>
                   </div>
                 </div>
@@ -141,6 +157,35 @@ export default function TraspasoModal({
                       Traspaso Parcial: {formatAmount(traspaso.montoParcial)}
                     </span>
                   </div>
+                </div>
+              )}
+
+              {traspaso.esTraspasoParcial && 
+               ((traspaso.montoResidualUSD || 0) > 0 || (traspaso.montoResidualARS || 0) > 0) && (
+                <div className="mt-4 rounded-lg border border-orange-200 bg-orange-50 p-3">
+                  <div className="flex items-center gap-2 mb-2">
+                    <Clock className="h-4 w-4 text-orange-600" />
+                    <span className="text-sm font-medium text-orange-800">
+                      Residual en Caja Chica
+                    </span>
+                  </div>
+                  <div className="space-y-1 ml-6">
+                    <div className="flex justify-between text-sm">
+                      <span className="text-gray-600">USD:</span>
+                      <span className="font-medium text-orange-600">
+                        {formatUSD(traspaso.montoResidualUSD || 0)}
+                      </span>
+                    </div>
+                    <div className="flex justify-between text-sm">
+                      <span className="text-gray-600">ARS:</span>
+                      <span className="font-medium text-orange-600">
+                        {formatARSFromNative(traspaso.montoResidualARS || 0)}
+                      </span>
+                    </div>
+                  </div>
+                  <p className="mt-2 text-xs text-gray-500 ml-6">
+                    ⚠️ Monto que quedó en Caja Chica del traspaso parcial
+                  </p>
                 </div>
               )}
 
@@ -161,7 +206,7 @@ export default function TraspasoModal({
           </Card>
 
           {/* Lista de comandas */}
-          <Card>
+          <Card className="border-[#f9bbc4]/20 bg-white/80">
             <CardHeader>
               <CardTitle className="flex items-center gap-2 text-lg">
                 <Shield className="h-5 w-5" />

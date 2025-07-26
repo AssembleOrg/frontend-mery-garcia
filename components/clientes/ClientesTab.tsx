@@ -111,7 +111,7 @@ export default function ClientesTab() {
     <div className="space-y-6">
       {/* Estadísticas */}
       <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
-        <Card className="border-[#f9bbc4]/20">
+        <Card className="border-[#f9bbc4]/20 bg-white">
           <CardContent className="p-4">
             <div className="flex items-center gap-3">
               <div className="rounded-full bg-gradient-to-r from-[#f9bbc4]/20 to-[#e8b4c6]/20 p-3">
@@ -127,7 +127,7 @@ export default function ClientesTab() {
           </CardContent>
         </Card>
 
-        <Card className="border-[#f9bbc4]/20">
+        <Card className="border-[#f9bbc4]/20 bg-white">
           <CardContent className="p-4">
             <div className="flex items-center gap-3">
               <div className="rounded-full bg-gradient-to-r from-green-100 to-emerald-100 p-3">
@@ -143,7 +143,7 @@ export default function ClientesTab() {
           </CardContent>
         </Card>
 
-        <Card className="border-[#f9bbc4]/20">
+        <Card className="border-[#f9bbc4]/20 bg-white">
           <CardContent className="p-4">
             <div className="flex items-center gap-3">
               <div className="rounded-full bg-gradient-to-r from-green-100 to-emerald-100 p-3">
