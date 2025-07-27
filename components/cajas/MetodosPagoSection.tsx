@@ -40,6 +40,7 @@ interface MetodosPagoSectionProps {
   className?: string;
   obtenerResumenDual?: () => ResumenDual;
   isManualMovement?: boolean; // Nueva prop para detectar movimientos manuales
+  hayItemsCongelados?: boolean; // Nueva prop para restricción de moneda
 }
 
 export default function MetodosPagoSection({
@@ -53,6 +54,7 @@ export default function MetodosPagoSection({
   className = '',
   obtenerResumenDual,
   isManualMovement = false,
+  hayItemsCongelados = false,
 }: MetodosPagoSectionProps) {
   const {
     formatARS,
@@ -149,19 +151,21 @@ export default function MetodosPagoSection({
 
               {/* Selector de Moneda */}
               <Select
-                value={metodo.moneda || MONEDAS.USD}
+                value={metodo.moneda || (hayItemsCongelados ? MONEDAS.ARS : MONEDAS.USD)}
                 onValueChange={(value) =>
                   onActualizarMetodo?.(index, 'moneda', value)
                 }
-                disabled={isReadOnly}
+                disabled={isReadOnly || hayItemsCongelados}
               >
                 <SelectTrigger className="w-[80px]">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value={MONEDAS.USD}>
-                    {MONEDA_LABELS[MONEDAS.USD]}
-                  </SelectItem>
+                  {!hayItemsCongelados && (
+                    <SelectItem value={MONEDAS.USD}>
+                      {MONEDA_LABELS[MONEDAS.USD]}
+                    </SelectItem>
+                  )}
                   <SelectItem value={MONEDAS.ARS}>
                     {MONEDA_LABELS[MONEDAS.ARS]}
                   </SelectItem>

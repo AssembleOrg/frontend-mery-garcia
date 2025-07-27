@@ -95,7 +95,7 @@ const tiposProducto = [
 export default function ListaPreciosPage() {
   const { productosServicios, eliminarProductoServicio } = useDatosReferencia();
 
-  const { formatARS, formatUSD } = useCurrencyConverter();
+  const { formatARS, formatUSD, formatARSFromNative } = useCurrencyConverter();
 
   // Estados para filters
   const [busqueda, setBusqueda] = useState('');
@@ -131,10 +131,23 @@ export default function ListaPreciosPage() {
     return cumpleBusqueda && cumpleUnidad && cumpleTipo && cumpleActivo;
   });
 
-  const formatAmount = (monto: number) => {
+  const formatAmount = (item: any) => {
+    const { precio, esPrecioCongelado, precioFijoARS } = item;
+    
+    if (esPrecioCongelado && precioFijoARS) {
+      // Precio congelado: mostrar USD calculado + ARS fijo
+      return {
+        ars: formatARSFromNative(precioFijoARS),
+        usd: formatUSD(precio),
+        esCongelado: true,
+      };
+    }
+    
+    // Precio normal: USD + ARS calculado dinámicamente
     return {
-      ars: formatARS(monto),
-      usd: formatUSD(monto),
+      ars: formatARS(precio),
+      usd: formatUSD(precio),
+      esCongelado: false,
     };
   };
 
@@ -328,7 +341,7 @@ export default function ListaPreciosPage() {
                       </TableHeader>
                       <TableBody>
                         {productosFiltrados.map((item) => {
-                          const precios = formatAmount(item.precio);
+                          const precios = formatAmount(item);
                           return (
                             <TableRow
                               key={item.id}
@@ -336,7 +349,10 @@ export default function ListaPreciosPage() {
                             >
                               <TableCell>
                                 <div>
-                                  <div className="font-medium">
+                                  <div className="font-medium flex items-center gap-2">
+                                    {item.esPrecioCongelado && (
+                                      <span className="text-sm">🔒</span>
+                                    )}
                                     {item.nombre}
                                   </div>
                                   {item.descripcion && (
@@ -374,7 +390,7 @@ export default function ListaPreciosPage() {
                                     {precios.usd}
                                   </div>
                                   <div className="text-sm text-gray-500">
-                                    {precios.ars}
+                                    {precios.esCongelado ? '🔒 ' : '≈ '}{precios.ars}
                                   </div>
                                 </div>
                               </TableCell>

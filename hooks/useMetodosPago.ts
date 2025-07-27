@@ -38,7 +38,8 @@ export interface UseMetodosPagoReturn {
 }
 
 export function useMetodosPago(
-  aplicarDescuentos: boolean = true
+  aplicarDescuentos: boolean = true,
+  hayItemsCongelados: boolean = false
 ): UseMetodosPagoReturn {
   const { descuentosPorMetodo } = useConfiguracion();
   const { arsToUsd, usdToArs } = useCurrencyConverter();
@@ -50,7 +51,7 @@ export function useMetodosPago(
       montoOriginal: 0,
       montoFinal: 0,
       descuentoAplicado: 0,
-      moneda: MONEDAS.USD,
+      moneda: hayItemsCongelados ? MONEDAS.ARS : MONEDAS.USD,
     },
   ]);
 
@@ -117,10 +118,10 @@ export function useMetodosPago(
       montoOriginal: 0,
       montoFinal: 0,
       descuentoAplicado: 0,
-      moneda: MONEDAS.USD,
+      moneda: hayItemsCongelados ? MONEDAS.ARS : MONEDAS.USD,
     };
     setMetodosPago((prev) => [...prev, nuevoMetodo]);
-  }, []);
+  }, [hayItemsCongelados]);
 
   const eliminarMetodoPago = useCallback((index: number) => {
     setMetodosPago((prev) => {
@@ -173,10 +174,10 @@ export function useMetodosPago(
         montoOriginal: 0,
         montoFinal: 0,
         descuentoAplicado: 0,
-        moneda: MONEDAS.USD,
+        moneda: hayItemsCongelados ? MONEDAS.ARS : MONEDAS.USD,
       },
     ]);
-  }, []);
+  }, [hayItemsCongelados]);
 
   const validarMetodosPago = useCallback(
     (montoTotal: number) => {
