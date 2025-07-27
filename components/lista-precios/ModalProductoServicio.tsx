@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
+import { Checkbox } from '@/components/ui/checkbox';
 import {
   Select,
   SelectContent,
@@ -64,6 +65,10 @@ export default function ModalProductoServicio({
   const [precio, setPrecio] = useState<number>(0);
   const [tipo, setTipo] = useState<'producto' | 'servicio'>('servicio');
   const [businessUnit, setBusinessUnit] = useState<UnidadNegocio>('estilismo');
+  
+  // Estados para precio congelado
+  const [esPrecioCongelado, setEsPrecioCongelado] = useState(false);
+  const [precioARS, setPrecioARS] = useState<number>(0);
 
   // Estados de validación
   const [errores, setErrores] = useState<Record<string, string>>({});
@@ -81,6 +86,8 @@ export default function ModalProductoServicio({
         setPrecio(producto.precio);
         setTipo(producto.tipo);
         setBusinessUnit(producto.businessUnit);
+        setEsPrecioCongelado(producto.esPrecioCongelado || false);
+        setPrecioARS(producto.precioFijoARS || 0);
       } else {
         // Modo creación
         clearForm();
@@ -95,7 +102,35 @@ export default function ModalProductoServicio({
     setPrecio(0);
     setTipo('servicio');
     setBusinessUnit('estilismo');
+    setEsPrecioCongelado(false);
+    setPrecioARS(0);
     setErrores({});
+  };
+
+  // Convertir precio ARS a USD usando dólar interno
+  const convertirARSaUSD = (montoARS: number): number => {
+    if (tipoCambio.valorVenta <= 0) return 0;
+    return montoARS / tipoCambio.valorVenta;
+  };
+
+  // Manejar cambio en precio congelado
+  const handlePrecioCongeladoChange = (checked: boolean) => {
+    setEsPrecioCongelado(checked);
+    if (checked && precioARS > 0) {
+      // Convertir ARS a USD automáticamente
+      const precioConvertido = convertirARSaUSD(precioARS);
+      setPrecio(Number(precioConvertido.toFixed(2)));
+    }
+  };
+
+  // Manejar cambio en precio ARS
+  const handlePrecioARSChange = (nuevoARS: number) => {
+    setPrecioARS(nuevoARS);
+    if (esPrecioCongelado && nuevoARS > 0) {
+      // Convertir automáticamente a USD
+      const precioConvertido = convertirARSaUSD(nuevoARS);
+      setPrecio(Number(precioConvertido.toFixed(2)));
+    }
   };
 
   const validateForm = (): boolean => {
@@ -107,6 +142,14 @@ export default function ModalProductoServicio({
 
     if (precio <= 0) {
       nuevosErrores.precio = 'El precio debe ser mayor a 0';
+    }
+
+    if (esPrecioCongelado && precioARS <= 0) {
+      nuevosErrores.precioARS = 'El precio ARS debe ser mayor a 0';
+    }
+
+    if (esPrecioCongelado && tipoCambio.valorVenta <= 0) {
+      nuevosErrores.tipoCambio = 'Debe configurar un tipo de cambio válido';
     }
 
     setErrores(nuevosErrores);
@@ -126,6 +169,8 @@ export default function ModalProductoServicio({
         tipo,
         businessUnit,
         activo: true,
+        esPrecioCongelado,
+        precioFijoARS: esPrecioCongelado ? precioARS : undefined,
       };
 
       if (esEdicion) {
@@ -327,12 +372,63 @@ export default function ModalProductoServicio({
                         step="0.01"
                       />
                     </div>
-                    {precio > 0 && (
+                    {precio > 0 && !esPrecioCongelado && (
                       <p className="mt-1 text-sm text-gray-500">
                         Equivalente: {precios.ars}
                       </p>
                     )}
                   </div>
+
+                  {/* Checkbox para congelar precio */}
+                  <div className="flex items-center space-x-2">
+                    <Checkbox
+                      id="precioCongelado"
+                      checked={esPrecioCongelado}
+                      onCheckedChange={handlePrecioCongeladoChange}
+                    />
+                    <Label htmlFor="precioCongelado" className="text-sm font-medium">
+                      🔒 Congelar precio en ARS
+                    </Label>
+                  </div>
+
+                  {/* Input para precio ARS (solo visible cuando está congelado) */}
+                  {esPrecioCongelado && (
+                    <div>
+                      <Label htmlFor="precioARS">
+                        Precio fijo en ARS *
+                        {errores.precioARS && (
+                          <span className="ml-1 text-xs text-red-500">
+                            ({errores.precioARS})
+                          </span>
+                        )}
+                      </Label>
+                      <div className="relative">
+                        <span className="absolute top-1/2 left-3 -translate-y-1/2 text-gray-400">
+                          $
+                        </span>
+                        <Input
+                          id="precioARS"
+                          type="number"
+                          value={precioARS || ''}
+                          onChange={(e) => handlePrecioARSChange(Number(e.target.value))}
+                          placeholder="30000"
+                          className={`pl-8 ${errores.precioARS ? 'border-red-300' : ''}`}
+                          min="0"
+                          step="0.01"
+                        />
+                      </div>
+                      {precioARS > 0 && (
+                        <p className="mt-1 text-sm text-gray-500">
+                          Equivalente USD: ${convertirARSaUSD(precioARS).toFixed(2)}
+                        </p>
+                      )}
+                      {errores.tipoCambio && (
+                        <p className="mt-1 text-xs text-red-500">
+                          {errores.tipoCambio}
+                        </p>
+                      )}
+                    </div>
+                  )}
                 </CardContent>
               </Card>
             </div>

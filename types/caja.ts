@@ -43,6 +43,9 @@ export interface ProductoServicio {
   activo: boolean;
   duracion?: number;
   codigoBarras?: string;
+  // Campos para precios congelados en ARS
+  esPrecioCongelado?: boolean;
+  precioFijoARS?: number;
 }
 
 // Item seleccionado en la comanda
@@ -59,6 +62,9 @@ export interface ItemComanda {
   personalId?: string;
   servicioId?: string;
   categoria?: string;
+  // Campos para precios congelados en ARS (heredados del ProductoServicio)
+  esPrecioCongelado?: boolean;
+  precioFijoARS?: number;
 }
 
 // Seña - Siguiendo el mismo patrón que MetodoPago
