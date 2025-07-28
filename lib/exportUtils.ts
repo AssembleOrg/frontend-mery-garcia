@@ -25,7 +25,8 @@ export const exportComandasToCSV = (
   const timestamp = new Date().toISOString().split('T')[0];
   const filename = options.filename || `comandas_${timestamp}`;
 
-  const { formatUSD, formatARS, formatARSFromNative } = createCurrencyFormatter(exchangeRate);
+  const { formatUSD, formatARS, formatARSFromNative } =
+    createCurrencyFormatter(exchangeRate);
 
   const calcularValoresPorMoneda = (
     comanda: Comanda
@@ -103,7 +104,8 @@ export const exportComandasToCSV = (
     {
       Fecha: '',
       Numero: '',
-      Cliente: '',      Personal: '',
+      Cliente: '',
+      Personal: '',
       'Unidad de Negocio': '' as any,
       Tipo: '' as any,
       Estado: '' as any,
@@ -121,7 +123,10 @@ export const exportComandasToCSV = (
       Tipo: '' as any,
       Estado: '' as any,
       USD: formatUSD(totalesIngresos.totalUSD),
-      ARS: formatARSFromNative(totalesIngresos.totalARS).replace(/[^\d.,\-]/g, ''),
+      ARS: formatARSFromNative(totalesIngresos.totalARS).replace(
+        /[^\d.,\-]/g,
+        ''
+      ),
       'Metodo de Pago': '',
       Observaciones: '',
     },
@@ -134,7 +139,10 @@ export const exportComandasToCSV = (
       Tipo: '' as any,
       Estado: '' as any,
       USD: formatUSD(totalesEgresos.totalUSD),
-      ARS: formatARSFromNative(totalesEgresos.totalARS).replace(/[^\d.,\-]/g, ''),
+      ARS: formatARSFromNative(totalesEgresos.totalARS).replace(
+        /[^\d.,\-]/g,
+        ''
+      ),
       'Metodo de Pago': '',
       Observaciones: '',
     },
@@ -179,7 +187,8 @@ export const exportComandasToPDF = (
   exchangeRate: number,
   options: ExportOptions = {}
 ) => {
-  const { formatUSD, formatARS, formatARSFromNative } = createCurrencyFormatter(exchangeRate);
+  const { formatUSD, formatARS, formatARSFromNative } =
+    createCurrencyFormatter(exchangeRate);
   const timestamp = new Date().toISOString().split('T')[0];
   const filename = options.filename || `comandas_${timestamp}`;
 
@@ -324,18 +333,18 @@ export const exportComandasToPDF = (
       fillColor: [252, 248, 249], // Rosa muy claro
     },
     columnStyles: {
-      0: { cellWidth: 16 }, // Fecha - Reducido de 18 a 16
-      1: { cellWidth: 12 }, // Número - Reducido de 14 a 12
-      2: { cellWidth: 20 }, // Cliente
-      3: { cellWidth: 20 }, // Personal
-      4: { cellWidth: 16 }, // Unidad - Reducido de 22 a 16
-      5: { cellWidth: 14 }, // Tipo - Reducido de 18 a 14
-      6: { cellWidth: 18 }, // USD - Reducido de 22 a 18
-      7: { cellWidth: 18 }, // ARS - Reducido de 22 a 18
-      8: { cellWidth: 28 }, // Método Pago - Reducido de 35 a 28
-      9: { cellWidth: 16 }, // Estado - Reducido de 20 a 16
+      0: { cellWidth: 16 },
+      1: { cellWidth: 12 },
+      2: { cellWidth: 20 },
+      3: { cellWidth: 20 },
+      4: { cellWidth: 16 },
+      5: { cellWidth: 14 },
+      6: { cellWidth: 18 },
+      7: { cellWidth: 18 },
+      8: { cellWidth: 28 },
+      9: { cellWidth: 20 },
     },
-    margin: { top: 45, left: 10, right: 10 }, // Reducido márgenes de 15 a 10
+    margin: { top: 45, left: 10, right: 10 },
     tableWidth: 'auto',
   });
 
@@ -382,14 +391,22 @@ export const exportComandasToPDF = (
   doc.text('INGRESOS:', 20, summaryY);
   doc.setFont('helvetica', 'normal');
   doc.text(`USD: ${formatUSD(totalesIngresos.totalUSD)}`, 35, summaryY + 8);
-  doc.text(`ARS: ${formatARSFromNative(totalesIngresos.totalARS)}`, 35, summaryY + 16);
+  doc.text(
+    `ARS: ${formatARSFromNative(totalesIngresos.totalARS)}`,
+    35,
+    summaryY + 16
+  );
 
   // Egresos
   doc.setFont('helvetica', 'bold');
   doc.text('EGRESOS:', 110, summaryY);
   doc.setFont('helvetica', 'normal');
   doc.text(`USD: ${formatUSD(totalesEgresos.totalUSD)}`, 125, summaryY + 8);
-  doc.text(`ARS: ${formatARSFromNative(totalesEgresos.totalARS)}`, 125, summaryY + 16);
+  doc.text(
+    `ARS: ${formatARSFromNative(totalesEgresos.totalARS)}`,
+    125,
+    summaryY + 16
+  );
 
   // Saldo neto
   summaryY += 30;

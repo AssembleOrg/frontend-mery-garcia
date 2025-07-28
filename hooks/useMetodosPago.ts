@@ -81,7 +81,7 @@ export function useMetodosPago(
         };
       }
 
-      if (tipo === 'mixto' || tipo === 'giftcard' || tipo === 'qr' || tipo === 'precio_lista') {
+      if (tipo === 'mixto' || tipo === 'giftcard' || tipo === 'qr') {
         // Para items congelados (ARS fijo): NO convertir a USD, mantener ARS nativo
         if (hayItemsCongelados && moneda === MONEDAS.ARS) {
           return {
@@ -91,7 +91,7 @@ export function useMetodosPago(
           };
         }
         
-        // Para estos tipos no hay descuento (precio_lista es igual que tarjeta sin descuento)
+        // Para estos tipos no hay descuento
         const montoUSD = moneda === MONEDAS.ARS ? arsToUsd(monto) : monto;
         return {
           montoFinal: montoUSD,

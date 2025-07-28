@@ -10,6 +10,7 @@ export interface ConfiguracionDescuentos {
   tarjeta: number;
   giftcard: number;
   qr: number;
+  precio_lista: number;
 }
 
 interface ConfiguracionState {
@@ -27,6 +28,7 @@ const configuracionInicial: ConfiguracionDescuentos = {
   tarjeta: 0,
   giftcard: 0,
   qr: 0,
+  precio_lista: 0,
 };
 
 // Storage helper para evitar acceso a localStorage en SSR
