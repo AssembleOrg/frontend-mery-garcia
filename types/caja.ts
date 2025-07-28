@@ -321,29 +321,6 @@ export interface ConfiguracionTraspasoParcial {
   porcentajeSeleccionadoUSD: number;
   porcentajeSeleccionadoARS: number;
 }
-
-// Encomienda (para compatibilidad)
-export interface Encomienda {
-  id: string;
-  fecha: Date;
-  numero: string;
-  cliente: string;
-  telefono?: string;
-  servicios: ItemComanda[];
-  subtotal: number;
-  descuentoTotal: number;
-  iva: number;
-  total: number;
-  metodoPago: string;
-  observaciones?: string;
-  vendedor: string;
-  estado: 'pendiente' | 'completado' | 'cancelado';
-  tipo: 'ingreso' | 'egreso';
-  estadoNegocio?: EstadoComandaNegocio;
-  estadoValidacion?: EstadoValidacion;
-  metodosPago?: MetodoPago[];
-}
-
 export interface MetodoPagoForm extends MetodoPago {
   montoFinal: number;
   descuentoAplicado: number;
