@@ -163,13 +163,11 @@ export const exportComandasToCSV = (
     }
   );
 
-  // Generar CSV
   const csv = Papa.unparse(data, {
     delimiter: ',',
     header: true,
   });
 
-  // Descargar archivo
   downloadFile(csv, `${filename}.csv`, 'text/csv');
 };
 
@@ -194,7 +192,6 @@ export const exportComandasToPDF = (
 
   const doc = new jsPDF();
 
-  // Header del documento
   doc.setFontSize(18);
   doc.setTextColor(40, 40, 40);
   doc.text('Reporte de Comandas - Mery García', 20, 20);
@@ -239,7 +236,6 @@ export const exportComandasToPDF = (
   doc.text(`Total de comandas: ${comandas.length}`, 20, currentY);
   currentY += 8;
 
-  // Fecha de generación
   doc.setFontSize(8);
   doc.text(
     `Generado el: ${new Date().toLocaleDateString('es-AR')} ${new Date().toLocaleTimeString('es-AR')}`,

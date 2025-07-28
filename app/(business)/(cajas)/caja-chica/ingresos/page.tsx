@@ -30,7 +30,6 @@ import ResidualDisplay from '@/components/cajas/ResidualDisplay';
 export default function IngresosPage() {
   const { isInitialized } = useCurrencyConverter();
 
-  // Date range filter state
   const [dateRange, setDateRange] = useState<DateRange | undefined>();
 
   // Get traspasos for residual display
@@ -58,7 +57,6 @@ export default function IngresosPage() {
     dateRange,
   });
 
-  // Local UI state
   const [columns, setColumns] = useState<ColumnaCaja[]>(initialColumns);
   const [showAddModal, setShowAddModal] = useState(false);
   const [showChangeStatusModal, setShowChangeStatusModal] = useState(false);
@@ -80,24 +78,20 @@ export default function IngresosPage() {
     (t) => t.id === selectedTransactionId
   );
 
-  // Handle delete transaction
   const handleDelete = (id: string) => {
     // TODO: Implement delete functionality
   };
 
-  // Handle status change
   const onChangeStatus = (id: string) => {
     setSelectedTransactionId(id);
     setShowChangeStatusModal(true);
   };
 
-  // Handle edit transaction
   const onEditTransaction = (id: string) => {
     setSelectedTransactionId(id);
     setShowEditModal(true);
   };
 
-  // Handle view transaction details
   const onViewTransaction = (id: string) => {
     setSelectedTransactionId(id);
     setShowViewModal(true);

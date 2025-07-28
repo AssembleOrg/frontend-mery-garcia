@@ -75,17 +75,14 @@ export default function TableFilters({
 
   const clearFilters = () => {
     if (onClearFilters) {
-      // Use the dedicated clear function if provided
       onClearFilters();
     } else {
-      // Fallback: Clear all filter properties by setting them to undefined
       const clearedFilters: FiltrosEncomienda = {};
       Object.keys(filters).forEach(key => {
         if (key !== 'busqueda') {
           (clearedFilters as any)[key as keyof FiltrosEncomienda] = undefined;
         }
       });
-      // Also clear the search term
       clearedFilters.busqueda = undefined;
       onFiltersChange(clearedFilters);
     }

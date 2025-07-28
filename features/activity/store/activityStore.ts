@@ -40,7 +40,6 @@ interface ActivityState {
 }
 
 interface ActivityActions {
-  // Acciones principales
   logActivity: (
     accion: string,
     modulo: ActivityLog['modulo'],
@@ -48,11 +47,9 @@ interface ActivityActions {
     metadata?: Record<string, any>
   ) => void;
 
-  // Filtros
   updateFilters: (newFilters: Partial<ActivityFilters>) => void;
   clearFilters: () => void;
 
-  // Utilidades
   getStatistics: () => ActivityStatistics;
   getFilteredLogs: () => ActivityLog[];
   exportToCSV: () => void;
@@ -64,12 +61,10 @@ type ActivityStore = ActivityState & ActivityActions;
 export const useActivityStore = create<ActivityStore>()(
   persist(
     (set, get) => ({
-      // Estado inicial
       logs: [],
       filters: {} as ActivityFilters,
       isLoading: false,
 
-      // Registrar nueva actividad
       logActivity: (accion, modulo, descripcion, metadata = {}) => {
         // Obtener usuario actual del localStorage
         const userStr = localStorage.getItem('user');
@@ -105,19 +100,16 @@ export const useActivityStore = create<ActivityStore>()(
         }
       },
 
-      // Actualizar filtros
       updateFilters: (newFilters) => {
         set((state) => ({
           filters: { ...state.filters, ...newFilters },
         }));
       },
 
-      // Limpiar filtros
       clearFilters: () => {
         set({ filters: {} as ActivityFilters });
       },
 
-      // Obtener logs filtrados
       getFilteredLogs: () => {
         const { logs, filters } = get();
 
@@ -161,7 +153,6 @@ export const useActivityStore = create<ActivityStore>()(
         });
       },
 
-      // Calcular estadísticas
       getStatistics: () => {
         const { logs } = get();
         const hoy = new Date();
@@ -195,7 +186,6 @@ export const useActivityStore = create<ActivityStore>()(
         };
       },
 
-      // Exportar a CSV
       exportToCSV: () => {
         const filteredLogs = get().getFilteredLogs();
 
@@ -244,7 +234,6 @@ export const useActivityStore = create<ActivityStore>()(
         console.log('✅ CSV exportado exitosamente');
       },
 
-      // Limpiar todos los logs (para demo)
       clearAllLogs: () => {
         set({ logs: [], filters: {} as ActivityFilters });
       },

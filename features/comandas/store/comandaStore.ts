@@ -13,29 +13,24 @@ import {
 } from '@/types/caja';
 
 interface ComandaState {
-  // Estados principales
   comandas: Comanda[];
   filters: FiltrosComanda;
   cargando: boolean;
   error: string | null;
   lastUpdate: number;
 
-  // Acciones - Comandas
   agregarComanda: (comanda: Comanda) => void;
   actualizarComanda: (id: string, comanda: Partial<Comanda>) => void;
   eliminarComanda: (id: string) => void;
   obtenerComandaPorId: (id: string) => Comanda | undefined;
 
-  // Acciones - Filtros
   actualizarFiltros: (filters: Partial<FiltrosComanda>) => void;
   limpiarFiltros: () => void;
 
-  // Acciones - Cálculos
   obtenerComandasFiltradas: () => Comanda[];
   obtenerResumenCaja: () => ResumenCaja;
   obtenerProximoNumero: (tipo: 'ingreso' | 'egreso') => string;
 
-  // Acciones - Sistema
   inicializar: () => void;
   reiniciar: () => void;
   limpiarDuplicados: () => void;
@@ -103,7 +98,6 @@ const estadoInicial = {
   lastUpdate: Date.now(),
 };
 
-// Storage helper que evita acceder a localStorage durante el render en servidor
 const safeJSONStorage = createJSONStorage(() => {
   if (typeof window !== 'undefined') {
     return window.localStorage;
@@ -126,8 +120,6 @@ export const useComandaStore = create<ComandaState>()(
       (set, get) => ({
         ...estadoInicial,
 
-        // === ACCIONES DE COMANDAS ===
-        // En la función agregarComanda, agregar:
         agregarComanda: (comanda: Comanda) => {
           const { tipoCambio } = useExchangeRateStore.getState();
 
@@ -179,7 +171,6 @@ export const useComandaStore = create<ComandaState>()(
           return get().comandas.find((c) => c.id === id);
         },
 
-        // === ACCIONES DE FILTROS ===
         actualizarFiltros: (nuevosFiltros: Partial<FiltrosComanda>) => {
           set((state) => ({
             filters: { ...state.filters, ...nuevosFiltros },
@@ -190,7 +181,6 @@ export const useComandaStore = create<ComandaState>()(
           set({ filters: {} as Partial<FiltrosComanda> });
         },
 
-        // === CÁLCULOS Y CONSULTAS ===
         obtenerComandasFiltradas: () => {
           const { comandas, filters } = get();
 
@@ -322,7 +312,6 @@ export const useComandaStore = create<ComandaState>()(
           return `${prefix}-${siguienteNumero.toString().padStart(4, '0')}`;
         },
 
-        // === SISTEMA ===
         inicializar: () => {
           logger.info('Store inicializado manualmente');
           get().migrarDatosValidacion();

@@ -9,7 +9,6 @@ export interface Personal {
   fechaIngreso: Date;
 }
 
-// Personal simplificado para lista de personal
 export interface PersonalSimple {
   id: string;
   nombre: string;
@@ -18,7 +17,6 @@ export interface PersonalSimple {
   rol: 'admin' | 'vendedor';
 }
 
-// Cliente
 export interface Cliente {
   id: string;
   nombre: string;
@@ -32,7 +30,6 @@ export interface Cliente {
   fechaRegistro: Date;
 }
 
-// Productos y Servicios
 export interface ProductoServicio {
   id: string;
   nombre: string;
@@ -48,7 +45,6 @@ export interface ProductoServicio {
   precioFijoARS?: number;
 }
 
-// Item seleccionado en la comanda
 export interface ItemComanda {
   productoServicioId: string;
   nombre: string;
@@ -94,7 +90,6 @@ export interface MetodoPago {
   };
 }
 
-// Comanda principal
 export interface Comanda {
   id: string;
   numero: string;
@@ -128,7 +123,6 @@ export interface Comanda {
   };
 }
 
-// Tipo de cambio
 export interface TipoCambio {
   valorCompra: number;
   valorVenta: number;

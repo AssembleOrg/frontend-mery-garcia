@@ -88,7 +88,6 @@ export default function ModalTransaccionUnificado({
   onClose,
   tipo,
 }: ModalTransaccionUnificadoProps) {
-  // Store hooks
   const { agregarComanda, obtenerProximoNumero, comandas, cargando } =
     useComandaStore();
 
@@ -107,7 +106,6 @@ export default function ModalTransaccionUnificado({
     arsToUsd,
   } = useCurrencyConverter();
 
-  // Helper function for dual currency display
   const formatAmount = (amount: number) => {
     return isExchangeRateValid ? formatDual(amount) : formatUSD(amount);
   };
@@ -122,7 +120,6 @@ export default function ModalTransaccionUnificado({
     return formatAmount(amount);
   };
 
-  // Helper function para productos con precio congelado
   const formatProductAmount = (producto: ProductoServicio) => {
     if (producto.esPrecioCongelado && producto.precioFijoARS) {
       return `🔒 ${formatARSFromNative(producto.precioFijoARS)}`;
@@ -130,7 +127,6 @@ export default function ModalTransaccionUnificado({
     return formatAmount(producto.precio);
   };
 
-  // Helper function para items en comanda con precio congelado
   const formatItemAmount = (item: ItemTransaccion) => {
     // Items con precio congelado (ingresos)
     if (item.esPrecioCongelado && item.precioFijoARS) {
@@ -167,7 +163,6 @@ export default function ModalTransaccionUnificado({
 
   useInitializeComandaStore();
 
-  // Form state
   const [clienteSeleccionado, setClienteSeleccionado] =
     useState<Cliente | null>(null);
   const [clienteProveedor, setClienteProveedor] = useState('');
@@ -196,7 +191,6 @@ export default function ModalTransaccionUnificado({
     }
   }, [items, tipo]);
 
-  // Hook para métodos de pago con descuentos automáticos
   const {
     metodosPago,
     agregarMetodoPago: agregarMetodoPagoBase,

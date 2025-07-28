@@ -168,7 +168,6 @@ export default function CajaChicaResumenPage() {
           : `Traspaso completo realizado. Caja Chica limpiada para el período ${fechaInicio} - ${fechaFin}.`,
       });
 
-      // Limpiar formulario y cerrar modal
       setMontoParcialUSD('');
       setMontoParcialARS('');
       setShowConfirmModal(false);
