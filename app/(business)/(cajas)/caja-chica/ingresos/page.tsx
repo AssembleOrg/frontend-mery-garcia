@@ -26,9 +26,12 @@ import { useCurrencyConverter } from '@/hooks/useCurrencyConverter';
 import { formatDate } from '@/lib/utils';
 import { useRecordsStore } from '@/features/records/store/recordsStore';
 import ResidualDisplay from '@/components/cajas/ResidualDisplay';
+import { useComandaStore } from '@/features/comandas/store/comandaStore';
+import { toast } from 'sonner';
 
 export default function IngresosPage() {
   const { isInitialized } = useCurrencyConverter();
+  const { eliminarComanda } = useComandaStore();
 
   const [dateRange, setDateRange] = useState<DateRange | undefined>();
 
@@ -79,7 +82,29 @@ export default function IngresosPage() {
   );
 
   const handleDelete = (id: string) => {
-    // TODO: Implement delete functionality
+    const transaction = transactions.find(t => t.id === id);
+    
+    if (!transaction) {
+      toast.error('Transacción no encontrada');
+      return;
+    }
+
+    // No permitir eliminar transacciones validadas
+    if (transaction.estadoValidacion === 'validado') {
+      toast.error('No se puede eliminar una transacción validada');
+      return;
+    }
+
+    // Confirmación antes de eliminar
+    if (window.confirm(`¿Está seguro que desea eliminar la transacción ${transaction.numero}?`)) {
+      try {
+        eliminarComanda(id);
+        toast.success('Transacción eliminada correctamente');
+      } catch (error) {
+        toast.error('Error al eliminar la transacción');
+        console.error('Error al eliminar transacción:', error);
+      }
+    }
   };
 
   const onChangeStatus = (id: string) => {
