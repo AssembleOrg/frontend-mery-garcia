@@ -43,7 +43,7 @@ export default function CajaGrandePage() {
 
   // Estado para modal de movimientos manuales
   const [showModalMovimiento, setShowModalMovimiento] = useState(false);
-  
+
   // Estado para filtro de fechas
   const [dateRange, setDateRange] = useState<DateRange | undefined>();
 
@@ -76,45 +76,57 @@ export default function CajaGrandePage() {
   // Filtrar comandas validadas con lógica específica para caja-grande
   const comandasValidadas = comandas.filter((c) => {
     if (c.estadoValidacion !== 'validado') return false;
-    
+
     // Filtro especial para movimientos manuales
     if (c.cliente.nombre === 'Movimiento Manual') {
       const metadata = c.metadata;
       if (!metadata) return false;
-      
+
       // Solo mostrar en caja-grande:
       // 1. Ingresos/egresos directos a/desde caja-grande
-      if ((c.tipo === 'ingreso' && metadata.cajaDestino === 'caja_2' && metadata.cajaOrigen === 'caja_2') ||
-          (c.tipo === 'egreso' && metadata.cajaOrigen === 'caja_2' && metadata.cajaDestino === 'caja_2')) {
+      if (
+        (c.tipo === 'ingreso' &&
+          metadata.cajaDestino === 'caja_2' &&
+          metadata.cajaOrigen === 'caja_2') ||
+        (c.tipo === 'egreso' &&
+          metadata.cajaOrigen === 'caja_2' &&
+          metadata.cajaDestino === 'caja_2')
+      ) {
         return true;
       }
-      
+
       // 2. Transferencias desde caja-chica hacia caja-grande (solo ingresos)
-      if (c.tipo === 'ingreso' && metadata.cajaOrigen === 'caja_1' && metadata.cajaDestino === 'caja_2') {
+      if (
+        c.tipo === 'ingreso' &&
+        metadata.cajaOrigen === 'caja_1' &&
+        metadata.cajaDestino === 'caja_2'
+      ) {
         return true;
       }
-      
+
       // Excluir transferencias desde caja-grande hacia caja-chica
       return false;
     }
-    
+
     // Transacciones normales (no manuales) se incluyen siempre
     return true;
   });
 
   // Calcular resumen basado en comandas filtradas específicamente para caja-grande
   const resumenCaja = useMemo(() => {
-    const ingresos = comandasValidadas.filter(c => c.tipo === 'ingreso');
-    const egresos = comandasValidadas.filter(c => c.tipo === 'egreso');
-    
-    const calcularTotalesPorMonedaConResiduales = (comandas: typeof comandasValidadas) => {
+    const ingresos = comandasValidadas.filter((c) => c.tipo === 'ingreso');
+    const egresos = comandasValidadas.filter((c) => c.tipo === 'egreso');
+
+    const calcularTotalesPorMonedaConResiduales = (
+      comandas: typeof comandasValidadas
+    ) => {
       const totales = { totalUSD: 0, totalARS: 0 };
       const traspasosCalculados = new Set<string>();
-      
-      comandas.forEach(comanda => {
+
+      comandas.forEach((comanda) => {
         // Para movimientos manuales, usar el monto completo
         if (comanda.cliente.nombre === 'Movimiento Manual') {
-          comanda.metodosPago.forEach(metodo => {
+          comanda.metodosPago.forEach((metodo) => {
             if (metodo.moneda === 'USD') {
               totales.totalUSD += metodo.monto;
             } else if (metodo.moneda === 'ARS') {
@@ -123,16 +135,19 @@ export default function CajaGrandePage() {
           });
           return;
         }
-        
+
         // Para comandas de traspasos, usar el monto transferido directo
-        const traspasoDeComanda = traspasos.find(t => 
+        const traspasoDeComanda = traspasos.find((t) =>
           t.comandasTraspasadas.includes(comanda.id)
         );
-        
-        if (traspasoDeComanda && !traspasosCalculados.has(traspasoDeComanda.fechaTraspaso)) {
+
+        if (
+          traspasoDeComanda &&
+          !traspasosCalculados.has(traspasoDeComanda.fechaTraspaso)
+        ) {
           // Marcar este traspaso como calculado para evitar duplicados
           traspasosCalculados.add(traspasoDeComanda.fechaTraspaso);
-          
+
           if (traspasoDeComanda.esTraspasoParcial) {
             // Si es traspaso parcial, usar montoParcial (monto real transferido)
             totales.totalUSD += traspasoDeComanda.montoParcialUSD || 0;
@@ -144,13 +159,13 @@ export default function CajaGrandePage() {
           }
         }
       });
-      
+
       return totales;
     };
-    
+
     const ingresosTotal = calcularTotalesPorMonedaConResiduales(ingresos);
     const egresosTotal = calcularTotalesPorMonedaConResiduales(egresos);
-    
+
     return {
       totalIngresosUSD: ingresosTotal.totalUSD,
       totalIngresosARS: ingresosTotal.totalARS,
@@ -192,308 +207,324 @@ export default function CajaGrandePage() {
     <MainLayout>
       <div className="min-h-screen bg-gradient-to-br from-[#f9bbc4]/10 via-[#e8b4c6]/8 to-[#d4a7ca]/6">
         <StandardPageBanner title="Caja Grande" />
-        
+
         <div className="relative -mt-12 h-12 bg-gradient-to-b from-transparent to-[#f9bbc4]/8" />
 
         <ManagerOrAdminOnly>
           <ClientOnly>
             <StandardBreadcrumbs items={breadcrumbItems} />
-            
+
             <div className="bg-gradient-to-b from-[#f9bbc4]/5 via-[#e8b4c6]/3 to-[#d4a7ca]/5">
               <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
                 <div className="container mx-auto py-6">
+                  {/* Resumen de Caja */}
+                  <div className="mb-8 grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4">
+                    <SummaryCardDual
+                      title="Total Ingresos"
+                      totalUSD={resumenCaja.totalIngresosUSD}
+                      totalARS={resumenCaja.totalIngresosARS}
+                      showTransactionCount={false}
+                      valueClassName="text-green-700"
+                    />
+                    <SummaryCardDual
+                      title="Total Egresos"
+                      totalUSD={resumenCaja.totalEgresosUSD}
+                      totalARS={resumenCaja.totalEgresosARS}
+                      showTransactionCount={false}
+                      valueClassName="text-red-700"
+                    />
+                    <SummaryCardDual
+                      title="Saldo Neto"
+                      totalUSD={resumenCaja.saldoNetoUSD}
+                      totalARS={resumenCaja.saldoNetoARS}
+                      showTransactionCount={false}
+                      valueClassName={
+                        resumenCaja.saldoNetoUSD + resumenCaja.saldoNetoARS >= 0
+                          ? 'text-green-700'
+                          : 'text-red-700'
+                      }
+                    />
+                    <SummaryCardCount
+                      title="Comandas Validadas"
+                      count={resumenCaja.cantidadComandas}
+                    />
+                  </div>
 
-                {/* Resumen de Caja */}
-                <div className="mb-8 grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4">
-                  <SummaryCardDual
-                    title="Total Ingresos"
-                    totalUSD={resumenCaja.totalIngresosUSD}
-                    totalARS={resumenCaja.totalIngresosARS}
-                    showTransactionCount={false}
-                    valueClassName="text-green-700"
-                  />
-                  <SummaryCardDual
-                    title="Total Egresos"
-                    totalUSD={resumenCaja.totalEgresosUSD}
-                    totalARS={resumenCaja.totalEgresosARS}
-                    showTransactionCount={false}
-                    valueClassName="text-red-700"
-                  />
-                  <SummaryCardDual
-                    title="Saldo Neto"
-                    totalUSD={resumenCaja.saldoNetoUSD}
-                    totalARS={resumenCaja.saldoNetoARS}
-                    showTransactionCount={false}
-                    valueClassName={
-                      resumenCaja.saldoNetoUSD + resumenCaja.saldoNetoARS >= 0
-                        ? 'text-green-700'
-                        : 'text-red-700'
-                    }
-                  />
-                  <SummaryCardCount
-                    title="Comandas Validadas"
-                    count={resumenCaja.cantidadComandas}
-                  />
-                </div>
-
-                {/* Gestión de Caja Grande */}
-                <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-                  {/* Información del último traspaso */}
-                  <Card className="border border-[#f9bbc4]/20 bg-white/80 shadow-sm">
-                    <CardHeader>
-                      <CardTitle className="flex items-center gap-2 text-[#6b4c57]">
-                        <Calendar className="h-5 w-5" />
-                        Último Traspaso
-                      </CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                      {ultimoTraspaso ? (
-                        <div className="space-y-4">
-                          {/* Información básica */}
-                          <div className="grid grid-cols-2 gap-4">
-                            <div>
-                              <p className="text-sm text-gray-600">Fecha</p>
-                              <p className="font-medium">
-                                {formatDate(ultimoTraspaso.fechaTraspaso)}
-                              </p>
-                            </div>
-                            <div>
-                              <p className="text-sm text-gray-600">Comandas</p>
-                              <p className="font-medium">
-                                {ultimoTraspaso.comandasTraspasadas.length}
-                              </p>
-                            </div>
-                          </div>
-
-                          {/* Rango de fechas */}
-                          <div>
-                            <p className="text-sm text-gray-600">
-                              Rango de fechas
-                            </p>
-                            <p className="font-medium">
-                              {formatDate(ultimoTraspaso.rangoFechas.desde)} -{' '}
-                              {formatDate(ultimoTraspaso.rangoFechas.hasta)}
-                            </p>
-                          </div>
-
-                          {/* Montos */}
-                          <div>
-                            <p className="mb-2 text-sm text-gray-600">
-                              Monto Total
-                            </p>
-                            <div className="space-y-1">
-                              <div className="flex justify-between text-sm">
-                                <span>USD:</span>
-                                <span className="font-medium text-green-600">
-                                  {formatUSD(ultimoTraspaso.montoTotalUSD || 0)}
-                                </span>
+                  {/* Gestión de Caja Grande */}
+                  <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+                    {/* Información del último traspaso */}
+                    <Card className="border border-[#f9bbc4]/20 bg-white/80 shadow-sm">
+                      <CardHeader>
+                        <CardTitle className="flex items-center gap-2 text-[#6b4c57]">
+                          <Calendar className="h-5 w-5" />
+                          Último Traspaso
+                        </CardTitle>
+                      </CardHeader>
+                      <CardContent>
+                        {ultimoTraspaso ? (
+                          <div className="space-y-4">
+                            {/* Información básica */}
+                            <div className="grid grid-cols-2 gap-4">
+                              <div>
+                                <p className="text-sm text-gray-600">Fecha</p>
+                                <p className="font-medium">
+                                  {formatDate(ultimoTraspaso.fechaTraspaso)}
+                                </p>
                               </div>
-                              <div className="flex justify-between text-sm">
-                                <span>ARS:</span>
-                                <span className="font-medium text-green-600">
-                                  {formatARSFromNative(ultimoTraspaso.montoTotalARS || 0)}
-                                </span>
+                              <div>
+                                <p className="text-sm text-gray-600">
+                                  Comandas
+                                </p>
+                                <p className="font-medium">
+                                  {ultimoTraspaso.comandasTraspasadas.length}
+                                </p>
                               </div>
                             </div>
-                          </div>
-                          {/* Residual (solo si es traspaso parcial) */}
-                          {ultimoTraspaso.esTraspasoParcial && 
-                           ((ultimoTraspaso.montoResidualUSD || 0) > 0 || (ultimoTraspaso.montoResidualARS || 0) > 0) && (
+
+                            {/* Rango de fechas */}
                             <div>
-                              <p className="mb-2 text-sm text-gray-600">Residual en Caja Chica</p>
+                              <p className="text-sm text-gray-600">
+                                Rango de fechas
+                              </p>
+                              <p className="font-medium">
+                                {formatDate(ultimoTraspaso.rangoFechas.desde)} -{' '}
+                                {formatDate(ultimoTraspaso.rangoFechas.hasta)}
+                              </p>
+                            </div>
+
+                            {/* Montos */}
+                            <div>
+                              <p className="mb-2 text-sm text-gray-600">
+                                Monto Total
+                              </p>
                               <div className="space-y-1">
                                 <div className="flex justify-between text-sm">
                                   <span>USD:</span>
-                                  <span className="font-medium text-orange-600">
-                                    {formatUSD(ultimoTraspaso.montoResidualUSD || 0)}
+                                  <span className="font-medium text-green-600">
+                                    {formatUSD(
+                                      ultimoTraspaso.montoTotalUSD || 0
+                                    )}
                                   </span>
                                 </div>
                                 <div className="flex justify-between text-sm">
                                   <span>ARS:</span>
-                                  <span className="font-medium text-orange-600">
-                                    {formatARSFromNative(ultimoTraspaso.montoResidualARS || 0)}
+                                  <span className="font-medium text-green-600">
+                                    {formatARSFromNative(
+                                      ultimoTraspaso.montoTotalARS || 0
+                                    )}
                                   </span>
                                 </div>
                               </div>
-                              <p className="mt-1 text-xs text-gray-500">
-                                ⚠️ Monto que quedó en Caja Chica del traspaso parcial
-                              </p>
                             </div>
-                          )}
-
-                          {/* Métodos de pago */}
-                          {Object.keys(resumenMetodosPagoUltimoTraspaso)
-                            .length > 0 && (
-                            <div>
-                              <p className="mb-2 text-sm text-gray-600">
-                                Métodos de pago
-                              </p>
-                              <div className="space-y-1">
-                                {Object.entries(
-                                  resumenMetodosPagoUltimoTraspaso
-                                ).map(([metodoMoneda, monto]) => {
-                                  const [metodo, moneda] =
-                                    metodoMoneda.split('_');
-                                  const metodoNombre = {
-                                    efectivo: 'Efectivo',
-                                    tarjeta: 'Tarjeta',
-                                    transferencia: 'Transferencia',
-                                    giftcard: 'Gift Card',
-                                    qr: 'QR',
-                                    mixto: 'Mixto',
-                                    precio_lista: 'Precio de Lista'
-                                  }[metodo] || metodo;
-                                  
-                                  return (
-                                    <div
-                                      key={metodoMoneda}
-                                      className="flex justify-between text-sm"
-                                    >
-                                      <span className="capitalize">
-                                        {metodoNombre} {moneda}:
-                                      </span>
-                                      <span className="font-medium">
-                                        {moneda === 'USD' ? formatUSD(monto) : formatARSFromNative(monto)}
+                            {/* Residual (solo si es traspaso parcial) */}
+                            {ultimoTraspaso.esTraspasoParcial &&
+                              ((ultimoTraspaso.montoResidualUSD || 0) > 0 ||
+                                (ultimoTraspaso.montoResidualARS || 0) > 0) && (
+                                <div>
+                                  <p className="mb-2 text-sm text-gray-600">
+                                    Residual en Caja Chica
+                                  </p>
+                                  <div className="space-y-1">
+                                    <div className="flex justify-between text-sm">
+                                      <span>USD:</span>
+                                      <span className="font-medium text-orange-600">
+                                        {formatUSD(
+                                          ultimoTraspaso.montoResidualUSD || 0
+                                        )}
                                       </span>
                                     </div>
-                                  );
-                                })}
+                                    <div className="flex justify-between text-sm">
+                                      <span>ARS:</span>
+                                      <span className="font-medium text-orange-600">
+                                        {formatARSFromNative(
+                                          ultimoTraspaso.montoResidualARS || 0
+                                        )}
+                                      </span>
+                                    </div>
+                                  </div>
+                                  <p className="mt-1 text-xs text-gray-500">
+                                    ⚠️ Monto que quedó en Caja Chica del
+                                    traspaso parcial
+                                  </p>
+                                </div>
+                              )}
+
+                            {/* Métodos de pago */}
+                            {Object.keys(resumenMetodosPagoUltimoTraspaso)
+                              .length > 0 && (
+                              <div>
+                                <p className="mb-2 text-sm text-gray-600">
+                                  Métodos de pago
+                                </p>
+                                <div className="space-y-1">
+                                  {Object.entries(
+                                    resumenMetodosPagoUltimoTraspaso
+                                  ).map(([metodoMoneda, monto]) => {
+                                    const [metodo, moneda] =
+                                      metodoMoneda.split('_');
+                                    const metodoNombre =
+                                      {
+                                        efectivo: 'Efectivo',
+                                        tarjeta: 'Tarjeta',
+                                        transferencia: 'Transferencia',
+                                        giftcard: 'Gift Card',
+                                        qr: 'QR',
+                                        mixto: 'Mixto',
+                                        precio_lista: 'Precio de Lista',
+                                      }[metodo] || metodo;
+
+                                    return (
+                                      <div
+                                        key={metodoMoneda}
+                                        className="flex justify-between text-sm"
+                                      >
+                                        <span className="capitalize">
+                                          {metodoNombre} {moneda}:
+                                        </span>
+                                        <span className="font-medium">
+                                          {moneda === 'USD'
+                                            ? formatUSD(monto)
+                                            : formatARSFromNative(monto)}
+                                        </span>
+                                      </div>
+                                    );
+                                  })}
+                                </div>
                               </div>
-                            </div>
-                          )}
+                            )}
 
-                          {/* Administrador */}
-                          <div>
-                            <p className="text-sm text-gray-600">
-                              Realizado por
-                            </p>
-                            <p className="font-medium">
-                              {ultimoTraspaso.adminQueTraspaso}
-                            </p>
-                          </div>
-
-                          {/* Observaciones */}
-                          {ultimoTraspaso.observaciones && (
+                            {/* Administrador */}
                             <div>
                               <p className="text-sm text-gray-600">
-                                Observaciones
+                                Realizado por
                               </p>
-                              <p className="text-sm">
-                                {ultimoTraspaso.observaciones}
+                              <p className="font-medium">
+                                {ultimoTraspaso.adminQueTraspaso}
                               </p>
                             </div>
-                          )}
-                        </div>
-                      ) : (
-                        <div className="py-8 text-center text-gray-500">
-                          <Calendar className="mx-auto mb-4 h-12 w-12 text-gray-300" />
-                          <p>No se han realizado traspasos</p>
-                          <p className="text-sm">
-                            Los traspasos aparecerán aquí una vez realizados
-                          </p>
-                        </div>
-                      )}
-                    </CardContent>
-                  </Card>
 
-                  {/* Acciones rápidas */}
-                  <Card className="border border-[#f9bbc4]/20 bg-white/80 shadow-sm">
-                    <CardHeader>
-                      <CardTitle className="flex items-center gap-2 text-[#6b4c57]">
-                        <BarChart3 className="h-5 w-5" />
-                        Gestión de Caja Grande
-                      </CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                      <div className="space-y-4">
-                        {/* Filtro de fechas para exportación */}
-                        <div className="space-y-2">
-                          <p className="text-sm font-medium text-gray-700">
-                            📅 Período para exportar
-                          </p>
-                          <DateRangePicker
-                            dateRange={dateRange}
-                            onDateRangeChange={setDateRange}
-                            placeholder="Seleccionar período"
-                            accentColor="#f9bbc4"
-                          />
-                        </div>
+                            {/* Observaciones */}
+                            {ultimoTraspaso.observaciones && (
+                              <div>
+                                <p className="text-sm text-gray-600">
+                                  Observaciones
+                                </p>
+                                <p className="text-sm">
+                                  {ultimoTraspaso.observaciones}
+                                </p>
+                              </div>
+                            )}
+                          </div>
+                        ) : (
+                          <div className="py-8 text-center text-gray-500">
+                            <Calendar className="mx-auto mb-4 h-12 w-12 text-gray-300" />
+                            <p>No se han realizado traspasos</p>
+                            <p className="text-sm">
+                              Los traspasos aparecerán aquí una vez realizados
+                            </p>
+                          </div>
+                        )}
+                      </CardContent>
+                    </Card>
 
-                        {/* Movimientos Manuales */}
-                        <div className="space-y-2">
-                          <p className="text-sm font-medium text-gray-700">
-                            💰 Movimientos Manuales
-                          </p>
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => setShowModalMovimiento(true)}
-                            className="flex w-full items-center gap-2 border-purple-200 text-purple-700 hover:bg-purple-50"
-                          >
-                            ✨ Gestionar Movimientos
-                          </Button>
-                        </div>
+                    {/* Acciones rápidas */}
+                    <Card className="border border-[#f9bbc4]/20 bg-white/80 shadow-sm">
+                      <CardHeader>
+                        <CardTitle className="flex items-center gap-2 text-[#6b4c57]">
+                          <BarChart3 className="h-5 w-5" />
+                          Gestión de Caja Grande
+                        </CardTitle>
+                      </CardHeader>
+                      <CardContent>
+                        <div className="space-y-4">
+                          {/* Filtro de fechas para exportación */}
+                          <div className="space-y-2">
+                            <p className="text-sm font-medium text-gray-700">
+                              📅 Período para exportar
+                            </p>
+                            <DateRangePicker
+                              dateRange={dateRange}
+                              onDateRangeChange={setDateRange}
+                              placeholder="Seleccionar período"
+                              accentColor="#f9bbc4"
+                            />
+                          </div>
 
-                        {/* Controles de Exportación */}
-                        <div className="space-y-2">
-                          <p className="text-sm font-medium text-gray-700">
-                            Exportar Datos
-                          </p>
-                          <div className="grid grid-cols-2 gap-2">
+                          {/* Movimientos Manuales */}
+                          <div className="space-y-2">
+                            <p className="text-sm font-medium text-gray-700">
+                              💰 Movimientos Manuales
+                            </p>
                             <Button
                               variant="outline"
                               size="sm"
-                              onClick={exportToCSV}
-                              className="flex items-center gap-2"
+                              onClick={() => setShowModalMovimiento(true)}
+                              className="flex w-full items-center gap-2 border-purple-200 text-purple-700 hover:bg-purple-50"
                             >
-                              <FileText className="h-4 w-4" />
-                              CSV
-                            </Button>
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={exportToPDF}
-                              className="flex items-center gap-2"
-                            >
-                              <Download className="h-4 w-4" />
-                              PDF
+                              ✨ Gestionar Movimientos
                             </Button>
                           </div>
-                        </div>
 
-                        {/* Acciones */}
-                        <div className="space-y-3">
-                          <Link href="/caja-grande/comandas">
-                            <Button className="w-full justify-between bg-[#6b4c57] text-white hover:bg-[#5a3f4a]">
-                              <span className="flex items-center gap-2">
-                                <Eye className="h-4 w-4" />
-                                Ver Comandas Validadas
-                              </span>
-                              <ArrowRight className="h-4 w-4" />
-                            </Button>
-                          </Link>
-                          <Link href="/caja-grande/auditoria">
-                            <Button className="mt-2 w-full justify-between bg-[#8b5a6b] text-white hover:bg-[#7a4f5e]">
-                              <span className="flex items-center gap-2">
-                                <Shield className="h-4 w-4" />
-                                Auditoría del Sistema
-                              </span>
-                              <ArrowRight className="h-4 w-4" />
-                            </Button>
-                          </Link>
-                        </div>
-                      </div>
-                    </CardContent>
-                  </Card>
-                </div>
+                          {/* Controles de Exportación */}
+                          <div className="space-y-2">
+                            <p className="text-sm font-medium text-gray-700">
+                              Exportar Datos
+                            </p>
+                            <div className="grid grid-cols-2 gap-2">
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={exportToCSV}
+                                className="flex items-center gap-2"
+                              >
+                                <FileText className="h-4 w-4" />
+                                CSV
+                              </Button>
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={exportToPDF}
+                                className="flex items-center gap-2"
+                              >
+                                <Download className="h-4 w-4" />
+                                PDF
+                              </Button>
+                            </div>
+                          </div>
 
-                {/* Resumen Detallado de Caja Grande */}
-                <div className="mt-8">
-                  <ResumenCajaGrande
-                    comandasValidadas={comandasValidadas}
-                    traspasos={traspasos}
-                  />
-                </div>
+                          {/* Acciones */}
+                          <div className="space-y-3">
+                            <Link href="/caja-grande/comandas">
+                              <Button className="w-full justify-between bg-[#6b4c57] text-white hover:bg-[#5a3f4a]">
+                                <span className="flex items-center gap-2">
+                                  <Eye className="h-4 w-4" />
+                                  Ver Comandas Validadas
+                                </span>
+                                <ArrowRight className="h-4 w-4" />
+                              </Button>
+                            </Link>
+                            <Link href="/caja-grande/auditoria">
+                              <Button className="mt-2 w-full justify-between bg-[#8b5a6b] text-white hover:bg-[#7a4f5e]">
+                                <span className="flex items-center gap-2">
+                                  <Shield className="h-4 w-4" />
+                                  Auditoría del Sistema
+                                </span>
+                                <ArrowRight className="h-4 w-4" />
+                              </Button>
+                            </Link>
+                          </div>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  </div>
+
+                  {/* Resumen Detallado de Caja Grande */}
+                  <div className="mt-8">
+                    <ResumenCajaGrande
+                      comandasValidadas={comandasValidadas}
+                      traspasos={traspasos}
+                    />
+                  </div>
                 </div>
               </div>
             </div>

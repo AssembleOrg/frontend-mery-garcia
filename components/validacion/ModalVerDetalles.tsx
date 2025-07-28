@@ -96,7 +96,13 @@ export default function ModalVerDetalles({
     VALIDACION_CONFIG[estadoValidacion as EstadoValidacion];
   const IconoEstado = estadoConfig.icon;
 
-  const formatAmount = (monto: number) => {
+  // Detectar si hay items con monto fijo ARS
+  const hayItemsCongelados = comanda.items?.some(item => item.esMontoFijoARS);
+
+  const formatAmount = (monto: number, esItemFijo: boolean = false) => {
+    if (esItemFijo) {
+      return formatARSFromNative(monto); // Solo ARS nativo para items fijos
+    }
     return isExchangeRateValid ? formatDual(monto) : formatUSD(monto);
   };
 
@@ -295,20 +301,23 @@ export default function ModalVerDetalles({
                         className="flex items-center justify-between rounded-lg border p-3"
                       >
                         <div className="flex-1">
-                          <p className="font-medium">{item.nombre}</p>
+                          <p className="font-medium">
+                            {item.esMontoFijoARS && '🔒 '}
+                            {item.nombre}
+                          </p>
                           <p className="text-sm text-gray-600">
                             Cantidad: {item.cantidad} | Precio:{' '}
-                            {formatAmount(item.precio)}
+                            {formatAmount(item.precio, item.esMontoFijoARS)}
                           </p>
                           {item.descuento > 0 && (
                             <p className="text-sm text-red-600">
-                              Descuento: {formatAmount(item.descuento)}
+                              Descuento: {formatAmount(item.descuento, item.esMontoFijoARS)}
                             </p>
                           )}
                         </div>
                         <div className="text-right">
                           <p className="font-bold">
-                            {formatAmount(item.subtotal)}
+                            {formatAmount(item.subtotal, item.esMontoFijoARS)}
                           </p>
                         </div>
                       </div>
@@ -418,7 +427,7 @@ export default function ModalVerDetalles({
                       <span>
                         {comanda.cliente.nombre === 'Movimiento Manual'
                           ? `${comanda.moneda || 'USD'}: $${comanda.subtotal.toFixed(2)}`
-                          : formatAmount(comanda.subtotal)}
+                          : formatAmount(comanda.subtotal, hayItemsCongelados)}
                       </span>
                     </div>
 
@@ -429,7 +438,7 @@ export default function ModalVerDetalles({
                         <span>
                           -{comanda.cliente.nombre === 'Movimiento Manual'
                             ? `${comanda.moneda || 'USD'}: $${comanda.totalDescuentos.toFixed(2)}`
-                            : formatAmount(comanda.totalDescuentos)}
+                            : formatAmount(comanda.totalDescuentos, hayItemsCongelados)}
                         </span>
                       </div>
                     )}
@@ -441,7 +450,7 @@ export default function ModalVerDetalles({
                         <span>
                           -{comanda.cliente.nombre === 'Movimiento Manual'
                             ? `${comanda.moneda || 'USD'}: $${totalDescuentosMetodo.toFixed(2)}`
-                            : formatAmount(totalDescuentosMetodo)}
+                            : formatAmount(totalDescuentosMetodo, hayItemsCongelados)}
                         </span>
                       </div>
                     )}
@@ -453,7 +462,7 @@ export default function ModalVerDetalles({
                         <span>
                           -{comanda.cliente.nombre === 'Movimiento Manual'
                             ? `${comanda.moneda || 'USD'}: $${comanda.totalSeña.toFixed(2)}`
-                            : formatAmount(comanda.totalSeña)}
+                            : formatAmount(comanda.totalSeña, hayItemsCongelados)}
                         </span>
                       </div>
                     )}
@@ -464,7 +473,7 @@ export default function ModalVerDetalles({
                       <span>
                         {comanda.cliente.nombre === 'Movimiento Manual'
                           ? `${comanda.moneda || 'USD'}: $${comanda.totalFinal.toFixed(2)}`
-                          : formatAmount(comanda.totalFinal)}
+                          : formatAmount(comanda.totalFinal, hayItemsCongelados)}
                       </span>
                     </div>
                   </div>

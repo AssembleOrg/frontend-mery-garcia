@@ -46,7 +46,6 @@ export default function CajaChicaMenuPage() {
     return isExchangeRateValid ? formatDual(monto) : formatUSD(monto);
   };
 
-
   // Calcular servicio más vendido del día
   const today = new Date().toISOString().split('T')[0];
   const ventasPorServicio: Record<
