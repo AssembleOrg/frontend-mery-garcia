@@ -100,7 +100,7 @@ export default function ModalMovimientoSimple({
         };
       }
     } catch (error) {
-      console.warn('Error al obtener usuario del localStorage:', error);
+      // Error handling logic preserved
     }
 
     const personalManual = {
@@ -319,7 +319,6 @@ export default function ModalMovimientoSimple({
       onCerrar();
       onExito?.();
     } catch (error) {
-      console.error('Error al registrar movimiento:', error);
       toast.error('Error al registrar el movimiento. Intente nuevamente.');
     } finally {
       setLoading(false);

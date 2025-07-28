@@ -422,7 +422,6 @@ export default function ModalEditarTransaccion({
       toast.success('Transacción actualizada correctamente');
       onClose();
     } catch (error) {
-      console.error('Error al actualizar transacción:', error);
       toast.error('Error al actualizar la transacción');
     } finally {
       setIsLoading(false);

@@ -175,7 +175,6 @@ export default function CajaChicaResumenPage() {
 
       // El resumen se actualiza automáticamente a través del useMemo
     } catch (error) {
-      console.error('Error en traspaso:', error);
       toast.error('Error al realizar el traspaso');
       setMensaje({
         tipo: 'warning',

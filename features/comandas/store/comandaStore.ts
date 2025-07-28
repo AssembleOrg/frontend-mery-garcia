@@ -97,7 +97,7 @@ interface ComandaState {
 
 const estadoInicial = {
   comandas: [],
-  filters: {},
+  filters: {} as Partial<FiltrosComanda>,
   cargando: false,
   error: null,
   lastUpdate: Date.now(),
@@ -187,7 +187,7 @@ export const useComandaStore = create<ComandaState>()(
         },
 
         limpiarFiltros: () => {
-          set({ filters: {} });
+          set({ filters: {} as Partial<FiltrosComanda> });
         },
 
         // === CÁLCULOS Y CONSULTAS ===

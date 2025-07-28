@@ -82,7 +82,7 @@ export default function TableFilters({
       const clearedFilters: FiltrosEncomienda = {};
       Object.keys(filters).forEach(key => {
         if (key !== 'busqueda') {
-          (clearedFilters as any)[key] = undefined;
+          (clearedFilters as any)[key as keyof FiltrosEncomienda] = undefined;
         }
       });
       // Also clear the search term

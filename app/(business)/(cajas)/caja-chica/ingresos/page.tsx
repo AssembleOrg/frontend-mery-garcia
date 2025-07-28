@@ -83,7 +83,6 @@ export default function IngresosPage() {
   // Handle delete transaction
   const handleDelete = (id: string) => {
     // TODO: Implement delete functionality
-    console.log('Delete transaction:', id);
   };
 
   // Handle status change

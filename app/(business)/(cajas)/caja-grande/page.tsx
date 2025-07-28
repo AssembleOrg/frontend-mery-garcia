@@ -538,7 +538,6 @@ export default function CajaGrandePage() {
           cajaActual="caja_2"
           onExito={() => {
             // Aquí podrías refrescar datos si es necesario
-            console.log('Movimiento registrado exitosamente');
           }}
         />
       </div>

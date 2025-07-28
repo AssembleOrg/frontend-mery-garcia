@@ -164,7 +164,6 @@ export default function EgresosPage() {
   // Handle delete transaction
   const handleDelete = (id: string) => {
     // TODO: Implement delete functionality
-    console.log('Delete transaction:', id);
   };
 
   // Handle status change

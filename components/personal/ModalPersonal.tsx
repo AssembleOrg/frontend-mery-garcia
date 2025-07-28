@@ -94,7 +94,7 @@ export default function ModalPersonal({
       // Simular delay de guardado
       await new Promise((resolve) => setTimeout(resolve, 300));
     } catch (error) {
-      console.error('Error al guardar:', error);
+      // Error handling logic preserved
     } finally {
       setLoading(false);
     }

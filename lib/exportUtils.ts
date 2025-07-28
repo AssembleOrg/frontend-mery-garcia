@@ -1,7 +1,7 @@
 import Papa from 'papaparse';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
-import { Comanda, FiltrosComanda, UnidadNegocio } from '@/types/caja';
+import { Comanda, FiltrosComanda, UnidadNegocio, EstadoComandaNegocio, EstadoValidacion } from '@/types/caja';
 import {
   formatARS as formatARSUtil,
   formatARSNative as formatARSFromNativeUtil,
@@ -62,7 +62,7 @@ export const exportComandasToCSV = (
       .join(', ');
   };
 
-  const data = comandas.map((comanda) => {
+  const data: any[] = comandas.map((comanda) => {
     const valores = calcularValoresPorMoneda(comanda);
 
     return {

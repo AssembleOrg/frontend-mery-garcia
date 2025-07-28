@@ -123,7 +123,7 @@ export default function ModalTransaccionUnificado({
   };
 
   // Helper function para productos con precio congelado
-  const formatProductAmount = (producto: any) => {
+  const formatProductAmount = (producto: ProductoServicio) => {
     if (producto.esPrecioCongelado && producto.precioFijoARS) {
       return `🔒 ${formatARSFromNative(producto.precioFijoARS)}`;
     }
@@ -1691,7 +1691,7 @@ export default function ModalTransaccionUnificado({
                         </div>
                         <div className="text-right">
                           <div className="text-sm font-semibold text-gray-900">
-                            {formatAmountForARSFixed(totales.subtotalBase, (totales as any).esCalculoARS)}
+                            {formatAmountForARSFixed(totales.subtotalBase, !!(totales as {esCalculoARS?: boolean}).esCalculoARS)}
                           </div>
                           {isExchangeRateValid && totales.subtotalBase > 0 && (
                             <div className="text-xs text-gray-600">
@@ -1713,7 +1713,7 @@ export default function ModalTransaccionUnificado({
                           </div>
                           <div className="text-right">
                             <div className="text-sm font-semibold text-orange-700">
-                              -{formatAmountForARSFixed(totales.totalDescuentos, (totales as any).esCalculoARS)}
+                              -{formatAmountForARSFixed(totales.totalDescuentos, !!(totales as {esCalculoARS?: boolean}).esCalculoARS)}
                             </div>
                             {isExchangeRateValid &&
                               totales.totalDescuentos > 0 && (
@@ -1760,7 +1760,7 @@ export default function ModalTransaccionUnificado({
                           </div>
                           <div className="text-right">
                             <div className="text-sm font-semibold text-green-700">
-                              -{formatAmountForARSFixed(totales.descuentosPorMetodo, (totales as any).esCalculoARS)}
+                              -{formatAmountForARSFixed(totales.descuentosPorMetodo, !!(totales as {esCalculoARS?: boolean}).esCalculoARS)}
                             </div>
                             {isExchangeRateValid &&
                               totales.descuentosPorMetodo > 0 && (
@@ -1779,7 +1779,7 @@ export default function ModalTransaccionUnificado({
                         </div>
                         <div className="text-right">
                           <div className="text-base font-bold text-blue-900">
-                            {formatAmountForARSFixed(totales.totalFinal, (totales as any).esCalculoARS)}
+                            {formatAmountForARSFixed(totales.totalFinal, !!(totales as {esCalculoARS?: boolean}).esCalculoARS)}
                           </div>
                           {isExchangeRateValid && totales.totalFinal > 0 && (
                             <div className="text-sm text-blue-700">
@@ -1800,7 +1800,7 @@ export default function ModalTransaccionUnificado({
                         </div>
                         <div className="text-right">
                           <div className="text-sm font-semibold text-green-700">
-                            {formatAmountForARSFixed(totales.totalPagadoConDescuentos, (totales as any).esCalculoARS)}
+                            {formatAmountForARSFixed(totales.totalPagadoConDescuentos, !!(totales as {esCalculoARS?: boolean}).esCalculoARS)}
                           </div>
                           {isExchangeRateValid &&
                             totales.totalPagadoConDescuentos > 0 && (
@@ -1827,8 +1827,8 @@ export default function ModalTransaccionUnificado({
                             {Math.abs(totales.diferencia) < 0.01
                               ? '✓ Balanceado'
                               : totales.diferencia > 0
-                                ? `+${formatAmountForARSFixed(totales.diferencia, (totales as any).esCalculoARS)} (exceso)`
-                                : `${formatAmountForARSFixed(totales.diferencia, (totales as any).esCalculoARS)} (faltante)`}
+                                ? `+${formatAmountForARSFixed(totales.diferencia, !!(totales as {esCalculoARS?: boolean}).esCalculoARS)} (exceso)`
+                                : `${formatAmountForARSFixed(totales.diferencia, !!(totales as {esCalculoARS?: boolean}).esCalculoARS)} (faltante)`}
                           </div>
                         </div>
                       </div>

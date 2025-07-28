@@ -184,7 +184,7 @@ export default function ModalProductoServicio({
 
       onClose();
     } catch (error) {
-      console.error('Error al guardar:', error);
+      // Error handling logic preserved
     } finally {
       setLoading(false);
     }

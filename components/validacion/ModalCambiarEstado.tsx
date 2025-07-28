@@ -88,7 +88,6 @@ export default function ModalCambiarEstado({
       setObservaciones('');
       setNuevoEstado(estadoActual);
     } catch (error) {
-      console.error('Error changing status:', error);
       toast.error('Error al cambiar estado');
     } finally {
       setCargando(false);

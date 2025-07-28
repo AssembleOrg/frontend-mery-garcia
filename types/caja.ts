@@ -72,7 +72,7 @@ export interface ItemComanda {
 // Seña - Siguiendo el mismo patrón que MetodoPago
 export interface Seña {
   monto: number;
-  moneda: 'USD' | 'ARS'; // Unificado con el resto del sistema
+  moneda: 'USD' | 'ARS';
   fecha: Date;
   observaciones?: string;
 }

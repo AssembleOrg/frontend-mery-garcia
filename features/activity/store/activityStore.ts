@@ -66,7 +66,7 @@ export const useActivityStore = create<ActivityStore>()(
     (set, get) => ({
       // Estado inicial
       logs: [],
-      filters: {},
+      filters: {} as ActivityFilters,
       isLoading: false,
 
       // Registrar nueva actividad
@@ -114,7 +114,7 @@ export const useActivityStore = create<ActivityStore>()(
 
       // Limpiar filtros
       clearFilters: () => {
-        set({ filters: {} });
+        set({ filters: {} as ActivityFilters });
       },
 
       // Obtener logs filtrados
@@ -246,7 +246,7 @@ export const useActivityStore = create<ActivityStore>()(
 
       // Limpiar todos los logs (para demo)
       clearAllLogs: () => {
-        set({ logs: [], filters: {} });
+        set({ logs: [], filters: {} as ActivityFilters });
       },
     }),
     {
