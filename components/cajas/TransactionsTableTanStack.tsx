@@ -43,11 +43,25 @@ export default function TransactionsTableTanStack({
   onChangeStatus,
   hiddenColumns = [],
 }: Props) {
-  const { formatARS: formatARSCurrent, formatUSD: formatUSDCurrent } =
+  const { formatARS: formatARSCurrent, formatUSD: formatUSDCurrent, formatARSFromNative } =
     useCurrencyConverter();
+
+  // Función para detectar si es un egreso con monto fijo ARS
+  const esEgresoConMontoFijoARS = (comanda: Comanda) => {
+    return comanda.tipo === 'egreso' && 
+           comanda.items?.some(item => item.esMontoFijoARS);
+  };
 
   // Función para formatear con tipo de cambio específico o actual
   const formatWithExchangeRate = (amountUSD: number, comanda: Comanda) => {
+    // Para egresos con monto fijo ARS: NO convertir, mostrar valor nativo
+    if (esEgresoConMontoFijoARS(comanda)) {
+      return {
+        usd: `🔒 ${formatARSFromNative(amountUSD)}`, // amountUSD es en realidad ARS
+        ars: null, // No mostrar conversión
+      };
+    }
+
     // Si la comanda tiene tipo de cambio almacenado, usarlo
     if (comanda.tipoCambioAlCrear?.valorVenta) {
       return {
@@ -168,11 +182,13 @@ export default function TransactionsTableTanStack({
             >
               {formatted.usd}
             </div>
-            <div
-              className={`text-xs ${isValidated ? 'text-gray-400' : 'text-muted-foreground'}`}
-            >
-              {formatted.ars}
-            </div>
+            {formatted.ars && (
+              <div
+                className={`text-xs ${isValidated ? 'text-gray-400' : 'text-muted-foreground'}`}
+              >
+                {formatted.ars}
+              </div>
+            )}
           </div>
         );
       },
@@ -205,11 +221,13 @@ export default function TransactionsTableTanStack({
             >
               {formatted.usd}
             </div>
-            <div
-              className={`text-xs ${isValidated ? 'text-gray-400' : 'text-muted-foreground'}`}
-            >
-              {formatted.ars}
-            </div>
+            {formatted.ars && (
+              <div
+                className={`text-xs ${isValidated ? 'text-gray-400' : 'text-muted-foreground'}`}
+              >
+                {formatted.ars}
+              </div>
+            )}
           </div>
         );
       },

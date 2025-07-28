@@ -65,6 +65,8 @@ export interface ItemComanda {
   // Campos para precios congelados en ARS (heredados del ProductoServicio)
   esPrecioCongelado?: boolean;
   precioFijoARS?: number;
+  // Campo para egresos con monto fijo en ARS
+  esMontoFijoARS?: boolean;
 }
 
 // Seña - Siguiendo el mismo patrón que MetodoPago

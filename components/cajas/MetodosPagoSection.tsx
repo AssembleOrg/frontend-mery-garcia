@@ -273,7 +273,12 @@ export default function MetodosPagoSection({
         <div className="space-y-2 border-t pt-4">
           <div className="flex justify-between text-sm">
             <span>Total a Pagar:</span>
-            <span className="font-medium">{formatAmount(montoTotal)}</span>
+            <span className="font-medium">
+              {hayItemsCongelados 
+                ? `🔒 ${formatARSFromNative(montoTotal)}`
+                : formatAmount(montoTotal)
+              }
+            </span>
           </div>
           {totalDescuentos > 0 && (
             <div className="flex justify-between text-sm text-green-600">
@@ -334,10 +339,15 @@ export default function MetodosPagoSection({
           )}
 
           <div className="flex justify-between border-t pt-2 text-sm font-medium">
-            <span>Total Pagado (USD):</span>
+            <span>Total Pagado {hayItemsCongelados ? '(ARS)' : '(USD)'}:</span>
             <div className="text-right">
-              <div>{formatAmount(totalPagado)}</div>
-              {obtenerResumenDual &&
+              <div>
+                {hayItemsCongelados 
+                  ? `🔒 ${formatARSFromNative(totalPagado)}`
+                  : formatAmount(totalPagado)
+                }
+              </div>
+              {!hayItemsCongelados && obtenerResumenDual &&
                 (() => {
                   const resumen = obtenerResumenDual();
                   return (

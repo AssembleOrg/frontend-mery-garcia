@@ -63,6 +63,15 @@ export function useMetodosPago(
     ) => {
       // Si no se deben aplicar descuentos, devolver el monto original
       if (!aplicarDescuentos) {
+        // Para items congelados (ARS fijo): NO convertir a USD, mantener ARS nativo
+        if (hayItemsCongelados && moneda === MONEDAS.ARS) {
+          return {
+            montoFinal: monto, // Mantener valor ARS nativo como montoFinal
+            descuentoAplicado: 0,
+            montoFinalOriginalARS: monto,
+          };
+        }
+        
         const montoUSD = moneda === MONEDAS.ARS ? arsToUsd(monto) : monto;
         return {
           montoFinal: montoUSD,
@@ -73,6 +82,15 @@ export function useMetodosPago(
       }
 
       if (tipo === 'mixto' || tipo === 'giftcard' || tipo === 'qr' || tipo === 'precio_lista') {
+        // Para items congelados (ARS fijo): NO convertir a USD, mantener ARS nativo
+        if (hayItemsCongelados && moneda === MONEDAS.ARS) {
+          return {
+            montoFinal: monto, // Mantener valor ARS nativo
+            descuentoAplicado: 0,
+            montoFinalOriginalARS: monto,
+          };
+        }
+        
         // Para estos tipos no hay descuento (precio_lista es igual que tarjeta sin descuento)
         const montoUSD = moneda === MONEDAS.ARS ? arsToUsd(monto) : monto;
         return {
@@ -84,9 +102,21 @@ export function useMetodosPago(
       const porcentajeDescuento = descuentosPorMetodo[tipo] || 0;
 
       if (moneda === MONEDAS.ARS) {
-        // Para ARS: aplicar descuento en ARS, luego convertir a USD
+        // Para ARS: aplicar descuento en ARS
         const descuentoARS = (monto * porcentajeDescuento) / 100;
         const montoFinalARS = monto - descuentoARS;
+        
+        // Para items congelados (ARS fijo): NO convertir a USD, mantener ARS nativo
+        if (hayItemsCongelados) {
+          return {
+            montoFinal: montoFinalARS, // Mantener valor ARS nativo
+            descuentoAplicado: descuentoARS, // Descuento en ARS nativo
+            descuentoOriginalARS: descuentoARS,
+            montoFinalOriginalARS: montoFinalARS,
+          };
+        }
+        
+        // Para casos normales: convertir a USD
         const montoFinalUSD = arsToUsd(montoFinalARS);
         const descuentoUSD = arsToUsd(descuentoARS);
 
@@ -262,18 +292,27 @@ export function useMetodosPago(
       }
     });
 
-    // El total USD es la suma de todos los montos finales (ya convertidos a USD)
-    resumen.totalUSD = metodosPago.reduce((sum, mp) => sum + mp.montoFinal, 0);
-
-    // Para el total ARS equivalente: convertir la parte USD + la parte ARS ya existente
-    const usdPartInARS =
-      resumen.totalPagadoUSD > 0 ? usdToArs(resumen.totalPagadoUSD) : 0;
-    resumen.totalARS = usdPartInARS + resumen.totalPagadoARS;
+    // Para items congelados: totalUSD debe ser 0 ya que todo es ARS nativo
+    if (hayItemsCongelados) {
+      resumen.totalUSD = 0; // No hay USD cuando hay items congelados
+      resumen.totalARS = resumen.totalPagadoARS; // Solo ARS nativo
+    } else {
+      // El total USD es la suma de todos los montos finales (ya convertidos a USD)
+      resumen.totalUSD = metodosPago.reduce((sum, mp) => sum + mp.montoFinal, 0);
+      
+      // Para el total ARS equivalente: convertir la parte USD + la parte ARS ya existente
+      const usdPartInARS =
+        resumen.totalPagadoUSD > 0 ? usdToArs(resumen.totalPagadoUSD) : 0;
+      resumen.totalARS = usdPartInARS + resumen.totalPagadoARS;
+    }
 
     return resumen;
   }, [metodosPago, usdToArs]);
 
-  const totalPagado = metodosPago.reduce((sum, mp) => sum + mp.montoFinal, 0);
+  // Para items congelados: totalPagado debe ser en ARS nativo
+  const totalPagado = hayItemsCongelados 
+    ? metodosPago.reduce((sum, mp) => sum + mp.montoFinal, 0) // Ya son ARS nativos
+    : metodosPago.reduce((sum, mp) => sum + mp.montoFinal, 0); // USD normales
 
   return {
     metodosPago,
