@@ -138,7 +138,7 @@ export function useMetodosPago(
         };
       }
     },
-    [descuentosPorMetodo, arsToUsd, aplicarDescuentos]
+    [descuentosPorMetodo, arsToUsd, aplicarDescuentos, hayItemsCongelados]
   );
 
   const agregarMetodoPago = useCallback(() => {
@@ -218,10 +218,10 @@ export function useMetodosPago(
         };
       }
 
-      const totalPagado = metodosPago.reduce(
-        (sum, mp) => sum + mp.montoFinal,
-        0
-      );
+      // Para items congelados: calcular totalPagado en ARS nativo
+      const totalPagado = hayItemsCongelados
+        ? metodosPago.reduce((sum, mp) => sum + mp.montoFinal, 0) // Ya son ARS nativos
+        : metodosPago.reduce((sum, mp) => sum + mp.montoFinal, 0); // USD normales
 
       if (totalPagado === 0) {
         return {
@@ -230,16 +230,18 @@ export function useMetodosPago(
         };
       }
 
+      // Para items congelados: montoTotal viene en ARS nativo, comparar directamente
       if (Math.abs(totalPagado - montoTotal) > 0.01) {
+        const monedaLabel = hayItemsCongelados ? 'ARS' : 'USD';
         return {
           esValido: false,
-          error: `El total pagado ($${totalPagado.toFixed(2)}) no coincide con el monto total ($${montoTotal.toFixed(2)})`,
+          error: `El total pagado (${monedaLabel} $${totalPagado.toFixed(2)}) no coincide con el monto total (${monedaLabel} $${montoTotal.toFixed(2)})`,
         };
       }
 
       return { esValido: true };
     },
-    [metodosPago]
+    [metodosPago, hayItemsCongelados]
   );
 
   const convertirParaPersistencia = useCallback((): MetodoPago[] => {
@@ -307,7 +309,7 @@ export function useMetodosPago(
     }
 
     return resumen;
-  }, [metodosPago, usdToArs]);
+  }, [metodosPago, usdToArs, hayItemsCongelados]);
 
   // Para items congelados: totalPagado debe ser en ARS nativo
   const totalPagado = hayItemsCongelados 

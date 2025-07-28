@@ -1,7 +1,7 @@
 import Papa from 'papaparse';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
-import { Comanda, FiltrosComanda, UnidadNegocio, EstadoComandaNegocio, EstadoValidacion } from '@/types/caja';
+import { Comanda, FiltrosComanda, UnidadNegocio, EstadoComandaNegocio, EstadoValidacion, getComandaBusinessUnits, getItemsByBusinessUnit } from '@/types/caja';
 import {
   formatARS as formatARSUtil,
   formatARSNative as formatARSFromNativeUtil,
@@ -62,25 +62,52 @@ export const exportComandasToCSV = (
       .join(', ');
   };
 
-  const data: any[] = comandas.map((comanda) => {
+  const data: any[] = [];
+
+  comandas.forEach((comanda) => {
     const valores = calcularValoresPorMoneda(comanda);
 
-    return {
-      Fecha: new Date(comanda.fecha).toLocaleDateString('es-AR'),
-      Numero: comanda.numero,
-      Cliente: comanda.cliente?.nombre || 'N/A',
-      Personal: comanda.mainStaff?.nombre || 'N/A',
-      'Unidad de Negocio': comanda.businessUnit,
-      Tipo: comanda.tipo,
-      USD: valores.usd > 0 ? formatUSD(valores.usd) : '-',
-      ARS:
-        valores.ars > 0
-          ? formatARSFromNative(valores.ars).replace(/[^\d.,\-]/g, '')
-          : '-',
-      Estado: comanda.estado,
-      'Metodo de Pago': obtenerMetodosPago(comanda),
-      Observaciones: comanda.observaciones || '',
-    };
+    if (options.filters?.businessUnit) {
+      // Expandir por items de la unidad específica
+      const itemsFiltrados = getItemsByBusinessUnit(comanda, options.filters.businessUnit);
+      
+      itemsFiltrados.forEach((item) => {
+        data.push({
+          Fecha: new Date(comanda.fecha).toLocaleDateString('es-AR'),
+          Numero: comanda.numero,
+          Cliente: comanda.cliente?.nombre || 'N/A',
+          Personal: comanda.mainStaff?.nombre || 'N/A',
+          'Unidad de Negocio': item.businessUnit,
+          'Item': item.nombre,
+          'Cantidad': item.cantidad,
+          'Precio Unit': formatUSD(item.precio),
+          'Subtotal Item': formatUSD(item.subtotal),
+          Tipo: comanda.tipo,
+          Estado: comanda.estado,
+          'Metodo de Pago': obtenerMetodosPago(comanda),
+          Observaciones: comanda.observaciones || '',
+        });
+      });
+    } else {
+      // Comportamiento original para export sin filtro de unidad específica
+      const unidadesNegocio = getComandaBusinessUnits(comanda);
+      data.push({
+        Fecha: new Date(comanda.fecha).toLocaleDateString('es-AR'),
+        Numero: comanda.numero,
+        Cliente: comanda.cliente?.nombre || 'N/A',
+        Personal: comanda.mainStaff?.nombre || 'N/A',
+        'Unidades de Negocio': unidadesNegocio.join(', '),
+        Tipo: comanda.tipo,
+        USD: valores.usd > 0 ? formatUSD(valores.usd) : '-',
+        ARS:
+          valores.ars > 0
+            ? formatARSFromNative(valores.ars).replace(/[^\d.,\-]/g, '')
+            : '-',
+        Estado: comanda.estado,
+        'Metodo de Pago': obtenerMetodosPago(comanda),
+        Observaciones: comanda.observaciones || '',
+      });
+    }
   });
 
   const calcularTotalesPorTipo = (tipo: 'ingreso' | 'egreso') => {
@@ -298,7 +325,7 @@ export const exportComandasToPDF = (
       comanda.numero.toString(),
       comanda.cliente?.nombre || 'N/A',
       comanda.mainStaff?.nombre || 'N/A',
-      comanda.businessUnit,
+      getComandaBusinessUnits(comanda).join(', '),
       comanda.tipo,
       valores.usd > 0 ? formatUSD(valores.usd) : '-',
       valores.ars > 0 ? formatARSFromNative(valores.ars) : '-',

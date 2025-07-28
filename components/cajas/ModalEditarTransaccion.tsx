@@ -41,6 +41,7 @@ import {
   UnidadNegocio,
   EstadoComandaNegocio,
   EstadoValidacion,
+  getComandaBusinessUnits,
 } from '@/types/caja';
 import { useComandaStore } from '@/features/comandas/store/comandaStore';
 import { usePersonal } from '@/features/personal/hooks/usePersonal';
@@ -246,6 +247,7 @@ export default function ModalEditarTransaccion({
     const nuevoItem: ItemComanda = {
       nombre: '',
       tipo: 'servicio',
+      businessUnit: 'estilismo',
       cantidad: 1,
       precio: 0,
       precioOriginalUSD: 0,
@@ -518,9 +520,9 @@ export default function ModalEditarTransaccion({
                       </span>
                     </div>
                     <div className="flex items-center justify-between">
-                      <span className="text-sm text-gray-600">Unidad:</span>
+                      <span className="text-sm text-gray-600">Unidades:</span>
                       <span className="font-medium capitalize">
-                        {comanda.businessUnit}
+                        {getComandaBusinessUnits(comanda).join(', ')}
                       </span>
                     </div>
                   </CardContent>

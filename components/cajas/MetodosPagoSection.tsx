@@ -151,7 +151,10 @@ export default function MetodosPagoSection({
 
               {/* Selector de Moneda */}
               <Select
-                value={metodo.moneda || (hayItemsCongelados ? MONEDAS.ARS : MONEDAS.USD)}
+                value={
+                  metodo.moneda ||
+                  (hayItemsCongelados ? MONEDAS.ARS : MONEDAS.USD)
+                }
                 onValueChange={(value) =>
                   onActualizarMetodo?.(index, 'moneda', value)
                 }
@@ -208,16 +211,20 @@ export default function MetodosPagoSection({
                     {formatARSFromNative(
                       metodo.montoFinalOriginalARS || metodo.monto
                     )}
-                    <div className="text-xs text-gray-500">
-                      ≈ {formatAmount(metodo.montoFinal)}
-                    </div>
+                    {!hayItemsCongelados && (
+                      <div className="text-xs text-gray-500">
+                        ≈ {formatAmount(metodo.montoFinal)}
+                      </div>
+                    )}
                   </>
                 ) : (
                   <>
                     = {formatAmount(metodo.montoFinal)}
-                    <div className="text-xs text-gray-500">
-                      ≈ {formatARS(metodo.montoFinal)}
-                    </div>
+                    {!hayItemsCongelados && (
+                      <div className="text-xs text-gray-500">
+                        ≈ {formatARS(metodo.montoFinal)}
+                      </div>
+                    )}
                   </>
                 )}
               </div>
@@ -274,10 +281,9 @@ export default function MetodosPagoSection({
           <div className="flex justify-between text-sm">
             <span>Total a Pagar:</span>
             <span className="font-medium">
-              {hayItemsCongelados 
+              {hayItemsCongelados
                 ? `🔒 ${formatARSFromNative(montoTotal)}`
-                : formatAmount(montoTotal)
-              }
+                : formatAmount(montoTotal)}
             </span>
           </div>
           {totalDescuentos > 0 && (
@@ -342,12 +348,12 @@ export default function MetodosPagoSection({
             <span>Total Pagado {hayItemsCongelados ? '(ARS)' : '(USD)'}:</span>
             <div className="text-right">
               <div>
-                {hayItemsCongelados 
+                {hayItemsCongelados
                   ? `🔒 ${formatARSFromNative(totalPagado)}`
-                  : formatAmount(totalPagado)
-                }
+                  : formatAmount(totalPagado)}
               </div>
-              {!hayItemsCongelados && obtenerResumenDual &&
+              {!hayItemsCongelados &&
+                obtenerResumenDual &&
                 (() => {
                   const resumen = obtenerResumenDual();
                   return (
@@ -360,7 +366,7 @@ export default function MetodosPagoSection({
                 })()}
             </div>
           </div>
-          {Math.abs(totalPagado - montoTotal) > 0.01 && (
+          {!hayItemsCongelados && Math.abs(totalPagado - montoTotal) > 0.01 && (
             <div
               className={`flex justify-between text-sm ${
                 totalPagado > montoTotal ? 'text-blue-600' : 'text-red-600'

@@ -12,6 +12,8 @@ import { X, Users, Receipt } from 'lucide-react';
 import ClientesTab from '@/components/clientes/ClientesTab';
 import TransactionsTable from '@/components/cajas/TransactionsTableTanStack';
 import { useTransactions } from '@/hooks/useTransactions';
+import { useComandaStore } from '@/features/comandas/store/comandaStore';
+import { toast } from 'sonner';
 
 interface ModalClientesTransaccionesProps {
   isOpen: boolean;
@@ -23,11 +25,38 @@ export default function ModalClientesTransacciones({
   onClose,
 }: ModalClientesTransaccionesProps) {
   const [activeTab, setActiveTab] = useState('clientes');
+  const { eliminarComanda } = useComandaStore();
 
   // Hook para transacciones
   const { data: transactions, statistics } = useTransactions({
     type: 'ingreso',
   });
+
+  const handleDelete = (id: string) => {
+    const transaction = transactions?.find(t => t.id === id);
+    
+    if (!transaction) {
+      toast.error('Transacción no encontrada');
+      return;
+    }
+
+    // No permitir eliminar transacciones validadas
+    if (transaction.estadoValidacion === 'validado') {
+      toast.error('No se puede eliminar una transacción validada');
+      return;
+    }
+
+    // Confirmación antes de eliminar
+    if (window.confirm(`¿Está seguro que desea eliminar la transacción ${transaction.numero}?`)) {
+      try {
+        eliminarComanda(id);
+        toast.success('Transacción eliminada correctamente');
+      } catch (error) {
+        toast.error('Error al eliminar la transacción');
+        console.error('Error al eliminar transacción:', error);
+      }
+    }
+  };
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
@@ -90,10 +119,7 @@ export default function ModalClientesTransacciones({
                       // TODO: Implementar edición de transacción
                       console.log('Edit transaction:', id);
                     }}
-                    onDelete={(id) => {
-                      // TODO: Implementar eliminación de transacción
-                      console.log('Delete transaction:', id);
-                    }}
+                    onDelete={handleDelete}
                     onChangeStatus={(id) => {
                       // TODO: Implementar cambio de estado
                       console.log('Change status:', id);

@@ -2,7 +2,7 @@
 
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Comanda, TraspasoInfo } from '@/types/caja';
+import { Comanda, TraspasoInfo, getComandaBusinessUnits } from '@/types/caja';
 import { Calendar, Users, TrendingUp } from 'lucide-react';
 import { useCurrencyConverter } from '@/hooks/useCurrencyConverter';
 
@@ -19,33 +19,35 @@ export default function ResumenCajaGrande({
   // Estadísticas por unidad de negocio separadas por moneda
   const estadisticasPorUnidad = comandasValidadas.reduce(
     (acc, comanda) => {
-      const unidad = comanda.businessUnit;
-      if (!acc[unidad]) {
-        acc[unidad] = {
-          ingresosUSD: 0,
-          egresosUSD: 0,
-          ingresosARS: 0,
-          egresosARS: 0,
-          cantidad: 0,
-        };
-      }
+      const unidades = getComandaBusinessUnits(comanda);
+      unidades.forEach(unidad => {
+        if (!acc[unidad]) {
+          acc[unidad] = {
+            ingresosUSD: 0,
+            egresosUSD: 0,
+            ingresosARS: 0,
+            egresosARS: 0,
+            cantidad: 0,
+          };
+        }
 
-      acc[unidad].cantidad++;
-      
-      // Calcular valores reales basándose en los métodos de pago
-      const metodosUSD = comanda.metodosPago.filter(mp => mp.moneda === 'USD');
-      const metodosARS = comanda.metodosPago.filter(mp => mp.moneda === 'ARS');
-      
-      const totalUSDComanda = metodosUSD.reduce((sum, mp) => sum + mp.monto, 0);
-      const totalARSComanda = metodosARS.reduce((sum, mp) => sum + mp.monto, 0);
-      
-      if (comanda.tipo === 'ingreso') {
-        acc[unidad].ingresosUSD += totalUSDComanda;
-        acc[unidad].ingresosARS += totalARSComanda;
-      } else {
-        acc[unidad].egresosUSD += totalUSDComanda;
-        acc[unidad].egresosARS += totalARSComanda;
-      }
+        acc[unidad].cantidad++;
+        
+        // Calcular valores reales basándose en los métodos de pago
+        const metodosUSD = comanda.metodosPago.filter(mp => mp.moneda === 'USD');
+        const metodosARS = comanda.metodosPago.filter(mp => mp.moneda === 'ARS');
+        
+        const totalUSDComanda = metodosUSD.reduce((sum, mp) => sum + mp.monto, 0);
+        const totalARSComanda = metodosARS.reduce((sum, mp) => sum + mp.monto, 0);
+        
+        if (comanda.tipo === 'ingreso') {
+          acc[unidad].ingresosUSD += totalUSDComanda;
+          acc[unidad].ingresosARS += totalARSComanda;
+        } else {
+          acc[unidad].egresosUSD += totalUSDComanda;
+          acc[unidad].egresosARS += totalARSComanda;
+        }
+      });
 
       return acc;
     },

@@ -26,9 +26,12 @@ import { useCurrencyConverter } from '@/hooks/useCurrencyConverter';
 import { formatDate } from '@/lib/utils';
 import { useRecordsStore } from '@/features/records/store/recordsStore';
 import ResidualDisplay from '@/components/cajas/ResidualDisplay';
+import { useComandaStore } from '@/features/comandas/store/comandaStore';
+import { toast } from 'sonner';
 
 export default function IngresosPage() {
   const { isInitialized } = useCurrencyConverter();
+  const { eliminarComanda } = useComandaStore();
 
   const [dateRange, setDateRange] = useState<DateRange | undefined>();
 
@@ -37,10 +40,16 @@ export default function IngresosPage() {
 
   // Find last transfer with residual
   const ultimoResidual = traspasos
-    .filter(t => t.esTraspasoParcial && 
-                ((t.montoResidualUSD || 0) > 0 || (t.montoResidualARS || 0) > 0))
-    .sort((a, b) => new Date(b.fechaTraspaso).getTime() - 
-                   new Date(a.fechaTraspaso).getTime())[0];
+    .filter(
+      (t) =>
+        t.esTraspasoParcial &&
+        ((t.montoResidualUSD || 0) > 0 || (t.montoResidualARS || 0) > 0)
+    )
+    .sort(
+      (a, b) =>
+        new Date(b.fechaTraspaso).getTime() -
+        new Date(a.fechaTraspaso).getTime()
+    )[0];
 
   // Use clean hook for incoming transactions
   const {
@@ -79,7 +88,33 @@ export default function IngresosPage() {
   );
 
   const handleDelete = (id: string) => {
-    // TODO: Implement delete functionality
+    const transaction = transactions.find((t) => t.id === id);
+
+    if (!transaction) {
+      toast.error('Transacción no encontrada');
+      return;
+    }
+
+    // No permitir eliminar transacciones validadas
+    if (transaction.estadoValidacion === 'validado') {
+      toast.error('No se puede eliminar una transacción validada');
+      return;
+    }
+
+    // Confirmación antes de eliminar safa el window OK.
+    if (
+      window.confirm(
+        `¿Está seguro que desea eliminar la transacción ${transaction.numero}?`
+      )
+    ) {
+      try {
+        eliminarComanda(id);
+        toast.success('Transacción eliminada correctamente');
+      } catch (error) {
+        toast.error('Error al eliminar la transacción');
+        console.error('Error al eliminar transacción:', error);
+      }
+    }
   };
 
   const onChangeStatus = (id: string) => {
@@ -111,12 +146,14 @@ export default function IngresosPage() {
     const fechasTransaccionesProcesadas = new Set<string>();
 
     // Filtrar transacciones: mostrar solo las que corresponden a caja-chica
-    const transaccionesFiltradas = transactions.filter(transaction => {
+    const transaccionesFiltradas = transactions.filter((transaction) => {
       // Si es un movimiento manual, verificar que sea un ingreso real a caja-chica
       if (transaction.cliente.nombre === 'Movimiento Manual') {
         // Solo mostrar ingresos reales a caja-chica (no egresos de transferencias)
-        return transaction.tipo === 'ingreso' && 
-               transaction.metadata?.cajaDestino === 'caja_1';
+        return (
+          transaction.tipo === 'ingreso' &&
+          transaction.metadata?.cajaDestino === 'caja_1'
+        );
       }
       // Las transacciones normales se muestran siempre
       return true;
@@ -136,7 +173,7 @@ export default function IngresosPage() {
     );
 
     // Ordenar transacciones dentro de cada fecha: no validadas primero, validadas al final
-    Object.keys(transaccionesPorFecha).forEach(fecha => {
+    Object.keys(transaccionesPorFecha).forEach((fecha) => {
       transaccionesPorFecha[fecha].sort((a, b) => {
         // Primero ordenar por estado de validación (no validadas primero)
         const aValidada = a.estadoValidacion === 'validado' ? 1 : 0;
@@ -426,7 +463,7 @@ const initialColumns: ColumnaCaja[] = [
   {
     key: 'mainStaff.nombre',
     label: 'Vendedor',
-    visible: true, // Cambiado a visible para probar el filtro
+    visible: true,
     sortable: true,
     width: '120px',
   },

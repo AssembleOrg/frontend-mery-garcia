@@ -70,6 +70,7 @@ interface ItemTransaccion {
   id: string;
   productoServicioId: string;
   nombre: string;
+  businessUnit: UnidadNegocio;
   precio: number;
   cantidad: number;
   descuentoPorcentaje: number;
@@ -112,8 +113,8 @@ export default function ModalTransaccionUnificado({
 
   // Helper function for ARS-native amounts (cuando hay items con monto fijo ARS)
   const formatAmountForARSFixed = (amount: number, esCalculoARS?: boolean) => {
-    if (tipo === 'egreso' && hayItemsCongelados && esCalculoARS) {
-      // Para egresos con monto fijo ARS: mostrar valor nativo sin conversión
+    if ((tipo === 'egreso' || tipo === 'ingreso') && hayItemsCongelados && esCalculoARS) {
+      // Para items congelados (ingresos y egresos): mostrar valor nativo sin conversión
       return `🔒 ${formatARSFromNative(amount)}`;
     }
     // Fallback a formato normal
@@ -200,7 +201,7 @@ export default function ModalTransaccionUnificado({
     validarMetodosPago,
     convertirParaPersistencia,
     obtenerResumenDual,
-  } = useMetodosPago(tipo === 'ingreso', hayItemsCongelados); // Solo aplicar descuentos en ingresos
+  } = useMetodosPago(tipo === 'ingreso' && !hayItemsCongelados, hayItemsCongelados); // NO aplicar descuentos para items congelados
 
   // Wrapper para forzar ARS cuando hay items congelados
   const agregarMetodoPago = () => {
@@ -349,6 +350,7 @@ export default function ModalTransaccionUnificado({
       id: `temp-${Date.now()}`,
       productoServicioId: '',
       nombre: '',
+      businessUnit: tipo === 'ingreso' ? unidadNegocio : 'estilismo',
       precio: 0,
       cantidad: 1,
       descuentoPorcentaje: 0,
@@ -375,6 +377,7 @@ export default function ModalTransaccionUnificado({
       id: `temp-${Date.now()}`,
       productoServicioId: producto.id,
       nombre: producto.nombre,
+      businessUnit: producto.businessUnit,
       precio: precioBase,
       cantidad: 1,
       descuentoPorcentaje: 0,
@@ -573,9 +576,44 @@ export default function ModalTransaccionUnificado({
     }
   };
 
-  // Función específica para egresos con monto fijo ARS - NO convierte a USD
+  // Función específica para items congelados (ingresos y egresos) - NO convierte a USD
   const calcularTotalesARS = () => {
-    if (tipo === 'egreso' && hayItemsCongelados) {
+    if ((tipo === 'egreso' || tipo === 'ingreso') && hayItemsCongelados) {
+      
+      if (tipo === 'ingreso') {
+        // Para ingresos con precios congelados: calcular directamente en ARS nativo
+        const itemsCongelados = items.filter(
+          (item) => item.esPrecioCongelado && item.precioFijoARS
+        );
+        
+        const totalARS = itemsCongelados.reduce((sum, item) => {
+          const subtotalARS = item.precioFijoARS! * item.cantidad;
+          return sum + subtotalARS - item.descuento;
+        }, 0);
+        
+        const totalDescuentosARS = items.reduce((sum, item) => sum + item.descuento, 0);
+        const señaAplicada = Math.min(montoSeñaAplicada || 0, totalARS);
+        const totalFinalARS = totalARS - señaAplicada;
+        
+        // Calcular total pagado en ARS nativo
+        const totalPagadoARS = metodosPago.reduce((sum, mp) => sum + mp.montoFinal, 0);
+        const diferenciaARS = totalPagadoARS - totalFinalARS;
+
+        return {
+          subtotalBase: totalARS,
+          totalDescuentos: totalDescuentosARS,
+          subtotalConDescuentosItems: totalARS - totalDescuentosARS,
+          totalFinal: totalFinalARS,
+          totalPagadoConDescuentos: totalPagadoARS,
+          diferencia: diferenciaARS,
+          descuentosPorMetodo: 0, // Para ingresos congelados, no aplicar descuentos por método adicionales
+          montoSeñaAplicada: señaAplicada,
+          totalARSRespetandoCongelados: totalFinalARS,
+          esCalculoARS: true, // Flag para identificar que son valores en ARS nativo
+        };
+      }
+      
+      // Lógica existente para egresos con items ARS fijo
       // Para egresos con items ARS fijo: trabajar en ARS nativo
       const subtotalBaseARS = items.reduce((sum, item) => {
         if (item.esMontoFijoARS) {
@@ -762,6 +800,7 @@ export default function ModalTransaccionUnificado({
         productoServicioId: item.productoServicioId,
         nombre: item.nombre,
         tipo: tipo === 'ingreso' ? 'servicio' : 'producto',
+        businessUnit: item.businessUnit,
         precio: item.precio,
         precioOriginalUSD: item.precio,
         cantidad: item.cantidad,
@@ -796,7 +835,6 @@ export default function ModalTransaccionUnificado({
         numero: numeroTransaccion,
         tipo,
         fecha: new Date(),
-        businessUnit: tipo === 'ingreso' ? unidadNegocio : 'estilismo',
         cliente: {
           id: `cliente-${Date.now()}`,
           nombre: clienteProveedor,
@@ -1687,13 +1725,9 @@ export default function ModalTransaccionUnificado({
                           <div className="text-sm font-semibold text-gray-900">
                             {formatAmountForARSFixed(totales.subtotalBase, !!(totales as {esCalculoARS?: boolean}).esCalculoARS)}
                           </div>
-                          {isExchangeRateValid && totales.subtotalBase > 0 && (
+                          {isExchangeRateValid && totales.subtotalBase > 0 && !hayItemsCongelados && (
                             <div className="text-xs text-gray-600">
-                              {hayItemsCongelados
-                                ? formatARSFromNative(
-                                    totales.totalARSRespetandoCongelados
-                                  )
-                                : formatARS(totales.subtotalBase)}
+                              {formatARS(totales.subtotalBase)}
                             </div>
                           )}
                         </div>
@@ -1710,7 +1744,7 @@ export default function ModalTransaccionUnificado({
                               -{formatAmountForARSFixed(totales.totalDescuentos, !!(totales as {esCalculoARS?: boolean}).esCalculoARS)}
                             </div>
                             {isExchangeRateValid &&
-                              totales.totalDescuentos > 0 && (
+                              totales.totalDescuentos > 0 && !hayItemsCongelados && (
                                 <div className="text-xs text-orange-600">
                                   -{formatARS(totales.totalDescuentos)}
                                 </div>
@@ -1746,8 +1780,8 @@ export default function ModalTransaccionUnificado({
                         </div>
                       )}
 
-                      {/* Descuentos por método de pago */}
-                      {totales.descuentosPorMetodo > 0 && (
+                      {/* Descuentos por método de pago - NO para items congelados */}
+                      {totales.descuentosPorMetodo > 0 && !hayItemsCongelados && (
                         <div className="flex items-center justify-between rounded-lg bg-green-50 p-3">
                           <div className="text-sm text-green-700">
                             Descuentos por método de pago
@@ -1757,7 +1791,7 @@ export default function ModalTransaccionUnificado({
                               -{formatAmountForARSFixed(totales.descuentosPorMetodo, !!(totales as {esCalculoARS?: boolean}).esCalculoARS)}
                             </div>
                             {isExchangeRateValid &&
-                              totales.descuentosPorMetodo > 0 && (
+                              totales.descuentosPorMetodo > 0 && !hayItemsCongelados && (
                                 <div className="text-xs text-green-600">
                                   -{formatARS(totales.descuentosPorMetodo)}
                                 </div>
@@ -1775,13 +1809,9 @@ export default function ModalTransaccionUnificado({
                           <div className="text-base font-bold text-blue-900">
                             {formatAmountForARSFixed(totales.totalFinal, !!(totales as {esCalculoARS?: boolean}).esCalculoARS)}
                           </div>
-                          {isExchangeRateValid && totales.totalFinal > 0 && (
+                          {isExchangeRateValid && totales.totalFinal > 0 && !hayItemsCongelados && (
                             <div className="text-sm text-blue-700">
-                              {hayItemsCongelados
-                                ? formatARSFromNative(
-                                    totales.totalARSRespetandoCongelados
-                                  )
-                                : formatARS(totales.totalFinal)}
+                              {formatARS(totales.totalFinal)}
                             </div>
                           )}
                         </div>
@@ -1797,7 +1827,7 @@ export default function ModalTransaccionUnificado({
                             {formatAmountForARSFixed(totales.totalPagadoConDescuentos, !!(totales as {esCalculoARS?: boolean}).esCalculoARS)}
                           </div>
                           {isExchangeRateValid &&
-                            totales.totalPagadoConDescuentos > 0 && (
+                            totales.totalPagadoConDescuentos > 0 && !hayItemsCongelados && (
                               <div className="text-xs text-green-600">
                                 {formatARS(totales.totalPagadoConDescuentos)}
                               </div>
