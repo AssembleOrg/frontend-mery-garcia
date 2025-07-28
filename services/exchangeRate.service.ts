@@ -1,67 +1,74 @@
 import { apiFetch } from '@/lib/apiClient';
+import { components } from '@/types/backend';
 
-export interface ExchangeRate {
+// Types based on your backend
+export interface DolarResponse {
   compra: number;
-  venta?: number;
-  fechaActualizacion: string;
-  casa?: string;
-  nombre?: string;
-  moneda?: string;
+  venta: number;
+  casa: string;
+  nombre: string;
+  moneda: string;
+  fechaActualizacion?: string;
+  fechaCreacion?: string;
 }
 
-export const getUltimoTipoCambio = async (): Promise<
-  ExchangeRate | undefined
-> => {
+// DTO for updating exchange rate
+type ActualizarDolarDto = components['schemas']['ActualizarDolarDto'];
+
+// Legacy interface for compatibility
+export interface ExchangeRate extends DolarResponse {}
+
+/**
+ * Get current exchange rate from backend
+ */
+export async function getCotizacion(): Promise<DolarResponse | undefined> {
   try {
-    const response = await apiFetch<{ status: string; data: ExchangeRate }>(
+    const response = await apiFetch<{ status: string; data: DolarResponse }>(
+      'api/dolar/cotizacion'
+    );
+    
+    if (response?.data) {
+      console.log('Cotización obtenida del backend:', response.data);
+      return response.data;
+    }
+    
+    return undefined;
+  } catch (error) {
+    console.error('Error obteniendo cotización:', error);
+    return undefined;
+  }
+}
+
+/**
+ * Get the last manual update from backend
+ */
+export const getUltimoTipoCambio = async (): Promise<DolarResponse | undefined> => {
+  try {
+    const response = await apiFetch<{ status: string; data: DolarResponse }>(
       'api/dolar/ultimo'
     );
-    return response?.data;
+    
+    if (response?.data) {
+      console.log('Último tipo de cambio operativo:', response.data);
+      return response.data;
+    }
+    
+    return undefined;
   } catch (error) {
     console.error('Error obteniendo último tipo de cambio:', error);
     return undefined;
   }
 };
 
-export async function getCotizacion(): Promise<ExchangeRate | undefined> {
-  try {
-    const ultimoGuardado = await getUltimoTipoCambio();
-    if (ultimoGuardado) {
-      console.log(
-        'Usando último tipo de cambio operativo guardado:',
-        ultimoGuardado
-      );
-      return ultimoGuardado;
-    }
-
-    // Si no hay valor guardado, usar la cotización pública como fallback
-    const res = await apiFetch<{ status: string; data: ExchangeRate }>(
-      'api/dolar/cotizacion',
-      { cache: 'no-store' }
-    );
-
-    if (res?.data) {
-      console.log(
-        'Usando cotización pública como fallback operativo:',
-        res.data
-      );
-      return res.data;
-    }
-
-    throw new Error('No se pudo obtener cotización');
-  } catch (error) {
-    console.error('Error en getCotizacion:', error);
-    return undefined;
-  }
-}
-
-// ✅ SOLO para valores informativos - siempre obtiene de la API pública
-export const getPublicRate = async (): Promise<ExchangeRate | undefined> => {
+/**
+ * Get public rate for informational purposes (always fresh from API)
+ */
+export const getPublicRate = async (): Promise<DolarResponse | undefined> => {
   try {
     console.log('Obteniendo cotización pública informativa...');
-    const response = await apiFetch<{ status: string; data: ExchangeRate }>(
+    const response = await apiFetch<{ status: string; data: DolarResponse }>(
       'api/dolar/cotizacion',
-      { cache: 'no-store' } // Siempre obtener datos frescos para informativos
+      { cache: 'no-store' }
     );
 
     if (response?.data) {
@@ -76,35 +83,46 @@ export const getPublicRate = async (): Promise<ExchangeRate | undefined> => {
   }
 };
 
-// Historial de cotizaciones
-export async function getHistorial(
-  limit: number = 10
-): Promise<ExchangeRate[]> {
+/**
+ * Get exchange rate history from backend
+ */
+export async function getHistorial(limit: number = 10): Promise<DolarResponse[]> {
   try {
-    const response = await apiFetch<{ status: string; data: ExchangeRate[] }>(
+    const response = await apiFetch<{ status: string; data: DolarResponse[] }>(
       `api/dolar/historial?limit=${limit}`
     );
-    return response?.data || [];
+    console.log('Historial de tipo de cambio obtenido:', response);
+    return response.data || [];
   } catch (error) {
     console.error('Error obteniendo historial:', error);
     return [];
   }
 }
+
+/**
+ * Save manual exchange rate to backend
+ */
 export async function setManualRate(rate: {
   venta: number;
   compra?: number;
-}): Promise<{ status: string; data: ExchangeRate }> {
+  casa?: string;
+}): Promise<{ status: string; data: DolarResponse }> {
   try {
-    const response = await apiFetch<{ status: string; data: ExchangeRate }>(
+    const dto: ActualizarDolarDto = {
+      venta: rate.venta,
+      compra: rate.compra || rate.venta,
+      casa: rate.casa || 'Manual',
+    };
+    
+    const response = await apiFetch<{ status: string; data: DolarResponse }>(
       'api/dolar/cotizacion',
       {
         method: 'POST',
-        json: {
-          venta: rate.venta,
-          compra: rate.compra || rate.venta,
-        },
+        json: dto,
       }
     );
+    
+    console.log('Tipo de cambio manual guardado:', response.data);
     return response;
   } catch (error) {
     console.error('Error guardando tipo de cambio manual:', error);
@@ -112,9 +130,7 @@ export async function setManualRate(rate: {
   }
 }
 
-export const saveManualRate = async (rate: {
-  venta: number;
-  compra?: number;
-}): Promise<{ status: string; data: ExchangeRate }> => {
-  return setManualRate(rate);
-};
+/**
+ * Legacy alias for compatibility
+ */
+export const saveManualRate = setManualRate;

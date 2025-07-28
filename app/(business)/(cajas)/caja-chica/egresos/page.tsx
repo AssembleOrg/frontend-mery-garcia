@@ -8,12 +8,10 @@ import TableFilters from '@/components/cajas/TableFilters';
 import TransactionsTable from '@/components/cajas/TransactionsTableTanStack';
 import ModalCambiarEstado from '@/components/validacion/ModalCambiarEstado';
 import ModalVerDetalles from '@/components/validacion/ModalVerDetalles';
-import { useTransactions } from '@/hooks/useTransactions';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Plus } from 'lucide-react';
 import { ColumnaCaja, Comanda } from '@/types/caja';
-import ModalTransaccionUnificado from '@/components/cajas/ModalTransaccionUnificado';
 import { Pagination } from '@/components/ui/pagination';
 import { DateRangePicker } from '@/components/ui/date-range-picker';
 import { DateRange } from 'react-day-picker';
@@ -26,6 +24,7 @@ import { useCurrencyConverter } from '@/hooks/useCurrencyConverter';
 import { formatDate } from '@/lib/utils';
 import { useRecordsStore } from '@/features/records/store/recordsStore';
 import ResidualDisplay from '@/components/cajas/ResidualDisplay';
+import ModalTransaccionUnificado from '@/components/cajas/ModalTransaccionUnificado';
 
 const breadcrumbItems = [
   { label: 'Inicio', href: '/' },
@@ -114,31 +113,6 @@ export default function EgresosPage() {
   // Date range filter state
   const [dateRange, setDateRange] = useState<DateRange | undefined>();
 
-  // Get traspasos for residual display
-  const { traspasos } = useRecordsStore();
-
-  // Find last transfer with residual
-  const ultimoResidual = traspasos
-    .filter(t => t.esTraspasoParcial && 
-                ((t.montoResidualUSD || 0) > 0 || (t.montoResidualARS || 0) > 0))
-    .sort((a, b) => new Date(b.fechaTraspaso).getTime() - 
-                   new Date(a.fechaTraspaso).getTime())[0];
-
-  // Use clean hook for outgoing transactions
-  const {
-    data: transactions,
-    statistics,
-    pagination,
-    filters,
-    actualizarFiltros,
-    limpiarFiltros,
-    exportToPDF,
-    exportToCSV,
-  } = useTransactions({
-    type: 'egreso',
-    dateRange,
-  });
-
   // Local UI state
   const [columns, setColumns] = useState<ColumnaCaja[]>(initialColumns);
   const [showAddModal, setShowAddModal] = useState(false);
@@ -156,10 +130,10 @@ export default function EgresosPage() {
     );
   }
 
-  // Get the selected transaction for the modal
-  const selectedTransaction = transactions.find(
-    (t) => t.id === selectedTransactionId
-  );
+  // // Get the selected transaction for the modal
+  // const selectedTransaction = transactions.find(
+  //   (t) => t.id === selectedTransactionId
+  // );
 
   // Handle delete transaction
   const handleDelete = (id: string) => {
@@ -167,97 +141,79 @@ export default function EgresosPage() {
     console.log('Delete transaction:', id);
   };
 
-  // Handle status change
-  const onChangeStatus = (id: string) => {
-    setSelectedTransactionId(id);
-    setShowChangeStatusModal(true);
-  };
-
-  // Handle edit transaction
-  const onEditTransaction = (id: string) => {
-    setSelectedTransactionId(id);
-    setShowEditModal(true);
-  };
-
-  // Handle view transaction details
-  const onViewTransaction = (id: string) => {
-    setSelectedTransactionId(id);
-    setShowViewModal(true);
-  };
-
   const hiddenColumns = columns.filter((c) => !c.visible).map((c) => c.key);
 
-  const agruparTransaccionesConTraspasos = () => {
-    const grupos: Array<{
-      tipo: 'transacciones';
-      fecha: string;
-      data: Comanda[];
-      key: string;
-    }> = [];
+  // const agruparTransaccionesConTraspasos = () => {
+  //   const grupos: Array<{
+  //     tipo: 'transacciones';
+  //     fecha: string;
+  //     data: Comanda[];
+  //     key: string;
+  //   }> = [];
 
-    // Crear un Set para evitar duplicados de fechas de transacciones
-    const fechasTransaccionesProcesadas = new Set<string>();
+  //   // Crear un Set para evitar duplicados de fechas de transacciones
+  //   const fechasTransaccionesProcesadas = new Set<string>();
 
-    // Filtrar transacciones: mostrar solo las que corresponden a caja-chica
-    const transaccionesFiltradas = transactions.filter(transaction => {
-      // Si es un movimiento manual, verificar que sea un egreso real de caja-chica
-      if (transaction.cliente.nombre === 'Movimiento Manual') {
-        // Solo mostrar egresos reales de caja-chica (no ingresos de transferencias)
-        return transaction.tipo === 'egreso' && 
-               transaction.metadata?.cajaOrigen === 'caja_1';
-      }
-      // Las transacciones normales se muestran siempre
-      return true;
-    });
+  //   // Filtrar transacciones: mostrar solo las que corresponden a caja-chica
+  //   const transaccionesFiltradas = transactions.filter(transaction => {
+  //     // Si es un movimiento manual, verificar que sea un egreso real de caja-chica
+  //     if (transaction.cliente.nombre === 'Movimiento Manual') {
+  //       // Solo mostrar egresos reales de caja-chica (no ingresos de transferencias)
+  //       return transaction.tipo === 'egreso' && 
+  //              transaction.metadata?.cajaOrigen === 'caja_1';
+  //     }
+  //     // Las transacciones normales se muestran siempre
+  //     return true;
+  //   });
 
-    // Agrupar transacciones filtradas por fecha
-    const transaccionesPorFecha = transaccionesFiltradas.reduce(
-      (acc, transaction) => {
-        const fechaStr = formatDate(transaction.fecha);
-        if (!acc[fechaStr]) {
-          acc[fechaStr] = [];
-        }
-        acc[fechaStr].push(transaction);
-        return acc;
-      },
-      {} as Record<string, typeof transaccionesFiltradas>
-    );
+  //   // Agrupar transacciones filtradas por fecha
+  //   const transaccionesPorFecha = transaccionesFiltradas.reduce(
+  //     (acc, transaction) => {
+  //       const fechaStr = formatDate(transaction.fecha);
+  //       if (!acc[fechaStr]) {
+  //         acc[fechaStr] = [];
+  //       }
+  //       acc[fechaStr].push(transaction);
+  //       return acc;
+  //     },
+  //     {} as Record<string, typeof transaccionesFiltradas>
+  //   );
 
-    // Ordenar transacciones dentro de cada fecha: no validadas primero, validadas al final
-    Object.keys(transaccionesPorFecha).forEach(fecha => {
-      transaccionesPorFecha[fecha].sort((a, b) => {
-        // Primero ordenar por estado de validación (no validadas primero)
-        const aValidada = a.estadoValidacion === 'validado' ? 1 : 0;
-        const bValidada = b.estadoValidacion === 'validado' ? 1 : 0;
-        if (aValidada !== bValidada) {
-          return aValidada - bValidada;
-        }
-        // Luego por fecha descendente (más recientes primero) como criterio secundario
-        return new Date(b.fecha).getTime() - new Date(a.fecha).getTime();
-      });
-    });
+  //   // Ordenar transacciones dentro de cada fecha: no validadas primero, validadas al final
+  //   Object.keys(transaccionesPorFecha).forEach(fecha => {
+  //     transaccionesPorFecha[fecha].sort((a, b) => {
+  //       // Primero ordenar por estado de validación (no validadas primero)
+  //       const aValidada = a.estadoValidacion === 'validado' ? 1 : 0;
+  //       const bValidada = b.estadoValidacion === 'validado' ? 1 : 0;
+  //       if (aValidada !== bValidada) {
+  //         return aValidada - bValidada;
+  //       }
+  //       // Luego por fecha descendente (más recientes primero) como criterio secundario
+  //       return new Date(b.fecha).getTime() - new Date(a.fecha).getTime();
+  //     });
+  //   });
 
-    Object.entries(transaccionesPorFecha).forEach(
-      ([fecha, transaccionesDeLaFecha]) => {
-        if (!fechasTransaccionesProcesadas.has(fecha)) {
-          grupos.push({
-            tipo: 'transacciones',
-            fecha,
-            data: transaccionesDeLaFecha,
-            key: `transacciones-${fecha}`,
-          });
-          fechasTransaccionesProcesadas.add(fecha);
-        }
-      }
-    );
+  //   Object.entries(transaccionesPorFecha).forEach(
+  //     ([fecha, transaccionesDeLaFecha]) => {
+  //       if (!fechasTransaccionesProcesadas.has(fecha)) {
+  //         grupos.push({
+  //           tipo: 'transacciones',
+  //           fecha,
+  //           data: transaccionesDeLaFecha,
+  //           key: `transacciones-${fecha}`,
+  //         });
+  //         fechasTransaccionesProcesadas.add(fecha);
+  //       }
+  //     }
+  //   );
 
-    // Ordenar por fecha descendente (más recientes primero)
-    return grupos.sort((a, b) => {
-      return new Date(b.fecha).getTime() - new Date(a.fecha).getTime();
-    });
-  };
+  //   // Ordenar por fecha descendente (más recientes primero)
+  //   return grupos.sort((a, b) => {
+  //     return new Date(b.fecha).getTime() - new Date(a.fecha).getTime();
+  //   });
+  // };
 
-  const gruposOrdenados = agruparTransaccionesConTraspasos();
+  // const gruposOrdenados = agruparTransaccionesConTraspasos();
 
   return (
     <MainLayout>
@@ -281,7 +237,7 @@ export default function EgresosPage() {
                     <h1 className="text-2xl font-bold text-[#4a3540]">
                       ✨ Gestión de Transacciones de Egreso
                     </h1>
-                    <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
+                    {/* <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
                       <SummaryCardDual
                         title="💰 Total Egresos"
                         totalUSD={statistics.totalOutgoingUSD ?? 0}
@@ -316,7 +272,7 @@ export default function EgresosPage() {
                           fecha={ultimoResidual.fechaTraspaso}
                         />
                       )}
-                    </div>
+                    </div> */}
                   </div>
 
                   {/* Add transaction button */}
@@ -346,7 +302,7 @@ export default function EgresosPage() {
                       </div>
 
                       {/* Table tools */}
-                      <div className="flex items-center gap-3">
+                      {/* <div className="flex items-center gap-3">
                         <TableFilters
                           filters={filters}
                           onFiltersChange={actualizarFiltros}
@@ -356,7 +312,7 @@ export default function EgresosPage() {
                           exportToPDF={exportToPDF}
                           exportToCSV={exportToCSV}
                         />
-                      </div>
+                      </div> */}
                     </div>
 
                     {/* Active filter indicator */}
@@ -381,9 +337,8 @@ export default function EgresosPage() {
                   <CardContent className="p-4">
                     {/* Renderizar grupos ordenados - SIN TraspasoIndicator */}
                     <div className="space-y-4">
-                      {gruposOrdenados.map((grupo) => (
+                      {/* {gruposOrdenados.map((grupo) => (
                         <div key={grupo.key}>
-                          {/* Solo mostrar tabla de transacciones */}
                           <TransactionsTable
                             data={grupo.data}
                             onEdit={onEditTransaction}
@@ -393,10 +348,10 @@ export default function EgresosPage() {
                             hiddenColumns={hiddenColumns}
                           />
                         </div>
-                      ))}
+                      ))} */}
 
-                      {/* Si no hay grupos, mostrar tabla normal */}
-                      {gruposOrdenados.length === 0 && (
+                      Si no hay grupos, mostrar tabla normal
+                      {/* {gruposOrdenados.length === 0 && (
                         <TransactionsTable
                           data={transactions}
                           onEdit={onEditTransaction}
@@ -405,12 +360,12 @@ export default function EgresosPage() {
                           onChangeStatus={onChangeStatus}
                           hiddenColumns={hiddenColumns}
                         />
-                      )}
+                      )} */}
                     </div>
 
                     {/* Pagination */}
                     <div className="mt-6">
-                      <Pagination
+                      {/* <Pagination
                         paginaActual={pagination.paginaActual}
                         totalPaginas={pagination.totalPaginas}
                         totalItems={pagination.totalItems}
@@ -423,7 +378,7 @@ export default function EgresosPage() {
                         }
                         hayPaginaAnterior={pagination.hayPaginaAnterior}
                         hayPaginaSiguiente={pagination.hayPaginaSiguiente}
-                      />
+                      /> */}
                     </div>
                   </CardContent>
                 </Card>
@@ -433,13 +388,13 @@ export default function EgresosPage() {
         </ClientOnly>
 
         {/* Modals */}
-        <ModalTransaccionUnificado
+         <ModalTransaccionUnificado
           isOpen={showAddModal}
           onClose={() => setShowAddModal(false)}
           tipo="egreso"
         />
 
-        <ModalCambiarEstado
+       {/* <ModalCambiarEstado
           isOpen={showChangeStatusModal}
           onClose={() => {
             setShowChangeStatusModal(false);

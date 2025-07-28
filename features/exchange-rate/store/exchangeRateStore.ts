@@ -4,7 +4,7 @@ import { create } from 'zustand';
 import { persist, devtools, createJSONStorage } from 'zustand/middleware';
 import { TipoCambio } from '@/types/caja';
 import {
-  ExchangeRate,
+  DolarResponse,
   getCotizacion,
   getHistorial,
   saveManualRate,
@@ -34,15 +34,17 @@ interface ExchangeRateState {
   inicializado: boolean;
   cargando: boolean;
   error: string | null;
-  historial: ExchangeRate[];
+  historial: DolarResponse[];
 
   // Acciones
   cargarTipoCambioInicial: () => Promise<void>;
   actualizarTipoCambio: (tipoCambio: TipoCambio) => void;
-  guardarTipoCambioManual: (valorVenta: number) => Promise<boolean>;
+  guardarTipoCambioManual: (valorVenta: number, casa?: string) => Promise<boolean>;
   cargarHistorial: (limit?: number) => Promise<void>;
+  limpiarHistorial: () => void;
   reiniciar: () => void;
   limpiarError: () => void;
+  getTipoCambio: () => TipoCambio;
 }
 
 // Estado inicial
@@ -78,8 +80,8 @@ export const useExchangeRateStore = create<ExchangeRateState>()(
             if (cotizacion) {
               const tipoCambio: TipoCambio = {
                 valorCompra: cotizacion.compra,
-                valorVenta: cotizacion.venta || cotizacion.compra,
-                fecha: new Date(cotizacion.fechaActualizacion),
+                valorVenta: cotizacion.venta,
+                fecha: new Date(cotizacion.fechaActualizacion || new Date()),
                 fuente: cotizacion.casa || 'API',
                 modoManual: cotizacion.casa === 'Manual',
               };
@@ -114,21 +116,28 @@ export const useExchangeRateStore = create<ExchangeRateState>()(
           set({ tipoCambio, error: null });
         },
 
-        guardarTipoCambioManual: async (valorVenta: number) => {
+        guardarTipoCambioManual: async (valorVenta: number, casa = 'Manual') => {
           set({ cargando: true, error: null });
           try {
-            const response = await saveManualRate({ venta: valorVenta });
+            const response = await saveManualRate({ 
+              venta: valorVenta, 
+              casa 
+            });
 
             if (response?.data) {
               const tipoCambio: TipoCambio = {
                 valorCompra: response.data.compra,
-                valorVenta: response.data.venta || valorVenta,
-                fecha: new Date(response.data.fechaActualizacion),
-                fuente: 'Manual',
+                valorVenta: response.data.venta,
+                fecha: new Date(response.data.fechaActualizacion || new Date()),
+                fuente: response.data.casa || 'Manual',
                 modoManual: true,
               };
 
               set({ tipoCambio, cargando: false });
+              
+              // Reload history to get the latest entry
+              get().cargarHistorial();
+              
               toast.success('Tipo de cambio actualizado correctamente');
               return true;
             }
@@ -144,6 +153,9 @@ export const useExchangeRateStore = create<ExchangeRateState>()(
             return false;
           }
         },
+        getTipoCambio: () => {
+          return get().tipoCambio;
+        },
 
         // Cargar historial
         cargarHistorial: async (limit = 10) => {
@@ -158,6 +170,12 @@ export const useExchangeRateStore = create<ExchangeRateState>()(
               error: 'Error al cargar el historial de tipos de cambio',
             });
           }
+        },
+
+        // Limpiar historial (solo local, el backend mantiene su historial)
+        limpiarHistorial: () => {
+          set({ historial: [] });
+          toast.info('Historial local limpiado');
         },
 
         // Reiniciar store

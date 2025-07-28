@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Users, UserCheck } from 'lucide-react';
 import MainLayout from '@/components/layout/MainLayout';
 import StandardPageBanner from '@/components/common/StandardPageBanner';
@@ -9,15 +9,22 @@ import ManagerOrAdminOnly from '@/components/auth/ManagerOrAdminOnly';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import PersonalTab from '@/components/personal/PersonalTab';
 import ClientesTab from '@/components/clientes/ClientesTab';
+import useTrabajadoresStore from '@/features/personal/store/trabajadoresStore';
+import { useClientesStore } from '@/features/clientes/store/clientesStore';
 
 const breadcrumbItems = [
   { label: 'Inicio', href: '/' },
   { label: 'Dashboard', href: '/dashboard' },
-  { label: 'Personal' },
+  { label: 'Personal y Clientes' },
 ];
 
 export default function PersonalPage() {
   const [activeTab, setActiveTab] = useState('personal');
+  const {loadTrabajadores} = useTrabajadoresStore();
+  
+  useEffect(() => {
+    loadTrabajadores();
+  }, []);
 
   return (
     <ManagerOrAdminOnly>

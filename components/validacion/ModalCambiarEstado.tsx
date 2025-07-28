@@ -12,11 +12,12 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { X, Clock, CheckCircle, XCircle } from 'lucide-react';
-import { useComandaStore } from '@/features/comandas/store/comandaStore';
+import useComandaStore from '@/features/comandas/store/comandaStore';
 import { toast } from 'sonner';
+import { EstadoDeComandaNew } from '@/services/unidadNegocio.service';
 
 // Tipo simplificado para estados de tabla
-type EstadoSimple = 'pendiente' | 'completado' | 'cancelado';
+export type EstadoSimple = 'pendiente' | 'completado' | 'cancelado';
 
 interface ModalCambiarEstadoProps {
   isOpen: boolean;
@@ -77,7 +78,7 @@ export default function ModalCambiarEstado({
     try {
       // Actualizar el estado directamente en el store
       actualizarComanda(comandaId, {
-        estado: nuevoEstado,
+        estadoDeComanda: nuevoEstado as EstadoDeComandaNew,
         observaciones: observaciones.trim() || undefined,
       });
 

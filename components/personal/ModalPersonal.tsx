@@ -12,52 +12,56 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { X, Users, Percent } from 'lucide-react';
-import { PersonalSimple } from '@/types/caja';
+import { RolTrabajadorNew, TrabajadorCreateNew, TrabajadorNew, TrabajadorUpdateNew } from '@/services/unidadNegocio.service';
+import useTrabajadoresStore from '@/features/personal/store/trabajadoresStore';
 
 interface ModalPersonalProps {
   isOpen: boolean;
   onClose: () => void;
-  personal?: PersonalSimple | null;
-  onSave: (personal: Omit<PersonalSimple, 'id'>) => void;
+  trabajador?: TrabajadorNew | null;
 }
 
 export default function ModalPersonal({
   isOpen,
   onClose,
-  personal,
-  onSave,
+  trabajador,
 }: ModalPersonalProps) {
+  const { crearTrabajador, actualizarTrabajador, isLoading, loadTrabajadores } = useTrabajadoresStore();
+
   // Estados del formulario
   const [nombre, setNombre] = useState('');
-  const [comision, setComision] = useState<number>(10);
-  const [rol, setRol] = useState<'admin' | 'vendedor'>('vendedor');
+  const [comisionPorcentaje, setComisionPorcentaje] = useState<number>(0);
+  const [rol, setRol] = useState<RolTrabajadorNew>(RolTrabajadorNew.TRABAJADOR);
+  const [activo, setActivo] = useState(true);
 
   // Estados de validación
   const [errores, setErrores] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(false);
 
-  const esEdicion = !!personal;
+  const esEdicion = !!trabajador;
 
   // Inicializar formulario cuando se abre el modal
   useEffect(() => {
     if (isOpen) {
-      if (personal) {
+      if (trabajador) {
         // Modo edición
-        setNombre(personal.nombre);
-        setComision(personal.comision);
-        setRol(personal.rol);
+        setNombre(trabajador.nombre);
+        setComisionPorcentaje(trabajador.comisionPorcentaje);
+        setRol(trabajador.rol);
+        setActivo(trabajador.activo);
       } else {
         // Modo creación
         clearForm();
       }
       setErrores({});
     }
-  }, [isOpen, personal]);
+  }, [isOpen, trabajador]);
 
   const clearForm = () => {
     setNombre('');
-    setComision(10);
-    setRol('vendedor');
+    setComisionPorcentaje(0);
+    setRol(RolTrabajadorNew.TRABAJADOR);
+    setActivo(true);
     setErrores({});
   };
 
@@ -68,8 +72,12 @@ export default function ModalPersonal({
       nuevosErrores.nombre = 'El nombre es obligatorio';
     }
 
-    if (comision < 0 || comision > 100) {
-      nuevosErrores.comision = 'La comisión debe estar entre 0% y 100%';
+    if (nombre.trim().length > 100) {
+      nuevosErrores.nombre = 'El nombre no puede exceder 100 caracteres';
+    }
+
+    if (comisionPorcentaje < 0 || comisionPorcentaje > 100) {
+      nuevosErrores.comisionPorcentaje = 'La comisión debe estar entre 0% y 100%';
     }
 
     setErrores(nuevosErrores);
@@ -82,17 +90,33 @@ export default function ModalPersonal({
     setLoading(true);
 
     try {
-      const personalData: Omit<PersonalSimple, 'id'> = {
-        nombre: nombre.trim(),
-        comision,
-        rol,
-        activo: true,
-      };
+      if (esEdicion && trabajador) {
+        // Actualizar trabajador existente
+        const trabajadorData: TrabajadorUpdateNew = {
+          nombre: nombre.trim(),
+          comisionPorcentaje,
+          rol,  
+          activo,
+        };
 
-      onSave(personalData);
+        const exito = await actualizarTrabajador(trabajador.id, trabajadorData);
+        if (exito) {
+          onClose();
+        }
+      } else {
+        // Crear nuevo trabajador
+        const trabajadorData: TrabajadorCreateNew = {
+          nombre: nombre.trim(),
+          comisionPorcentaje,
+          rol,
+          activo,
+        };
 
-      // Simular delay de guardado
-      await new Promise((resolve) => setTimeout(resolve, 300));
+        const exito = await crearTrabajador(trabajadorData);
+        if (exito) {
+          onClose();
+        }
+      }
     } catch (error) {
       console.error('Error al guardar:', error);
     } finally {
@@ -152,30 +176,32 @@ export default function ModalPersonal({
                   onChange={(e) => setNombre(e.target.value)}
                   placeholder="Ej: Ana Pérez"
                   className={errores.nombre ? 'border-red-300' : ''}
+                  maxLength={100}
                 />
               </div>
 
               {/* Comisión */}
               <div>
-                <Label htmlFor="n">
+                <Label htmlFor="comisionPorcentaje">
                   Comisión (%) *
-                  {errores.comision && (
+                  {errores.comisionPorcentaje && (
                     <span className="ml-1 text-xs text-red-500">
-                      ({errores.comision})
+                      ({errores.comisionPorcentaje})
                     </span>
                   )}
                 </Label>
                 <div className="relative">
                   <Percent className="absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-gray-400" />
                   <Input
-                    id="comision"
+                    id="comisionPorcentaje"
                     type="number"
-                    value={comision}
-                    onChange={(e) => setComision(Number(e.target.value))}
-                    placeholder="10"
-                    className={`pl-10 ${errores.n ? 'border-red-300' : ''}`}
+                    value={comisionPorcentaje}
+                    onChange={(e) => setComisionPorcentaje(Number(e.target.value))}
+                    placeholder="0"
+                    className={`pl-10 ${errores.comisionPorcentaje ? 'border-red-300' : ''}`}
                     min="0"
                     max="100"
+                    step="0.01"
                   />
                 </div>
               </div>
@@ -185,16 +211,32 @@ export default function ModalPersonal({
                 <Label htmlFor="rol">Rol *</Label>
                 <Select
                   value={rol}
-                  onValueChange={(value) =>
-                    setRol(value as 'admin' | 'vendedor')
-                  }
+                  onValueChange={(value) => setRol(value as RolTrabajadorNew)}
                 >
                   <SelectTrigger>
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="vendedor">Vendedor</SelectItem>
-                    <SelectItem value="admin">Administrador</SelectItem>
+                    <SelectItem value={RolTrabajadorNew.TRABAJADOR}>Trabajador</SelectItem>
+                    <SelectItem value={RolTrabajadorNew.ENCARGADO}>Encargado</SelectItem>
+                    <SelectItem value={RolTrabajadorNew.VENDEDOR}>Vendedor</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {/* Estado Activo */}
+              <div>
+                <Label htmlFor="activo">Estado</Label>
+                <Select
+                  value={activo ? 'true' : 'false'}
+                  onValueChange={(value) => setActivo(value === 'true')}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="true">Activo</SelectItem>
+                    <SelectItem value="false">Inactivo</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -203,15 +245,15 @@ export default function ModalPersonal({
 
           {/* Footer */}
           <div className="flex justify-end gap-3 border-t p-6">
-            <Button variant="outline" onClick={onClose} disabled={loading}>
+            <Button variant="outline" onClick={onClose} disabled={loading || isLoading}>
               Cancelar
             </Button>
             <Button
               onClick={handleGuardar}
-              disabled={loading}
+              disabled={loading || isLoading}
               className="bg-[#f9bbc4] text-white hover:bg-[#e292a3]"
             >
-              {loading ? 'Guardando...' : esEdicion ? 'Actualizar' : 'Crear'}
+              {loading || isLoading ? 'Guardando...' : esEdicion ? 'Actualizar' : 'Crear'}
             </Button>
           </div>
         </div>

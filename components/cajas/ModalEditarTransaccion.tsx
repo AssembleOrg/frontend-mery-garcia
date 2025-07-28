@@ -42,11 +42,11 @@ import {
   EstadoComandaNegocio,
   EstadoValidacion,
 } from '@/types/caja';
-import { useComandaStore } from '@/features/comandas/store/comandaStore';
+import useComandaStore from '@/features/comandas/store/comandaStore';
 import { usePersonal } from '@/features/personal/hooks/usePersonal';
-import { useProductosServicios } from '@/features/productos-servicios/hooks/useProductosServicios';
 import { useCurrencyConverter } from '@/hooks/useCurrencyConverter';
 import { useConfiguracion } from '@/features/configuracion/store/configuracionStore';
+import { ComandaNew } from '@/services/unidadNegocio.service';
 
 interface ModalEditarTransaccionProps {
   isOpen: boolean;
@@ -101,9 +101,9 @@ export default function ModalEditarTransaccion({
   const [observaciones, setObservaciones] = useState('');
   const [vendedorId, setVendedorId] = useState('');
 
-  const { obtenerComandaPorId, actualizarComanda } = useComandaStore();
+  const { actualizarComanda } = useComandaStore();
+  const { comandas } = useComandaStore();
   const { personal } = usePersonal();
-  const { productosServicios } = useProductosServicios();
   const { formatUSD, formatARSFromNative, formatDual, isExchangeRateValid, arsToUsd } =
     useCurrencyConverter();
 
@@ -131,14 +131,13 @@ export default function ModalEditarTransaccion({
 
   useEffect(() => {
     if (isOpen && comandaId) {
-      const comandaEncontrada = obtenerComandaPorId(comandaId);
+      const comandaEncontrada = comandas.find((c) => c.id === comandaId);
       if (comandaEncontrada) {
-        setComanda(comandaEncontrada);
+        // setComanda(comandaEncontrada);
         // Cargar datos en el formulario
         setClienteNombre(comandaEncontrada.cliente.nombre);
         setClienteTelefono(comandaEncontrada.cliente.telefono || '');
         setClienteCuit(comandaEncontrada.cliente.cuit || '');
-        setItems([...comandaEncontrada.items]);
         // Convertir MetodoPago a MetodoPagoForm
         const metodosPagoForm = comandaEncontrada.metodosPago.map((metodo) => {
           const montoOriginal = calcularMontoOriginal(
@@ -153,12 +152,12 @@ export default function ModalEditarTransaccion({
             montoOriginal,
           };
         });
-        setMetodosPago(metodosPagoForm);
+        // setMetodosPago(metodosPagoForm);
         setObservaciones(comandaEncontrada.observaciones || '');
-        setVendedorId(comandaEncontrada.mainStaff?.id || '');
+        // setVendedorId(comandaEncontrada.mainStaff?.id || '');
       }
     }
-  }, [isOpen, comandaId, obtenerComandaPorId, calcularMontoOriginal]);
+  }, [isOpen, comandaId, comandas, calcularMontoOriginal]);
 
   if (!isOpen || !comanda) return null;
 
@@ -340,46 +339,46 @@ export default function ModalEditarTransaccion({
         ({ montoFinal, descuentoAplicado, montoOriginal, ...metodo }) => metodo
       );
 
-      const comandaActualizada: Comanda = {
-        ...comanda,
-        cliente: {
-          ...comanda.cliente,
-          nombre: clienteNombre,
-          telefono: clienteTelefono,
-          cuit: clienteCuit,
-        },
-        items,
-        metodosPago: metodosPagoParaGuardar,
-        observaciones,
-        mainStaff: (() => {
-          const personalEncontrado = personal.find(
-            (p: { id: string; nombre: string }) => p.id === vendedorId
-          );
+      // const comandaActualizada: ComandaNew = {
+      //   ...comanda,
+      //   cliente: {
+      //     ...comanda.cliente,
+      //     nombre: clienteNombre,
+      //     telefono: clienteTelefono,
+      //     cuit: clienteCuit,
+      //   },
+      //   items,
+      //   metodosPago: metodosPagoParaGuardar,
+      //   observaciones,
+      //   // mainStaff: (() => {
+      //   //   const personalEncontrado = personal.find(
+      //   //     (p: { id: string; nombre: string }) => p.id === vendedorId
+      //   //   );
 
-          if (personalEncontrado) {
-            // Convertir PersonalSimple a Personal
-            return {
-              id: personalEncontrado.id,
-              nombre: personalEncontrado.nombre,
-              activo: true,
-              unidadesDisponibles: [
-                'tattoo',
-                'estilismo',
-                'formacion',
-              ] as UnidadNegocio[],
-              fechaIngreso: new Date(),
-            } as Personal;
-          }
+      //   //   if (personalEncontrado) {
+      //   //     // Convertir PersonalSimple a Personal
+      //   //     return {
+      //   //       id: personalEncontrado.id,
+      //   //       nombre: personalEncontrado.nombre,
+      //   //       activo: true,
+      //   //       unidadesDisponibles: [
+      //   //         'tattoo',
+      //   //         'estilismo',
+      //   //         'formacion',
+      //   //       ] as UnidadNegocio[],
+      //   //       fechaIngreso: new Date(),
+      //   //     } as Personal;
+      //   //   }
 
-          return comanda.mainStaff;
-        })(),
-        subtotal,
-        totalDescuentos,
-        totalSeña, // Mantener la seña original
-        totalFinal,
-      };
+      //   //   return comanda.mainStaff;
+      //   // })(),
+      //   subtotal,
+      //   totalDescuentos,
+      //   totalSeña, // Mantener la seña original
+      //   totalFinal,
+      // };
 
-      await actualizarComanda(comandaId, comandaActualizada);
+      // await actualizarComanda(comandaId, comandaActualizada);
       toast.success('Transacción actualizada correctamente');
       onClose();
     } catch (error) {
@@ -581,39 +580,39 @@ export default function ModalEditarTransaccion({
                             <Select
                               value={item.productoServicioId}
                               onValueChange={(value) => {
-                                const producto = productosServicios.find(
-                                  (p: { id: string; nombre: string }) =>
-                                    p.id === value
-                                );
-                                if (producto) {
-                                  actualizarItem(
-                                    index,
-                                    'productoServicioId',
-                                    value
-                                  );
-                                  actualizarItem(
-                                    index,
-                                    'nombre',
-                                    producto.nombre
-                                  );
-                                  actualizarItem(
-                                    index,
-                                    'precio',
-                                    producto.precio
-                                  );
-                                  actualizarItem(
-                                    index,
-                                    'subtotal',
-                                    item.cantidad * producto.precio
-                                  );
-                                }
+                                // const producto = productosServicios.find(
+                                //   (p: { id: string; nombre: string }) =>
+                                //     p.id === value
+                                // );
+                                // if (producto) {
+                                //   actualizarItem(
+                                //     index,
+                                //     'productoServicioId',
+                                //     value
+                                //   );
+                                //   actualizarItem(
+                                //     index,
+                                //     'nombre',
+                                //     producto.nombre
+                                //   );
+                                //   actualizarItem(
+                                //     index,
+                                //     'precio',
+                                //     producto.precio
+                                //   );
+                                //   actualizarItem(
+                                //     index,
+                                //     'subtotal',
+                                //     item.cantidad * producto.precio
+                                //   );
+                                // }
                               }}
                             >
                               <SelectTrigger>
                                 <SelectValue placeholder="Seleccionar" />
                               </SelectTrigger>
                               <SelectContent>
-                                {productosServicios.map(
+                                {/* {productosServicios.map(
                                   (p: {
                                     id: string;
                                     nombre: string;
@@ -623,7 +622,7 @@ export default function ModalEditarTransaccion({
                                       {p.nombre} - {formatAmount(p.precio)}
                                     </SelectItem>
                                   )
-                                )}
+                                )} */}
                               </SelectContent>
                             </Select>
                           </div>
@@ -748,9 +747,7 @@ export default function ModalEditarTransaccion({
                                 🏦 Transferencia
                               </SelectItem>
                               <SelectItem value="qr">📱 QR</SelectItem>
-                              <SelectItem value="precio_lista">
-                                📋 Precio de Lista
-                              </SelectItem>
+                           
                               <SelectItem value="giftcard">
                                 🎁 Giftcard
                               </SelectItem>

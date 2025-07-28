@@ -21,15 +21,17 @@ import {
   Edit,
   GraduationCap,
   DollarSign,
+  FactoryIcon,
 } from 'lucide-react';
-import { UnidadNegocio, ProductoServicio } from '@/types/caja';
-import { useDatosReferencia } from '@/features/productos-servicios/store/productosServiciosStore';
+import { UnidadNegocio } from '@/types/caja';
 import { useExchangeRate } from '@/features/exchange-rate/hooks/useExchangeRate';
+import { ProductoServicioCreateNew, ProductoServicioNew, ProductoServicioUpdateNew, TipoProductoServicioNew, UnidadNegocioNew, unidadNegocioService } from '@/services/unidadNegocio.service';
+import { productosServiciosService } from '@/services/productosServicios.service';
 
 interface ModalProductoServicioProps {
   isOpen: boolean;
   onClose: () => void;
-  producto?: ProductoServicio | null;
+  producto?: ProductoServicioNew | null;
 }
 
 const unidadesNegocio: {
@@ -55,16 +57,20 @@ export default function ModalProductoServicio({
   onClose,
   producto,
 }: ModalProductoServicioProps) {
-  const { agregarProductoServicio, actualizarProductoServicio } =
-    useDatosReferencia();
+
   const { tipoCambio } = useExchangeRate();
 
   // Estados del formulario
   const [nombre, setNombre] = useState('');
   const [descripcion, setDescripcion] = useState('');
   const [precio, setPrecio] = useState<number>(0);
-  const [tipo, setTipo] = useState<'producto' | 'servicio'>('servicio');
-  const [businessUnit, setBusinessUnit] = useState<UnidadNegocio>('estilismo');
+  const [tipo, setTipo] = useState<TipoProductoServicioNew>(TipoProductoServicioNew.SERVICIO);
+  const [unidadNegocio, setUnidadNegocio] = useState<string>('todas');
+  const [unidadesNegocio, setUnidadesNegocio] = useState<UnidadNegocioNew[]>([]);
+  const [activo, setActivo] = useState(true);
+  const [duracion, setDuracion] = useState<number | undefined>(undefined);
+  const [codigoBarras, setCodigoBarras] = useState<string | undefined>(undefined);
+  const [productosServicios, setProductosServicios] = useState<ProductoServicioNew[]>([]);
   
   // Estados para precio congelado
   const [esPrecioCongelado, setEsPrecioCongelado] = useState(false);
@@ -76,8 +82,26 @@ export default function ModalProductoServicio({
 
   const esEdicion = !!producto;
 
+  // useEffect(() => {
+  //   const cargarUnidadesNegocio = async () => {
+  //     const unidadesNegocio = await unidadNegocioService.getAllUnidadesNegocio();
+  //     setUnidadesNegocio(unidadesNegocio);
+  //   };
+  //   const cargarProductosServicios = async () => {
+  //     const productosServicios = await productosServiciosService.obtenerProductosServiciosPaginados();
+  //     setProductosServicios(productosServicios.data);
+  //   };
+  //   cargarUnidadesNegocio();
+  //   cargarProductosServicios();
+  // }, []);
+
   // Inicializar formulario cuando se abre el modal
   useEffect(() => {
+    const cargarUnidadesNegocio = async () => {
+      const unidadesNegocio = await unidadNegocioService.getAllUnidadesNegocio();
+      setUnidadesNegocio(unidadesNegocio);
+    };
+    cargarUnidadesNegocio();
     if (isOpen) {
       if (producto) {
         // Modo edición
@@ -85,7 +109,10 @@ export default function ModalProductoServicio({
         setDescripcion(producto.descripcion || '');
         setPrecio(producto.precio);
         setTipo(producto.tipo);
-        setBusinessUnit(producto.businessUnit);
+        setUnidadNegocio(producto.unidadNegocio.nombre);
+        setActivo(producto.activo);
+        setDuracion(producto.duracion);
+        setCodigoBarras(producto.codigoBarras || '');
         setEsPrecioCongelado(producto.esPrecioCongelado || false);
         setPrecioARS(producto.precioFijoARS || 0);
       } else {
@@ -100,8 +127,11 @@ export default function ModalProductoServicio({
     setNombre('');
     setDescripcion('');
     setPrecio(0);
-    setTipo('servicio');
-    setBusinessUnit('estilismo');
+    setTipo(TipoProductoServicioNew.SERVICIO);
+    setUnidadNegocio('todas');
+    setActivo(true);
+    setDuracion(undefined);
+    setCodigoBarras(undefined);
     setEsPrecioCongelado(false);
     setPrecioARS(0);
     setErrores({});
@@ -140,6 +170,10 @@ export default function ModalProductoServicio({
       nuevosErrores.nombre = 'El nombre es obligatorio';
     }
 
+    if (nombre.trim().length > 100) {
+      nuevosErrores.nombre = 'El nombre no puede exceder 100 caracteres';
+    }
+
     if (precio <= 0) {
       nuevosErrores.precio = 'El precio debe ser mayor a 0';
     }
@@ -149,7 +183,11 @@ export default function ModalProductoServicio({
     }
 
     if (esPrecioCongelado && tipoCambio.valorVenta <= 0) {
-      nuevosErrores.tipoCambio = 'Debe configurar un tipo de cambio válido';
+      nuevosErrores.precioARS = 'No se puede usar precio congelado sin tipo de cambio válido';
+    }
+
+    if (tipo === TipoProductoServicioNew.SERVICIO && duracion !== undefined && duracion <= 0) {
+      nuevosErrores.duracion = 'La duración debe ser mayor a 0';
     }
 
     setErrores(nuevosErrores);
@@ -158,31 +196,59 @@ export default function ModalProductoServicio({
 
   const handleGuardar = async () => {
     if (!validateForm()) return;
+    console.table({
+      nombre,
+      descripcion,
+      precio,
+      tipo,
+      unidadNegocio,
+      activo,
+      duracion,
+      codigoBarras,
+      esPrecioCongelado,
+      precioARS,
+    })
 
     setLoading(true);
 
     try {
-      const productoData: Omit<ProductoServicio, 'id'> = {
-        nombre: nombre.trim(),
-        descripcion: descripcion.trim() || undefined,
-        precio,
-        tipo,
-        businessUnit,
-        activo: true,
-        esPrecioCongelado,
-        precioFijoARS: esPrecioCongelado ? precioARS : undefined,
-      };
+      if (esEdicion && producto) {
+        const unidadNegocioC = unidadesNegocio.find(unidad => unidad.nombre === unidadNegocio);
+        const productoServicio: ProductoServicioUpdateNew = {
+          nombre: producto.nombre,
+          descripcion: producto.descripcion || '',
+          precio: producto.precio,
+          tipo: producto.tipo,
+          unidadNegocioId: unidadNegocioC?.id!,
+          activo,
+          duracion: tipo === TipoProductoServicioNew.SERVICIO ? duracion : undefined,
+          codigoBarras: tipo === TipoProductoServicioNew.PRODUCTO ? codigoBarras : undefined,
+          esPrecioCongelado,
+          precioFijoARS: esPrecioCongelado ? precioARS : 0,
+        }
 
-      if (esEdicion) {
-        actualizarProductoServicio(producto.id, productoData);
+        const productoServicioActualizado = await productosServiciosService.actualizarProductoServicio(producto.id, productoServicio);
+        console.log(productoServicioActualizado);
+        onClose();
+       
       } else {
-        agregarProductoServicio(productoData);
+        const unidadNegocioC = unidadesNegocio.find(unidad => unidad.nombre === unidadNegocio);
+        const productoServicio: ProductoServicioCreateNew = {
+          nombre,
+          descripcion,
+          precio,
+          tipo: tipo === TipoProductoServicioNew.SERVICIO ? TipoProductoServicioNew.SERVICIO : TipoProductoServicioNew.PRODUCTO,
+          unidadNegocioId: unidadNegocioC?.id!,
+          activo,
+          duracion,
+          codigoBarras,
+          esPrecioCongelado,
+          precioFijoARS: esPrecioCongelado ? precioARS : 0,
+        }
+        const productoServicioCreado = await productosServiciosService.crearProductoServicio(productoServicio);
+        console.log(productoServicioCreado);
+        onClose();
       }
-
-      // Simular delay de guardado
-      await new Promise((resolve) => setTimeout(resolve, 500));
-
-      onClose();
     } catch (error) {
       console.error('Error al guardar:', error);
     } finally {
@@ -283,20 +349,20 @@ export default function ModalProductoServicio({
                       <Select
                         value={tipo}
                         onValueChange={(value) =>
-                          setTipo(value as 'producto' | 'servicio')
+                          setTipo(value as TipoProductoServicioNew)
                         }
                       >
                         <SelectTrigger>
                           <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="servicio">
+                          <SelectItem value={TipoProductoServicioNew.SERVICIO}>
                             <div className="flex items-center gap-2">
                               <Scissors className="h-4 w-4" />
                               Servicio
                             </div>
                           </SelectItem>
-                          <SelectItem value="producto">
+                          <SelectItem value={TipoProductoServicioNew.PRODUCTO}>
                             <div className="flex items-center gap-2">
                               <Package className="h-4 w-4" />
                               Producto
@@ -321,26 +387,61 @@ export default function ModalProductoServicio({
                   <div>
                     <Label htmlFor="businessUnit">Unidad de Negocio *</Label>
                     <Select
-                      value={businessUnit}
-                      onValueChange={(value) =>
-                        setBusinessUnit(value as UnidadNegocio)
-                      }
+                      value={unidadNegocio}
+                        onValueChange={(value) =>
+                          setUnidadNegocio(value as UnidadNegocio)
+                        }              
                     >
                       <SelectTrigger>
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
                         {unidadesNegocio.map((unidad) => (
-                          <SelectItem key={unidad.value} value={unidad.value}>
+                          <SelectItem key={unidad.id} value={unidad.nombre}>
                             <div className="flex items-center gap-2">
-                              {unidad.icon}
-                              {unidad.label}
+                              <FactoryIcon className="h-4 w-4" />
+                              {unidad.nombre}
                             </div>
                           </SelectItem>
                         ))}
                       </SelectContent>
                     </Select>
                   </div>
+
+                  {/* Campo duración para servicios */}
+                  {tipo === TipoProductoServicioNew.SERVICIO && ( 
+                    <div>
+                      <Label htmlFor="duracion">
+                        Duración (minutos)
+                        {errores.duracion && (
+                          <span className="ml-1 text-xs text-red-500">
+                            ({errores.duracion})
+                          </span>
+                        )}
+                      </Label>
+                      <Input
+                        id="duracion"
+                        type="number"
+                        value={duracion || ''}
+                        onChange={(e) => setDuracion(Number(e.target.value) || undefined)}
+                        placeholder="60"
+                        className={errores.duracion ? 'border-red-300' : ''}
+                        min="1"
+                      />
+                    </div>
+                  )}
+                  {/* Campo código de barras para productos */}
+                  {tipo === TipoProductoServicioNew.PRODUCTO && (
+                    <div>
+                      <Label htmlFor="codigoBarras">Código de Barras</Label>
+                      <Input
+                        id="codigoBarras"
+                        value={codigoBarras}
+                        onChange={(e) => setCodigoBarras(e.target.value)}
+                        placeholder="123456789"
+                      />
+                    </div>
+                  )}
                 </CardContent>
               </Card>
 
@@ -420,11 +521,6 @@ export default function ModalProductoServicio({
                       {precioARS > 0 && (
                         <p className="mt-1 text-sm text-gray-500">
                           Equivalente USD: ${convertirARSaUSD(precioARS).toFixed(2)}
-                        </p>
-                      )}
-                      {errores.tipoCambio && (
-                        <p className="mt-1 text-xs text-red-500">
-                          {errores.tipoCambio}
                         </p>
                       )}
                     </div>

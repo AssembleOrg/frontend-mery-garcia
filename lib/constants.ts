@@ -60,7 +60,6 @@ export const METODO_PAGO_LABELS = {
   [METODOS_PAGO.GIFTCARD]: 'Gift Card',
   [METODOS_PAGO.QR]: 'QR',
   [METODOS_PAGO.MIXTO]: 'Mixto',
-  [METODOS_PAGO.PRECIO_LISTA]: 'Precio de Lista',
 } as const;
 
 // Colores para estados

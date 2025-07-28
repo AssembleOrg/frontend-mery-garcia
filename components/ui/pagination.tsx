@@ -80,27 +80,33 @@ export function Pagination({
   return (
     <div
       className={cn(
-        'flex items-center justify-between space-x-6 lg:space-x-8',
+        'flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between',
         className
       )}
     >
       {/* Información de elementos */}
-      <div className="text-muted-foreground flex items-center space-x-2 text-sm">
-        <span>
-          Mostrando {itemInicio} - {itemFin} de {totalItems} elementos
-        </span>
+      <div className="flex items-center gap-3">
+        <div className="flex h-8 w-8 items-center justify-center rounded-full bg-gradient-to-br from-[#f9bbc4]/20 to-[#e292a3]/20">
+          <span className="text-xs font-semibold text-[#6b4c57]">{totalItems}</span>
+        </div>
+        <div className="text-sm text-[#6b4c57]">
+          <span className="font-medium">Mostrando {itemInicio} - {itemFin}</span>
+          <span className="text-[#6b4c57]/70"> de {totalItems} elementos</span>
+        </div>
       </div>
 
       {/* Controles de paginación */}
-      <div className="flex items-center space-x-2">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:gap-6">
         {/* Selector de elementos por página */}
-        <div className="flex items-center space-x-2">
-          <p className="text-sm font-medium">Elementos por página</p>
+        <div className="flex items-center gap-2">
+          <label className="text-xs font-medium text-[#6b4c57] uppercase tracking-wide">
+            Por página
+          </label>
           <Select
             value={itemsPorPagina.toString()}
             onValueChange={(value) => onCambiarItemsPorPagina(Number(value))}
           >
-            <SelectTrigger className="h-8 w-[70px]">
+            <SelectTrigger className="h-8 w-16 border-[#f9bbc4]/20 focus:border-[#f9bbc4] focus:ring-[#f9bbc4]/20">
               <SelectValue placeholder={itemsPorPagina.toString()} />
             </SelectTrigger>
             <SelectContent side="top">
@@ -114,13 +120,13 @@ export function Pagination({
         </div>
 
         {/* Navegación de páginas */}
-        <div className="flex items-center space-x-1">
+        <div className="flex items-center gap-1">
           <Button
             variant="outline"
             size="sm"
             onClick={() => onCambiarPagina(paginaActual - 1)}
             disabled={!hayPaginaAnterior}
-            className="h-8 w-8 p-0"
+            className="h-8 w-8 p-0 border-[#f9bbc4]/20 hover:bg-[#f9bbc4]/10 disabled:opacity-50"
           >
             <ChevronLeft className="h-4 w-4" />
             <span className="sr-only">Página anterior</span>
@@ -130,14 +136,19 @@ export function Pagination({
             <React.Fragment key={index}>
               {numero === '...' ? (
                 <div className="flex h-8 w-8 items-center justify-center">
-                  <MoreHorizontal className="h-4 w-4" />
+                  <MoreHorizontal className="h-4 w-4 text-[#6b4c57]/50" />
                 </div>
               ) : (
                 <Button
                   variant={numero === paginaActual ? 'default' : 'outline'}
                   size="sm"
                   onClick={() => onCambiarPagina(numero as number)}
-                  className="h-8 w-8 p-0"
+                  className={cn(
+                    "h-8 w-8 p-0 font-medium",
+                    numero === paginaActual 
+                      ? "bg-gradient-to-r from-[#f9bbc4] to-[#e292a3] text-white border-0 shadow-md" 
+                      : "border-[#f9bbc4]/20 hover:bg-[#f9bbc4]/10 text-[#6b4c57]"
+                  )}
                 >
                   {numero}
                 </Button>
@@ -150,7 +161,7 @@ export function Pagination({
             size="sm"
             onClick={() => onCambiarPagina(paginaActual + 1)}
             disabled={!hayPaginaSiguiente}
-            className="h-8 w-8 p-0"
+            className="h-8 w-8 p-0 border-[#f9bbc4]/20 hover:bg-[#f9bbc4]/10 disabled:opacity-50"
           >
             <ChevronRight className="h-4 w-4" />
             <span className="sr-only">Página siguiente</span>

@@ -48,48 +48,4 @@ export const authService = {
   async getProfile(): Promise<UserProfile> {
     return apiFetch<UserProfile>('api/auth/profile');
   },
-
-  logout() {
-    if (typeof window !== 'undefined') {
-      localStorage.removeItem('token');
-      localStorage.removeItem('user');
-    }
-  },
-
-  getStoredToken(): string | null {
-    if (typeof window !== 'undefined') {
-      return localStorage.getItem('token');
-    }
-    return null;
-  },
-
-  getStoredUser(): UserProfile | null {
-    if (typeof window !== 'undefined') {
-      try {
-        const user = localStorage.getItem('user');
-        if (!user) return null;
-
-        const parsedUser = JSON.parse(user);
-
-        // Validar que el objeto tiene las propiedades mínimas requeridas
-        if (!parsedUser.id || !parsedUser.nombre || !parsedUser.email) {
-          console.warn(
-            'Usuario en localStorage tiene formato inválido, limpiando...'
-          );
-          localStorage.removeItem('user');
-          localStorage.removeItem('token');
-          return null;
-        }
-
-        return parsedUser;
-      } catch (error) {
-        console.error('Error parseando usuario de localStorage:', error);
-        // Limpiar localStorage corrupto
-        localStorage.removeItem('user');
-        localStorage.removeItem('token');
-        return null;
-      }
-    }
-    return null;
-  },
 };

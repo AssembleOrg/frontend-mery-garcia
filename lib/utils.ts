@@ -239,3 +239,34 @@ function abreviarTipoMetodo(tipo: string): string {
       return tipo.toUpperCase().substring(0, 5);
   }
 }
+
+/**
+ * Genera el próximo número de comanda basado en el tipo
+ * @param tipo - Tipo de comanda ('ingreso' | 'egreso')
+ * @returns Número de comanda formateado
+ */
+export const obtenerProximoNumero = (tipo: 'ingreso' | 'egreso'): string => {
+  const fecha = new Date();
+  const año = fecha.getFullYear();
+  const mes = String(fecha.getMonth() + 1).padStart(2, '0');
+  const dia = String(fecha.getDate()).padStart(2, '0');
+  const timestamp = Date.now().toString().slice(-6);
+  
+  const prefijo = tipo === 'ingreso' ? 'ING' : 'EGR';
+  
+  return `${prefijo}-${año}${mes}${dia}-${timestamp}`;
+};
+
+/**
+ * Genera un número de comanda manual
+ * @returns Número de comanda manual formateado
+ */
+export const obtenerNumeroComandaManual = (): string => {
+  const fecha = new Date();
+  const año = fecha.getFullYear();
+  const mes = String(fecha.getMonth() + 1).padStart(2, '0');
+  const dia = String(fecha.getDate()).padStart(2, '0');
+  const timestamp = Date.now().toString().slice(-6);
+  
+  return `MAN-${año}${mes}${dia}-${timestamp}`;
+};

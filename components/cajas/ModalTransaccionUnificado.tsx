@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -34,23 +34,17 @@ import {
   User,
   DollarSign,
   Lock,
+  ChevronDown,
 } from 'lucide-react';
-import { useComandaStore } from '@/features/comandas/store/comandaStore';
+import useComandaStore from '@/features/comandas/store/comandaStore';
 import { useActivityStore } from '@/features/activity/store/activityStore';
+import { useExchangeRateStore } from '@/features/exchange-rate/store/exchangeRateStore';
 import { MONEDAS } from '@/lib/constants';
 import { usePersonal } from '@/features/personal/hooks/usePersonal';
-import { useProductosServicios } from '@/features/productos-servicios/hooks/useProductosServicios';
-import { useCliente } from '@/features/clientes/hooks/useCliente';
 import { useModalScrollLock } from '@/hooks/useModalScrollLock';
 import { logger } from '@/lib/utils';
 import { useCurrencyConverter } from '@/hooks/useCurrencyConverter';
-import {
-  Comanda,
-  ItemComanda,
-  UnidadNegocio,
-  ProductoServicio,
-  Cliente,
-} from '@/types/caja';
+import { Comanda, ItemComanda, UnidadNegocio, Cliente } from '@/types/caja';
 import {
   useInitializeComandaStore,
   generateUniqueId,
@@ -59,6 +53,24 @@ import { DiscountControls } from './DiscountControls';
 import { useExchangeRate } from '@/features/exchange-rate/hooks/useExchangeRate';
 import { useMetodosPago } from '@/hooks/useMetodosPago';
 import { useAuth } from '@/features/auth/hooks/useAuth';
+import useTrabajadoresStore from '@/features/personal/store/trabajadoresStore';
+import {
+  ComandaCreateNew,
+  EstadoDeComandaNew,
+  RolTrabajadorNew,
+  TipoDeComandaNew,
+  ProductoServicioNew,
+  TipoPagoNew,
+  MonedaNew,
+  TipoItemNew,
+  NombreDescuentoNew,
+  CajaNew,
+} from '@/services/unidadNegocio.service';
+import { RolTrabajador } from '@/types/trabajador';
+import useProductosServiciosStore from '@/features/productos-servicios/store/productosServiciosStore';
+import { useClientesStore } from '@/features/clientes/store/clientesStore';
+import ClienteSelector from '@/components/comandas/ClienteSelector';
+import { toast } from 'sonner';
 
 interface ModalTransaccionUnificadoProps {
   isOpen: boolean;
@@ -81,6 +93,10 @@ interface ItemTransaccion {
   precioFijoARS?: number;
   // Campo para egresos con monto fijo en ARS
   esMontoFijoARS?: boolean;
+  // Responsables asignados a este item
+  responsablesIds: string[];
+  // Estado para mostrar/ocultar el selector de responsables
+  mostrarSelectorResponsables?: boolean;
 }
 
 export default function ModalTransaccionUnificado({
@@ -89,13 +105,20 @@ export default function ModalTransaccionUnificado({
   tipo,
 }: ModalTransaccionUnificadoProps) {
   // Store hooks
-  const { agregarComanda, obtenerProximoNumero, comandas, cargando } =
-    useComandaStore();
+  const {
+    agregarComanda,
+    cargarComandasPaginadas,
+    getComandasPaginadas,
+    comandasPaginadas,
+    getUltimaComanda,
+    existeComanda,
+  } = useComandaStore();
 
-  const { productosServicios } = useProductosServicios();
-  const { personal } = usePersonal();
-  const { clientes, buscarCliente, obtenerSeñasDisponibles, usarSeña } =
-    useCliente();
+  const { productosServicios, loadProductosServicios } =
+    useProductosServiciosStore();
+  const { trabajadores, loadTrabajadores } = useTrabajadoresStore();
+  const personal = trabajadores;
+  const { cargarClientes } = useClientesStore();
 
   const {
     exchangeRate,
@@ -122,14 +145,6 @@ export default function ModalTransaccionUnificado({
     return formatAmount(amount);
   };
 
-  // Helper function para productos con precio congelado
-  const formatProductAmount = (producto: any) => {
-    if (producto.esPrecioCongelado && producto.precioFijoARS) {
-      return `🔒 ${formatARSFromNative(producto.precioFijoARS)}`;
-    }
-    return formatAmount(producto.precio);
-  };
-
   // Helper function para items en comanda con precio congelado
   const formatItemAmount = (item: ItemTransaccion) => {
     // Items con precio congelado (ingresos)
@@ -148,22 +163,8 @@ export default function ModalTransaccionUnificado({
     return formatAmount(item.subtotal);
   };
 
-  const { tipoCambio } = useExchangeRate();
+  const { getTipoCambio, cargando } = useExchangeRateStore();
   const { user } = useAuth();
-  const { logActivity } = useActivityStore();
-
-  const obtenerIconoUnidad = (unidad: UnidadNegocio) => {
-    switch (unidad) {
-      case 'estilismo':
-        return <Scissors className="h-4 w-4 text-[#8b5a6b]" />;
-      case 'tattoo':
-        return <Edit className="h-4 w-4 text-[#8b5a6b]" />;
-      case 'formacion':
-        return <GraduationCap className="h-4 w-4 text-[#8b5a6b]" />;
-      default:
-        return <Package className="h-4 w-4 text-[#8b5a6b]" />;
-    }
-  };
 
   useInitializeComandaStore();
 
@@ -176,11 +177,10 @@ export default function ModalTransaccionUnificado({
   const [monedaSeñaAplicada, setMonedaSeñaAplicada] = useState<
     'ars' | 'usd' | null
   >(null);
-  const [mostrarSelectorCliente, setMostrarSelectorCliente] = useState(false);
-  const [busquedaCliente, setBusquedaCliente] = useState('');
   const [unidadNegocio, setUnidadNegocio] =
     useState<UnidadNegocio>('estilismo');
   const [responsableId, setResponsableId] = useState('');
+  const [responsablesIds, setResponsablesIds] = useState<string[]>([]);
   const [observaciones, setObservaciones] = useState('');
   const [items, setItems] = useState<ItemTransaccion[]>([]);
   // Removemos el estado local de metodosPago ya que ahora usamos el hook
@@ -220,6 +220,17 @@ export default function ModalTransaccionUnificado({
     }
   };
 
+  useEffect(() => {
+    cargarComandasPaginadas({
+      page: 1,
+      limit: 10,
+      orderBy: 'numero',
+      order: 'DESC',
+      search: '',
+      estadoDeComanda: EstadoDeComandaNew.PENDIENTE,
+    });
+  }, []);
+
   // Auto-switch payment methods to ARS when frozen items are detected
   useEffect(() => {
     if (hayItemsCongelados && metodosPago.length > 0) {
@@ -233,12 +244,26 @@ export default function ModalTransaccionUnificado({
   }, [hayItemsCongelados]);
 
   const [numeroManual, setNumeroManual] = useState('');
+  const [numeroUltimaComanda, setNumeroUltimaComanda] = useState('');
 
   // UI state
   const [guardando, setGuardando] = useState(false);
   const [errores, setErrores] = useState<Record<string, string>>({});
   const [mostrarBuscador, setMostrarBuscador] = useState(false);
   const [busqueda, setBusqueda] = useState('');
+  const [mostrarMetodosPago, setMostrarMetodosPago] = useState(false);
+  const [mostrarSelectorResponsables, setMostrarSelectorResponsables] =
+    useState(false);
+  const [cambiosTemporales, setCambiosTemporales] = useState<{
+    metodosPago: any[];
+    montoSeñaAplicada: number;
+    monedaSeñaAplicada: 'ars' | 'usd' | null;
+  }>({
+    metodosPago: [],
+    montoSeñaAplicada: 0,
+    monedaSeñaAplicada: null,
+  });
+  const [alreadyNotified, setAlreadyNotified] = useState(false);
 
   useModalScrollLock(isOpen);
 
@@ -253,16 +278,9 @@ export default function ModalTransaccionUnificado({
     const numeroCompleto = `${prefijo}-${numero.padStart(4, '0')}`;
 
     // Verificar que no exista ya
-    const existe = comandas.some((c) => c.numero === numeroCompleto);
-    return !existe;
-  };
-
-  const generarNumeroComanda = (): string => {
-    if (numeroManual.trim()) {
-      const prefijo = tipo === 'ingreso' ? '01' : '02';
-      return `${prefijo}-${numeroManual.padStart(4, '0')}`;
-    }
-    return obtenerProximoNumero(tipo);
+    // const existe = comandas.some((c) => c.numero === numeroCompleto);
+    // return !existe;
+    return true;
   };
 
   // Manejar ESC para cerrar modal
@@ -283,36 +301,101 @@ export default function ModalTransaccionUnificado({
     }
   }, [isOpen, onClose, mostrarBuscador]);
 
-  // Filtrar clientes para el selector
-  const clientesFiltrados = useMemo(() => {
-    if (!busquedaCliente.trim()) return clientes;
-    return buscarCliente(busquedaCliente);
-  }, [busquedaCliente, clientes, buscarCliente]);
+  const siguienteNumeroComanda = (actual: string): string => {
+    const [prefijo, correlativo] = actual.split('-');
 
-  // Manejar selección de cliente
-  const handleSeleccionarCliente = (cliente: Cliente) => {
-    setClienteSeleccionado(cliente);
-    setClienteProveedor(cliente.nombre);
-    setTelefono(cliente.telefono || '');
-    setMostrarSelectorCliente(false);
-    setBusquedaCliente('');
-    // Resetear seña al cambiar de cliente
-    setMontoSeñaAplicada(0);
-    setMonedaSeñaAplicada(null);
+    // Asegura número; si no es válido devuelve 0
+    const siguiente = (parseInt(correlativo, 10) || 0) + 1;
+
+    // Mantén la longitud original con ceros a la izquierda
+    const nuevoCorrelativo = String(siguiente).padStart(
+      correlativo.length,
+      '0'
+    );
+
+    return `${prefijo}-${nuevoCorrelativo}`;
   };
+  useEffect(() => {
+    setAlreadyNotified(false);
+    const dolar = getTipoCambio().valorVenta;
+    console.log('dolar', dolar);
+    if (isOpen) {
+      getUltimaComanda().then((comanda) => {
+        if (comanda) {
+          setNumeroUltimaComanda(siguienteNumeroComanda(comanda.numero));
+        } else {
+          setNumeroUltimaComanda('01-0001');
+        }
+      });
+    }
+  }, [isOpen]);
+
+  useEffect(() => {
+    loadTrabajadores();
+    cargarClientes();
+    loadProductosServicios();
+    console.log(productosServicios, 'TEST1');
+  }, [loadTrabajadores, cargarClientes, loadProductosServicios]);
+
+  // Debug useEffect para el modal de búsqueda
+  useEffect(() => {
+    if (mostrarBuscador) {
+      console.log(
+        'Modal de búsqueda abierto, productosServicios:',
+        productosServicios.length
+      );
+    }
+  }, [mostrarBuscador, productosServicios.length]);
+
+  // useEffect para cerrar selector de responsables al hacer clic fuera
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      const target = event.target as Element;
+      if (!target.closest('.responsables-selector')) {
+        setMostrarSelectorResponsables(false);
+      }
+    };
+
+    if (mostrarSelectorResponsables) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [mostrarSelectorResponsables]);
 
   // Manejar aplicación de seña
   const handleAplicarSeña = (moneda: 'ars' | 'usd') => {
-    if (clienteSeleccionado) {
-      const señas = obtenerSeñasDisponibles(clienteSeleccionado.id);
-      const montoSeña = señas[moneda];
+    if (clienteSeleccionado && clienteSeleccionado.señasDisponibles) {
+      const señas = clienteSeleccionado.señasDisponibles;
+      const montoSeña = señas[moneda] || 0;
 
       if (montoSeña > 0) {
         setMontoSeñaAplicada(montoSeña);
         setMonedaSeñaAplicada(moneda);
+        toast.success(`Seña aplicada: ${moneda.toUpperCase()} ${montoSeña}`);
       } else {
-        logger.info(
+        toast.error(
           `El cliente no tiene señas disponibles en ${moneda.toUpperCase()}.`
+        );
+      }
+    } else {
+      toast.error('Debe seleccionar un cliente para aplicar señas.');
+    }
+  };
+
+  // Función directa para aplicar seña USD como ARS
+  const handleAplicarSeñaUSDComoARS = () => {
+    if (clienteSeleccionado && clienteSeleccionado.señasDisponibles) {
+      const montoUSD = clienteSeleccionado.señasDisponibles.usd;
+      if (montoUSD > 0) {
+        const tipoCambio = getTipoCambio();
+        const montoARS = montoUSD * tipoCambio.valorVenta;
+        setMontoSeñaAplicada(montoARS);
+        setMonedaSeñaAplicada('ars');
+        toast.success(
+          `Seña aplicada: ARS ${montoARS.toFixed(2)} (convertida desde USD ${montoUSD})`
         );
       }
     }
@@ -321,34 +404,45 @@ export default function ModalTransaccionUnificado({
   const handleQuitarSeña = () => {
     setMontoSeñaAplicada(0);
     setMonedaSeñaAplicada(null);
+    toast.info('Seña removida');
   };
 
-  const productosServiciosFiltrados = useMemo(() => {
-    if (tipo === 'egreso') {
-      return productosServicios.filter((p: ProductoServicio) =>
-        p.nombre.toLowerCase().includes(busqueda.toLowerCase())
+  // Validar exceso de pago
+  const validarExcesoPago = (totalPagado: number, totalFinal: number) => {
+    const diferencia = totalPagado - totalFinal;
+    if (diferencia > 0.01) {
+      const exceso = Math.abs(diferencia);
+      toast.warning(
+        `⚠️ Estás cobrando $${formatAmountForARSFixed(exceso, (totales as any).esCalculoARS)} más del total a pagar.`
       );
+      return false;
+    }
+    return true;
+  };
+
+  // Aplicar cambios temporales
+  const aplicarCambiosTemporales = () => {
+    // Aplicar métodos de pago
+    if (cambiosTemporales.metodosPago.length > 0) {
+      // Aquí necesitaríamos una función para actualizar los métodos de pago
+      // Por ahora usamos el hook directamente
     }
 
-    // Para ingresos, agrupar por unidad de negocio
-    const productosPorUnidad = productosServicios.reduce(
-      (acc, producto) => {
-        if (
-          producto.nombre.toLowerCase().includes(busqueda.toLowerCase()) &&
-          producto.activo
-        ) {
-          if (!acc[producto.businessUnit]) {
-            acc[producto.businessUnit] = [];
-          }
-          acc[producto.businessUnit].push(producto);
-        }
-        return acc;
-      },
-      {} as Record<UnidadNegocio, ProductoServicio[]>
-    );
+    // Aplicar seña
+    if (cambiosTemporales.montoSeñaAplicada > 0) {
+      setMontoSeñaAplicada(cambiosTemporales.montoSeñaAplicada);
+      setMonedaSeñaAplicada(cambiosTemporales.monedaSeñaAplicada);
+    }
 
-    return productosPorUnidad;
-  }, [productosServicios, busqueda, tipo]);
+    // Limpiar cambios temporales
+    setCambiosTemporales({
+      metodosPago: [],
+      montoSeñaAplicada: 0,
+      monedaSeñaAplicada: null,
+    });
+
+    toast.success('Cambios aplicados correctamente');
+  };
 
   const agregarItem = () => {
     const nuevoItem: ItemTransaccion = {
@@ -361,11 +455,13 @@ export default function ModalTransaccionUnificado({
       descuento: 0,
       subtotal: 0,
       descripcion: '',
+      responsablesIds: [],
+      mostrarSelectorResponsables: false,
     };
     setItems([...items, nuevoItem]);
   };
 
-  const agregarDesdeProducto = (producto: ProductoServicio) => {
+  const agregarDesdeProducto = (producto: ProductoServicioNew) => {
     // Para productos congelados: NO convertir, usar precio ARS como base
     // Para productos normales: mantener lógica USD actual
     let precioBase = producto.precio;
@@ -390,6 +486,8 @@ export default function ModalTransaccionUnificado({
       // Propagar campos de precio congelado
       esPrecioCongelado: producto.esPrecioCongelado,
       precioFijoARS: producto.precioFijoARS,
+      responsablesIds: [],
+      mostrarSelectorResponsables: false,
     };
     setItems([...items, nuevoItem]);
     setMostrarBuscador(false);
@@ -404,7 +502,7 @@ export default function ModalTransaccionUnificado({
   const actualizarItem = (
     id: string,
     campo: keyof ItemTransaccion,
-    valor: string | number | boolean
+    valor: string | number | boolean | string[]
   ) => {
     setItems(
       items.map((item) => {
@@ -424,13 +522,12 @@ export default function ModalTransaccionUnificado({
             if (updatedItem.esPrecioCongelado && updatedItem.precioFijoARS) {
               // Items congelados: usar ARS nativo multiplicado por cantidad
               precioBase = updatedItem.precioFijoARS * updatedItem.cantidad;
-            } 
+            }
             // Para items con monto fijo ARS (egresos): trabajar en ARS nativo
             else if (updatedItem.esMontoFijoARS && tipo === 'egreso') {
               // Items egresos ARS: usar precio como ARS nativo
               precioBase = updatedItem.precio * updatedItem.cantidad;
-            } 
-            else {
+            } else {
               // Para items normales: usar el cálculo dinámico USD
               precioBase = updatedItem.precio * updatedItem.cantidad;
             }
@@ -556,7 +653,7 @@ export default function ModalTransaccionUnificado({
         // Si no hay items congelados, usar conversión normal
         return items.reduce((sum, item) => {
           const subtotalUSD = item.precio * item.cantidad - item.descuento;
-          return sum + subtotalUSD * tipoCambio.valorVenta;
+          return sum + subtotalUSD * getTipoCambio().valorVenta;
         }, 0);
       }
     } else {
@@ -573,7 +670,7 @@ export default function ModalTransaccionUnificado({
         // Si no hay items ARS fijo, usar conversión normal
         return items.reduce((sum, item) => {
           const subtotalUSD = item.precio * item.cantidad - item.descuento;
-          return sum + subtotalUSD * tipoCambio.valorVenta;
+          return sum + subtotalUSD * getTipoCambio().valorVenta;
         }, 0);
       }
     }
@@ -589,7 +686,7 @@ export default function ModalTransaccionUnificado({
           return sum + item.precio * item.cantidad;
         } else {
           // Items normales: convertir USD a ARS para consistencia
-          return sum + (item.precio * item.cantidad) * tipoCambio.valorVenta;
+          return sum + item.precio * item.cantidad * getTipoCambio().valorVenta;
         }
       }, 0);
 
@@ -599,18 +696,25 @@ export default function ModalTransaccionUnificado({
           return sum + item.descuento;
         } else {
           // Descuentos en USD convertidos a ARS
-          return sum + item.descuento * tipoCambio.valorVenta;
+          return sum + item.descuento * getTipoCambio().valorVenta;
         }
       }, 0);
 
       const subtotalConDescuentosARS = subtotalBaseARS - totalDescuentosARS;
 
       // Para egresos ARS fijo: usar directamente totalPagado que ya está en ARS nativo
-      const totalPagadoARS = metodosPago.reduce((sum, mp) => sum + mp.montoFinal, 0);
+      const totalPagadoARS = metodosPago.reduce(
+        (sum, mp) => sum + mp.montoFinal,
+        0
+      );
 
       // Seña en ARS
-      const montoSeñaARS = monedaSeñaAplicada === 'ars' ? montoSeñaAplicada : 
-                          (monedaSeñaAplicada === 'usd' ? montoSeñaAplicada * tipoCambio.valorVenta : 0);
+      const montoSeñaARS =
+        monedaSeñaAplicada === 'ars'
+          ? montoSeñaAplicada
+          : monedaSeñaAplicada === 'usd'
+            ? montoSeñaAplicada * getTipoCambio().valorVenta
+            : 0;
 
       const totalFinalARS = subtotalConDescuentosARS - montoSeñaARS;
       const diferenciaARS = totalPagadoARS - totalFinalARS;
@@ -628,7 +732,7 @@ export default function ModalTransaccionUnificado({
         esCalculoARS: true, // Flag para identificar que son valores en ARS
       };
     }
-    
+
     // Fallback a lógica normal para todos los otros casos
     return calcularTotales();
   };
@@ -711,9 +815,19 @@ export default function ModalTransaccionUnificado({
         'El nombre del cliente/proveedor es requerido';
     }
 
-    if (!responsableId && tipo === 'ingreso') {
-      nuevosErrores.responsable = 'Debe seleccionar un responsable';
+    if (
+      items.every((item) => item.responsablesIds.length === 0) &&
+      tipo === 'ingreso'
+    ) {
+      toast.error('Debe seleccionar al menos un responsable', {
+        position: 'top-center',
+      });
+      nuevosErrores.responsable = 'Debe seleccionar al menos un responsable';
     }
+
+    // if (responsablesIds.length === 0 && tipo === 'ingreso') {
+    // nuevosErrores.responsable = 'Debe seleccionar al menos un responsable';
+    // }
 
     // Validar numeración manual (siempre activa)
     if (numeroManual.trim()) {
@@ -750,151 +864,145 @@ export default function ModalTransaccionUnificado({
       nuevosErrores.pagos = validacionMetodos.error;
     }
 
+    console.table(nuevosErrores);
     setErrores(nuevosErrores);
     return Object.keys(nuevosErrores).length === 0;
   };
 
+  // Calcular faltante cuando se termina de cargar el método de pago
+  const calcularFaltante = () => {
+    if (metodosPago.length === 0) return;
+
+    const totales = calcularTotalesARS();
+    const totalFinal = totales.totalFinal;
+    const totalPagado = metodosPago.reduce((sum, mp) => sum + mp.montoFinal, 0);
+    const faltante = totalFinal - totalPagado;
+
+    // Si hay faltante, mostrar toast informativo
+    if (faltante > 0.01) {
+      setAlreadyNotified(false);
+      // toast.info(`Faltante a pagar: ${formatAmountForARSFixed(faltante, (totales as any).esCalculoARS)}`);
+    } else if (faltante < -0.01) {
+      setAlreadyNotified(false);
+      toast.info(
+        `Excedente: ${formatAmountForARSFixed(Math.abs(faltante), (totales as any).esCalculoARS)}`
+      );
+    } else {
+      // if (!alreadyNotified) {
+      //   setAlreadyNotified(true);
+      //   toast.success('Pago completo');
+      // }
+    }
+  };
+
+  // useEffect para calcular faltante cuando cambian los métodos de pago
+  useEffect(() => {
+    if (metodosPago.length > 0 && metodosPago.some((mp) => mp.monto > 0)) {
+      calcularFaltante();
+    }
+  }, [metodosPago, calcularFaltante]);
+
   // Save transaction
   const handleSave = async () => {
+    console.log('guardando COMANDA');
     if (!validarFormulario()) return;
-
+    console.log('validado');
     setGuardando(true);
 
     try {
       const totales = calcularTotalesARS();
-      const numeroTransaccion = generarNumeroComanda();
-
-      const itemsComanda: ItemComanda[] = items.map((item) => ({
-        productoServicioId: item.productoServicioId,
-        nombre: item.nombre,
-        tipo: tipo === 'ingreso' ? 'servicio' : 'producto',
-        precio: item.precio,
-        precioOriginalUSD: item.precio,
-        cantidad: item.cantidad,
-        descuento: 0,
-        subtotal: item.subtotal,
-        // Propagar campos de precio congelado (ingresos)
-        esPrecioCongelado: item.esPrecioCongelado,
-        precioFijoARS: item.precioFijoARS,
-        // Propagar campo de monto fijo ARS (egresos)
-        esMontoFijoARS: item.esMontoFijoARS,
-      }));
-
-      // USAR LA FUNCIÓN UNIFICADA PARA PERSISTENCIA
-      const metodosPagoComanda = convertirParaPersistencia();
-
-      // Para egresos, usar el usuario logueado como responsable automáticamente
-      let responsable;
-      if (tipo === 'egreso' && user) {
-        responsable = {
-          id: user.id,
-          nombre: user.nombre,
-          activo: true,
-          unidadesDisponibles: ['estilismo'],
-          fechaIngreso: new Date(),
-        };
-      } else {
-        responsable = personal.find((p) => p.id === responsableId);
-      }
-
-      const nuevaComanda: Comanda = {
-        id: generateUniqueId(tipo === 'ingreso' ? 'ing' : 'egr', Date.now()),
-        numero: numeroTransaccion,
-        tipo,
-        fecha: new Date(),
-        businessUnit: tipo === 'ingreso' ? unidadNegocio : 'estilismo',
-        cliente: {
-          id: `cliente-${Date.now()}`,
-          nombre: clienteProveedor,
-          telefono: telefono || undefined,
-          email: undefined,
-          cuit: undefined,
-          señasDisponibles: { ars: 0, usd: 0 },
-          fechaRegistro: new Date(),
-        },
-        mainStaff: responsable
-          ? {
-              id: responsable.id,
-              nombre: responsable.nombre,
-              activo: true,
-              unidadesDisponibles: [
-                tipo === 'ingreso' ? unidadNegocio : 'estilismo',
-              ],
-              fechaIngreso: new Date(),
-            }
-          : {
-              id: 'default',
-              nombre: 'Sistema',
-              activo: true,
-              unidadesDisponibles: [
-                tipo === 'ingreso' ? unidadNegocio : 'estilismo',
-              ],
-              fechaIngreso: new Date(),
-            },
-        items: itemsComanda,
-        metodosPago: metodosPagoComanda,
-        subtotal: totales.subtotalConDescuentosItems,
-        totalDescuentos: totales.totalDescuentos,
-        // Guardar seña siguiendo el patrón de métodos de pago
-        seña:
-          monedaSeñaAplicada && montoSeñaAplicada > 0
-            ? {
-                monto: montoSeñaAplicada,
-                moneda: monedaSeñaAplicada.toUpperCase() as 'USD' | 'ARS',
-                fecha: new Date(),
-              }
-            : undefined,
-        // Mantener campos legacy para compatibilidad
-        totalSeña:
-          monedaSeñaAplicada === 'ars'
-            ? arsToUsd(montoSeñaAplicada)
-            : montoSeñaAplicada,
-        totalSeñaUSD: monedaSeñaAplicada === 'usd' ? montoSeñaAplicada : 0,
-        totalSeñaARS: monedaSeñaAplicada === 'ars' ? montoSeñaAplicada : 0,
-        montoSeñaAplicadaArs:
-          monedaSeñaAplicada === 'ars' ? montoSeñaAplicada : 0,
-        totalFinal: totales.totalFinal,
-        estado: 'pendiente',
-        observaciones: observaciones || undefined,
-        estadoNegocio: 'pendiente',
-        estadoValidacion: 'no_validado',
-        tipoCambioAlCrear: {
-          valorCompra: tipoCambio.valorCompra,
-          valorVenta: tipoCambio.valorVenta,
-          fecha: tipoCambio.fecha,
-          fuente: tipoCambio.fuente,
-          modoManual: tipoCambio.modoManual,
-        },
+      const numeroTransaccion = numeroManual.trim()
+        ? '01-' + numeroManual
+        : numeroUltimaComanda;
+      console.warn('numeroTransaccion', numeroTransaccion);
+      const nuevaComandaNew: ComandaCreateNew = {
+        clienteId: clienteSeleccionado?.id,
+        creadoPorId: user?.id,
+        numero: numeroTransaccion.toString(),
+        tipoDeComanda:
+          tipo === 'ingreso'
+            ? TipoDeComandaNew.INGRESO
+            : TipoDeComandaNew.EGRESO,
+        estadoDeComanda: EstadoDeComandaNew.PENDIENTE,
+        valorDolar: parseFloat(getTipoCambio().valorVenta.toString()),
+        caja: CajaNew.CAJA_1,
+        metodosPago: metodosPago.map((m) => {
+          return {
+            tipo: m.tipo as TipoPagoNew,
+            monto: m.monto,
+            montoFinal: m.montoFinal,
+            descuentoGlobalPorcentaje: 100 - (m.montoFinal / m.monto) * 100,
+            moneda: m.moneda as MonedaNew,
+          };
+        }),
+        descuentosAplicados: [],
+        items: items.map((item) => {
+          return {
+            productoServicioId: item.productoServicioId,
+            nombre: item.nombre,
+            tipo: tipo === 'ingreso' ? TipoItemNew.INGRESO : TipoItemNew.EGRESO,
+            precio: item.precio,
+            cantidad: item.cantidad,
+            descuento: item.descuento,
+            trabajadorId: item.responsablesIds[0],
+            subtotal: item.subtotal,
+          };
+        }),
       };
 
-      if (clienteSeleccionado && monedaSeñaAplicada && montoSeñaAplicada > 0) {
-        usarSeña(clienteSeleccionado.id, montoSeñaAplicada, monedaSeñaAplicada);
-      }
+      const descuentos = nuevaComandaNew.metodosPago?.map((mp) => {
+        return {
+          nombre: NombreDescuentoNew.DESCUENTO_POR_METODO_PAGO,
+          descripcion: 'Descuento por método de pago',
+          porcentaje: mp.descuentoGlobalPorcentaje,
+          montoFijo: 0,
+        };
+      });
+      const seña =
+        monedaSeñaAplicada === 'ars'
+          ? (clienteSeleccionado?.señasDisponibles?.ars ?? 0)
+          : 0;
+      const señaUSD =
+        monedaSeñaAplicada === 'usd'
+          ? (clienteSeleccionado?.señasDisponibles?.usd ?? 0)
+          : 0;
 
-      logger.info(`Guardando ${tipo}:`, nuevaComanda);
-      agregarComanda(nuevaComanda);
-
-      // Registrar actividad en auditoría
-      logActivity(
-        'Crear',
-        'Caja Chica',
-        `${tipo === 'ingreso' ? 'Ingreso' : 'Egreso'} creado: ${nuevaComanda.numero} por ${formatAmount(nuevaComanda.totalFinal)} ${nuevaComanda.moneda}`,
-        {
-          comandaId: nuevaComanda.id,
-          numero: nuevaComanda.numero,
-          tipo: tipo,
-          monto: nuevaComanda.totalFinal,
-          moneda: nuevaComanda.moneda,
-          cliente: clienteSeleccionado?.nombre || clienteProveedor,
-        }
+      console.log(
+        'seña',
+        seña,
+        señaUSD,
+        monedaSeñaAplicada,
+        monedaSeñaAplicada === 'ars',
+        monedaSeñaAplicada === 'usd',
+        clienteSeleccionado?.señasDisponibles
       );
 
-      resetForm();
-      onClose();
+      nuevaComandaNew.descuentosAplicados = descuentos;
+      nuevaComandaNew.precioDolar =
+        (nuevaComandaNew.metodosPago?.reduce((sum, mp) => {
+          return mp.moneda === MonedaNew.USD ? sum + mp.montoFinal! : sum;
+        }, 0) ?? 0) + señaUSD;
+      nuevaComandaNew.precioPesos =
+        (nuevaComandaNew.metodosPago?.reduce((sum, mp) => {
+          return mp.moneda === MonedaNew.ARS ? sum + mp.montoFinal! : sum;
+        }, 0) ?? 0) + seña;
+      nuevaComandaNew.usuarioConsumePrepago = seña > 0 || señaUSD > 0;
+
+      const existe = await existeComanda(numeroTransaccion.toString());
+      if (existe) {
+        toast.error('El número de comanda ya existe');
+        return;
+      }
+
+      console.log(nuevaComandaNew, items, nuevaComandaNew.items);
+
+      await agregarComanda(nuevaComandaNew);
+      // resetForm();
+      // onClose();
     } catch (error) {
       logger.error(`Error al guardar ${tipo}:`, error);
       setErrores({
-        general: `Error al guardar el ${tipo}. Intente nuevamente.`,
+        general: 'Error al guardar la transacción. Intente nuevamente.',
       });
     } finally {
       setGuardando(false);
@@ -906,20 +1014,29 @@ export default function ModalTransaccionUnificado({
     setClienteSeleccionado(null);
     setClienteProveedor('');
     setTelefono('');
-    setMontoSeñaAplicada(0);
-    setMonedaSeñaAplicada(null);
-    setMostrarSelectorCliente(false);
-    setBusquedaCliente('');
     setUnidadNegocio('estilismo');
     setResponsableId('');
+    setResponsablesIds([]);
     setObservaciones('');
     setItems([]);
-    resetMetodosPago();
     setDescuentoGlobalPorcentaje(0);
+    setMontoSeñaAplicada(0);
+    setMonedaSeñaAplicada(null);
     setNumeroManual('');
+    setNumeroUltimaComanda('');
+    setGuardando(false);
     setErrores({});
     setMostrarBuscador(false);
     setBusqueda('');
+    setMostrarMetodosPago(false);
+    setMostrarSelectorResponsables(false);
+    setCambiosTemporales({
+      metodosPago: [],
+      montoSeñaAplicada: 0,
+      monedaSeñaAplicada: null,
+    });
+
+    resetMetodosPago();
   };
 
   const totales = calcularTotalesARS();
@@ -939,10 +1056,10 @@ export default function ModalTransaccionUnificado({
     >
       <div className="relative max-h-[90vh] w-full max-w-6xl overflow-y-auto rounded-lg bg-white shadow-2xl">
         {/* Header */}
-        <div className="sticky top-0 z-10 border-b bg-white/95 backdrop-blur-sm">
+        <div className="sticky top-0 z-10 border-b border-gray-200 bg-gradient-to-r from-gray-100 to-gray-50 backdrop-blur-sm">
           <div className="flex items-center justify-between p-6">
             <div className="flex items-center gap-3">
-              <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-gradient-to-r from-[#f9bbc4] to-[#e292a3]">
+              <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-gradient-to-r from-[#f9bbc4] to-[#e292a3] shadow-sm">
                 {tipo === 'ingreso' ? (
                   <ArrowUpCircle className="h-5 w-5 text-white" />
                 ) : (
@@ -962,7 +1079,7 @@ export default function ModalTransaccionUnificado({
             </div>
             <div className="flex items-center gap-3">
               {isExchangeRateValid && (
-                <div className="flex items-center gap-2 rounded-lg bg-gray-50 px-3 py-2">
+                <div className="to-gray-150 flex items-center gap-2 rounded-lg border-2 border-gray-200 bg-gradient-to-r from-gray-100 px-3 py-2 shadow-sm">
                   <TrendingUp className="h-4 w-4 text-gray-600" />
                   <span className="text-sm font-medium text-gray-800">
                     USD: {formatDual(exchangeRate, false)}
@@ -973,7 +1090,7 @@ export default function ModalTransaccionUnificado({
                 variant="ghost"
                 size="sm"
                 onClick={onClose}
-                className="text-gray-500 hover:text-gray-700"
+                className="text-gray-500 hover:bg-gray-50 hover:text-gray-700"
               >
                 <X className="h-5 w-5" />
               </Button>
@@ -982,13 +1099,13 @@ export default function ModalTransaccionUnificado({
         </div>
 
         {/* Content */}
-        <div className="p-6">
+        <div className="bg-gradient-to-br from-gray-100/50 to-gray-50/30 p-6">
           <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
             {/* Left Column - Form */}
             <div className="space-y-6 lg:col-span-2">
               {/* Basic Info */}
-              <Card className="border border-gray-200 bg-white">
-                <CardHeader>
+              <Card className="border border-gray-300 bg-white shadow-md">
+                <CardHeader className="bg-gradient-to-r from-gray-50 to-gray-100">
                   <CardTitle className="text-lg text-gray-900">
                     Información Básica
                   </CardTitle>
@@ -1003,7 +1120,7 @@ export default function ModalTransaccionUnificado({
                         </Label>
                         <div className="flex items-center gap-2">
                           <Badge variant="outline" className="text-xs">
-                            Automático: {obtenerProximoNumero(tipo)}
+                            Automático: {numeroUltimaComanda}
                           </Badge>
                         </div>
                       </div>
@@ -1027,7 +1144,7 @@ export default function ModalTransaccionUnificado({
                                 });
                               }
                             }}
-                            placeholder="0001"
+                            placeholder="00001"
                             maxLength={4}
                             className={`text-center ${
                               errores.numeroManual
@@ -1066,191 +1183,33 @@ export default function ModalTransaccionUnificado({
 
                     {tipo === 'ingreso' && (
                       <div className="md:col-span-2">
-                        <Label className="text-gray-700">Cliente *</Label>
-                        <div className="space-y-2">
-                          <div className="flex gap-2">
-                            <Input
-                              value={clienteProveedor}
-                              onChange={(e) =>
-                                setClienteProveedor(e.target.value)
-                              }
-                              placeholder="Nombre del cliente"
-                              className={
-                                errores.clienteProveedor
-                                  ? 'border-red-500'
-                                  : 'border-gray-300'
-                              }
-                            />
-                            <Button
-                              type="button"
-                              variant="outline"
-                              size="sm"
-                              onClick={() =>
-                                setMostrarSelectorCliente(
-                                  !mostrarSelectorCliente
-                                )
-                              }
-                              className="border-[#f9bbc4] text-[#8b5a6b] hover:bg-[#f9bbc4]/10"
-                            >
-                              <User className="h-4 w-4" />
-                            </Button>
-                          </div>
-
-                          {/* Selector de clientes existentes */}
-                          {mostrarSelectorCliente && (
-                            <div className="rounded-lg border border-gray-200 bg-white p-3 shadow-sm">
-                              <div className="mb-2">
-                                <Input
-                                  value={busquedaCliente}
-                                  onChange={(e) =>
-                                    setBusquedaCliente(e.target.value)
-                                  }
-                                  placeholder="Buscar cliente..."
-                                  className="text-sm"
-                                />
-                              </div>
-                              <div className="max-h-32 space-y-1 overflow-y-auto">
-                                {clientesFiltrados.map((cliente) => (
-                                  <div
-                                    key={cliente.id}
-                                    onClick={() =>
-                                      handleSeleccionarCliente(cliente)
-                                    }
-                                    className="cursor-pointer rounded p-2 text-sm hover:bg-gray-50"
-                                  >
-                                    <div className="flex items-center justify-between">
-                                      <span className="font-medium">
-                                        {cliente.nombre}
-                                      </span>
-                                      {(cliente.señasDisponibles.ars > 0 ||
-                                        cliente.señasDisponibles.usd > 0) && (
-                                        <Badge
-                                          variant="outline"
-                                          className="text-xs"
-                                        >
-                                          <DollarSign className="mr-1 h-3 w-3" />
-                                          ARS: {cliente.señasDisponibles.ars} /
-                                          USD: {cliente.señasDisponibles.usd}
-                                        </Badge>
-                                      )}
-                                    </div>
-                                    {cliente.telefono && (
-                                      <div className="text-gray-500">
-                                        {cliente.telefono}
-                                      </div>
-                                    )}
-                                  </div>
-                                ))}
-                                {clientesFiltrados.length === 0 && (
-                                  <div className="p-2 text-center text-sm text-gray-500">
-                                    No se encontraron clientes
-                                  </div>
-                                )}
-                              </div>
-                            </div>
-                          )}
-
-                          {/* Información de señas disponibles */}
-                          {clienteSeleccionado &&
-                            (clienteSeleccionado.señasDisponibles.ars > 0 ||
-                              clienteSeleccionado.señasDisponibles.usd > 0) && (
-                              <div className="space-y-3 rounded-lg bg-green-50 p-3">
-                                <div>
-                                  <p className="mb-2 text-sm font-medium text-green-800">
-                                    Señas disponibles:
-                                  </p>
-                                  <div className="flex items-center gap-4">
-                                    {clienteSeleccionado.señasDisponibles.ars >
-                                      0 && (
-                                      <div className="flex items-center gap-2">
-                                        <Badge color="blue">ARS</Badge>
-                                        <span className="font-semibold">
-                                          {formatARSFromNative(
-                                            clienteSeleccionado.señasDisponibles
-                                              .ars
-                                          )}
-                                        </span>
-                                        <Button
-                                          size="sm"
-                                          variant="outline"
-                                          onClick={() =>
-                                            handleAplicarSeña('ars')
-                                          }
-                                          disabled={
-                                            monedaSeñaAplicada === 'usd'
-                                          }
-                                        >
-                                          Aplicar
-                                        </Button>
-                                      </div>
-                                    )}
-                                    {clienteSeleccionado.señasDisponibles.usd >
-                                      0 && (
-                                      <div className="flex items-center gap-2">
-                                        <Badge color="green">USD</Badge>
-                                        <span className="font-semibold">
-                                          {formatUSD(
-                                            clienteSeleccionado.señasDisponibles
-                                              .usd
-                                          )}
-                                        </span>
-                                        <Button
-                                          size="sm"
-                                          variant="outline"
-                                          onClick={() =>
-                                            handleAplicarSeña('usd')
-                                          }
-                                          disabled={
-                                            monedaSeñaAplicada === 'ars'
-                                          }
-                                        >
-                                          Aplicar
-                                        </Button>
-                                      </div>
-                                    )}
-                                  </div>
-                                </div>
-
-                                {montoSeñaAplicada > 0 && (
-                                  <div className="mt-2 flex items-center justify-between rounded bg-green-100 p-2">
-                                    <div>
-                                      <p className="text-sm font-medium text-green-800">
-                                        Seña aplicada:{' '}
-                                        {monedaSeñaAplicada === 'ars'
-                                          ? formatARSFromNative(
-                                              montoSeñaAplicada
-                                            )
-                                          : formatUSD(montoSeñaAplicada)}
-                                      </p>
-                                      <p className="text-xs text-green-600">
-                                        {monedaSeñaAplicada === 'ars'
-                                          ? `Equivale a ${formatUSD(arsToUsd(montoSeñaAplicada))}`
-                                          : `Equivale a ${formatARSFromNative(montoSeñaAplicada * tipoCambio.valorVenta)}`}
-                                      </p>
-                                    </div>
-                                    <Button
-                                      size="sm"
-                                      variant="destructive"
-                                      onClick={handleQuitarSeña}
-                                    >
-                                      Quitar
-                                    </Button>
-                                  </div>
-                                )}
-                              </div>
-                            )}
-
-                          {errores.clienteProveedor && (
-                            <p className="text-xs text-red-600">
-                              {errores.clienteProveedor}
-                            </p>
-                          )}
-                        </div>
+                        <ClienteSelector
+                          clienteSeleccionado={clienteSeleccionado}
+                          onClienteChange={(cliente) => {
+                            setClienteSeleccionado(cliente);
+                            if (cliente) {
+                              setClienteProveedor(cliente.nombre);
+                              setTelefono(cliente.telefono || '');
+                              // Resetear seña al cambiar de cliente
+                              setMontoSeñaAplicada(0);
+                              setMonedaSeñaAplicada(null);
+                            } else {
+                              setClienteProveedor('');
+                              setTelefono('');
+                            }
+                          }}
+                          required={true}
+                        />
+                        {errores.clienteProveedor && (
+                          <p className="mt-1 text-xs text-red-600">
+                            {errores.clienteProveedor}
+                          </p>
+                        )}
                       </div>
                     )}
 
                     {/* Campo de proveedor para egresos */}
-                    {tipo === 'egreso' && (
+                    {/* {tipo === 'egreso' && (
                       <div>
                         <Label className="text-gray-700">Proveedor *</Label>
                         <Input
@@ -1269,17 +1228,19 @@ export default function ModalTransaccionUnificado({
                           </p>
                         )}
                       </div>
-                    )}
+                    )} */}
 
-                    <div>
-                      <Label className="text-gray-700">Teléfono</Label>
-                      <Input
-                        value={telefono}
-                        onChange={(e) => setTelefono(e.target.value)}
-                        placeholder="Teléfono"
-                        className="border-gray-300"
-                      />
-                    </div>
+                    {tipo === 'ingreso' && (
+                      <div>
+                        <Label className="text-gray-700">Teléfono</Label>
+                        <Input
+                          value={telefono}
+                          onChange={(e) => setTelefono(e.target.value)}
+                          placeholder="Teléfono"
+                          className="border-gray-300"
+                        />
+                      </div>
+                    )}
 
                     {/* {tipo === 'ingreso' && (
                       <div>
@@ -1304,38 +1265,6 @@ export default function ModalTransaccionUnificado({
                       </div>
                     )} */}
 
-                    {tipo === 'ingreso' && (
-                      <div>
-                        <Label className="text-gray-700">Responsable *</Label>
-                        <Select
-                          value={responsableId}
-                          onValueChange={setResponsableId}
-                        >
-                          <SelectTrigger
-                            className={
-                              errores.responsableId
-                                ? 'border-red-500'
-                                : 'border-gray-300'
-                            }
-                          >
-                            <SelectValue placeholder="Seleccionar responsable" />
-                          </SelectTrigger>
-                          <SelectContent className="z-[10001]">
-                            {personal.map((persona) => (
-                              <SelectItem key={persona.id} value={persona.id}>
-                                {persona.nombre}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                        {errores.responsable && (
-                          <p className="mt-1 text-xs text-red-600">
-                            {errores.responsable}
-                          </p>
-                        )}
-                      </div>
-                    )}
-
                     <div className="md:col-span-2">
                       <Label className="text-gray-700">Observaciones</Label>
                       <Textarea
@@ -1351,8 +1280,8 @@ export default function ModalTransaccionUnificado({
               </Card>
 
               {/* Items */}
-              <Card className="border border-gray-200 bg-white">
-                <CardHeader>
+              <Card className="border border-gray-300 bg-white shadow-md">
+                <CardHeader className="bg-gradient-to-r from-gray-50 to-gray-100">
                   <CardTitle className="flex items-center justify-between text-lg text-gray-900">
                     <span>
                       {tipo === 'ingreso'
@@ -1369,7 +1298,7 @@ export default function ModalTransaccionUnificado({
                           className="border-gray-300 text-gray-700 hover:bg-gray-50"
                         >
                           <Search className="mr-2 h-4 w-4" />
-                          Buscar
+                          Buscar {mostrarBuscador ? '(Abierto)' : ''}
                         </Button>
                       )}
                       <Button
@@ -1388,7 +1317,7 @@ export default function ModalTransaccionUnificado({
                 <CardContent className="space-y-4">
                   {/* Descuento Global - Solo para ingresos */}
                   {items.length > 0 && tipo === 'ingreso' && (
-                    <div className="mb-6 rounded-lg bg-gray-50 p-4">
+                    <div className="mb-6 rounded-lg border-2 border-gray-200 bg-gradient-to-r from-gray-100 to-gray-200 p-4 shadow-sm">
                       <div className="mb-4 flex items-center justify-between">
                         <h4 className="font-medium text-gray-900">
                           Descuento Global
@@ -1421,7 +1350,7 @@ export default function ModalTransaccionUnificado({
                   )}
 
                   {items.length === 0 ? (
-                    <div className="rounded-lg border-2 border-dashed border-gray-300 p-8 text-center">
+                    <div className="to-gray-150 rounded-lg border-2 border-dashed border-gray-300 bg-gradient-to-r from-gray-100 p-8 text-center shadow-sm">
                       <Calculator className="mx-auto h-12 w-12 text-gray-400" />
                       <p className="mt-2 text-sm text-gray-600">
                         {tipo === 'ingreso'
@@ -1439,11 +1368,13 @@ export default function ModalTransaccionUnificado({
                       return (
                         <div
                           key={item.id}
-                          className="rounded-lg border border-gray-200 p-4"
+                          className="rounded-lg border-2 border-gray-300 bg-gradient-to-r from-white to-gray-50 p-4 shadow-md"
                         >
                           <div className="mb-3 flex items-center justify-between">
                             <Badge variant="outline" className="text-gray-700">
-                              {(item.esPrecioCongelado || item.esMontoFijoARS) && '🔒 '}
+                              {(item.esPrecioCongelado ||
+                                item.esMontoFijoARS) &&
+                                '🔒 '}
                               {tipo === 'ingreso' ? 'Servicio' : 'Concepto'} #
                               {index + 1}
                             </Badge>
@@ -1542,7 +1473,7 @@ export default function ModalTransaccionUnificado({
 
                             <div>
                               <Label className="text-gray-700">Subtotal</Label>
-                              <div className="flex h-10 items-center justify-between rounded-md border border-gray-300 bg-gray-50 px-3">
+                              <div className="to-gray-150 flex h-10 items-center justify-between rounded-md border-2 border-gray-300 bg-gradient-to-r from-gray-100 px-3">
                                 <span className="text-sm font-medium text-green-600">
                                   {formatItemAmount(item)}
                                 </span>
@@ -1573,21 +1504,158 @@ export default function ModalTransaccionUnificado({
                                     )
                                   }
                                 />
-                                <Label 
+                                <Label
                                   htmlFor={`monto-fijo-ars-${item.id}`}
-                                  className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer"
+                                  className="cursor-pointer text-sm leading-none font-medium peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
                                 >
                                   <div className="flex items-center gap-2">
                                     <Lock className="h-4 w-4 text-orange-600" />
-                                    <span>Monto fijo en ARS (solo facturar en pesos argentinos)</span>
+                                    <span>
+                                      Monto fijo en ARS (solo facturar en pesos
+                                      argentinos)
+                                    </span>
                                   </div>
                                 </Label>
                               </div>
                               {item.esMontoFijoARS && (
                                 <p className="mt-2 text-xs text-orange-600">
-                                  💡 Este item se facturará únicamente en pesos argentinos sin conversión de tipo de cambio.
+                                  💡 Este item se facturará únicamente en pesos
+                                  argentinos sin conversión de tipo de cambio.
                                 </p>
                               )}
+                            </div>
+                          )}
+
+                          {/* Selector de responsables - Solo para ingresos */}
+                          {tipo === 'ingreso' && (
+                            <div className="mt-4 border-t pt-4">
+                              <div className="space-y-3">
+                                <Label className="text-sm font-medium text-gray-700">
+                                  Responsables para este item
+                                </Label>
+                                <div className="relative">
+                                  <div
+                                    onClick={() => {
+                                      const newItems = items.map((i) =>
+                                        i.id === item.id
+                                          ? {
+                                              ...i,
+                                              mostrarSelectorResponsables:
+                                                !i.mostrarSelectorResponsables,
+                                            }
+                                          : {
+                                              ...i,
+                                              mostrarSelectorResponsables:
+                                                false,
+                                            }
+                                      );
+                                      setItems(newItems);
+                                    }}
+                                    className="flex h-10 w-full cursor-pointer items-center justify-between rounded-md border border-gray-300 bg-white px-3 py-2 text-sm hover:border-gray-400"
+                                  >
+                                    <span
+                                      className={
+                                        item.responsablesIds.length > 0
+                                          ? 'text-gray-900'
+                                          : 'text-gray-500'
+                                      }
+                                    >
+                                      {(() => {
+                                        console.log(
+                                          'Renderizando selector para item:',
+                                          item.id,
+                                          'responsablesIds:',
+                                          item.responsablesIds
+                                        );
+                                        if (item.responsablesIds.length > 0) {
+                                          const persona = personal.find(
+                                            (p) =>
+                                              p.id === item.responsablesIds[0]
+                                          );
+                                          return persona
+                                            ? persona.nombre
+                                            : 'Responsable seleccionado';
+                                        } else {
+                                          return 'Seleccionar responsable';
+                                        }
+                                      })()}
+                                    </span>
+                                    <ChevronDown className="h-4 w-4 text-gray-500" />
+                                  </div>
+
+                                  {item.mostrarSelectorResponsables && (
+                                    <div className="absolute z-50 mt-1 w-full rounded-md border border-gray-200 bg-white shadow-lg">
+                                      <div className="max-h-48 overflow-y-auto p-2">
+                                        {personal.map((persona) => (
+                                          <div
+                                            key={persona.id}
+                                            onClick={() => {
+                                              console.log(
+                                                'Seleccionando responsable:',
+                                                persona.nombre,
+                                                'para item:',
+                                                item.id
+                                              );
+                                              // Actualizar el item con el responsable seleccionado y cerrar el selector
+                                              setItems(
+                                                items.map((i) =>
+                                                  i.id === item.id
+                                                    ? {
+                                                        ...i,
+                                                        responsablesIds: [
+                                                          persona.id,
+                                                        ],
+                                                        mostrarSelectorResponsables:
+                                                          false,
+                                                      }
+                                                    : i
+                                                )
+                                              );
+                                              console.log(
+                                                'Responsable seleccionado. Nuevo estado:',
+                                                [persona.id]
+                                              );
+                                            }}
+                                            className="flex cursor-pointer items-center space-x-2 rounded px-2 py-1 hover:bg-gray-100"
+                                          >
+                                            <span className="text-sm">
+                                              {persona.nombre}
+                                            </span>
+                                          </div>
+                                        ))}
+                                      </div>
+                                    </div>
+                                  )}
+                                </div>
+
+                                {item.responsablesIds.length > 0 && (
+                                  <div className="flex flex-wrap gap-1">
+                                    {(() => {
+                                      const persona = personal.find(
+                                        (p) => p.id === item.responsablesIds[0]
+                                      );
+                                      return persona ? (
+                                        <Badge
+                                          variant="secondary"
+                                          className="text-xs"
+                                        >
+                                          {persona.nombre}
+                                          <X
+                                            className="ml-1 h-3 w-3 cursor-pointer"
+                                            onClick={() => {
+                                              actualizarItem(
+                                                item.id,
+                                                'responsablesIds',
+                                                []
+                                              );
+                                            }}
+                                          />
+                                        </Badge>
+                                      ) : null;
+                                    })()}
+                                  </div>
+                                )}
+                              </div>
                             </div>
                           )}
 
@@ -1597,15 +1665,14 @@ export default function ModalTransaccionUnificado({
                               <DiscountControls
                                 descuentoPorcentaje={item.descuentoPorcentaje}
                                 montoDescuento={item.descuento}
-                                precioBase={precioBase}
+                                precioBase={item.precio * item.cantidad}
                                 onAplicarDescuento={(porcentaje) =>
                                   aplicarDescuentoItem(item.id, porcentaje)
                                 }
                                 onEliminarDescuento={() =>
                                   eliminarDescuentoItem(item.id)
                                 }
-                                label="Descuento individual"
-                                size="sm"
+                                label={`Descuento para ${item.nombre}`}
                                 maxDescuento={50}
                               />
                             </div>
@@ -1623,7 +1690,7 @@ export default function ModalTransaccionUnificado({
 
               {/* Warning para items con precio congelado */}
               {hayItemsCongelados && (
-                <div className="rounded-lg border-l-4 border-orange-400 bg-orange-50 p-4">
+                <div className="rounded-lg border-l-4 border-orange-400 bg-gradient-to-r from-orange-100 to-orange-200 p-4 shadow-md">
                   <div className="flex">
                     <div className="flex-shrink-0">
                       <svg
@@ -1640,11 +1707,18 @@ export default function ModalTransaccionUnificado({
                     </div>
                     <div className="ml-3">
                       <h3 className="text-sm font-medium text-orange-800">
-                        🔒 Items con {tipo === 'ingreso' ? 'precio fijo' : 'monto fijo en ARS'} detectados
+                        🔒 Items con{' '}
+                        {tipo === 'ingreso'
+                          ? 'precio fijo'
+                          : 'monto fijo en ARS'}{' '}
+                        detectados
                       </h3>
                       <div className="mt-1 text-sm text-orange-700">
-                        Esta comanda contiene items con {tipo === 'ingreso' ? 'precios congelados' : 'montos fijos'} en
-                        ARS.
+                        Esta comanda contiene items con{' '}
+                        {tipo === 'ingreso'
+                          ? 'precios congelados'
+                          : 'montos fijos'}{' '}
+                        en ARS.
                         <strong>
                           {' '}
                           Solo se permite pago en pesos argentinos.
@@ -1655,16 +1729,101 @@ export default function ModalTransaccionUnificado({
                 </div>
               )}
 
-              <MetodosPagoSection
-                metodosPago={metodosPago}
-                totalPagado={totales.totalPagadoConDescuentos}
-                montoTotal={totales.totalFinal}
-                onAgregarMetodo={agregarMetodoPago}
-                onEliminarMetodo={eliminarMetodoPago}
-                onActualizarMetodo={actualizarMetodoPago}
-                obtenerResumenDual={obtenerResumenDual}
-                hayItemsCongelados={hayItemsCongelados}
-              />
+              {/* Métodos de Pago */}
+              {tipo === 'ingreso' && (
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between">
+                    <h3 className="text-lg font-semibold text-gray-900">
+                      Métodos de Pago
+                    </h3>
+                    <div className="flex gap-2">
+                      {/* Botones de selección rápida para métodos de pago */}
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={() => {
+                          agregarMetodoPago();
+                          // Actualizar el último método agregado con efectivo
+                          const ultimoIndex = metodosPago.length;
+                          actualizarMetodoPago(ultimoIndex, 'tipo', 'efectivo');
+                        }}
+                        className="border-green-300 text-green-700 hover:bg-green-50"
+                      >
+                        💰 Efectivo
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={() => {
+                          agregarMetodoPago();
+                          const ultimoIndex = metodosPago.length;
+                          actualizarMetodoPago(ultimoIndex, 'tipo', 'tarjeta');
+                        }}
+                        className="border-blue-300 text-blue-700 hover:bg-blue-50"
+                      >
+                        💳 Tarjeta
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={() => {
+                          agregarMetodoPago();
+                          const ultimoIndex = metodosPago.length;
+                          actualizarMetodoPago(
+                            ultimoIndex,
+                            'tipo',
+                            'transferencia'
+                          );
+                        }}
+                        className="border-purple-300 text-purple-700 hover:bg-purple-50"
+                      >
+                        📱 Transferencia
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={() => {
+                          agregarMetodoPago();
+                          const ultimoIndex = metodosPago.length;
+                          actualizarMetodoPago(ultimoIndex, 'tipo', 'giftcard');
+                        }}
+                        className="border-orange-300 text-orange-700 hover:bg-orange-50"
+                      >
+                        🎁 Gift Card
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={() => {
+                          agregarMetodoPago();
+                          const ultimoIndex = metodosPago.length;
+                          actualizarMetodoPago(ultimoIndex, 'tipo', 'qr');
+                        }}
+                        className="border-indigo-300 text-indigo-700 hover:bg-indigo-50"
+                      >
+                        📱 QR
+                      </Button>
+                    </div>
+                  </div>
+
+                  {/* Sección de métodos de pago - Siempre visible */}
+                  <MetodosPagoSection
+                    metodosPago={metodosPago}
+                    totalPagado={totales.totalPagadoConDescuentos}
+                    montoTotal={totales.totalFinal}
+                    onAgregarMetodo={agregarMetodoPago}
+                    onEliminarMetodo={eliminarMetodoPago}
+                    onActualizarMetodo={actualizarMetodoPago}
+                    obtenerResumenDual={obtenerResumenDual}
+                    hayItemsCongelados={hayItemsCongelados}
+                  />
+                </div>
+              )}
 
               {errores.pagos && (
                 <div className="mt-2">
@@ -1676,8 +1835,8 @@ export default function ModalTransaccionUnificado({
             {/* Right Column - Summary */}
             <div className="space-y-6">
               <div className="sticky top-24 space-y-6">
-                <Card className="border border-gray-200 bg-white">
-                  <CardHeader>
+                <Card className="border border-gray-300 bg-white shadow-md">
+                  <CardHeader className="bg-gradient-to-r from-gray-50 to-gray-100">
                     <CardTitle className="text-lg text-gray-900">
                       Resumen
                     </CardTitle>
@@ -1685,13 +1844,16 @@ export default function ModalTransaccionUnificado({
                   <CardContent className="space-y-4">
                     <div className="space-y-3">
                       {/* Subtotal base */}
-                      <div className="flex items-center justify-between rounded-lg bg-gray-50 p-3">
+                      <div className="flex items-center justify-between rounded-lg bg-gradient-to-r from-gray-100 to-gray-200 p-3 shadow-sm">
                         <div className="text-sm text-gray-700">
                           Subtotal base
                         </div>
                         <div className="text-right">
                           <div className="text-sm font-semibold text-gray-900">
-                            {formatAmountForARSFixed(totales.subtotalBase, (totales as any).esCalculoARS)}
+                            {formatAmountForARSFixed(
+                              totales.subtotalBase,
+                              (totales as any).esCalculoARS
+                            )}
                           </div>
                           {isExchangeRateValid && totales.subtotalBase > 0 && (
                             <div className="text-xs text-gray-600">
@@ -1707,13 +1869,17 @@ export default function ModalTransaccionUnificado({
 
                       {/* Descuentos por ítem */}
                       {totales.totalDescuentos > 0 && (
-                        <div className="flex items-center justify-between rounded-lg bg-orange-50 p-3">
+                        <div className="flex items-center justify-between rounded-lg bg-gradient-to-r from-orange-100 to-orange-200 p-3 shadow-sm">
                           <div className="text-sm text-orange-700">
                             Descuentos por ítem
                           </div>
                           <div className="text-right">
                             <div className="text-sm font-semibold text-orange-700">
-                              -{formatAmountForARSFixed(totales.totalDescuentos, (totales as any).esCalculoARS)}
+                              -
+                              {formatAmountForARSFixed(
+                                totales.totalDescuentos,
+                                (totales as any).esCalculoARS
+                              )}
                             </div>
                             {isExchangeRateValid &&
                               totales.totalDescuentos > 0 && (
@@ -1727,7 +1893,7 @@ export default function ModalTransaccionUnificado({
 
                       {/* Seña aplicada */}
                       {montoSeñaAplicada > 0 && monedaSeñaAplicada && (
-                        <div className="flex items-center justify-between rounded-lg bg-purple-50 p-3">
+                        <div className="flex items-center justify-between rounded-lg bg-gradient-to-r from-purple-100 to-purple-200 p-3 shadow-sm">
                           <div className="text-sm text-purple-700">
                             Seña aplicada ({monedaSeñaAplicada.toUpperCase()})
                           </div>
@@ -1752,15 +1918,95 @@ export default function ModalTransaccionUnificado({
                         </div>
                       )}
 
+                      {/* Señas disponibles del cliente */}
+                      {tipo === 'ingreso' &&
+                        clienteSeleccionado &&
+                        clienteSeleccionado.señasDisponibles && (
+                          <div className="rounded-lg border-2 border-blue-300 bg-gradient-to-r from-blue-100 to-blue-200 p-3 shadow-sm">
+                            <div className="mb-2 flex items-center justify-between">
+                              <div className="text-sm font-medium text-blue-900">
+                                💰 Señas disponibles
+                              </div>
+                              {montoSeñaAplicada > 0 && (
+                                <Button
+                                  type="button"
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={handleQuitarSeña}
+                                  className="border-red-300 text-red-700 hover:bg-red-100"
+                                >
+                                  Quitar
+                                </Button>
+                              )}
+                            </div>
+
+                            <div className="flex flex-wrap gap-2">
+                              {clienteSeleccionado.señasDisponibles.ars > 0 && (
+                                <div className="flex items-center gap-1">
+                                  <Button
+                                    type="button"
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => handleAplicarSeña('ars')}
+                                    disabled={montoSeñaAplicada > 0}
+                                    className="border-blue-300 text-blue-700 hover:bg-blue-100"
+                                  >
+                                    ARS
+                                  </Button>
+                                  <span className="text-xs text-blue-600">
+                                    {formatARSFromNative(
+                                      clienteSeleccionado.señasDisponibles.ars
+                                    )}
+                                  </span>
+                                </div>
+                              )}
+                              {clienteSeleccionado.señasDisponibles.usd > 0 && (
+                                <div className="flex items-center gap-1">
+                                  <Button
+                                    type="button"
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => handleAplicarSeña('usd')}
+                                    disabled={montoSeñaAplicada > 0}
+                                    className="border-blue-300 text-blue-700 hover:bg-blue-100"
+                                  >
+                                    USD
+                                  </Button>
+                                  <span className="text-xs text-blue-600">
+                                    {formatUSD(
+                                      clienteSeleccionado.señasDisponibles.usd
+                                    )}
+                                  </span>
+                                  <Button
+                                    type="button"
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={handleAplicarSeñaUSDComoARS}
+                                    disabled={montoSeñaAplicada > 0}
+                                    className="border-green-300 text-xs text-green-700 hover:bg-green-100"
+                                    title={`Convertir a ARS: ${formatARSFromNative(clienteSeleccionado.señasDisponibles.usd * getTipoCambio().valorVenta)}`}
+                                  >
+                                    ARS
+                                  </Button>
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        )}
+
                       {/* Descuentos por método de pago */}
                       {totales.descuentosPorMetodo > 0 && (
-                        <div className="flex items-center justify-between rounded-lg bg-green-50 p-3">
+                        <div className="flex items-center justify-between rounded-lg bg-gradient-to-r from-green-100 to-green-200 p-3 shadow-sm">
                           <div className="text-sm text-green-700">
                             Descuentos por método de pago
                           </div>
                           <div className="text-right">
                             <div className="text-sm font-semibold text-green-700">
-                              -{formatAmountForARSFixed(totales.descuentosPorMetodo, (totales as any).esCalculoARS)}
+                              -
+                              {formatAmountForARSFixed(
+                                totales.descuentosPorMetodo,
+                                (totales as any).esCalculoARS
+                              )}
                             </div>
                             {isExchangeRateValid &&
                               totales.descuentosPorMetodo > 0 && (
@@ -1773,13 +2019,16 @@ export default function ModalTransaccionUnificado({
                       )}
 
                       {/* Total a pagar (después de descuentos por ítem y seña) */}
-                      <div className="flex items-center justify-between rounded-lg border-2 border-blue-200 bg-blue-50 p-3">
+                      <div className="flex items-center justify-between rounded-lg border-2 border-blue-300 bg-gradient-to-r from-blue-100 to-blue-200 p-3 shadow-md">
                         <div className="text-sm font-medium text-blue-900">
                           Total a pagar
                         </div>
                         <div className="text-right">
                           <div className="text-base font-bold text-blue-900">
-                            {formatAmountForARSFixed(totales.totalFinal, (totales as any).esCalculoARS)}
+                            {formatAmountForARSFixed(
+                              totales.totalFinal,
+                              (totales as any).esCalculoARS
+                            )}
                           </div>
                           {isExchangeRateValid && totales.totalFinal > 0 && (
                             <div className="text-sm text-blue-700">
@@ -1794,13 +2043,16 @@ export default function ModalTransaccionUnificado({
                       </div>
 
                       {/* Total efectivamente pagado */}
-                      <div className="flex items-center justify-between rounded-lg bg-green-50 p-3">
+                      <div className="flex items-center justify-between rounded-lg bg-gradient-to-r from-green-100 to-green-200 p-3 shadow-sm">
                         <div className="text-sm text-green-700">
                           Total pagado
                         </div>
                         <div className="text-right">
                           <div className="text-sm font-semibold text-green-700">
-                            {formatAmountForARSFixed(totales.totalPagadoConDescuentos, (totales as any).esCalculoARS)}
+                            {formatAmountForARSFixed(
+                              totales.totalPagadoConDescuentos,
+                              (totales as any).esCalculoARS
+                            )}
                           </div>
                           {isExchangeRateValid &&
                             totales.totalPagadoConDescuentos > 0 && (
@@ -1812,7 +2064,7 @@ export default function ModalTransaccionUnificado({
                       </div>
 
                       {/* Diferencia/Balance */}
-                      <div className="flex items-center justify-between rounded-lg bg-gray-50 p-3">
+                      <div className="flex items-center justify-between rounded-lg bg-gradient-to-r from-gray-100 to-gray-200 p-3 shadow-sm">
                         <div className="text-sm text-gray-700">Balance</div>
                         <div className="text-right">
                           <div
@@ -1837,7 +2089,7 @@ export default function ModalTransaccionUnificado({
                 </Card>
 
                 {/* Actions */}
-                <Card className="border border-gray-200 bg-white">
+                <Card className="border border-gray-300 bg-white shadow-md">
                   <CardContent className="pt-6">
                     <div className="space-y-3">
                       <Button
@@ -1883,7 +2135,7 @@ export default function ModalTransaccionUnificado({
       {/* Product Search Modal */}
       {mostrarBuscador && (
         <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/50 p-4">
-          <div className="w-full max-w-3xl rounded-lg bg-white shadow-2xl">
+          <div className="w-full max-w-3xl rounded-lg border border-gray-100 bg-white shadow-2xl">
             <div className="border-b p-4">
               <div className="flex items-center justify-between">
                 <h3 className="text-lg font-semibold text-gray-900">
@@ -1912,60 +2164,54 @@ export default function ModalTransaccionUnificado({
               <div className="space-y-6">
                 {tipo === 'ingreso' ? (
                   // Vista agrupada para ingresos
-                  Object.entries(
-                    productosServiciosFiltrados as Record<
-                      UnidadNegocio,
-                      ProductoServicio[]
-                    >
-                  ).map(([unidad, productos]) => (
-                    <div key={unidad}>
-                      <div className="mb-3 flex items-center gap-3">
-                        {obtenerIconoUnidad(unidad as UnidadNegocio)}
-                        <h4 className="font-medium text-gray-900 capitalize">
-                          {unidad}
-                        </h4>
-                        <Badge variant="outline" className="text-xs">
-                          {productos.length} items
-                        </Badge>
-                      </div>
-                      <div className="ml-6 space-y-2">
-                        {productos.map((producto: ProductoServicio) => (
-                          <div
-                            key={producto.id}
-                            className="flex cursor-pointer items-center justify-between rounded-lg border border-gray-200 p-3 transition-colors hover:bg-gray-50"
-                            onClick={() => agregarDesdeProducto(producto)}
-                          >
-                            <div className="flex-1">
-                              <div className="font-medium text-gray-900">
-                                {producto.nombre}
-                              </div>
-                              <div className="text-sm text-gray-600">
-                                {producto.tipo} -{' '}
-                                {formatProductAmount(producto)}
-                              </div>
-                              {producto.descripcion && (
-                                <div className="mt-1 text-xs text-gray-500">
-                                  {producto.descripcion}
-                                </div>
-                              )}
-                            </div>
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              className="border-[#f9bbc4] text-[#8b5a6b] hover:bg-[#f9bbc4] hover:text-white"
-                            >
-                              Agregar
-                            </Button>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  ))
-                ) : (
-                  // Vista simple para egresos (comportamiento actual)
                   <div className="space-y-2">
-                    {(productosServiciosFiltrados as ProductoServicio[]).map(
-                      (producto: ProductoServicio) => (
+                    {productosServicios
+                      .filter(
+                        (producto) =>
+                          producto.nombre
+                            .toLowerCase()
+                            .includes(busqueda.toLowerCase()) && producto.activo
+                      )
+                      .map((producto) => (
+                        <div
+                          key={producto.id}
+                          className="flex cursor-pointer items-center justify-between rounded-lg border border-gray-200 p-3 transition-colors hover:bg-gray-50"
+                          onClick={() => agregarDesdeProducto(producto)}
+                        >
+                          <div className="flex-1">
+                            <div className="font-medium text-gray-900">
+                              {producto.nombre}
+                            </div>
+                            <div className="text-sm text-gray-600">
+                              {producto.tipo} - {producto.precio} USD
+                            </div>
+                            {producto.descripcion && (
+                              <div className="mt-1 text-xs text-gray-500">
+                                {producto.descripcion}
+                              </div>
+                            )}
+                          </div>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="border-[#f9bbc4] text-[#8b5a6b] hover:bg-[#f9bbc4] hover:text-white"
+                          >
+                            Agregar
+                          </Button>
+                        </div>
+                      ))}
+                  </div>
+                ) : (
+                  // Vista simple para egresos
+                  <div className="space-y-2">
+                    {productosServicios
+                      .filter(
+                        (producto) =>
+                          producto.nombre
+                            .toLowerCase()
+                            .includes(busqueda.toLowerCase()) && producto.activo
+                      )
+                      .map((producto) => (
                         <div
                           key={producto.id}
                           className="flex cursor-pointer items-center justify-between rounded-lg border border-gray-200 p-3 hover:bg-gray-50"
@@ -1976,7 +2222,7 @@ export default function ModalTransaccionUnificado({
                               {producto.nombre}
                             </div>
                             <div className="text-sm text-gray-600">
-                              {producto.tipo} - {formatProductAmount(producto)}
+                              {producto.tipo} - {producto.precio} USD
                             </div>
                           </div>
                           <Button
@@ -1987,15 +2233,16 @@ export default function ModalTransaccionUnificado({
                             Agregar
                           </Button>
                         </div>
-                      )
-                    )}
+                      ))}
                   </div>
                 )}
-                {((tipo === 'ingreso' &&
-                  Object.keys(productosServiciosFiltrados).length === 0) ||
-                  (tipo === 'egreso' &&
-                    (productosServiciosFiltrados as ProductoServicio[])
-                      .length === 0)) && (
+
+                {productosServicios.filter(
+                  (producto) =>
+                    producto.nombre
+                      .toLowerCase()
+                      .includes(busqueda.toLowerCase()) && producto.activo
+                ).length === 0 && (
                   <div className="py-8 text-center text-gray-500">
                     <Package className="mx-auto mb-3 h-12 w-12 text-gray-300" />
                     <p>No se encontraron productos/servicios</p>

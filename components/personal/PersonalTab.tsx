@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -28,51 +28,70 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import { Plus, MoreHorizontal, Edit, Trash2, Users } from 'lucide-react';
-import { PersonalSimple } from '@/types/caja';
+import { Plus, MoreHorizontal, Edit, Trash2, Users, RefreshCw } from 'lucide-react';
+import { Trabajador, RolTrabajador } from '@/types/trabajador';
 import ModalPersonal from '@/components/personal/ModalPersonal';
-import { usePersonal } from '@/features/personal/hooks/usePersonal';
+import useTrabajadoresStore from '@/features/personal/store/trabajadoresStore';
+import { toast } from 'sonner';
 
 export default function PersonalTab() {
-  const { personal, agregar, actualizar, eliminar } = usePersonal();
+  const { 
+    trabajadores, 
+    isLoading,
+    error,
+    eliminarTrabajador,
+    loadTrabajadores
+  } = useTrabajadoresStore();
+
   const [modalAbierto, setModalAbierto] = useState(false);
-  const [personalEditando, setPersonalEditando] =
-    useState<PersonalSimple | null>(null);
-  const [alertaEliminar, setAlertaEliminar] = useState<PersonalSimple | null>(
-    null
-  );
+  const [alertaEliminar, setAlertaEliminar] = useState<Trabajador | null>(null);
+
 
   const handleNuevoPersonal = () => {
-    setPersonalEditando(null);
     setModalAbierto(true);
   };
 
-  const handleEditarPersonal = (persona: PersonalSimple) => {
-    setPersonalEditando(persona);
+  const handleEditarPersonal = (trabajador: Trabajador) => {
     setModalAbierto(true);
   };
 
-  const handleEliminarPersonal = (persona: PersonalSimple) => {
-    setAlertaEliminar(persona);
+  const handleEliminarPersonal = (trabajador: Trabajador) => {
+    setAlertaEliminar(trabajador);
   };
 
-  const confirmarEliminar = () => {
+  const confirmarEliminar = async () => {
     if (alertaEliminar) {
-      eliminar(alertaEliminar.id);
-      setAlertaEliminar(null);
+      const exito = await eliminarTrabajador(alertaEliminar.id);
+        // if () {
+        //   setAlertaEliminar(null);
+        // }
     }
   };
 
-  const handleGuardarPersonal = (personaData: Omit<PersonalSimple, 'id'>) => {
-    if (personalEditando) {
-      // Editar
-      actualizar(personalEditando.id, personaData);
-    } else {
-      // Crear
-      agregar(personaData);
+  const handleRefresh = async () => {
+    await loadTrabajadores();
+  };
+
+  const getRolBadgeVariant = (rol: RolTrabajador) => {
+    switch (rol) {
+      case RolTrabajador.ENCARGADO:
+        return 'secondary';
+      case RolTrabajador.TRABAJADOR:
+        return 'outline';
+      default:
+        return 'secondary';
     }
-    setModalAbierto(false);
-    setPersonalEditando(null);
+  };
+
+  const getRolLabel = (rol: RolTrabajador) => {
+    switch (rol) {
+      case RolTrabajador.ENCARGADO:
+        return 'Encargado';
+      case RolTrabajador.TRABAJADOR:
+        return 'Trabajador';
+      default:
+        return rol;
+    }
   };
 
   return (
@@ -86,10 +105,21 @@ export default function PersonalTab() {
               Personal
             </div>
             <div className="flex items-center gap-3">
-              <Badge variant="secondary">{personal.length} personas</Badge>
+              <Badge variant="secondary">{trabajadores.length} personas</Badge>
+              <Button
+                onClick={handleRefresh}
+                variant="outline"
+                size="sm"
+                disabled={isLoading}
+                className="border-[#f9bbc4]/30 hover:bg-[#f9bbc4]/10"
+              >
+                <RefreshCw className={`mr-2 h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
+                Actualizar
+              </Button>
               <Button
                 onClick={handleNuevoPersonal}
                 className="bg-[#f9bbc4] text-white hover:bg-[#e292a3]"
+                disabled={isLoading}
               >
                 <Plus className="mr-2 h-4 w-4" />
                 Agregar Personal
@@ -98,6 +128,21 @@ export default function PersonalTab() {
           </CardTitle>
         </CardHeader>
         <CardContent>
+          {error && (
+            <div className="mb-4 rounded-lg border border-red-200 bg-red-50 p-4">
+              <div className="flex items-center justify-between">
+                <p className="text-sm text-red-600">{error}</p>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="text-red-600 hover:text-red-700"
+                >
+                  Cerrar
+                </Button>
+              </div>
+            </div>
+          )}
+
           <div className="overflow-x-auto">
             <Table>
               <TableHeader>
@@ -105,46 +150,53 @@ export default function PersonalTab() {
                   <TableHead>Nombre</TableHead>
                   <TableHead>Comisión</TableHead>
                   <TableHead>Rol</TableHead>
+                  <TableHead>Estado</TableHead>
                   <TableHead className="text-right">Acciones</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {personal.map((persona) => (
-                  <TableRow key={persona.id} className="hover:bg-[#f9bbc4]/5">
+                {trabajadores.map((trabajador) => (
+                  <TableRow key={trabajador.id} className="hover:bg-[#f9bbc4]/5">
                     <TableCell>
-                      <div className="font-medium">{persona.nombre}</div>
+                      <div className="font-medium">{trabajador.nombre}</div>
                     </TableCell>
                     <TableCell>
                       <div className="font-mono text-green-600">
-                        {persona.comision}%
+                        {trabajador.comisionPorcentaje}%
                       </div>
                     </TableCell>
                     <TableCell>
                       <Badge
-                        variant={
-                          persona.rol === 'admin' ? 'default' : 'secondary'
-                        }
+                        variant={getRolBadgeVariant(trabajador.rol as unknown as RolTrabajador)}
                         className="capitalize"
                       >
-                        {persona.rol}
+                        {getRolLabel(trabajador.rol as unknown as RolTrabajador)}
+                      </Badge>
+                    </TableCell>
+                    <TableCell>
+                      <Badge
+                        variant={trabajador.activo ? 'default' : 'secondary'}
+                        className={trabajador.activo ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'}
+                      >
+                        {trabajador.activo ? 'Activo' : 'Inactivo'}
                       </Badge>
                     </TableCell>
                     <TableCell className="text-right">
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
-                          <Button variant="ghost" className="h-8 w-8 p-0">
+                          <Button variant="ghost" className="h-8 w-8 p-0" disabled={isLoading}>
                             <MoreHorizontal className="h-4 w-4" />
                           </Button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end">
                           <DropdownMenuItem
-                            onClick={() => handleEditarPersonal(persona)}
+                            onClick={() => handleEditarPersonal(trabajador as unknown as Trabajador)}
                           >
                             <Edit className="mr-2 h-4 w-4" />
                             Editar
                           </DropdownMenuItem>
                           <DropdownMenuItem
-                            onClick={() => handleEliminarPersonal(persona)}
+                            onClick={() => handleEliminarPersonal(trabajador as unknown as Trabajador)}
                             className="text-red-600"
                           >
                             <Trash2 className="mr-2 h-4 w-4" />
@@ -158,7 +210,16 @@ export default function PersonalTab() {
               </TableBody>
             </Table>
 
-            {personal.length === 0 && (
+            {isLoading && trabajadores.length === 0 && (
+              <div className="py-12 text-center">
+                <div className="mx-auto mb-4 h-8 w-8 animate-spin rounded-full border-2 border-[#f9bbc4] border-t-transparent"></div>
+                <p className="text-lg font-medium text-gray-500">
+                  Cargando personal...
+                </p>
+              </div>
+            )}
+
+            {!isLoading && trabajadores.length === 0 && (
               <div className="py-12 text-center">
                 <Users className="mx-auto mb-4 h-12 w-12 text-gray-300" />
                 <p className="text-lg font-medium text-gray-500">
@@ -183,9 +244,10 @@ export default function PersonalTab() {
       {/* Modal para crear/editar personal */}
       <ModalPersonal
         isOpen={modalAbierto}
-        onClose={() => setModalAbierto(false)}
-        personal={personalEditando}
-        onSave={handleGuardarPersonal}
+        onClose={() => {
+          setModalAbierto(false); 
+        }}
+        trabajador={null}
       />
 
       {/* Alert Dialog para eliminar */}
@@ -206,8 +268,9 @@ export default function PersonalTab() {
             <AlertDialogAction
               onClick={confirmarEliminar}
               className="bg-red-600 hover:bg-red-700"
+              disabled={isLoading}
             >
-              Eliminar
+              {isLoading ? 'Eliminando...' : 'Eliminar'}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

@@ -15,8 +15,10 @@ export const useExchangeRate = () => {
     actualizar: store.actualizarTipoCambio,
     guardarManual: store.guardarTipoCambioManual,
     cargarHistorial: store.cargarHistorial,
+    limpiarHistorial: store.limpiarHistorial,
     reiniciar: store.reiniciar,
     limpiarError: store.limpiarError,
+    cotizar: store.cotizar,
 
     // Utilidades
     valorVenta: store.tipoCambio.valorVenta,

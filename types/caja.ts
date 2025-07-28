@@ -1,3 +1,5 @@
+import { Trabajador } from "./trabajador";
+
 export type UnidadNegocio = 'tattoo' | 'estilismo' | 'formacion';
 
 export interface Personal {
@@ -101,8 +103,8 @@ export interface Comanda {
   fecha: Date;
   businessUnit: UnidadNegocio;
   cliente: Cliente;
-  mainStaff: Personal;
-  items: ItemComanda[];
+  personalPrincipal: Trabajador;
+  items: ItemComanda[] | ProductoServicio[];
   seña?: Seña;
   metodosPago: MetodoPago[];
   subtotal: number;

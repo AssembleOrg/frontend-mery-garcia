@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import MainLayout from '@/components/layout/MainLayout';
 import StandardPageBanner from '@/components/common/StandardPageBanner';
 import StandardBreadcrumbs from '@/components/common/StandardBreadcrumbs';
@@ -8,11 +8,10 @@ import TableFilters from '@/components/cajas/TableFilters';
 import TransactionsTable from '@/components/cajas/TransactionsTableTanStack';
 import ModalCambiarEstado from '@/components/validacion/ModalCambiarEstado';
 import ModalVerDetalles from '@/components/validacion/ModalVerDetalles';
-import { useTransactions } from '@/hooks/useTransactions';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Plus } from 'lucide-react';
-import { ColumnaCaja, Comanda } from '@/types/caja';
+import { ColumnaCaja, FiltrosEncomienda } from '@/types/caja';
 import ModalTransaccionUnificado from '@/components/cajas/ModalTransaccionUnificado';
 import { Pagination } from '@/components/ui/pagination';
 import { DateRangePicker } from '@/components/ui/date-range-picker';
@@ -26,6 +25,8 @@ import { useCurrencyConverter } from '@/hooks/useCurrencyConverter';
 import { formatDate } from '@/lib/utils';
 import { useRecordsStore } from '@/features/records/store/recordsStore';
 import ResidualDisplay from '@/components/cajas/ResidualDisplay';
+import { EstadoDeComandaNew, UnidadNegocioNew, TipoDeComandaNew, ComandaNew } from '@/services/unidadNegocio.service';
+import useComandaStore from '@/features/comandas/store/comandaStore';
 
 export default function IngresosPage() {
   const { isInitialized } = useCurrencyConverter();
@@ -43,20 +44,29 @@ export default function IngresosPage() {
     .sort((a, b) => new Date(b.fechaTraspaso).getTime() - 
                    new Date(a.fechaTraspaso).getTime())[0];
 
-  // Use clean hook for incoming transactions
+  // Estados de paginación
+  const [paginaActual, setPaginaActual] = useState(1);
+  const [itemsPorPagina, setItemsPorPagina] = useState(20);
+
+  // Store de comandas
   const {
-    data: transactions,
-    statistics,
-    pagination,
-    filters,
-    actualizarFiltros,
-    limpiarFiltros,
-    exportToPDF,
-    exportToCSV,
-  } = useTransactions({
-    type: 'ingreso',
-    dateRange,
-  });
+    comandasPaginadas,
+    cargando,
+    error,
+    cargarComandasPaginadas,
+  } = useComandaStore();
+
+  // Cargar comandas solo al entrar a la vista y cuando cambie la paginación
+  useEffect(() => {
+    console.log('cargando comandas'); 
+    cargarComandasPaginadas({
+      page: paginaActual,
+      limit: itemsPorPagina,
+      tipoDeComanda: TipoDeComandaNew.INGRESO,
+      orderBy: 'numero',
+      order: 'DESC',
+    });
+  }, [paginaActual, itemsPorPagina, cargarComandasPaginadas]);
 
   // Local UI state
   const [columns, setColumns] = useState<ColumnaCaja[]>(initialColumns);
@@ -76,7 +86,7 @@ export default function IngresosPage() {
   }
 
   // Get the selected transaction for the modal
-  const selectedTransaction = transactions.find(
+  const selectedTransaction = comandasPaginadas.data.find(
     (t) => t.id === selectedTransactionId
   );
 
@@ -106,77 +116,13 @@ export default function IngresosPage() {
 
   const hiddenColumns = columns.filter((c) => !c.visible).map((c) => c.key);
 
-  const agruparTransaccionesConTraspasos = () => {
-    const grupos: Array<{
-      tipo: 'transacciones';
-      fecha: string;
-      data: Comanda[];
-      key: string;
-    }> = [];
-
-    // Crear un Set para evitar duplicados de fechas de transacciones
-    const fechasTransaccionesProcesadas = new Set<string>();
-
-    // Filtrar transacciones: mostrar solo las que corresponden a caja-chica
-    const transaccionesFiltradas = transactions.filter(transaction => {
-      // Si es un movimiento manual, verificar que sea un ingreso real a caja-chica
-      if (transaction.cliente.nombre === 'Movimiento Manual') {
-        // Solo mostrar ingresos reales a caja-chica (no egresos de transferencias)
-        return transaction.tipo === 'ingreso' && 
-               transaction.metadata?.cajaDestino === 'caja_1';
-      }
-      // Las transacciones normales se muestran siempre
-      return true;
-    });
-
-    // Agrupar transacciones filtradas por fecha
-    const transaccionesPorFecha = transaccionesFiltradas.reduce(
-      (acc, transaction) => {
-        const fechaStr = formatDate(transaction.fecha);
-        if (!acc[fechaStr]) {
-          acc[fechaStr] = [];
-        }
-        acc[fechaStr].push(transaction);
-        return acc;
-      },
-      {} as Record<string, typeof transaccionesFiltradas>
-    );
-
-    // Ordenar transacciones dentro de cada fecha: no validadas primero, validadas al final
-    Object.keys(transaccionesPorFecha).forEach(fecha => {
-      transaccionesPorFecha[fecha].sort((a, b) => {
-        // Primero ordenar por estado de validación (no validadas primero)
-        const aValidada = a.estadoValidacion === 'validado' ? 1 : 0;
-        const bValidada = b.estadoValidacion === 'validado' ? 1 : 0;
-        if (aValidada !== bValidada) {
-          return aValidada - bValidada;
-        }
-        // Luego por fecha descendente (más recientes primero) como criterio secundario
-        return new Date(b.fecha).getTime() - new Date(a.fecha).getTime();
-      });
-    });
-
-    Object.entries(transaccionesPorFecha).forEach(
-      ([fecha, transaccionesDeLaFecha]) => {
-        if (!fechasTransaccionesProcesadas.has(fecha)) {
-          grupos.push({
-            tipo: 'transacciones',
-            fecha,
-            data: transaccionesDeLaFecha,
-            key: `transacciones-${fecha}`,
-          });
-          fechasTransaccionesProcesadas.add(fecha);
-        }
-      }
-    );
-
-    // Ordenar por fecha descendente (más recientes primero)
-    return grupos.sort((a, b) => {
-      return new Date(b.fecha).getTime() - new Date(a.fecha).getTime();
-    });
-  };
-
-  const gruposOrdenados = agruparTransaccionesConTraspasos();
+  // Totales y estadísticas simples - usar datos paginados
+  const totalIngresosUSD = comandasPaginadas.data.reduce((sum, comanda) => sum + (comanda.metodosPago.reduce((acc, item) => item.moneda === 'USD' ? acc + item.monto! : acc, 0)), 0);
+  const totalIngresosARS = comandasPaginadas.data.reduce((sum, comanda) => sum + (comanda.metodosPago.reduce((acc, item) => item.moneda === 'ARS' ? acc + item.monto! : acc, 0)), 0);
+  const transactionCountARS = comandasPaginadas.data.reduce((sum, comanda) => sum + (comanda.metodosPago.reduce((acc, item) => item.moneda === 'ARS' ? acc + 1 : acc, 0)), 0);
+  const transactionCountUSD = comandasPaginadas.data.reduce((sum, comanda) => sum + (comanda.metodosPago.reduce((acc, item) => item.moneda === 'USD' ? acc + 1 : acc, 0)), 0);
+  const clientCount = new Set(comandasPaginadas.data.map(c => c.cliente?.id)).size;
+  const transactionCount = comandasPaginadas.data.length;
 
   return (
     <MainLayout>
@@ -203,28 +149,22 @@ export default function IngresosPage() {
                     <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
                       <SummaryCardDual
                         title="💰 Total Ingresos"
-                        totalUSD={statistics.totalIncomingUSD ?? 0}
-                        totalARS={statistics.totalIncomingARS ?? 0}
+                        totalUSD={totalIngresosUSD}
+                        totalARS={totalIngresosARS}
                         valueClassName="text-green-600"
                         showTransactionCount={true}
-                        transactionCountUSD={
-                          statistics.dualCurrencyDetails?.USD?.transacciones ??
-                          0
-                        }
-                        transactionCountARS={
-                          statistics.dualCurrencyDetails?.ARS?.transacciones ??
-                          0
-                        }
+                        transactionCountUSD={transactionCountUSD}
+                        transactionCountARS={transactionCountARS}
                       />
                       <SummaryCardCount
                         title="📊 Transacciones"
-                        count={statistics.transactionCount ?? 0}
+                        count={transactionCount}
                         subtitle="comandas realizadas"
                         valueClassName="text-blue-600"
                       />
                       <SummaryCardCount
                         title="👥 Clientes"
-                        count={statistics.clientCount ?? 0}
+                        count={clientCount}
                         subtitle="clientes únicos"
                         valueClassName="text-purple-600"
                       />
@@ -266,29 +206,29 @@ export default function IngresosPage() {
                       {/* Table tools */}
                       <div className="flex items-center gap-3">
                         <TableFilters
-                          filters={filters}
-                          onFiltersChange={actualizarFiltros}
-                          onClearFilters={limpiarFiltros}
+                          filters={{
+                          }}
+                          onFiltersChange={() => {}}
                           columns={columns}
                           onColumnsChange={setColumns}
-                          exportToPDF={exportToPDF}
-                          exportToCSV={exportToCSV}
                         />
                       </div>
                     </div>
 
-                    {/* Active filter indicator */}
-                    {dateRange && (
-                      <div className="mt-3 flex items-center gap-2 text-xs text-[#6b4c57]">
-                        <div className="h-2 w-2 rounded-full bg-[#f9bbc4]"></div>
-                        <span>
-                          Filtrando desde{' '}
-                          {dateRange.from?.toLocaleDateString('es-ES')}
-                          {dateRange.to &&
-                            ` hasta ${dateRange.to.toLocaleDateString('es-ES')}`}
-                        </span>
-                      </div>
-                    )}
+                    {/* Active filter indicators */}
+                    <div className="mt-3 flex flex-wrap items-center gap-2 text-xs text-[#6b4c57]">
+                      {dateRange && (
+                        <div className="flex items-center gap-2">
+                          <div className="h-2 w-2 rounded-full bg-[#f9bbc4]"></div>
+                          <span>
+                            Filtrando desde{' '}
+                            {dateRange.from?.toLocaleDateString('es-ES')}
+                            {dateRange.to &&
+                              ` hasta ${dateRange.to.toLocaleDateString('es-ES')}`}
+                          </span>
+                        </div>
+                      )}
+                    </div>
                   </CardContent>
                 </Card>
               </div>
@@ -297,50 +237,43 @@ export default function IngresosPage() {
               <div className="mb-6">
                 <Card className="border border-[#f9bbc4]/20 bg-white/80 shadow-sm">
                   <CardContent className="p-4">
-                    {/* Renderizar grupos ordenados - SIN TraspasoIndicator */}
-                    <div className="space-y-4">
-                      {gruposOrdenados.map((grupo) => (
-                        <div key={grupo.key}>
-                          {/* Solo mostrar tabla de transacciones */}
-                          <TransactionsTable
-                            data={grupo.data}
-                            onEdit={onEditTransaction}
-                            onDelete={handleDelete}
-                            onView={onViewTransaction}
-                            onChangeStatus={onChangeStatus}
-                            hiddenColumns={hiddenColumns}
-                          />
-                        </div>
-                      ))}
-
-                      {/* Si no hay grupos, mostrar tabla normal */}
-                      {gruposOrdenados.length === 0 && (
-                        <TransactionsTable
-                          data={transactions}
-                          onEdit={onEditTransaction}
-                          onDelete={handleDelete}
-                          onView={onViewTransaction}
-                          onChangeStatus={onChangeStatus}
-                          hiddenColumns={hiddenColumns}
-                        />
-                      )}
-                    </div>
+                    {/* Mostrar tabla de transacciones con datos paginados */}
+                    {cargando ? (
+                      <div className="flex justify-center py-8">
+                        <Spinner />
+                      </div>
+                    ) : error ? (
+                      <div className="text-center py-8 text-red-600">
+                        Error: {error}
+                      </div>
+                    ) : comandasPaginadas.data.length === 0 ? (
+                      <div className="text-center py-8 text-gray-500">
+                        No hay transacciones de ingreso para mostrar
+                      </div>
+                    ) : (
+                      <TransactionsTable
+                        data={comandasPaginadas.data}
+                        onEdit={onEditTransaction}
+                        onDelete={handleDelete}
+                        onView={onViewTransaction}
+                        onChangeStatus={onChangeStatus}
+                        hiddenColumns={hiddenColumns}
+                      />
+                    )}
 
                     {/* Pagination */}
                     <div className="mt-6">
                       <Pagination
-                        paginaActual={pagination.paginaActual}
-                        totalPaginas={pagination.totalPaginas}
-                        totalItems={pagination.totalItems}
-                        itemsPorPagina={pagination.itemsPorPagina}
-                        itemInicio={pagination.itemInicio}
-                        itemFin={pagination.itemFin}
-                        onCambiarPagina={pagination.irAPagina}
-                        onCambiarItemsPorPagina={
-                          pagination.cambiarItemsPorPagina
-                        }
-                        hayPaginaAnterior={pagination.hayPaginaAnterior}
-                        hayPaginaSiguiente={pagination.hayPaginaSiguiente}
+                        paginaActual={comandasPaginadas.pagination.page ?? 1}
+                        totalPaginas={comandasPaginadas.pagination.totalPages ?? 1}
+                        totalItems={comandasPaginadas.pagination.total ?? 0}
+                        itemsPorPagina={comandasPaginadas.pagination.limit ?? 20}
+                        itemInicio={comandasPaginadas.pagination ? (comandasPaginadas.pagination.page - 1) * comandasPaginadas.pagination.limit + 1 : 0}
+                        itemFin={comandasPaginadas.pagination ? Math.min(comandasPaginadas.pagination.page * comandasPaginadas.pagination.limit, comandasPaginadas.pagination.total) : 0}
+                        onCambiarPagina={setPaginaActual}
+                        onCambiarItemsPorPagina={setItemsPorPagina}
+                        hayPaginaAnterior={comandasPaginadas.pagination ? comandasPaginadas.pagination.page > 1 : false}
+                        hayPaginaSiguiente={comandasPaginadas.pagination ? comandasPaginadas.pagination.page < comandasPaginadas.pagination.totalPages : false}
                       />
                     </div>
                   </CardContent>
@@ -366,9 +299,13 @@ export default function IngresosPage() {
           }}
           comandaId={selectedTransactionId}
           estadoActual={
-            (selectedTransaction?.estadoValidacion === 'validado'
+            (selectedTransaction && (selectedTransaction as any).estadoValidacion === 'validado')
               ? 'completado'
-              : selectedTransaction?.estado) || 'pendiente'
+              : ((selectedTransaction?.estadoDeComanda === EstadoDeComandaNew.FINALIZADA)
+                  ? 'completado'
+                  : (selectedTransaction?.estadoDeComanda === EstadoDeComandaNew.CANCELADA)
+                    ? 'cancelado'
+                    : 'pendiente')
           }
           onSuccess={() => {
             setShowChangeStatusModal(false);

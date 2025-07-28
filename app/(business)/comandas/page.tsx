@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useCallback, useEffect } from 'react';
 import MainLayout from '@/components/layout/MainLayout';
 import StandardPageBanner from '@/components/common/StandardPageBanner';
 import StandardBreadcrumbs from '@/components/common/StandardBreadcrumbs';
@@ -36,17 +36,24 @@ import {
   Lock,
   Unlock,
 } from 'lucide-react';
-import { useComandaStore } from '@/features/comandas/store/comandaStore';
-import { useInitializeComandaStore } from '@/hooks/useInitializeComandaStore';
+import { useComandas } from '@/features/comandas/hooks/useComandas';
+import { 
+  EstadoComanda, 
+  UnidadNegocio, 
+  EstadoComandaNegocio, 
+  EstadoValidacion,
+  Comanda,
+  TipoComandaEnum
+} from '@/services/comandas.service';
 import ModalVerDetalles from '@/components/validacion/ModalVerDetalles';
 import ModalVerHistorial from '@/components/validacion/ModalVerHistorial';
 import ModalValidarComanda from '@/components/validacion/ModalValidarComanda';
-import ModalCambiarEstado from '@/components/validacion/ModalCambiarEstado';
-import { Comanda, EstadoComandaNegocio, EstadoValidacion } from '@/types/caja';
+import ModalCambiarEstado, { EstadoSimple } from '@/components/validacion/ModalCambiarEstado';
 import { logger } from '@/lib/utils';
 import ClientOnly from '@/components/common/ClientOnly';
 import Spinner from '@/components/common/Spinner';
 import { useAuthStore } from '@/features/auth/store/authStore';
+import { Pagination } from '@/components/ui/pagination';
 
 const breadcrumbItems = [
   { label: 'Inicio', href: '/' },
@@ -55,18 +62,28 @@ const breadcrumbItems = [
 ];
 
 export default function ComandasPage() {
-  // Initialize store
-  const { isInitialized } = useInitializeComandaStore();
-
   // Store state
-  const { comandas, error } = useComandaStore();
+  const { 
+    comandas, 
+    error, 
+    cargando, 
+    pagination, 
+    estadisticas,
+    cargarComandasPaginadas,
+    limpiarError 
+  } = useComandas();
+
+  // Estados de paginación
+  const [paginaActual, setPaginaActual] = useState(1);
+  const [itemsPorPagina, setItemsPorPagina] = useState(20);
+  const [busqueda, setBusqueda] = useState('');
+  const [filtroEstado, setFiltroEstado] = useState<EstadoComanda | 'todos'>('todos');
+  const [filtroUnidadNegocio, setFiltroUnidadNegocio] = useState<UnidadNegocio | 'todas'>('todas');
+  const [filtroEstadoNegocio, setFiltroEstadoNegocio] = useState<EstadoComandaNegocio | 'todos'>('todos');
+  const [filtroEstadoValidacion, setFiltroEstadoValidacion] = useState<EstadoValidacion | 'todos'>('todos');
   const { user } = useAuthStore();
 
   // Local state
-  const [busqueda, setBusqueda] = useState('');
-  const [filtroEstadoNegocio, setFiltroEstadoNegocio] = useState<
-    EstadoComandaNegocio | 'todos'
-  >('todos');
   const [filtroValidacion, setFiltroValidacion] = useState<
     EstadoValidacion | 'todos'
   >('todos');
@@ -84,47 +101,95 @@ export default function ComandasPage() {
   // User permissions
   const usuario = user;
 
-  // Filter comandas
+    // Construir filtros para la API
+  const construirFiltros = useCallback(() => {
+    const filtros: any = {
+      page: paginaActual,
+      limit: itemsPorPagina,
+      orderBy: 'numero',
+      order: 'DESC'
+    };
+
+    if (busqueda.trim()) {
+      filtros.search = busqueda.trim();
+    }
+
+    if (filtroEstado !== 'todos') {
+      filtros.estado = filtroEstado;
+    }
+
+    if (filtroUnidadNegocio !== 'todas') {
+      filtros.unidadNegocio = filtroUnidadNegocio;
+    }
+
+    if (filtroEstadoNegocio !== 'todos') {
+      filtros.estadoNegocio = filtroEstadoNegocio;
+    }
+
+    if (filtroEstadoValidacion !== 'todos') {
+      filtros.estadoValidacion = filtroEstadoValidacion;
+    }
+
+    if (filtroTipo !== 'todos') {
+      filtros.tipo = filtroTipo;
+    }
+
+    return filtros;
+  }, [paginaActual, itemsPorPagina, busqueda, filtroEstado, filtroUnidadNegocio, filtroEstadoNegocio, filtroEstadoValidacion, filtroTipo]);
+
+  // Cargar comandas cuando cambien los filtros
+  useEffect(() => {
+    cargarComandasPaginadas(construirFiltros());
+  }, [construirFiltros, cargarComandasPaginadas]);
+
+  // Funciones de paginación
+  const handleCambiarPagina = (nuevaPagina: number) => {
+    setPaginaActual(nuevaPagina);
+  };
+
+  const handleCambiarItemsPorPagina = (nuevosItems: number) => {
+    setItemsPorPagina(nuevosItems);
+    setPaginaActual(1);
+  };
+
+  const aplicarFiltros = () => {
+    setPaginaActual(1);
+  };
+
+  // Información de paginación
+  const paginationInfo = useMemo(() => {
+    if (!pagination) {
+      return {
+        paginaActual: 1,
+        totalPaginas: 1,
+        totalItems: 0,
+        itemsPorPagina: 20,
+        itemInicio: 0,
+        itemFin: 0,
+        hayPaginaAnterior: false,
+        hayPaginaSiguiente: false
+      };
+    }
+
+    const itemInicio = (pagination.page - 1) * pagination.limit + 1;
+    const itemFin = Math.min(pagination.page * pagination.limit, pagination.total);
+
+    return {
+      paginaActual: pagination.page,
+      totalPaginas: pagination.totalPages,
+      totalItems: pagination.total,
+      itemsPorPagina: pagination.limit,
+      itemInicio,
+      itemFin,
+      hayPaginaAnterior: pagination.page > 1,
+      hayPaginaSiguiente: pagination.page < pagination.totalPages
+    };
+  }, [pagination]);
+
+  // Filter comandas (ahora solo para estadísticas locales)
   const comandasFiltradas = useMemo(() => {
-    return comandas.filter((comanda) => {
-      // Search filter
-      if (busqueda) {
-        const termino = busqueda.toLowerCase();
-        const coincide =
-          comanda.numero.toLowerCase().includes(termino) ||
-          comanda.cliente.nombre.toLowerCase().includes(termino) ||
-          comanda.mainStaff?.nombre?.toLowerCase().includes(termino) ||
-          comanda.items.some((item) =>
-            item.nombre.toLowerCase().includes(termino)
-          );
-
-        if (!coincide) return false;
-      }
-
-      // Business state filter
-      if (filtroEstadoNegocio !== 'todos') {
-        const estadoNegocio =
-          (comanda as Comanda & { estadoNegocio?: EstadoComandaNegocio })
-            .estadoNegocio || 'pendiente';
-        if (estadoNegocio !== filtroEstadoNegocio) return false;
-      }
-
-      // Validation filter
-      if (filtroValidacion !== 'todos') {
-        const estadoValidacion =
-          (comanda as Comanda & { estadoValidacion?: EstadoValidacion })
-            .estadoValidacion || 'no_validado';
-        if (estadoValidacion !== filtroValidacion) return false;
-      }
-
-      // Type filter
-      if (filtroTipo !== 'todos') {
-        if (comanda.tipo !== filtroTipo) return false;
-      }
-
-      return true;
-    });
-  }, [comandas, busqueda, filtroEstadoNegocio, filtroValidacion, filtroTipo]);
+    return comandas || [];
+  }, [comandas]);
 
   const obtenerPermisosComanda = (comanda: Comanda) => {
     const comandaExtendida = comanda as Comanda & {
@@ -150,7 +215,7 @@ export default function ComandasPage() {
   };
 
   // Calculate statistics
-  const estadisticas = useMemo(() => {
+  const estadisticasLocales = useMemo(() => {
     const total = comandas.length;
     const validadas = comandas.filter(
       (c) =>
@@ -160,8 +225,8 @@ export default function ComandasPage() {
     const pendientes = total - validadas;
 
     const porTipo = {
-      ingresos: comandas.filter((c) => c.tipo === 'ingreso').length,
-      egresos: comandas.filter((c) => c.tipo === 'egreso').length,
+      ingresos: comandas.filter((c) => (c as Comanda & { tipo?: TipoComandaEnum }).tipo === TipoComandaEnum.INGRESO).length,
+      egresos: comandas.filter((c) => (c as Comanda & { tipo?: TipoComandaEnum }).tipo === TipoComandaEnum.EGRESO).length,
     };
 
     const porEstadoNegocio = {
@@ -269,21 +334,7 @@ export default function ComandasPage() {
     // The store will automatically update, so we don't need to refresh manually
   };
 
-  if (!isInitialized) {
-    return (
-      <ManagerOrAdminOnly>
-        <MainLayout>
-          <div className="min-h-screen bg-gradient-to-br from-[#f9bbc4]/15 via-[#e8b4c6]/12 to-[#d4a7ca]/10">
-            <StandardPageBanner title="Validación de Comandas" />
-            <div className="flex items-center justify-center py-12">
-              <Spinner />
-              <p className="ml-2 text-[#6b4c57]">Cargando comandas...</p>
-            </div>
-          </div>
-        </MainLayout>
-      </ManagerOrAdminOnly>
-    );
-  }
+
 
   return (
     <MainLayout>
@@ -311,11 +362,11 @@ export default function ComandasPage() {
                   </CardHeader>
                   <CardContent>
                     <div className="stats-value text-[#4a3540]">
-                      {estadisticas.total}
+                      {estadisticasLocales.total}
                     </div>
                     <p className="mt-1 text-xs text-[#6b4c57]">
-                      {estadisticas.porTipo.ingresos} ingresos,{' '}
-                      {estadisticas.porTipo.egresos} egresos
+                      {estadisticasLocales.porTipo.ingresos} ingresos,{' '}
+                      {estadisticasLocales.porTipo.egresos} egresos
                     </p>
                   </CardContent>
                 </Card>
@@ -330,10 +381,10 @@ export default function ComandasPage() {
                   </CardHeader>
                   <CardContent>
                     <div className="stats-value text-green-900">
-                      {estadisticas.validadas}
+                      {estadisticasLocales.validadas}
                     </div>
                     <p className="mt-1 text-xs text-green-600">
-                      {estadisticas.porcentajeValidado}% del total
+                      {estadisticasLocales.porcentajeValidado}% del total
                     </p>
                   </CardContent>
                 </Card>
@@ -348,7 +399,7 @@ export default function ComandasPage() {
                   </CardHeader>
                   <CardContent>
                     <div className="stats-value text-yellow-900">
-                      {estadisticas.pendientes}
+                      {estadisticasLocales.pendientes}
                     </div>
                     <p className="mt-1 text-xs text-yellow-600">
                       Requieren validación
@@ -369,19 +420,19 @@ export default function ComandasPage() {
                       <div className="flex justify-between text-xs">
                         <span className="text-green-600">Completo:</span>
                         <span className="font-semibold">
-                          {estadisticas.porEstadoNegocio.completado}
+                          {estadisticasLocales.porEstadoNegocio.completado}
                         </span>
                       </div>
                       <div className="flex justify-between text-xs">
                         <span className="text-yellow-600">Incompleto:</span>
                         <span className="font-semibold">
-                          {estadisticas.porEstadoNegocio.incompleto}
+                          {estadisticasLocales.porEstadoNegocio.incompleto}
                         </span>
                       </div>
                       <div className="flex justify-between text-xs">
                         <span className="text-gray-600">Pendiente:</span>
                         <span className="font-semibold">
-                          {estadisticas.porEstadoNegocio.pendiente}
+                          {estadisticasLocales.porEstadoNegocio.pendiente}
                         </span>
                       </div>
                     </div>
@@ -485,7 +536,7 @@ export default function ComandasPage() {
                       <FileText className="h-5 w-5 text-[#f9bbc4]" />
                       Comandas para Validación
                       <Badge variant="outline" className="ml-auto">
-                        {comandasFiltradas.length} de {estadisticas.total}
+                        {comandasFiltradas.length} de {estadisticasLocales.total}
                       </Badge>
                     </CardTitle>
                   </CardHeader>
@@ -532,12 +583,12 @@ export default function ComandasPage() {
                                 <TableCell>
                                   <Badge
                                     variant={
-                                      comanda.tipo === 'ingreso'
+                                      (comanda as Comanda & { tipo?: TipoComandaEnum }).tipo === TipoComandaEnum.INGRESO
                                         ? 'default'
                                         : 'destructive'
                                     }
                                   >
-                                    {comanda.tipo === 'ingreso'
+                                    {(comanda as Comanda & { tipo?: TipoComandaEnum }).tipo === TipoComandaEnum.INGRESO
                                       ? '📈 Ingreso'
                                       : '📉 Egreso'}
                                   </Badge>
@@ -578,7 +629,7 @@ export default function ComandasPage() {
                                   </div>
                                 </TableCell>
                                 <TableCell>
-                                  {comanda.mainStaff?.nombre || 'Sin asignar'}
+                                  {comanda.personalPrincipal?.nombre || 'Sin asignar'}
                                 </TableCell>
                                 <TableCell>
                                   <div className="flex items-center gap-1">
@@ -681,6 +732,22 @@ export default function ComandasPage() {
                     </div>
                   </CardContent>
                 </Card>
+
+                {/* Paginación */}
+                  <div className="mt-6">
+                    <Pagination
+                      paginaActual={paginationInfo.paginaActual}
+                      totalPaginas={paginationInfo.totalPaginas}
+                      totalItems={paginationInfo.totalItems}
+                      itemsPorPagina={paginationInfo.itemsPorPagina}
+                      itemInicio={paginationInfo.itemInicio}
+                      itemFin={paginationInfo.itemFin}
+                      onCambiarPagina={handleCambiarPagina}
+                      onCambiarItemsPorPagina={handleCambiarItemsPorPagina}
+                      hayPaginaAnterior={paginationInfo.hayPaginaAnterior}
+                      hayPaginaSiguiente={paginationInfo.hayPaginaSiguiente}
+                    />
+                  </div>
               </div>
 
               {/* Error State */}
@@ -737,15 +804,9 @@ export default function ComandasPage() {
             setComandaSeleccionada('');
           }}
           comandaId={comandaSeleccionada}
-          estadoActual={
-            ((comandas.find((c) => c.id === comandaSeleccionada)
-              ?.estadoValidacion === 'validado'
-              ? 'completado'
-              : comandas.find((c) => c.id === comandaSeleccionada)?.estado) as
-              | 'pendiente'
-              | 'completado'
-              | 'cancelado') || 'pendiente'
-          }
+                      estadoActual={
+              (comandas.find((c) => c.id === comandaSeleccionada)?.estado as unknown as EstadoSimple) || 'pendiente'
+            }
           onSuccess={handleCambioEstadoExitoso}
         />
       </div>

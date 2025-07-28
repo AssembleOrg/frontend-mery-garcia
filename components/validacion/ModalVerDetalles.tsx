@@ -18,7 +18,7 @@ import {
   XCircle,
   Shield,
 } from 'lucide-react';
-import { useComandaStore } from '@/features/comandas/store/comandaStore';
+import useComandaStore from '@/features/comandas/store/comandaStore';
 import { useConfiguracion } from '@/features/configuracion/store/configuracionStore';
 import { useCurrencyConverter } from '@/hooks/useCurrencyConverter';
 import { Comanda, EstadoComandaNegocio, EstadoValidacion } from '@/types/caja';
@@ -64,7 +64,7 @@ export default function ModalVerDetalles({
   comandaId,
 }: ModalVerDetallesProps) {
   const [comanda, setComanda] = useState<Comanda | null>(null);
-  const { obtenerComandaPorId } = useComandaStore();
+  // const { obtenerComandaPorId } = useComandaStore();
   const { descuentosPorMetodo } = useConfiguracion();
   const {
     formatDual,
@@ -74,12 +74,12 @@ export default function ModalVerDetalles({
     isExchangeRateValid,
   } = useCurrencyConverter();
 
-  useEffect(() => {
-    if (isOpen && comandaId) {
-      const comandaEncontrada = obtenerComandaPorId(comandaId);
-      setComanda(comandaEncontrada || null);
-    }
-  }, [isOpen, comandaId, obtenerComandaPorId]);
+  // useEffect(() => {
+  //   if (isOpen && comandaId) {
+  //     const comandaEncontrada = obtenerComandaPorId(comandaId);
+  //     setComanda(comandaEncontrada || null);
+  //   }
+  // }, [isOpen, comandaId, obtenerComandaPorId]);
 
   if (!isOpen || !comanda) return null;
 
@@ -294,7 +294,7 @@ export default function ModalVerDetalles({
                         key={index}
                         className="flex items-center justify-between rounded-lg border p-3"
                       >
-                        <div className="flex-1">
+                        {/* <div className="flex-1">
                           <p className="font-medium">{item.nombre}</p>
                           <p className="text-sm text-gray-600">
                             Cantidad: {item.cantidad} | Precio:{' '}
@@ -310,7 +310,7 @@ export default function ModalVerDetalles({
                           <p className="font-bold">
                             {formatAmount(item.subtotal)}
                           </p>
-                        </div>
+                        </div> */}
                       </div>
                     ))}
                   </div>

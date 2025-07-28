@@ -1,5 +1,5 @@
 import { useEffect, useRef } from 'react';
-import { useComandaStore } from '@/features/comandas/store/comandaStore';
+import useComandaStore from '@/features/comandas/store/comandaStore';
 import { logger } from '@/lib/utils';
 
 // Función para generar IDs únicos y estables
@@ -29,7 +29,7 @@ const initializationState = {
 
 export function useInitializeComandaStore() {
   const mountedRef = useRef(false);
-  const { limpiarDuplicados, migrarDatosValidacion } = useComandaStore();
+  // const { limpiarDuplicados, migrarDatosValidacion } = useComandaStore();
 
   // Mark as mounted
   useEffect(() => {
@@ -39,41 +39,41 @@ export function useInitializeComandaStore() {
     };
   }, []);
 
-  useEffect(() => {
-    if (!mountedRef.current) return;
+  // useEffect(() => {
+  //   if (!mountedRef.current) return;
 
-    // Prevenir race conditions with timestamp
-    if (initializationState.isInitializing) return;
+  //   // Prevenir race conditions with timestamp
+  //   if (initializationState.isInitializing) return;
 
-    initializationState.isInitializing = true;
-    initializationState.timestamp = Date.now();
+  //   initializationState.isInitializing = true;
+  //   initializationState.timestamp = Date.now();
 
-    const currentTimestamp = initializationState.timestamp;
+  //   const currentTimestamp = initializationState.timestamp;
 
-    // Verificar si sigue siendo la misma inicialización
-    if (currentTimestamp !== initializationState.timestamp) {
-      initializationState.isInitializing = false;
-      return;
-    }
+  //   // Verificar si sigue siendo la misma inicialización
+  //   if (currentTimestamp !== initializationState.timestamp) {
+  //     initializationState.isInitializing = false;
+  //     return;
+  //   }
 
-    try {
-      logger.info('🚀 Inicializando sistema de comandas...');
+  //   try {
+  //     logger.info('🚀 Inicializando sistema de comandas...');
 
-      // Limpiar duplicados si los hay
-      limpiarDuplicados();
+  //     // Limpiar duplicados si los hay
+  //     // limpiarDuplicados();
 
-      // Migrar datos de validación si es necesario
-      migrarDatosValidacion();
+  //     // Migrar datos de validación si es necesario
+  //     // migrarDatosValidacion();
 
-      logger.success('✅ Sistema de comandas inicializado correctamente');
+  //     logger.success('✅ Sistema de comandas inicializado correctamente');
 
-      initializationState.isInitialized = true;
-    } catch (error) {
-      logger.error('❌ Error en inicialización:', error);
-    } finally {
-      initializationState.isInitializing = false;
-    }
-  }, [limpiarDuplicados, migrarDatosValidacion]);
+  //     initializationState.isInitialized = true;
+  //   } catch (error) {
+  //     logger.error('❌ Error en inicialización:', error);
+  //   } finally {
+  //     initializationState.isInitializing = false;
+  //   }
+  // }, [limpiarDuplicados, migrarDatosValidacion]);
 
   return {
     isInitialized: initializationState.isInitialized,

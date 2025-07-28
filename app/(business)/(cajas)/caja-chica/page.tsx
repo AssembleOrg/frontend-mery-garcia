@@ -7,12 +7,11 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import Link from 'next/link';
 import { TrendingUp, TrendingDown, BarChart3, ArrowRight } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import {
-  useResumenCaja,
-  useComandaStore,
-} from '@/features/comandas/store/comandaStore';
+// import {
+//   useResumenCaja,
+//   useComandaStore,
+// } from '@/features/comandas/store/comandaStore';
 import { useCurrencyConverter } from '@/hooks/useCurrencyConverter';
-import { useTransactions } from '@/hooks/useTransactions';
 import SummaryCardDual from '@/components/common/SummaryCardDual';
 import SummaryCardCount from '@/components/common/SummaryCardCount';
 import ClientOnly from '@/components/common/ClientOnly';
@@ -28,19 +27,11 @@ const breadcrumbItems = [
 
 export default function CajaChicaMenuPage() {
   // Obtener resumen del store y todas las comandas
-  const { resumen } = useResumenCaja();
-  const { comandas } = useComandaStore();
+  // const { resumen } = useResumenCaja();
+  // const { comandas } = useComandaStore();
   const { formatUSD, formatARSFromNative, formatDual, isExchangeRateValid } =
     useCurrencyConverter();
 
-  // Hook para obtener estadísticas de transacciones con separación por moneda
-  const { statistics: ingresoStats } = useTransactions({
-    type: 'ingreso',
-  });
-
-  const { statistics: egresoStats } = useTransactions({
-    type: 'egreso',
-  });
 
   const formatAmount = (monto: number) => {
     return isExchangeRateValid ? formatDual(monto) : formatUSD(monto);
@@ -53,38 +44,38 @@ export default function CajaChicaMenuPage() {
     string,
     { nombre: string; cantidad: number }
   > = {};
-  comandas.forEach((c) => {
-    if (c.tipo !== 'ingreso') return;
-    const fechaObj =
-      typeof c.fecha === 'string' ? new Date(c.fecha) : (c.fecha as Date);
-    const fechaStr = fechaObj.toISOString().split('T')[0];
-    if (fechaStr !== today) return;
-    c.items.forEach((item) => {
-      if (!ventasPorServicio[item.nombre])
-        ventasPorServicio[item.nombre] = { nombre: item.nombre, cantidad: 0 };
-      ventasPorServicio[item.nombre].cantidad += item.cantidad;
-    });
-  });
+  // comandas.forEach((c) => {
+  //   if (c.tipo !== 'ingreso') return;
+  //   const fechaObj =
+  //     typeof c.fecha === 'string' ? new Date(c.fecha) : (c.fecha as Date);
+  //   const fechaStr = fechaObj.toISOString().split('T')[0];
+  //   if (fechaStr !== today) return;
+  //   c.items.forEach((item) => {
+  //     if (!ventasPorServicio[item.nombre])
+  //       ventasPorServicio[item.nombre] = { nombre: item.nombre, cantidad: 0 };
+  //     ventasPorServicio[item.nombre].cantidad += item.cantidad;
+  //   });
+  // });
   const servicioMasVendido = Object.values(ventasPorServicio).sort(
     (a, b) => b.cantidad - a.cantidad
   )[0]?.nombre;
 
-  const cantidadEgresos = comandas.filter((c) => {
-    if (c.tipo !== 'egreso') return false;
-    const fechaObj =
-      typeof c.fecha === 'string' ? new Date(c.fecha) : (c.fecha as Date);
-    return fechaObj.toISOString().split('T')[0] === today;
-  }).length;
+  // const cantidadEgresos = comandas.filter((c) => {
+  //   if (c.tipo !== 'egreso') return false;
+  //   const fechaObj =
+  //     typeof c.fecha === 'string' ? new Date(c.fecha) : (c.fecha as Date);
+  //   return fechaObj.toISOString().split('T')[0] === today;
+  // }).length;
 
-  const resumenDelDia = {
-    totalIncoming: resumen.totalIncoming,
-    totalOutgoing: resumen.totalOutgoing,
-    saldo: resumen.saldo,
-    cantidadIngresos: resumen.cantidadComandas,
-    cantidadEgresos,
-    clientesAtendidos: Math.floor(resumen.cantidadComandas * 0.8),
-    servicioMasVendido: servicioMasVendido || 'N/A',
-  };
+  // const resumenDelDia = {
+  //   totalIncoming: resumen.totalIncoming,
+  //   totalOutgoing: resumen.totalOutgoing,
+  //   saldo: resumen.saldo,
+  //   cantidadIngresos: resumen.cantidadComandas,
+  //   cantidadEgresos,
+  //   clientesAtendidos: Math.floor(resumen.cantidadComandas * 0.8),
+  //   servicioMasVendido: servicioMasVendido || 'N/A',
+  // };
 
   const menuOptions = [
     {
@@ -95,9 +86,6 @@ export default function CajaChicaMenuPage() {
       gradientFrom: 'from-[#f9bbc4]',
       gradientTo: 'to-[#e292a3]',
       accentColor: '#f9bbc4',
-      stats: `${(ingresoStats?.dualCurrencyDetails?.USD?.transacciones || 0) + (ingresoStats?.dualCurrencyDetails?.ARS?.transacciones || 0)} transacciones hoy`,
-      amountUSD: ingresoStats?.totalIncomingUSD || 0,
-      amountARS: ingresoStats?.totalIncomingARS || 0,
     },
     {
       title: 'Egresos',
@@ -107,9 +95,6 @@ export default function CajaChicaMenuPage() {
       gradientFrom: 'from-[#f7a8b8]',
       gradientTo: 'to-[#e087a3]',
       accentColor: '#f7a8b8',
-      stats: `${(egresoStats?.dualCurrencyDetails?.USD?.transacciones || 0) + (egresoStats?.dualCurrencyDetails?.ARS?.transacciones || 0)} transacciones hoy`,
-      amountUSD: egresoStats?.totalOutgoingUSD || 0,
-      amountARS: egresoStats?.totalOutgoingARS || 0,
     },
     {
       title: 'Resumen del Día',
@@ -119,13 +104,6 @@ export default function CajaChicaMenuPage() {
       gradientFrom: 'from-[#d4a7ca]',
       gradientTo: 'to-[#b8869e]',
       accentColor: '#d4a7ca',
-      stats: `${ingresoStats?.clientCount || 0} clientes únicos`,
-      amountUSD:
-        (ingresoStats?.totalIncomingUSD || 0) -
-        (egresoStats?.totalOutgoingUSD || 0),
-      amountARS:
-        (ingresoStats?.totalIncomingARS || 0) -
-        (egresoStats?.totalOutgoingARS || 0),
       isBalance: true,
     },
   ];
@@ -155,69 +133,7 @@ export default function CajaChicaMenuPage() {
                 </p>
               </div>
 
-              {/* Resumen Rápido del Día */}
-              <ClientOnly>
-                <div className="mb-8">
-                  <div className="grid grid-cols-1 gap-4 md:grid-cols-4">
-                    <SummaryCardDual
-                      title="💰 Total Ingresos"
-                      totalUSD={ingresoStats?.totalIncomingUSD || 0}
-                      totalARS={ingresoStats?.totalIncomingARS || 0}
-                      valueClassName="text-green-600"
-                      showTransactionCount={true}
-                      transactionCountUSD={
-                        ingresoStats?.dualCurrencyDetails?.USD?.transacciones ||
-                        0
-                      }
-                      transactionCountARS={
-                        ingresoStats?.dualCurrencyDetails?.ARS?.transacciones ||
-                        0
-                      }
-                    />
-                    <SummaryCardDual
-                      title="💸 Total Egresos"
-                      totalUSD={egresoStats?.totalOutgoingUSD || 0}
-                      totalARS={egresoStats?.totalOutgoingARS || 0}
-                      valueClassName="text-red-600"
-                      showTransactionCount={true}
-                      transactionCountUSD={
-                        egresoStats?.dualCurrencyDetails?.USD?.transacciones ||
-                        0
-                      }
-                      transactionCountARS={
-                        egresoStats?.dualCurrencyDetails?.ARS?.transacciones ||
-                        0
-                      }
-                    />
-                    <SummaryCardDual
-                      title="💳 Saldo Actual"
-                      totalUSD={
-                        (ingresoStats?.totalIncomingUSD || 0) -
-                        (egresoStats?.totalOutgoingUSD || 0)
-                      }
-                      totalARS={
-                        (ingresoStats?.totalIncomingARS || 0) -
-                        (egresoStats?.totalOutgoingARS || 0)
-                      }
-                      valueClassName={
-                        resumenDelDia.saldo >= 0
-                          ? 'text-green-600'
-                          : 'text-red-600'
-                      }
-                      showTransactionCount={false}
-                    />
-                    <SummaryCardCount
-                      title="👥 Clientes"
-                      count={ingresoStats?.clientCount || 0}
-                      subtitle="clientes únicos"
-                      valueClassName="text-blue-600"
-                    />
-                  </div>
-                </div>
-              </ClientOnly>
-
-              {/* Opciones del Menú Principal */}
-              <ClientOnly>
+             <ClientOnly>
                 <div className="grid grid-cols-1 gap-8 md:grid-cols-3">
                   {menuOptions.map((option) => (
                     <Link key={option.title} href={option.href}>
@@ -251,60 +167,12 @@ export default function CajaChicaMenuPage() {
                           <p className="mb-4 text-[#5a4550] transition-colors group-hover:text-[#4a3540]">
                             {option.description}
                           </p>
-                          <div className="space-y-2">
-                            {/* Visualización inline de montos */}
-                            <div className="space-y-1">
-                              <div className="flex items-center justify-between">
-                                <span className="text-xs text-gray-600">
-                                  USD:
-                                </span>
-                                <div
-                                  className={cn(
-                                    'text-base font-bold',
-                                    option.isBalance &&
-                                      option.amountUSD + option.amountARS >= 0
-                                      ? 'text-green-600'
-                                      : option.isBalance &&
-                                          option.amountUSD + option.amountARS <
-                                            0
-                                        ? 'text-red-600'
-                                        : 'text-[#4a3540]'
-                                  )}
-                                >
-                                  {formatUSD(option.amountUSD)}
-                                </div>
-                              </div>
-                              <div className="flex items-center justify-between">
-                                <span className="text-xs text-gray-600">
-                                  ARS:
-                                </span>
-                                <div
-                                  className={cn(
-                                    'text-base font-bold',
-                                    option.isBalance &&
-                                      option.amountUSD + option.amountARS >= 0
-                                      ? 'text-green-600'
-                                      : option.isBalance &&
-                                          option.amountARS + option.amountUSD <
-                                            0
-                                        ? 'text-red-600'
-                                        : 'text-[#4a3540]'
-                                  )}
-                                >
-                                  {formatARSFromNative(option.amountARS)}
-                                </div>
-                              </div>
-                            </div>
-                            <p className="text-sm text-[#8b6b75]">
-                              {option.stats}
-                            </p>
-                          </div>
                         </CardContent>
                       </Card>
                     </Link>
                   ))}
                 </div>
-              </ClientOnly>
+              </ClientOnly> 
             </div>
           </div>
         </div>

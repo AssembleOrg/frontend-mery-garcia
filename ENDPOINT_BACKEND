@@ -236,7 +236,7 @@
             "name": "limit",
             "required": false,
             "in": "query",
-            "description": "Cantidad de elementos por página",
+            "description": "Cantidad de elementos por página2",
             "schema": {
               "minimum": 1,
               "maximum": 100,

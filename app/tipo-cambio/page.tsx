@@ -11,104 +11,56 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { toast } from 'sonner';
 import {
-  getHistorial,
-  setManualRate,
   getPublicRate,
-  ExchangeRate,
+  DolarResponse,
+  getUltimoTipoCambio,
+  getHistorial,
+  getCotizacion,
 } from '@/services/exchangeRate.service';
-import { historialTipoCambioService } from '@/services/historialTipoCambio.service';
-import { HistorialTipoCambio } from '@/types/caja';
 import Spinner from '@/components/common/Spinner';
 import { RefreshCw, History, Trash2 } from 'lucide-react';
+import { TipoCambio } from '@/types/caja';
 
 const REFRESH_COOLDOWN = 60 * 60 * 1000; // 1 hora
 const LAST_REFRESH_KEY = 'last_exchange_rate_refresh';
 
 export default function TipoCambioPage() {
-  const [apiRate, setApiRate] = useState<ExchangeRate | null>(null);
-  const [historialInterno, setHistorialInterno] = useState<
-    HistorialTipoCambio[]
-  >([]);
+  const [apiRate, setApiRate] = useState<DolarResponse | null>(null);
 
   const [inputValue, setInputValue] = useState('');
   const [saving, setSaving] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [canRefresh, setCanRefresh] = useState(true);
   const [nextRefreshTime, setNextRefreshTime] = useState<Date | null>(null);
-  const [showHistorialInterno, setShowHistorialInterno] = useState(false);
+  const [showHistorialBackend, setShowHistorialBackend] = useState(false);
   const [loading, setLoading] = useState(true);
 
-  const { tipoCambio, actualizar, cargarTipoCambioInicial } = useExchangeRate();
+  const {
+    tipoCambio,
+    actualizar,
+    cargarTipoCambioInicial,
+    historial,
+    cargarHistorial,
+    limpiarHistorial,
+    guardarManual
+  } = useExchangeRate();
 
-  const checkRefreshCooldown = useCallback(() => {
-    const lastRefresh = localStorage.getItem(LAST_REFRESH_KEY);
-    if (!lastRefresh) {
-      setCanRefresh(true);
-      setNextRefreshTime(null);
-      return;
-    }
-
-    const lastRefreshTime = new Date(lastRefresh);
-    const now = new Date();
-    const timeDiff = now.getTime() - lastRefreshTime.getTime();
-
-    if (timeDiff >= REFRESH_COOLDOWN) {
-      setCanRefresh(true);
-      setNextRefreshTime(null);
-    } else {
-      setCanRefresh(false);
-      const nextRefresh = new Date(
-        lastRefreshTime.getTime() + REFRESH_COOLDOWN
-      );
-      setNextRefreshTime(nextRefresh);
-    }
-  }, []);
-
-  const loadApiData = useCallback(
-    async (isManualRefresh = false) => {
-      if (isManualRefresh) setRefreshing(true);
-
-      try {
-        const [current] = await Promise.all([
-          getPublicRate(),
-          getHistorial(10),
-        ]);
-
-        if (current) {
-          setApiRate(current);
-          console.log('Valores informativos API cargados:', current);
-        }
-
-        if (isManualRefresh) {
-          localStorage.setItem(LAST_REFRESH_KEY, new Date().toISOString());
-          checkRefreshCooldown();
-          toast.success('Valores informativos API actualizados');
-        }
-      } catch (error) {
-        console.error('Error cargando datos informativos API:', error);
-        if (isManualRefresh) {
-          toast.error('Error al actualizar valores informativos API');
-        }
-      } finally {
-        setRefreshing(false);
-      }
-    },
-    [checkRefreshCooldown]
-  );
-
-  const loadHistorialInterno = useCallback(() => {
-    const historial = historialTipoCambioService.getHistorial();
-    setHistorialInterno(historial);
-  }, []);
+  const loadHistorialBackend = useCallback(async () => {
+    await cargarHistorial(50); // Load more history from backend
+  }, [cargarHistorial]);
 
   useEffect(() => {
     const initializeData = async () => {
-      setLoading(true);
+        setLoading(true);
       try {
         await cargarTipoCambioInicial();
-        await loadApiData(); // Cargar valores informativos
-        loadHistorialInterno();
-        checkRefreshCooldown();
+        if(!tipoCambio) {
+          await getUltimoTipoCambio()
+
+        }
+        if(!historial || historial.length === 0) {
+          await loadHistorialBackend(); 
+        }
       } catch (error) {
         console.error('Error en carga inicial:', error);
       } finally {
@@ -117,37 +69,91 @@ export default function TipoCambioPage() {
     };
 
     initializeData();
-  }, [
-    cargarTipoCambioInicial,
-    loadApiData,
-    loadHistorialInterno,
-    checkRefreshCooldown,
-  ]);
+  }, [cargarTipoCambioInicial, loadHistorialBackend]);
 
   useEffect(() => {
     setInputValue(tipoCambio.valorVenta.toString());
   }, [tipoCambio.valorVenta]);
 
   useEffect(() => {
-    if (!canRefresh && nextRefreshTime) {
-      const interval = setInterval(checkRefreshCooldown, 60000);
-      return () => clearInterval(interval);
-    }
-  }, [canRefresh, nextRefreshTime, checkRefreshCooldown]);
+    loadApiData();
+  }, []);
+
+  const loadApiData = useCallback(
+    async (isManualRefresh = false) => {
+      if (isManualRefresh) setRefreshing(true);
+
+      try {
+        const [current] = await Promise.all([
+          getUltimoTipoCambio(),
+          getHistorial(10),
+        ]);
+
+        if (current) {
+          setApiRate(current);
+          actualizar({
+            valorCompra: current.compra,
+            valorVenta: current.venta,
+            fecha: current.fechaActualizacion ? new Date(current.fechaActualizacion) : new Date(),
+            fuente: current.casa,
+            modoManual: false,
+          });
+          console.log('Valores informativos API cargados:', current);
+        }else {
+          if(historial.length === 0) {
+            const cotizacion = await getCotizacion().catch((error) => {
+              toast.error('Error al cargar cotización');
+            });
+            if(cotizacion) {
+              setApiRate(cotizacion);
+              actualizar({
+                valorCompra: cotizacion.compra,
+                valorVenta: cotizacion.venta,
+                fecha: cotizacion.fechaActualizacion ? new Date(cotizacion.fechaActualizacion) : new Date(),
+                fuente: cotizacion.casa,
+                modoManual: false,
+              });
+            }
+          }
+        }
+
+      } catch (error) {
+        console.error('Error cargando datos informativos API:', error);
+        if(historial.length === 0) {
+          const cotizacion = await getCotizacion().catch((error) => {
+            toast.error('Error al cargar cotización');
+          });
+          if(cotizacion) {
+            setApiRate(cotizacion);
+          }
+        }
+        if (isManualRefresh) {
+          toast.error('Error al actualizar valores informativos API');
+        }
+      } finally {
+        setRefreshing(false);
+      }
+    },
+    []
+  );
+
+
 
   const handleRefresh = () => {
+    console.log('canRefresh', canRefresh);
+    console.log('nextRefreshTime', nextRefreshTime);
     if (!canRefresh) {
       const timeLeft = nextRefreshTime
         ? Math.ceil(
-            (nextRefreshTime.getTime() - new Date().getTime()) / (1000 * 60)
-          )
+          (nextRefreshTime.getTime() - new Date().getTime()) / (1000 * 60)
+        )
         : 0;
       toast.warning(
         `Debes esperar ${timeLeft} minutos antes del próximo refresh`
       );
       return;
     }
-    loadApiData(true); // ✅ Esto ahora carga valores informativos correctamente
+    loadApiData(true);
   };
 
   const handleSave = async () => {
@@ -160,43 +166,26 @@ export default function TipoCambioPage() {
     setSaving(true);
 
     try {
-      // Actualizar store local
-      actualizar({
-        valorCompra: valueNum,
-        valorVenta: valueNum,
-        fecha: new Date(),
-        fuente: 'manual',
-        modoManual: true,
-      });
+      // Use the backend-integrated store method
+      const success = await guardarManual(valueNum);
 
-      // Guardar en historial interno
-      historialTipoCambioService.agregarRegistro({
-        valorCompra: valueNum,
-        valorVenta: valueNum,
-      });
-      loadHistorialInterno();
-
-      try {
-        await setManualRate({
-          venta: valueNum,
-        });
+      if (success) {
+        // Refresh history after successful save
+        await loadHistorialBackend();
+        setInputValue('');
         toast.success('Tipo de cambio operativo actualizado correctamente');
-      } catch (error) {
-        console.warn('Backend no disponible, usando valor local:', error);
-        toast.warning('Guardado localmente. Backend no disponible.');
       }
-    } catch (error: unknown) {
-      const errorMessage = (error as Error)?.message || 'Error desconocido';
-      toast.error(`Error: ${errorMessage}`);
+    } catch (error) {
+      console.error('Error guardando tipo de cambio:', error);
+      toast.error('Error al guardar el tipo de cambio');
     } finally {
       setSaving(false);
     }
   };
 
   const handleClearHistorial = () => {
-    historialTipoCambioService.limpiarHistorial();
-    loadHistorialInterno();
-    toast.success('Historial interno limpiado');
+    limpiarHistorial();
+    toast.success('Historial local limpiado');
   };
 
   if (loading) {
@@ -302,30 +291,30 @@ export default function TipoCambioPage() {
               </CardContent>
             </Card>
 
-            {/* Historial interno */}
+            {/* Historial del Backend */}
             <Card className="border border-[#f9bbc4]/30 bg-white/90">
               <CardHeader>
                 <div className="flex items-center justify-between">
                   <CardTitle className="flex items-center gap-2">
                     <History className="h-5 w-5" />
-                    Historial de Cambios Internos
-                    {historialInterno.length > 0 && (
+                    Historial de Cambios (Backend)
+                    {historial.length > 0 && (
                       <span className="text-sm font-normal text-gray-500">
-                        ({historialInterno.length} registros)
+                        ({historial.length} registros)
                       </span>
                     )}
                   </CardTitle>
                   <div className="flex items-center gap-2">
                     <Button
                       onClick={() =>
-                        setShowHistorialInterno(!showHistorialInterno)
+                        setShowHistorialBackend(!showHistorialBackend)
                       }
                       variant="outline"
                       size="sm"
                     >
-                      {showHistorialInterno ? 'Ocultar' : 'Ver Todo'}
+                      {showHistorialBackend ? 'Ocultar' : 'Ver Todo'}
                     </Button>
-                    {historialInterno.length > 0 && (
+                    {historial.length > 0 && (
                       <Button
                         onClick={handleClearHistorial}
                         variant="outline"
@@ -339,34 +328,39 @@ export default function TipoCambioPage() {
                 </div>
               </CardHeader>
               <CardContent>
-                {historialInterno.length === 0 ? (
+                {historial.length === 0 ? (
                   <div className="py-4 text-center text-gray-500">
                     No hay cambios registrados aún
                   </div>
                 ) : (
                   <div className="space-y-2">
-                    {(showHistorialInterno
-                      ? historialInterno
-                      : historialInterno.slice(0, 5)
-                    ).map((registro) => (
+                    {(showHistorialBackend
+                      ? historial
+                      : historial.slice(0, 5)
+                    ).map((registro: DolarResponse) => (
                       <div
-                        key={registro.id}
+                        key={`${registro.fechaActualizacion}-${registro.venta}`}
                         className="flex items-center justify-between border-b pb-2 text-sm last:border-b-0"
                       >
                         <span className="text-gray-600">
-                          {new Date(registro.fechaCreacion).toLocaleString(
+                          {new Date(registro.fechaActualizacion || new Date()).toLocaleString(
                             'es-ES'
                           )}
                         </span>
-                        <span className="font-medium">
-                          Valor operativo: $
-                          {registro.valorVenta.toLocaleString()}
-                        </span>
+                        <div className="flex items-center gap-2">
+                          <span className="font-medium">
+                            Valor operativo: $
+                            {registro.venta.toLocaleString()}
+                          </span>
+                          <span className="text-xs text-gray-500">
+                            ({registro.casa})
+                          </span>
+                        </div>
                       </div>
                     ))}
-                    {!showHistorialInterno && historialInterno.length > 5 && (
+                    {!showHistorialBackend && historial.length > 5 && (
                       <div className="pt-2 text-center text-xs text-gray-500">
-                        ... y {historialInterno.length - 5} registros más
+                        ... y {historial.length - 5} registros más
                       </div>
                     )}
                   </div>

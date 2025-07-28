@@ -17,6 +17,13 @@ type FetchOptions = Omit<RequestInit, 'method' | 'body'> & {
   json?: unknown; // cuerpo como JSON
 };
 
+// Token getter function - will be set by the auth store
+let getAuthToken: (() => string | null) | null = null;
+
+export const setTokenGetter = (getter: () => string | null) => {
+  getAuthToken = getter;
+};
+
 /**
  * Helper minimalista sobre fetch.
  * Aplica BASE_URL, Authorization y serializa json.
@@ -32,10 +39,9 @@ export async function apiFetch<T = unknown>(
     ...(headers as Record<string, string> | undefined),
   };
 
-  if (typeof window !== 'undefined') {
-    const token = localStorage.getItem('token');
-    if (token) finalHeaders['Authorization'] = `Bearer ${token}`;
-  }
+  // Use Zustand token getter if available, fallback to localStorage for compatibility
+  const token = getAuthToken ? getAuthToken() : (typeof window !== 'undefined' ? localStorage.getItem('token') : null);
+  if (token) finalHeaders['Authorization'] = `Bearer ${token}`;
 
   const response = await fetch(url, {
     method,
@@ -58,6 +64,7 @@ export async function apiFetch<T = unknown>(
     } catch {
       message = response.statusText;
     }
+    console.log('Error:', response, message);
     throw new Error(`API ${response.status}: ${message}`);
   }
 

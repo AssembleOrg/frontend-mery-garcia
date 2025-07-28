@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
+import { useAuthStore } from '@/features/auth/store/authStore';
 
 // Interfaces para el log de actividad del negocio
 export interface ActivityLog {
@@ -71,15 +72,14 @@ export const useActivityStore = create<ActivityStore>()(
 
       // Registrar nueva actividad
       logActivity: (accion, modulo, descripcion, metadata = {}) => {
-        // Obtener usuario actual del localStorage
-        const userStr = localStorage.getItem('user');
-        if (!userStr) {
+        // Obtener usuario actual del auth store
+        const user = useAuthStore.getState().user;
+        if (!user) {
           console.warn('No hay usuario logueado para registrar actividad');
           return;
         }
 
         try {
-          const user = JSON.parse(userStr);
           const newLog: ActivityLog = {
             id: `activity-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
             fecha: new Date().toISOString(),

@@ -1,38 +1,21 @@
-import { HistorialTipoCambio } from '@/types/caja';
-
-const STORAGE_KEY = 'historial_tipo_cambio';
+// This service has been deprecated and replaced by backend integration
+// All exchange rate history is now handled by the exchangeRateStore via backend API
+// 
+// Migration: Use useExchangeRate().cargarHistorial() instead
+//
+// This file should be removed once all references are updated.
 
 export const historialTipoCambioService = {
-  getHistorial(): HistorialTipoCambio[] {
-    try {
-      const stored = localStorage.getItem(STORAGE_KEY);
-      return stored ? JSON.parse(stored) : [];
-    } catch {
-      return [];
-    }
+  getHistorial(): never[] {
+    console.warn('historialTipoCambioService is deprecated. Use exchangeRateStore.cargarHistorial() instead');
+    return [];
   },
 
-  agregarRegistro(tipoCambio: {
-    valorCompra: number;
-    valorVenta: number;
-  }): void {
-    const historial = this.getHistorial();
-    const nuevoRegistro: HistorialTipoCambio = {
-      id: Date.now().toString(),
-      valorCompra: tipoCambio.valorCompra,
-      valorVenta: tipoCambio.valorVenta,
-      fechaCreacion: new Date(),
-    };
-
-    historial.unshift(nuevoRegistro);
-
-    const historialLimitado = historial.slice(0, 50);
-
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(historialLimitado));
+  agregarRegistro(): void {
+    console.warn('historialTipoCambioService.agregarRegistro is deprecated. Exchange rates are now saved via backend API');
   },
 
-  // Limpiar historial
   limpiarHistorial(): void {
-    localStorage.removeItem(STORAGE_KEY);
+    console.warn('historialTipoCambioService.limpiarHistorial is deprecated. Use exchangeRateStore.limpiarHistorial() instead');
   },
 };

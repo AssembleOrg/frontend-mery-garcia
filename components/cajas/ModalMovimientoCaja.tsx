@@ -159,7 +159,6 @@ export default function ModalMovimientoCaja({
                 <SelectItem value="transferencia">Transferencia</SelectItem>
                 <SelectItem value="giftcard">Gift Card</SelectItem>
                 <SelectItem value="qr">QR</SelectItem>
-                <SelectItem value="precio_lista">Precio de Lista</SelectItem>
               </SelectContent>
             </Select>
           </div>

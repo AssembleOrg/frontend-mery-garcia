@@ -20,6 +20,7 @@ import {
   Gift,
   QrCode,
   DollarSign,
+  Check,
 } from 'lucide-react';
 import { METODOS_PAGO, MONEDAS, MONEDA_LABELS } from '@/lib/constants';
 import { useCurrencyConverter } from '@/hooks/useCurrencyConverter';
@@ -37,6 +38,7 @@ interface MetodosPagoSectionProps {
     campo: keyof MetodoPagoForm,
     valor: string | number | { nombre: string; codigo: string }
   ) => void;
+  onConfirmarMetodo?: (index: number) => void;
   className?: string;
   obtenerResumenDual?: () => ResumenDual;
   isManualMovement?: boolean; // Nueva prop para detectar movimientos manuales
@@ -51,6 +53,7 @@ export default function MetodosPagoSection({
   onAgregarMetodo,
   onEliminarMetodo,
   onActualizarMetodo,
+  onConfirmarMetodo,
   className = '',
   obtenerResumenDual,
   isManualMovement = false,
@@ -143,9 +146,6 @@ export default function MetodosPagoSection({
                     Gift Card
                   </SelectItem>
                   <SelectItem value={METODOS_PAGO.QR}>QR</SelectItem>
-                  <SelectItem value={METODOS_PAGO.PRECIO_LISTA}>
-                    Precio de Lista
-                  </SelectItem>
                 </SelectContent>
               </Select>
 
@@ -222,16 +222,30 @@ export default function MetodosPagoSection({
                 )}
               </div>
 
-              {!isReadOnly && metodosPago.length > 1 && (
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => onEliminarMetodo?.(index)}
-                  className="text-red-500 hover:text-red-700"
-                >
-                  <Trash2 className="h-4 w-4" />
-                </Button>
+              {!isReadOnly && (
+                <div className="flex gap-1">
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => onConfirmarMetodo?.(index)}
+                    className="text-green-500 hover:text-green-700"
+                    title="Confirmar método de pago"
+                  >
+                    <Check className="h-4 w-4" />
+                  </Button>
+                  {metodosPago.length > 1 && (
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => onEliminarMetodo?.(index)}
+                      className="text-red-500 hover:text-red-700"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  )}
+                </div>
               )}
             </div>
 
@@ -271,24 +285,6 @@ export default function MetodosPagoSection({
 
         {/* Resumen con descuentos y dual currency */}
         <div className="space-y-2 border-t pt-4">
-          <div className="flex justify-between text-sm">
-            <span>Total a Pagar:</span>
-            <span className="font-medium">
-              {hayItemsCongelados 
-                ? `🔒 ${formatARSFromNative(montoTotal)}`
-                : formatAmount(montoTotal)
-              }
-            </span>
-          </div>
-          {totalDescuentos > 0 && (
-            <div className="flex justify-between text-sm text-green-600">
-              <span>Descuentos Aplicados:</span>
-              <span className="font-medium">
-                -{formatAmount(totalDescuentos)}
-              </span>
-            </div>
-          )}
-
           {/* Resumen Dual USD/ARS */}
           {obtenerResumenDual && (
             <div className="space-y-1 border-t pt-2">
@@ -335,6 +331,24 @@ export default function MetodosPagoSection({
                   </>
                 );
               })()}
+            </div>
+          )}
+
+          <div className="flex justify-between text-sm">
+            <span>Total a Pagar:</span>
+            <span className="font-medium">
+              {hayItemsCongelados 
+                ? `🔒 ${formatARSFromNative(montoTotal)}`
+                : formatAmount(montoTotal)
+              }
+            </span>
+          </div>
+          {totalDescuentos > 0 && (
+            <div className="flex justify-between text-sm text-green-600">
+              <span>Descuentos Aplicados:</span>
+              <span className="font-medium">
+                -{formatAmount(totalDescuentos)}
+              </span>
             </div>
           )}
 

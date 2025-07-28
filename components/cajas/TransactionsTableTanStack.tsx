@@ -1,5 +1,4 @@
-import React from 'react';
-import { Comanda } from '@/types/caja';
+import React, { useState } from 'react';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -25,9 +24,11 @@ import {
 } from 'lucide-react';
 import { ESTADO_LABELS, ESTADO_COLORS } from '@/lib/constants';
 import { ColumnDef } from '@tanstack/react-table';
+import { ComandaNew, EstadoDeComandaNew, TipoDeComandaNew } from '@/services/unidadNegocio.service';
+import ModalDetallesServicios from './ModalDetallesServicios';
 
 interface Props {
-  data: Comanda[];
+  data: ComandaNew[];
   onEdit: (id: string) => void;
   onDelete: (id: string) => void;
   onView: (id: string) => void;
@@ -45,15 +46,19 @@ export default function TransactionsTableTanStack({
 }: Props) {
   const { formatARS: formatARSCurrent, formatUSD: formatUSDCurrent, formatARSFromNative } =
     useCurrencyConverter();
+  
+  const [modalDetallesOpen, setModalDetallesOpen] = useState(false);
+  const [selectedItems, setSelectedItems] = useState<any[]>([]);
+  const [selectedValorDolar, setSelectedValorDolar] = useState(1);
 
   // Función para detectar si es un egreso con monto fijo ARS
-  const esEgresoConMontoFijoARS = (comanda: Comanda) => {
-    return comanda.tipo === 'egreso' && 
-           comanda.items?.some(item => item.esMontoFijoARS);
+  const esEgresoConMontoFijoARS = (comanda: ComandaNew) => {
+    return comanda.tipoDeComanda === TipoDeComandaNew.EGRESO && 
+           comanda.items?.some(item => item.precio !== null);
   };
 
   // Función para formatear con tipo de cambio específico o actual
-  const formatWithExchangeRate = (amountUSD: number, comanda: Comanda) => {
+  const formatWithExchangeRate = (amountUSD: number, comanda: ComandaNew) => {
     // Para egresos con monto fijo ARS: NO convertir, mostrar valor nativo
     if (esEgresoConMontoFijoARS(comanda)) {
       return {
@@ -63,10 +68,10 @@ export default function TransactionsTableTanStack({
     }
 
     // Si la comanda tiene tipo de cambio almacenado, usarlo
-    if (comanda.tipoCambioAlCrear?.valorVenta) {
+    if (comanda.valorDolar) {
       return {
         usd: formatUSDCurrent(amountUSD),
-        ars: formatARS(amountUSD, comanda.tipoCambioAlCrear.valorVenta),
+        ars: formatARS(amountUSD, comanda.valorDolar),
       };
     }
     // Fallback al tipo de cambio actual
@@ -76,12 +81,12 @@ export default function TransactionsTableTanStack({
     };
   };
 
-  const columns: ColumnDef<Comanda, unknown>[] = [
+  const columns: ColumnDef<ComandaNew, unknown>[] = [
     {
       accessorKey: 'fecha',
       header: 'Fecha',
       cell: ({ getValue, row }) => {
-        const isValidated = row.original.estadoValidacion === 'validado';
+        const isValidated = row.original.estadoDeComanda === EstadoDeComandaNew.VALIDADO;
         return (
           <div className={isValidated ? 'text-gray-500' : ''}>
             {formatDateEs(getValue() as Date)}
@@ -93,7 +98,7 @@ export default function TransactionsTableTanStack({
       accessorKey: 'numero',
       header: 'Número',
       cell: ({ getValue, row }) => {
-        const isValidated = row.original.estadoValidacion === 'validado';
+        const isValidated = row.original.estadoDeComanda === EstadoDeComandaNew.VALIDADO;
         return (
           <div
             className={`flex items-center gap-2 ${isValidated ? 'text-gray-500' : ''}`}
@@ -108,7 +113,7 @@ export default function TransactionsTableTanStack({
       accessorKey: 'cliente.nombre',
       header: 'Cliente',
       cell: ({ getValue, row }) => {
-        const isValidated = row.original.estadoValidacion === 'validado';
+        const isValidated = row.original.estadoDeComanda === EstadoDeComandaNew.VALIDADO;
         return (
           <div className={isValidated ? 'text-gray-500' : ''}>
             {getValue() as string}
@@ -118,12 +123,62 @@ export default function TransactionsTableTanStack({
     },
     {
       accessorKey: 'mainStaff.nombre',
-      header: 'Vendedor',
-      cell: ({ getValue, row }) => {
-        const isValidated = row.original.estadoValidacion === 'validado';
+      header: 'Personal',
+      cell: ({ row }) => {
+        const trabajadores = row.original.items
+          .filter(item => item.trabajador)
+          .map(item => item.trabajador)
+          .filter((trabajador, index, array) => 
+            array.findIndex(t => t?.id === trabajador?.id) === index
+          ); // Eliminar duplicados
+        
+        const isValidated = row.original.estadoDeComanda === EstadoDeComandaNew.VALIDADO;
+        
+        if (trabajadores.length === 0) {
+          return (
+            <div className={`text-sm ${isValidated ? 'text-gray-400' : 'text-gray-500'}`}>
+              Sin asignar
+            </div>
+          );
+        }
+        
+        if (trabajadores.length === 1) {
+          const trabajador = trabajadores[0];
+          return (
+            <div className={`flex items-center gap-2 ${isValidated ? 'text-gray-500' : ''}`}>
+              <div className="flex h-8 w-8 items-center justify-center rounded-full bg-gradient-to-r from-[#f9bbc4] to-[#e292a3] text-xs font-semibold text-white shadow-sm">
+                {trabajador?.nombre?.charAt(0).toUpperCase()}
+              </div>
+              <div className="flex flex-col">
+                <span className="text-sm font-medium">{trabajador?.nombre}</span>
+                <span className="text-xs text-gray-500">{trabajador?.rol}</span>
+              </div>
+            </div>
+          );
+        }
+        
+        // Múltiples vendedores
         return (
-          <div className={isValidated ? 'text-gray-500' : ''}>
-            {getValue() as string}
+          <div className={`space-y-2 ${isValidated ? 'text-gray-500' : ''}`}>
+            <div className="flex items-center gap-1">
+              {trabajadores.slice(0, 3).map((trabajador, index) => (
+                <div
+                  key={trabajador?.id}
+                  className="flex h-6 w-6 items-center justify-center rounded-full bg-gradient-to-r from-[#f9bbc4] to-[#e292a3] text-xs font-semibold text-white shadow-sm"
+                  title={trabajador?.nombre}
+                >
+                  {trabajador?.nombre?.charAt(0).toUpperCase()}
+                </div>
+              ))}
+              {trabajadores.length > 3 && (
+                <div className="flex h-6 w-6 items-center justify-center rounded-full bg-gray-200 text-xs font-semibold text-gray-600 shadow-sm">
+                  +{trabajadores.length - 3}
+                </div>
+              )}
+            </div>
+            <div className="text-xs text-gray-500">
+              {trabajadores.length} Persona{trabajadores.length > 1 ? 's' : ''}
+            </div>
           </div>
         );
       },
@@ -138,13 +193,17 @@ export default function TransactionsTableTanStack({
           monto: number;
         }>;
         const count = items.length;
-        const isValidated = row.original.estadoValidacion === 'validado';
+        const isValidated = row.original.estadoDeComanda === EstadoDeComandaNew.VALIDADO;
         return (
           <button
             className={`cursor-pointer underline decoration-dotted hover:decoration-solid ${
               isValidated ? 'text-gray-500' : 'text-[#4a3540]'
             }`}
-            onClick={() => onView(row.original.id)}
+            onClick={() => {
+              setSelectedItems(row.original.items || []);
+              setSelectedValorDolar(row.original.valorDolar || 1);
+              setModalDetallesOpen(true);
+            }}
           >
             {count} {count === 1 ? 'item' : 'items'}
           </button>
@@ -155,14 +214,17 @@ export default function TransactionsTableTanStack({
     {
       accessorKey: 'subtotal',
       header: 'Subtotal',
-      cell: ({ getValue, row }) => {
-        const subtotal = getValue() as number;
-        const isValidated = row.original.estadoValidacion === 'validado';
+      cell: ({ row }) => {
+        const subtotalUSD = row.original.metodosPago.reduce((acc, item) => item.moneda === 'USD' ? acc + item.monto! : acc, 0);
+        const subtotalARS = row.original.metodosPago.reduce((acc, item) => item.moneda === 'ARS' ? acc + item.monto! : acc, 0);
+        const subtotalARSToUSD = subtotalARS / row.original.valorDolar;
+        const subtotal = subtotalUSD + subtotalARSToUSD;
+        const isValidated = row.original.estadoDeComanda === EstadoDeComandaNew.VALIDADO;
         const isManualMovement = row.original.cliente.nombre === 'Movimiento Manual';
         
         if (isManualMovement) {
           // Para movimientos manuales, mostrar solo el valor simple
-          const moneda = row.original.moneda || 'USD';
+          const moneda = row.original.precioDolar || 'USD';
           return (
             <div className="text-right">
               <div
@@ -196,14 +258,17 @@ export default function TransactionsTableTanStack({
     {
       accessorKey: 'totalFinal',
       header: 'Total',
-      cell: ({ getValue, row }) => {
-        const total = getValue() as number;
-        const isValidated = row.original.estadoValidacion === 'validado';
+      cell: ({ row }) => {
+        const totalUSD = row.original.metodosPago.reduce((acc, item) => item.moneda === 'USD' ? acc + item.montoFinal! : acc, 0);
+        const totalARS = row.original.metodosPago.reduce((acc, item) => item.moneda === 'ARS' ? acc + item.montoFinal! : acc, 0);
+        const totalARSToUSD = totalARS / row.original.valorDolar;
+        const total = totalUSD + totalARSToUSD;
+        const isValidated = row.original.estadoDeComanda === EstadoDeComandaNew.VALIDADO;
         const isManualMovement = row.original.cliente.nombre === 'Movimiento Manual';
         
         if (isManualMovement) {
           // Para movimientos manuales, mostrar solo el valor simple
-          const moneda = row.original.moneda || 'USD';
+          const moneda = row.original.precioDolar || 'USD';
           return (
             <div
               className={`text-right font-semibold ${isValidated ? 'text-gray-500' : 'text-green-600'}`}
@@ -240,7 +305,7 @@ export default function TransactionsTableTanStack({
           tipo: string;
           monto: number;
         }>;
-        const isValidated = row.original.estadoValidacion === 'validado';
+        const isValidated = row.original.estadoDeComanda === EstadoDeComandaNew.VALIDADO;
 
         // Resolver método principal
         const metodoPrincipal =
@@ -304,7 +369,7 @@ export default function TransactionsTableTanStack({
       header: 'Estado',
       cell: ({ getValue, row }) => {
         const estado = getValue() as string;
-        const isValidated = row.original.estadoValidacion === 'validado';
+          const isValidated = row.original.estadoDeComanda === EstadoDeComandaNew.VALIDADO;
 
         const colorClass = isValidated
           ? 'bg-gray-100 text-gray-500'
@@ -328,7 +393,7 @@ export default function TransactionsTableTanStack({
       header: '',
       cell: ({ row }) => {
         const id = row.original.id;
-        const isValidated = row.original.estadoValidacion === 'validado';
+        const isValidated = row.original.estadoDeComanda === EstadoDeComandaNew.VALIDADO;
 
         return (
           <DropdownMenu>
@@ -379,17 +444,26 @@ export default function TransactionsTableTanStack({
   ];
 
   return (
-    <DataTable<Comanda>
-      data={data}
-      columns={columns}
-      hiddenColumns={hiddenColumns}
-      enableSearch={false}
-      enablePagination
-      getRowClassName={(row) =>
-        row.original.estadoValidacion === 'validado'
-          ? 'bg-gray-50/50 opacity-75'
-          : ''
-      }
-    />
+    <>
+      <DataTable<ComandaNew>
+        data={data}
+        columns={columns}
+        hiddenColumns={hiddenColumns}
+        enableSearch={false}
+        enablePagination
+        getRowClassName={(row) =>
+          row.original.estadoDeComanda === EstadoDeComandaNew.VALIDADO
+            ? 'bg-gray-50/50 opacity-75'
+            : ''
+        }
+      />
+      
+      <ModalDetallesServicios
+        isOpen={modalDetallesOpen}
+        onClose={() => setModalDetallesOpen(false)}
+        items={selectedItems}
+        valorDolar={selectedValorDolar}
+      />
+    </>
   );
 }
