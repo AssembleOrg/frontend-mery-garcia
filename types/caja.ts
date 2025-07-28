@@ -49,6 +49,7 @@ export interface ItemComanda {
   productoServicioId: string;
   nombre: string;
   tipo: 'producto' | 'servicio';
+  businessUnit: UnidadNegocio;
   precio: number;
   precioOriginalUSD: number;
   cantidad: number;
@@ -94,7 +95,6 @@ export interface Comanda {
   id: string;
   numero: string;
   fecha: Date;
-  businessUnit: UnidadNegocio;
   cliente: Cliente;
   mainStaff: Personal;
   items: ItemComanda[];
@@ -323,3 +323,16 @@ export interface MetodoPagoForm extends MetodoPago {
   descuentoOriginalARS?: number;
   montoFinalOriginalARS?: number;
 }
+
+// Helper functions para trabajar con unidades de negocio a nivel de item
+export const getComandaBusinessUnits = (comanda: Comanda): UnidadNegocio[] => {
+  return [...new Set(comanda.items.map(item => item.businessUnit))];
+};
+
+export const comandaHasBusinessUnit = (comanda: Comanda, businessUnit: UnidadNegocio): boolean => {
+  return comanda.items.some(item => item.businessUnit === businessUnit);
+};
+
+export const getItemsByBusinessUnit = (comanda: Comanda, businessUnit: UnidadNegocio): ItemComanda[] => {
+  return comanda.items.filter(item => item.businessUnit === businessUnit);
+};

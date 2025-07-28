@@ -126,7 +126,6 @@ export default function ModalMovimientoSimple({
       id: `manual-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
       numero: numeroComanda,
       fecha: fechaActual,
-      businessUnit: 'tattoo',
       cliente: clienteManual,
       mainStaff: personalManual,
       items: [
@@ -134,6 +133,7 @@ export default function ModalMovimientoSimple({
           productoServicioId: 'manual-movement',
           nombre: detalle,
           tipo: 'servicio',
+          businessUnit: 'estilismo',
           precio: monto,
           precioOriginalUSD: monto,
           cantidad: 1,

@@ -13,7 +13,7 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import { Comanda } from '@/types/caja';
+import { Comanda, getComandaBusinessUnits } from '@/types/caja';
 import { useCurrencyConverter } from '@/hooks/useCurrencyConverter';
 import { Eye, Search } from 'lucide-react';
 
@@ -118,9 +118,13 @@ export default function TablaComandasValidadas({
                       </Badge>
                     </TableCell>
                     <TableCell>
-                      <Badge className={getUnidadColor(comanda.businessUnit)}>
-                        {comanda.businessUnit}
-                      </Badge>
+                      <div className="flex flex-wrap gap-1">
+                        {getComandaBusinessUnits(comanda).map(unidad => (
+                          <Badge key={unidad} className={getUnidadColor(unidad)}>
+                            {unidad}
+                          </Badge>
+                        ))}
+                      </div>
                     </TableCell>
                     <TableCell>{comanda.cliente.nombre}</TableCell>
                     <TableCell>{comanda.mainStaff.nombre}</TableCell>

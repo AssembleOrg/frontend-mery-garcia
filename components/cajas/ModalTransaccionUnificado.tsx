@@ -70,6 +70,7 @@ interface ItemTransaccion {
   id: string;
   productoServicioId: string;
   nombre: string;
+  businessUnit: UnidadNegocio;
   precio: number;
   cantidad: number;
   descuentoPorcentaje: number;
@@ -349,6 +350,7 @@ export default function ModalTransaccionUnificado({
       id: `temp-${Date.now()}`,
       productoServicioId: '',
       nombre: '',
+      businessUnit: tipo === 'ingreso' ? unidadNegocio : 'estilismo',
       precio: 0,
       cantidad: 1,
       descuentoPorcentaje: 0,
@@ -375,6 +377,7 @@ export default function ModalTransaccionUnificado({
       id: `temp-${Date.now()}`,
       productoServicioId: producto.id,
       nombre: producto.nombre,
+      businessUnit: producto.businessUnit,
       precio: precioBase,
       cantidad: 1,
       descuentoPorcentaje: 0,
@@ -762,6 +765,7 @@ export default function ModalTransaccionUnificado({
         productoServicioId: item.productoServicioId,
         nombre: item.nombre,
         tipo: tipo === 'ingreso' ? 'servicio' : 'producto',
+        businessUnit: item.businessUnit,
         precio: item.precio,
         precioOriginalUSD: item.precio,
         cantidad: item.cantidad,
@@ -796,7 +800,6 @@ export default function ModalTransaccionUnificado({
         numero: numeroTransaccion,
         tipo,
         fecha: new Date(),
-        businessUnit: tipo === 'ingreso' ? unidadNegocio : 'estilismo',
         cliente: {
           id: `cliente-${Date.now()}`,
           nombre: clienteProveedor,

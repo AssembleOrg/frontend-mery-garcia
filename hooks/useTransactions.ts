@@ -6,6 +6,7 @@ import { usePaginacion } from '@/features/comandas/hooks/usePaginacion';
 import { logger } from '@/lib/utils';
 import { useCurrencyConverter } from '@/hooks/useCurrencyConverter';
 import { exportComandasToCSV, exportComandasToPDF } from '@/lib/exportUtils';
+import { comandaHasBusinessUnit } from '@/types/caja';
 
 type TransactionType = 'ingreso' | 'egreso' | 'all';
 
@@ -66,7 +67,7 @@ export function useTransactions({
 
       if (
         filters.businessUnit &&
-        comanda.businessUnit !== filters.businessUnit
+        !comandaHasBusinessUnit(comanda, filters.businessUnit)
       ) {
         return false;
       }

@@ -10,6 +10,8 @@ import {
   ResumenCaja,
   EstadoComandaNegocio,
   ResumenConMontoParcial,
+  comandaHasBusinessUnit,
+  getComandaBusinessUnits,
 } from '@/types/caja';
 
 interface ComandaState {
@@ -193,7 +195,7 @@ export const useComandaStore = create<ComandaState>()(
             }
             if (
               filters.businessUnit &&
-              comanda.businessUnit !== filters.businessUnit
+              !comandaHasBusinessUnit(comanda, filters.businessUnit)
             ) {
               return false;
             }
@@ -265,7 +267,10 @@ export const useComandaStore = create<ComandaState>()(
 
           const unidadConteo = comandasHoy.reduce(
             (acc, c) => {
-              acc[c.businessUnit] = (acc[c.businessUnit] || 0) + 1;
+              const unidades = getComandaBusinessUnits(c);
+              unidades.forEach(unit => {
+                acc[unit] = (acc[unit] || 0) + 1;
+              });
               return acc;
             },
             {} as Record<string, number>

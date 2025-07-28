@@ -21,7 +21,7 @@ import {
 import { useComandaStore } from '@/features/comandas/store/comandaStore';
 import { useConfiguracion } from '@/features/configuracion/store/configuracionStore';
 import { useCurrencyConverter } from '@/hooks/useCurrencyConverter';
-import { Comanda, EstadoComandaNegocio, EstadoValidacion } from '@/types/caja';
+import { Comanda, EstadoComandaNegocio, EstadoValidacion, getComandaBusinessUnits } from '@/types/caja';
 
 interface ModalVerDetallesProps {
   isOpen: boolean;
@@ -227,9 +227,9 @@ export default function ModalVerDetalles({
                       </span>
                     </div>
                     <div className="flex items-center justify-between">
-                      <span className="text-sm text-gray-600">Unidad:</span>
+                      <span className="text-sm text-gray-600">Unidades:</span>
                       <span className="font-medium capitalize">
-                        {comanda.businessUnit}
+                        {getComandaBusinessUnits(comanda).join(', ')}
                       </span>
                     </div>
                   </CardContent>
@@ -276,9 +276,9 @@ export default function ModalVerDetalles({
                   </CardHeader>
                   <CardContent>
                     <div className="mt-2">
-                      <span className="text-sm text-gray-600">Unidad:</span>
+                      <span className="text-sm text-gray-600">Unidades:</span>
                       <p className="font-medium capitalize">
-                        {comanda.businessUnit}
+                        {getComandaBusinessUnits(comanda).join(', ')}
                       </p>
                     </div>
                   </CardContent>
