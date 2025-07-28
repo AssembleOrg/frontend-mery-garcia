@@ -43,13 +43,18 @@ export default function TransactionsTableTanStack({
   onChangeStatus,
   hiddenColumns = [],
 }: Props) {
-  const { formatARS: formatARSCurrent, formatUSD: formatUSDCurrent, formatARSFromNative } =
-    useCurrencyConverter();
+  const {
+    formatARS: formatARSCurrent,
+    formatUSD: formatUSDCurrent,
+    formatARSFromNative,
+  } = useCurrencyConverter();
 
   // Función para detectar si es un egreso con monto fijo ARS
   const esEgresoConMontoFijoARS = (comanda: Comanda) => {
-    return comanda.tipo === 'egreso' && 
-           comanda.items?.some(item => item.esMontoFijoARS);
+    return (
+      comanda.tipo === 'egreso' &&
+      comanda.items?.some((item) => item.esMontoFijoARS)
+    );
   };
 
   // Función para formatear con tipo de cambio específico o actual
@@ -158,22 +163,25 @@ export default function TransactionsTableTanStack({
       cell: ({ getValue, row }) => {
         const subtotal = getValue() as number;
         const isValidated = row.original.estadoValidacion === 'validado';
-        const isManualMovement = row.original.cliente.nombre === 'Movimiento Manual';
-        
-        if (isManualMovement) {
-          // Para movimientos manuales, mostrar solo el valor simple
-          const moneda = row.original.moneda || 'USD';
+        const isManualMovement =
+          row.original.cliente.nombre === 'Movimiento Manual';
+        const hayItemsCongelados = !!row.original.items.some(
+          (item) => item.esPrecioCongelado
+        );
+        if (isManualMovement || hayItemsCongelados) {
+          // Para movimientos manuales y congelados, mostrar solo el valor simple
+          const moneda = row.original.moneda || '';
           return (
             <div className="text-right">
               <div
                 className={`font-medium ${isValidated ? 'text-gray-500' : 'text-green-600'}`}
               >
-                {moneda}: ${subtotal.toFixed(2)}
+                {moneda} ${subtotal.toFixed(2)}
               </div>
             </div>
           );
         }
-        
+
         const formatted = formatWithExchangeRate(subtotal, row.original);
         return (
           <div className="text-right">
@@ -199,20 +207,23 @@ export default function TransactionsTableTanStack({
       cell: ({ getValue, row }) => {
         const total = getValue() as number;
         const isValidated = row.original.estadoValidacion === 'validado';
-        const isManualMovement = row.original.cliente.nombre === 'Movimiento Manual';
-        
-        if (isManualMovement) {
-          // Para movimientos manuales, mostrar solo el valor simple
-          const moneda = row.original.moneda || 'USD';
+        const isManualMovement =
+          row.original.cliente.nombre === 'Movimiento Manual';
+        const hayItemsCongelados = !!row.original.items.some(
+          (item) => item.esPrecioCongelado
+        );
+        if (isManualMovement || hayItemsCongelados) {
+          // Para movimientos manuales y congelados, mostrar solo el valor simple
+          const moneda = row.original.moneda || '';
           return (
             <div
               className={`text-right font-semibold ${isValidated ? 'text-gray-500' : 'text-green-600'}`}
             >
-              {moneda}: ${total.toFixed(2)}
+              {moneda} ${total.toFixed(2)}
             </div>
           );
         }
-        
+
         const formatted = formatWithExchangeRate(total, row.original);
         return (
           <div className="text-right">

@@ -96,8 +96,10 @@ export default function ModalVerDetalles({
     VALIDACION_CONFIG[estadoValidacion as EstadoValidacion];
   const IconoEstado = estadoConfig.icon;
 
-  // Detectar si hay items con monto fijo ARS
-  const hayItemsCongelados = comanda.items?.some(item => item.esMontoFijoARS);
+  // Detectar si hay items congelados (ingresos) o con monto fijo ARS (egresos)
+  const hayItemsCongelados = comanda.items?.some(item => 
+    item.esPrecioCongelado || item.esMontoFijoARS
+  );
 
   const formatAmount = (monto: number, esItemFijo: boolean = false) => {
     if (esItemFijo) {
@@ -373,8 +375,8 @@ export default function ModalVerDetalles({
                             )}
                           </div>
                           <div className="text-right">
-                            {/* Mostrar monto original si hay descuento */}
-                            {descuentoAplicado > 0 && (
+                            {/* Mostrar monto original si hay descuento - NO para items congelados */}
+                            {descuentoAplicado > 0 && !hayItemsCongelados && (
                               <p className="text-xs text-gray-500 line-through">
                                 {metodo.moneda === 'ARS'
                                   ? formatARSFromNative(montoOriginal)
@@ -386,16 +388,16 @@ export default function ModalVerDetalles({
                                 ? formatARSFromNative(metodo.monto)
                                 : formatAmount(metodo.monto)}
                             </p>
-                            {/* Mostrar equivalente en la otra moneda - NO para movimientos manuales */}
-                            {comanda.cliente.nombre !== 'Movimiento Manual' && (
+                            {/* Mostrar equivalente en la otra moneda - NO para movimientos manuales ni items congelados */}
+                            {comanda.cliente.nombre !== 'Movimiento Manual' && !hayItemsCongelados && (
                               <p className="text-xs text-gray-500">
                                 {metodo.moneda === 'ARS'
                                   ? `≈ ${formatAmount(metodo.monto)}`
                                   : `≈ ${formatARSFromNative(metodo.monto)}`}
                               </p>
                             )}
-                            {/* Mostrar descuento aplicado */}
-                            {descuentoAplicado > 0 && (
+                            {/* Mostrar descuento aplicado - NO para items congelados */}
+                            {descuentoAplicado > 0 && !hayItemsCongelados && (
                               <p className="text-xs text-green-600">
                                 Descuento: -
                                 {metodo.moneda === 'ARS'
@@ -443,8 +445,8 @@ export default function ModalVerDetalles({
                       </div>
                     )}
 
-                    {/* Mostrar descuentos por método de pago */}
-                    {totalDescuentosMetodo > 0 && (
+                    {/* Mostrar descuentos por método de pago - NO para items congelados */}
+                    {totalDescuentosMetodo > 0 && !hayItemsCongelados && (
                       <div className="flex justify-between text-green-600">
                         <span>Descuento por efectivo:</span>
                         <span>
