@@ -1,26 +1,9 @@
 'use client';
 
 import { create } from 'zustand';
-import { persist, devtools, createJSONStorage } from 'zustand/middleware';
+import { devtools } from 'zustand/middleware';
 import { Cliente } from '@/types/caja';
 import { logger } from '@/lib/utils';
-
-// Storage helper para evitar acceso a localStorage en SSR
-const safeJSONStorage = createJSONStorage(() => {
-  if (typeof window !== 'undefined') {
-    return window.localStorage;
-  }
-  const memoryStore = new Map<string, string>();
-  return {
-    getItem: (key: string) => memoryStore.get(key) ?? null,
-    setItem: (key: string, value: string) => {
-      memoryStore.set(key, value);
-    },
-    removeItem: (key: string) => {
-      memoryStore.delete(key);
-    },
-  } as Storage;
-});
 
 interface ClienteState {
   // Estado
@@ -29,18 +12,10 @@ interface ClienteState {
   error: string | null;
 
   // Acciones CRUD
-  agregarCliente: (
-    cliente: Omit<Cliente, 'id' | 'fechaRegistro' | 'señasDisponibles'>,
-    señaInicial?: { ars: number; usd: number }
-  ) => void;
+  agregarCliente: (cliente: Omit<Cliente, 'id' | 'fechaRegistro'>) => void;
   actualizarCliente: (id: string, cliente: Partial<Cliente>) => void;
   eliminarCliente: (id: string) => void;
   obtenerClientePorId: (id: string) => Cliente | undefined;
-
-  // Gestión de señas
-  agregarSeña: (clienteId: string, monto: number, moneda: 'ars' | 'usd') => void;
-  usarSeña: (clienteId: string, monto: number, moneda: 'ars' | 'usd') => boolean;
-  obtenerSeñasDisponibles: (clienteId: string) => { ars: number; usd: number };
 
   // Consultas
   buscarCliente: (query: string) => Cliente[];
@@ -51,27 +26,45 @@ interface ClienteState {
   reiniciar: () => void;
 }
 
-// Estado inicial
+// Clientes de prueba para testing
+const clientesPrueba: Cliente[] = [
+  {
+    id: 'test-cliente-maria',
+    nombre: 'María García',
+    telefono: '+549111234567',
+    email: 'maria.garcia@email.com',
+    fechaRegistro: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000), // 30 días atrás
+  },
+  {
+    id: 'test-cliente-juan',
+    nombre: 'Juan Carlos López',
+    telefono: '+549112345678',
+    email: 'juan.lopez@email.com',
+    fechaRegistro: new Date(Date.now() - 15 * 24 * 60 * 60 * 1000), // 15 días atrás
+  },
+  {
+    id: 'test-cliente-ana',
+    nombre: 'Ana Martínez',
+    telefono: '+549113456789',
+    email: 'ana.martinez@email.com',
+    fechaRegistro: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000), // 7 días atrás
+  }
+];
+
+// Estado inicial con clientes de prueba para testing
 const estadoInicial = {
-  clientes: [],
+  clientes: clientesPrueba,
   cargando: false,
   error: null,
 };
 
 export const useClienteStore = create<ClienteState>()(
   devtools(
-    persist(
-      (set, get) => ({
+    (set, get) => ({
         ...estadoInicial,
 
         // === ACCIONES CRUD ===
-        agregarCliente: (
-          clienteData: Omit<
-            Cliente,
-            'id' | 'fechaRegistro' | 'señasDisponibles'
-          >,
-          señaInicial?: { ars: number; usd: number }
-        ) => {
+        agregarCliente: (clienteData: Omit<Cliente, 'id' | 'fechaRegistro'>) => {
           const idGenerado = `cliente-${Date.now()}-${Math.random()
             .toString(36)
             .substr(2, 9)}`;
@@ -79,7 +72,6 @@ export const useClienteStore = create<ClienteState>()(
           const nuevoCliente: Cliente = {
             ...clienteData,
             id: idGenerado,
-            señasDisponibles: señaInicial || { ars: 0, usd: 0 }, // Usar la seña inicial si se proporciona
             fechaRegistro: new Date(),
           };
 
@@ -119,57 +111,6 @@ export const useClienteStore = create<ClienteState>()(
           return clientes.find((c) => c.id === id);
         },
 
-        // === GESTIÓN DE SEÑAS ===
-        agregarSeña: (clienteId: string, monto: number, moneda: 'ars' | 'usd') => {
-          set((state) => ({
-            clientes: state.clientes.map((c) => {
-              if (c.id === clienteId) {
-                const señasActuales = c.señasDisponibles || { ars: 0, usd: 0 };
-                const señasActualizadas = {
-                  ...señasActuales,
-                  [moneda]: (señasActuales[moneda] || 0) + monto,
-                };
-                return { ...c, señasDisponibles: señasActualizadas };
-              }
-              return c;
-            }),
-            error: null,
-          }));
-
-          logger.info('Seña agregada:', { clienteId, monto, moneda });
-        },
-
-        usarSeña: (clienteId: string, monto: number, moneda: 'ars' | 'usd') => {
-          const { clientes } = get();
-          const cliente = clientes.find((c) => c.id === clienteId);
-
-          if (!cliente || (cliente.señasDisponibles?.[moneda] ?? 0) < monto) {
-            return false;
-          }
-
-          set((state) => ({
-            clientes: state.clientes.map((c) => {
-              if (c.id === clienteId) {
-                const señasActualizadas = {
-                  ...c.señasDisponibles,
-                  [moneda]: c.señasDisponibles![moneda] - monto,
-                };
-                return { ...c, señasDisponibles: señasActualizadas };
-              }
-              return c;
-            }),
-            error: null,
-          }));
-
-          logger.info('Seña utilizada:', { clienteId, monto, moneda });
-          return true;
-        },
-
-        obtenerSeñasDisponibles: (clienteId: string) => {
-          const { clientes } = get();
-          const cliente = clientes.find((c) => c.id === clienteId);
-          return cliente?.señasDisponibles || { ars: 0, usd: 0 };
-        },
 
         // === CONSULTAS ===
         buscarCliente: (query: string) => {
@@ -201,15 +142,7 @@ export const useClienteStore = create<ClienteState>()(
           set(estadoInicial);
           logger.info('Cliente store reiniciado');
         },
-      }),
-      {
-        name: 'cliente-store',
-        storage: safeJSONStorage,
-        partialize: (state) => ({
-          clientes: state.clientes,
-        }),
-      }
-    ),
+    }),
     {
       name: 'cliente-store',
     }

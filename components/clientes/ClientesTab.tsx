@@ -42,7 +42,7 @@ import {
 } from 'lucide-react';
 import { Cliente } from '@/types/caja';
 import { useCliente } from '@/features/clientes/hooks/useCliente';
-import { useCurrencyConverter } from '@/hooks/useCurrencyConverter';
+import { useSenas } from '@/features/senas/hooks/useSenas';
 import ModalCliente from './ModalCliente';
 
 export default function ClientesTab() {
@@ -53,7 +53,8 @@ export default function ClientesTab() {
     eliminarCliente,
     buscarCliente,
   } = useCliente();
-  const { formatUSD, formatARSFromNative } = useCurrencyConverter();
+  
+  const { calcularMontoDisponible } = useSenas();
   const [modalAbierto, setModalAbierto] = useState(false);
   const [clienteEditando, setClienteEditando] = useState<Cliente | null>(null);
   const [alertaEliminar, setAlertaEliminar] = useState<Cliente | null>(null);
@@ -84,16 +85,14 @@ export default function ClientesTab() {
   };
 
   const handleGuardarCliente = (
-    clienteData: Omit<Cliente, 'id' | 'fechaRegistro' | 'señasDisponibles'>,
-    señaInicial?: { ars: number; usd: number },
-    señasActuales?: { ars: number; usd: number }
+    clienteData: Omit<Cliente, 'id' | 'fechaRegistro'>
   ) => {
     if (clienteEditando) {
       // Modo edición
-      actualizarCliente(clienteEditando.id, clienteData, señasActuales);
+      actualizarCliente(clienteEditando.id, clienteData);
     } else {
       // Modo creación
-      agregarCliente(clienteData, señaInicial);
+      agregarCliente(clienteData);
     }
     setModalAbierto(false);
     setClienteEditando(null);
@@ -101,17 +100,12 @@ export default function ClientesTab() {
 
   // Estadísticas
   const totalClientes = clientes.length;
-  const clientesConSeñas = clientes.filter(
-    (c) => c.señasDisponibles.ars > 0 || c.señasDisponibles.usd > 0
-  ).length;
-  const totalSeñasArs = clientes.reduce((sum, c) => sum + c.señasDisponibles.ars, 0);
-  const totalSeñasUsd = clientes.reduce((sum, c) => sum + c.señasDisponibles.usd, 0);
 
   return (
     <div className="space-y-6">
       {/* Estadísticas */}
-      <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
-        <Card className="border-[#f9bbc4]/20 bg-white">
+      <div className="mb-6">
+        <Card className="border-[#f9bbc4]/20 bg-white w-fit">
           <CardContent className="p-4">
             <div className="flex items-center gap-3">
               <div className="rounded-full bg-gradient-to-r from-[#f9bbc4]/20 to-[#e8b4c6]/20 p-3">
@@ -122,43 +116,6 @@ export default function ClientesTab() {
                 <p className="text-2xl font-bold text-[#4a3540]">
                   {totalClientes}
                 </p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card className="border-[#f9bbc4]/20 bg-white">
-          <CardContent className="p-4">
-            <div className="flex items-center gap-3">
-              <div className="rounded-full bg-gradient-to-r from-green-100 to-emerald-100 p-3">
-                <DollarSign className="h-5 w-5 text-green-600" />
-              </div>
-              <div>
-                <p className="text-sm text-[#6b4c57]">Con Señas</p>
-                <p className="text-2xl font-bold text-green-700">
-                  {clientesConSeñas}
-                </p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card className="border-[#f9bbc4]/20 bg-white">
-          <CardContent className="p-4">
-            <div className="flex items-center gap-3">
-              <div className="rounded-full bg-gradient-to-r from-green-100 to-emerald-100 p-3">
-                <DollarSign className="h-5 w-5 text-green-600" />
-              </div>
-              <div>
-                <p className="text-sm text-[#6b4c57]">Total Señas</p>
-                <div className="space-y-1">
-                  <p className="text-lg font-bold text-blue-700">
-                    {formatARSFromNative(totalSeñasArs)}
-                  </p>
-                  <p className="text-lg font-bold text-green-700">
-                    {formatUSD(totalSeñasUsd)}
-                  </p>
-                </div>
               </div>
             </div>
           </CardContent>
@@ -220,7 +177,10 @@ export default function ClientesTab() {
                     Contacto
                   </TableHead>
                   <TableHead className="font-semibold text-[#4a3540]">
-                    Señas (ARS / USD)
+                    Seña ARS
+                  </TableHead>
+                  <TableHead className="font-semibold text-[#4a3540]">
+                    Seña USD
                   </TableHead>
                   <TableHead className="font-semibold text-[#4a3540]">
                     Registro
@@ -265,18 +225,30 @@ export default function ClientesTab() {
                       </div>
                     </TableCell>
                     <TableCell>
-                      <div className="flex flex-col space-y-1">
-                        <Badge
-                          variant={'outline'}
-                          className={`font-mono ${cliente.señasDisponibles.ars > 0 ? 'border-blue-300 bg-blue-100 text-blue-800' : 'bg-gray-100 text-gray-600'}`}>
-                          {formatARSFromNative(cliente.señasDisponibles.ars)}
-                        </Badge>
-                        <Badge
-                          variant={'outline'}
-                          className={`font-mono ${cliente.señasDisponibles.usd > 0 ? 'border-green-300 bg-green-100 text-green-800' : 'bg-gray-100 text-gray-600'}`}>
-                          {formatUSD(cliente.señasDisponibles.usd)}
-                        </Badge>
-                      </div>
+                      {(() => {
+                        const montoARS = calcularMontoDisponible(cliente.id, 'ARS');
+                        return montoARS > 0 ? (
+                          <div className="flex items-center gap-2 text-sm font-medium text-green-600">
+                            <DollarSign className="h-3 w-3" />
+                            ${montoARS.toLocaleString()}
+                          </div>
+                        ) : (
+                          <div className="text-sm text-gray-400">$0</div>
+                        );
+                      })()}
+                    </TableCell>
+                    <TableCell>
+                      {(() => {
+                        const montoUSD = calcularMontoDisponible(cliente.id, 'USD');
+                        return montoUSD > 0 ? (
+                          <div className="flex items-center gap-2 text-sm font-medium text-green-600">
+                            <DollarSign className="h-3 w-3" />
+                            ${montoUSD.toLocaleString()} USD
+                          </div>
+                        ) : (
+                          <div className="text-sm text-gray-400">$0 USD</div>
+                        );
+                      })()}
                     </TableCell>
                     <TableCell>
                       <div className="text-sm text-[#8b5a6b]">
@@ -371,8 +343,7 @@ export default function ClientesTab() {
             </AlertDialogTitle>
             <AlertDialogDescription className="text-[#6b4c57]">
               Esta acción eliminará permanentemente a &quot;
-              {alertaEliminar?.nombre}&quot; y todas sus señas asociadas. Esta
-              acción no se puede deshacer.
+              {alertaEliminar?.nombre}&quot;. Esta acción no se puede deshacer.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

@@ -23,10 +23,6 @@ export interface Cliente {
   telefono?: string;
   email?: string;
   cuit?: string;
-  señasDisponibles: {
-    ars: number;
-    usd: number;
-  };
   fechaRegistro: Date;
 }
 
