@@ -1,6 +1,6 @@
 import { apiFetch } from '@/lib/apiClient';
 import { logger } from '@/lib/utils';
-import { ComandaCreateNew, ComandaNew, FiltrarComandasNew } from './unidadNegocio.service';
+import { ComandaCreateNew, ComandaNew, EstadoDeComandaNew, FiltrarComandasNew, TipoDeComandaNew } from './unidadNegocio.service';
 
 class ComandasService {
   private readonly baseUrl = '/api/comandas';
@@ -8,6 +8,15 @@ class ComandasService {
   // POST /comandas - Create new order
   async crearComanda(comanda: ComandaCreateNew): Promise<ComandaNew> {
     const response = await apiFetch<{ data: ComandaNew }>(this.baseUrl, {
+      method: 'POST',
+      json: comanda
+    });
+    return response.data;
+  }
+
+  // POST /comandas/egreso - Create new egreso
+  async crearComandaEgreso(comanda: ComandaCreateNew): Promise<ComandaNew> {
+    const response = await apiFetch<{ data: ComandaNew }>(`${this.baseUrl}/egreso`, {
       method: 'POST',
       json: comanda
     });
@@ -59,6 +68,66 @@ class ComandasService {
   ): Promise<{ data: ComandaNew[]; pagination: any }> {
     try {
       const params = new URLSearchParams();
+      // Valores por defecto según el backend
+      const defaultFiltros: FiltrarComandasNew = {
+        page: 1,
+        limit: 20,
+        orderBy: 'numero',
+        order: 'DESC',
+        ...filtros,
+      };
+
+      // Agregar parámetros de filtro
+      Object.entries(defaultFiltros).forEach(([key, value]) => {
+        if (value !== undefined && value !== null && value !== '') {
+          if (typeof value === 'number') {
+            params.append(key, value.toString());
+          } else if (typeof value === 'string') {
+            params.append(key, value);
+          } else if (typeof value === 'object') {
+            params.append(key, JSON.stringify(value));
+          }
+        }
+      });
+
+      const queryString = params.toString();
+      const url = queryString
+        ? `${this.baseUrl + '/paginados'}?${queryString}`
+        : this.baseUrl + '/paginados';
+      const response = await apiFetch<{
+        data: {
+          status: string;
+          data: ComandaNew[];
+          meta: {
+            total: number;
+            page: number;
+            limit: number;
+            totalPages: number;
+          };
+        };
+      }>(url);
+      console.warn('✅ Comandas paginadas cargadas:', response);
+      return {
+        data: response.data.data,
+        pagination: {
+          total: response.data.meta.total,
+          page: response.data.meta.page,
+          limit: response.data.meta.limit,
+          totalPages: response.data.meta.totalPages,
+        },
+      };
+    } catch (error) {
+      console.error('Error al obtener comandas paginadas:', error);
+      throw error;
+    }
+  }
+
+  // GET /comandas/egreso/paginados
+  async obtenerComandasEgresosPaginadas(
+    filtros: FiltrarComandasNew = {}
+  ): Promise<{ data: ComandaNew[]; pagination: any }> {
+    try {
+      const params = new URLSearchParams();
 
       // Valores por defecto según el backend
       const defaultFiltros: FiltrarComandasNew = {
@@ -66,6 +135,7 @@ class ComandasService {
         limit: 20,
         orderBy: 'numero',
         order: 'DESC',
+        tipoDeComanda: TipoDeComandaNew.EGRESO,
         ...filtros,
       };
 
@@ -114,85 +184,48 @@ class ComandasService {
       throw error;
     }
   }
+  // GET /comandas/ultima-egreso
+  async obtenerUltimaComandaEgreso(): Promise<ComandaNew> {
+    const response = await apiFetch<{ data: ComandaNew }>(`${this.baseUrl}/egreso/ultimo`);
+    return response.data;
+  }
+  
+  //GET /comandas/resumen-caja-chica
+  async obtenerResumen(): Promise<{
+    totalCompletados: number;
+    totalPendientes: number;
+    montoNetoUSD: number;
+    montoNetoARS: number;
+    montoDisponibleTrasladoUSD: number;
+    montoDisponibleTrasladoARS: number;
+    totalIngresosUSD: number;
+    totalIngresosARS: number;
+    totalEgresosUSD: number;
+    totalEgresosARS: number;
+  }> {
+    const response = await apiFetch<{ data: {
+      totalCompletados: number;
+      totalPendientes: number;
+      montoNetoUSD: number;
+      montoNetoARS: number;
+      montoDisponibleTrasladoUSD: number;
+      montoDisponibleTrasladoARS: number;
+      totalIngresosUSD: number;
+      totalIngresosARS: number;
+      totalEgresosUSD: number;
+      totalEgresosARS: number;
+    } }>(`${this.baseUrl}/resumen-caja-chica`);
+    return response.data;
+  }
 
-  // // POST /comandas - Create new order
-  // async crearComanda(comandaData: CrearComandaDto): Promise<{ data: Comanda }> {
-  //   try {
-  //     const response = await apiFetch<ComandaSingleResponse>(this.baseUrl, {
-  //       method: 'POST',
-  //       json: comandaData
-  //     });
-  //     return { data: response.data };
-  //   } catch (error) {
-  //     console.error('Error al crear comanda:', error);
-  //     throw error;
-  //   }
-  // }
-
-  // // GET /comandas/:id - Get specific order
-  // async obtenerComanda(id: string): Promise<{ data: Comanda }> {
-  //   try {
-  //     const response = await apiFetch<ComandaSingleResponse>(`${this.baseUrl}/${id}`);
-  //     return { data: response.data };
-  //   } catch (error) {
-  //     console.error('Error al obtener comanda:', error);
-  //     throw error;
-  //   }
-  // }
-
-  // // PUT /comandas/:id - Update order
-  // async actualizarComanda(id: string, comandaData: ActualizarComandaDto): Promise<{ data: Comanda }> {
-  //   try {
-  //     const response = await apiFetch<ComandaSingleResponse>(`${this.baseUrl}/${id}`, {
-  //       method: 'PUT',
-  //       json: comandaData
-  //     });
-  //     return { data: response.data };
-  //   } catch (error) {
-  //     console.error('Error al actualizar comanda:', error);
-  //     throw error;
-  //   }
-  // }
-
-  // // DELETE /comandas/:id - Soft delete order
-  // async eliminarComanda(id: string): Promise<{ data: Comanda }> {
-  //   try {
-  //     const response = await apiFetch<ComandaSingleResponse>(`${this.baseUrl}/${id}`, {
-  //       method: 'DELETE'
-  //     });
-  //     return { data: response.data };
-  //   } catch (error) {
-  //     console.error('Error al eliminar comanda:', error);
-  //     throw error;
-  //   }
-  // }
-
-  // // GET /comandas/exportar - Export orders
-  // async exportarComandas(formato: 'csv' | 'pdf' | 'excel' = 'csv'): Promise<Blob> {
-  //   try {
-  //     const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || ''}${this.baseUrl}/exportar?formato=${formato}`, {
-  //       method: 'GET',
-  //       headers: {
-  //         'Content-Type': 'application/json',
-  //       },
-  //     });
-  //     return response.blob();
-  //   } catch (error) {
-  //     console.error('Error al exportar comandas:', error);
-  //     throw error;
-  //   }
-  // }
-
-  // // GET /comandas/estadisticas/resumen - Order statistics
-  // async obtenerEstadisticas(): Promise<{ data: EstadisticasComandasResponse }> {
-  //   try {
-  //     const response = await apiFetch<{ data: EstadisticasComandasResponse }>(`${this.baseUrl}/estadisticas/resumen`);
-  //     return { data: response.data };
-  //   } catch (error) {
-  //     console.error('Error al obtener estadísticas de comandas:', error);
-  //     throw error;
-  //   }
-  // }
+  //PUT /comandas/:id/estado
+  async cambiarEstadoComanda(comandaId: string, nuevoEstado: EstadoDeComandaNew): Promise<ComandaNew> {
+    const response = await apiFetch<{ data: ComandaNew }>(`${this.baseUrl}/${comandaId}/estado`, {
+      method: 'PUT',
+      json: { estadoDeComanda: nuevoEstado }
+    });
+    return response.data;
+  }
 }
 
 export const comandasService = new ComandasService();

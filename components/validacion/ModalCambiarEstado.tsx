@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
@@ -14,10 +14,10 @@ import {
 import { X, Clock, CheckCircle, XCircle } from 'lucide-react';
 import useComandaStore from '@/features/comandas/store/comandaStore';
 import { toast } from 'sonner';
-import { EstadoDeComandaNew } from '@/services/unidadNegocio.service';
+import { EstadoDeComandaNew, TipoDeComandaNew } from '@/services/unidadNegocio.service';
 
 // Tipo simplificado para estados de tabla
-export type EstadoSimple = 'pendiente' | 'completado' | 'cancelado';
+export type EstadoSimple = 'PENDIENTE' | 'VALIDADO' | 'CANCELADA';
 
 interface ModalCambiarEstadoProps {
   isOpen: boolean;
@@ -29,7 +29,7 @@ interface ModalCambiarEstadoProps {
 
 const ESTADOS_OPCIONES = [
   {
-    value: 'pendiente' as EstadoSimple,
+    value: 'PENDIENTE' as EstadoSimple,
     label: 'Pendiente',
     description: 'Transacción pendiente de completar',
     icon: Clock,
@@ -37,16 +37,16 @@ const ESTADOS_OPCIONES = [
     emoji: '⏳',
   },
   {
-    value: 'completado' as EstadoSimple,
-    label: 'Completado',
+    value: 'VALIDADO' as EstadoSimple,
+    label: 'Validado',
     description: 'Transacción completada exitosamente',
     icon: CheckCircle,
     color: 'text-green-600',
     emoji: '✅',
   },
   {
-    value: 'cancelado' as EstadoSimple,
-    label: 'Cancelado',
+    value: 'CANCELADA' as EstadoSimple,
+    label: 'Cancelada',
     description: 'Transacción cancelada',
     icon: XCircle,
     color: 'text-red-600',
@@ -62,32 +62,50 @@ export default function ModalCambiarEstado({
   onSuccess,
 }: ModalCambiarEstadoProps) {
   const [nuevoEstado, setNuevoEstado] = useState<EstadoSimple>(estadoActual);
-  const [observaciones, setObservaciones] = useState('');
+  // const [observaciones, setObservaciones] = useState('');
   const [cargando, setCargando] = useState(false);
 
-  const { actualizarComanda } = useComandaStore();
+  const { actualizarComanda, cambiarEstadoComanda, cargarComandasPaginadas } = useComandaStore();
+
+  useEffect(() => {
+    setNuevoEstado(estadoActual);
+  }, [estadoActual]);
+
+  // Reset form when modal opens/closes
+  useEffect(() => {
+    if (isOpen) {
+      setNuevoEstado(estadoActual);
+      // setObservaciones('');
+      setCargando(false);
+    }
+  }, [isOpen, estadoActual]);
 
   const handleGuardar = async () => {
     if (nuevoEstado === estadoActual) {
-      toast.error('Selecciona un estado diferente al actual');
+      toast.warning('Selecciona un estado diferente al actual');
       return;
     }
 
     setCargando(true);
 
     try {
-      // Actualizar el estado directamente en el store
-      actualizarComanda(comandaId, {
-        estadoDeComanda: nuevoEstado as EstadoDeComandaNew,
-        observaciones: observaciones.trim() || undefined,
-      });
+      await cambiarEstadoComanda(comandaId, nuevoEstado as EstadoDeComandaNew);
 
       toast.success(`Estado cambiado a "${nuevoEstado}" exitosamente`);
       onClose();
       onSuccess?.();
       // Reset form
-      setObservaciones('');
+      // setObservaciones('');
       setNuevoEstado(estadoActual);
+
+      cargarComandasPaginadas ({
+        page: 1,
+        limit: 20,
+        orderBy: 'numero',
+        order: 'DESC',
+        search: '',
+        tipoDeComanda: TipoDeComandaNew.INGRESO,
+      });
     } catch (error) {
       console.error('Error changing status:', error);
       toast.error('Error al cambiar estado');
@@ -96,7 +114,7 @@ export default function ModalCambiarEstado({
     }
   };
 
-  if (!isOpen) return null;
+  if (!isOpen) return null; 
 
   return (
     <>
@@ -197,21 +215,21 @@ export default function ModalCambiarEstado({
               </div>
 
               {/* Observaciones */}
-              <div>
+              {/* <div>
                 <Label htmlFor="observaciones">Observaciones (opcional)</Label>
                 <Textarea
                   id="observaciones"
                   value={observaciones}
                   onChange={(e) => setObservaciones(e.target.value)}
                   placeholder={
-                    nuevoEstado === 'completado'
+                    nuevoEstado === 'VALIDADO'
                       ? 'Describe qué se completó...'
                       : 'Observaciones opcionales...'
                   }
                   className="mt-2"
                   rows={3}
                 />
-              </div>
+              </div> */}
             </div>
           </div>
 

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -50,6 +50,14 @@ export default function TransactionsTableTanStack({
   const [modalDetallesOpen, setModalDetallesOpen] = useState(false);
   const [selectedItems, setSelectedItems] = useState<any[]>([]);
   const [selectedValorDolar, setSelectedValorDolar] = useState(1);
+
+  // Detectar si todas las comandas son egresos
+  const todasSonEgresos = data.every(comanda => comanda.tipoDeComanda === TipoDeComandaNew.EGRESO);
+  
+  // Ocultar columna de servicios si todas son egresos
+  const serviciosHidden = todasSonEgresos;
+
+
 
   // Función para detectar si es un egreso con monto fijo ARS
   const esEgresoConMontoFijoARS = (comanda: ComandaNew) => {
@@ -110,6 +118,7 @@ export default function TransactionsTableTanStack({
       },
     },
     {
+      id: 'cliente',
       accessorKey: 'cliente.nombre',
       header: 'Cliente',
       cell: ({ getValue, row }) => {
@@ -120,8 +129,10 @@ export default function TransactionsTableTanStack({
           </div>
         );
       },
+      enableHiding: true,
     },
     {
+      id: 'personal',
       accessorKey: 'mainStaff.nombre',
       header: 'Personal',
       cell: ({ row }) => {
@@ -133,6 +144,19 @@ export default function TransactionsTableTanStack({
           ); // Eliminar duplicados
         
         const isValidated = row.original.estadoDeComanda === EstadoDeComandaNew.VALIDADO;
+
+        if(row.original.tipoDeComanda === TipoDeComandaNew.EGRESO) {
+          return (
+            <div className={`text-sm ${isValidated ? 'text-gray-400' : 'text-gray-500'}`}>
+              <div className="flex h-8 w-8 items-center justify-center rounded-full bg-gradient-to-r from-[#f9bbc4] to-[#e292a3] text-xs font-semibold text-white shadow-sm">
+                {row.original.creadoPor.nombre?.charAt(0).toUpperCase()}
+              </div>
+              <div className="flex flex-col">
+                <span className="text-sm font-medium">{row.original.creadoPor.nombre}</span>
+              </div>
+            </div>
+          );
+        }
         
         if (trabajadores.length === 0) {
           return (
@@ -210,8 +234,11 @@ export default function TransactionsTableTanStack({
         );
       },
       enableSorting: false,
+      enableHiding: serviciosHidden,
     },
     {
+      id: 'subtotal',
+      enableHiding: true,
       accessorKey: 'subtotal',
       header: 'Subtotal',
       cell: ({ row }) => {
@@ -220,21 +247,21 @@ export default function TransactionsTableTanStack({
         const subtotalARSToUSD = subtotalARS / row.original.valorDolar;
         const subtotal = subtotalUSD + subtotalARSToUSD;
         const isValidated = row.original.estadoDeComanda === EstadoDeComandaNew.VALIDADO;
-        const isManualMovement = row.original.cliente.nombre === 'Movimiento Manual';
+        const isManualMovement = row.original.tipoDeComanda === TipoDeComandaNew.EGRESO  ;
         
-        if (isManualMovement) {
-          // Para movimientos manuales, mostrar solo el valor simple
-          const moneda = row.original.precioDolar || 'USD';
-          return (
-            <div className="text-right">
-              <div
-                className={`font-medium ${isValidated ? 'text-gray-500' : 'text-green-600'}`}
-              >
-                {moneda}: ${subtotal.toFixed(2)}
-              </div>
-            </div>
-          );
-        }
+        // if (isManualMovement) {
+        //   // Para movimientos manuales, mostrar solo el valor simple
+        //   const moneda = row.original.precioDolar || 'USD';
+        //   return (
+        //     <div className="text-right">
+        //       <div
+        //         className={`font-medium ${isValidated ? 'text-gray-500' : 'text-green-600'}`}
+        //       >
+        //         {moneda}: ${subtotal.toFixed(2)}
+        //       </div>
+        //     </div>
+        //   );
+        // }
         
         const formatted = formatWithExchangeRate(subtotal, row.original);
         return (
@@ -264,16 +291,25 @@ export default function TransactionsTableTanStack({
         const totalARSToUSD = totalARS / row.original.valorDolar;
         const total = totalUSD + totalARSToUSD;
         const isValidated = row.original.estadoDeComanda === EstadoDeComandaNew.VALIDADO;
-        const isManualMovement = row.original.cliente.nombre === 'Movimiento Manual';
+        const isManualMovement = row.original.tipoDeComanda === TipoDeComandaNew.EGRESO;
         
-        if (isManualMovement) {
-          // Para movimientos manuales, mostrar solo el valor simple
-          const moneda = row.original.precioDolar || 'USD';
+        if(row.original.tipoDeComanda === TipoDeComandaNew.EGRESO) {
+          const totalUsdEgreso = row.original.egresos?.reduce((acc, item) => {
+            if(item.moneda === 'USD') {
+              return acc + (item.totalDolar ?? 0);
+            }
+            return acc;
+          }, 0);
+          const totalArsEgreso = row.original.egresos?.reduce((acc, item) => {
+            if(item.moneda === 'ARS') {
+              return acc + (item.totalPesos ?? 0);
+            }
+            return acc;
+          }, 0);
           return (
-            <div
-              className={`text-right font-semibold ${isValidated ? 'text-gray-500' : 'text-green-600'}`}
-            >
-              {moneda}: ${total.toFixed(2)}
+            <div className="text-left">
+              <div className={`font-semibold ${totalUsdEgreso && totalUsdEgreso > 0 ? 'text-red-600' : 'text-green-600'}`}>{formatARSFromNative(totalUsdEgreso ?? 0)} USD</div>
+              <div className={`${totalArsEgreso && totalArsEgreso > 0 ? 'text-red-500' : 'text-green-600'}`}>{formatARSFromNative(totalArsEgreso ?? 0)} ARS</div>
             </div>
           );
         }
@@ -298,6 +334,7 @@ export default function TransactionsTableTanStack({
       },
     },
     {
+      id: 'metodosPago',
       accessorKey: 'metodosPago',
       header: 'Método',
       cell: ({ getValue, row }) => {
@@ -369,19 +406,39 @@ export default function TransactionsTableTanStack({
       header: 'Estado',
       cell: ({ getValue, row }) => {
         const estado = getValue() as string;
-          const isValidated = row.original.estadoDeComanda === EstadoDeComandaNew.VALIDADO;
+        const estadoComanda = row.original.estadoDeComanda;
 
-        const colorClass = isValidated
-          ? 'bg-gray-100 text-gray-500'
-          : ESTADO_COLORS[estado as keyof typeof ESTADO_COLORS] ||
-            'bg-gray-100 text-gray-800';
+        // Función para parsear el estado (primera letra mayúscula, resto minúscula)
+        const parseEstado = (estado: string): string => {
+          return estado.charAt(0).toUpperCase() + estado.slice(1).toLowerCase();
+        };
 
-        const label =
-          ESTADO_LABELS[estado as keyof typeof ESTADO_LABELS] || estado;
+        // Función para obtener el color según el estado
+        const getEstadoColor = (estado: EstadoDeComandaNew): string => {
+          switch (estado) {
+            case EstadoDeComandaNew.PENDIENTE:
+              return 'bg-yellow-100 text-yellow-800 border-yellow-200';
+            case EstadoDeComandaNew.VALIDADO:
+              return 'bg-green-100 text-green-800 border-green-200';
+            case EstadoDeComandaNew.FINALIZADA:
+              return 'bg-blue-100 text-blue-800 border-blue-200';
+            case EstadoDeComandaNew.TRASPASADA:
+              return 'bg-gray-100 text-gray-800 border-gray-200';
+            case EstadoDeComandaNew.PAGADA:
+              return 'bg-emerald-100 text-emerald-800 border-emerald-200';
+            case EstadoDeComandaNew.CANCELADA:
+              return 'bg-red-100 text-red-800 border-red-200';
+            default:
+              return 'bg-gray-100 text-gray-800 border-gray-200';
+          }
+        };
+
+        const colorClass = getEstadoColor(estadoComanda);
+        const label = parseEstado(estadoComanda);
 
         return (
           <span
-            className={`rounded-md px-2 py-1 text-xs font-medium ${colorClass}`}
+            className={`inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-medium ${colorClass}`}
           >
             {label}
           </span>

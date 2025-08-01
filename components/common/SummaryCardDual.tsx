@@ -87,7 +87,7 @@ export default function SummaryCardDual({
             )}
 
             {/* Show message if no transactions */}
-            {totalUSD === 0 && totalARS === 0 && (
+            {/* {totalUSD === 0 && totalARS === 0 && (
               <div className="text-center">
                 <div
                   className={cn(
@@ -99,7 +99,7 @@ export default function SummaryCardDual({
                 </div>
                 <div className="text-xs text-gray-400">Sin transacciones</div>
               </div>
-            )}
+            )} */}
           </div>
         </div>
       </CardContent>

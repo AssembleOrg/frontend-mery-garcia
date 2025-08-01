@@ -49,9 +49,29 @@ export function DateRangePicker({
     const { from, to } = range;
 
     if (from && to) {
-      return `${from.toLocaleDateString('es-ES')} - ${to.toLocaleDateString('es-ES')}`;
+      const isSameDay = from.toDateString() === to.toDateString();
+      if (isSameDay) {
+        return `${from.toLocaleDateString('es-ES', {
+          year: 'numeric',
+          month: 'short',
+          day: 'numeric'
+        })}`;
+      }
+      return `${from.toLocaleDateString('es-ES', {
+        year: 'numeric',
+        month: 'short',
+        day: 'numeric'
+      })} - ${to.toLocaleDateString('es-ES', {
+        year: 'numeric',
+        month: 'short',
+        day: 'numeric'
+      })}`;
     } else if (from) {
-      return `Desde ${from.toLocaleDateString('es-ES')}`;
+      return `Desde ${from.toLocaleDateString('es-ES', {
+        year: 'numeric',
+        month: 'short',
+        day: 'numeric'
+      })}`;
     }
 
     return placeholder;
@@ -71,21 +91,37 @@ export function DateRangePicker({
             variant="outline"
             size="sm"
             className={cn(
-              'w-full justify-start border-2 bg-white/80 text-left font-normal shadow-sm transition-all hover:bg-white hover:shadow-md',
-              !date && 'text-muted-foreground'
+              'w-full justify-start border-2 bg-white/80 text-left font-normal shadow-sm transition-all hover:bg-white hover:shadow-md relative',
+              !date && 'text-muted-foreground',
+              date && 'border-[#f9bbc4] bg-gradient-to-r from-[#f9bbc4]/10 to-[#e292a3]/10'
             )}
             style={{
-              borderColor: accentColor,
+              borderColor: date ? accentColor : '#e5e7eb',
               color: '#4a3540',
             }}
             disabled={disabled}
           >
             <CalendarIcon className="mr-2 h-4 w-4" />
-            📅 {formatDateRange(date)}
+            <span className={cn(
+              'flex-1 text-left',
+              date ? 'font-medium' : 'font-normal'
+            )}>
+              {date ? (
+                <span className="flex items-center gap-1">
+                  <span className="text-[#f9bbc4]">📅</span>
+                  {formatDateRange(date)}
+                </span>
+              ) : (
+                <span className="flex items-center gap-1">
+                  <span className="text-gray-400">📅</span>
+                  {formatDateRange(date)}
+                </span>
+              )}
+            </span>
             {date && (
               <span
                 onClick={clearDateRange}
-                className="ml-auto flex h-4 w-4 cursor-pointer items-center justify-center rounded-full bg-gray-200 text-xs hover:bg-gray-300"
+                className="ml-auto flex h-5 w-5 cursor-pointer items-center justify-center rounded-full bg-[#f9bbc4] text-white hover:bg-[#e292a3] transition-colors"
                 title="Limpiar fechas"
               >
                 <X className="h-3 w-3" />
@@ -97,6 +133,25 @@ export function DateRangePicker({
           className="w-auto border border-gray-200 bg-white p-0 shadow-xl"
           align="start"
         >
+          <div className="p-3 bg-gradient-to-r from-[#f9bbc4]/10 to-[#e292a3]/10 border-b border-gray-100">
+            <div className="text-sm font-medium text-[#4a3540] text-center">
+              {date?.from ? (
+                date.to ? (
+                  <span>
+                    Seleccionado: {date.from.toLocaleDateString('es-ES')} - {date.to.toLocaleDateString('es-ES')}
+                  </span>
+                ) : (
+                  <span>
+                    Selecciona la fecha final
+                  </span>
+                )
+              ) : (
+                <span>
+                  Selecciona un rango de fechas
+                </span>
+              )}
+            </div>
+          </div>
           <Calendar
             initialFocus
             mode="range"
@@ -104,6 +159,7 @@ export function DateRangePicker({
             selected={date}
             onSelect={handleDateChange}
             numberOfMonths={2}
+            className="p-3"
           />
           <div className="border-t p-4 space-y-4">
             {/* Layout responsivo mejorado */}

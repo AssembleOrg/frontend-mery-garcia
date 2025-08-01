@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import MainLayout from '@/components/layout/MainLayout';
 import StandardPageBanner from '@/components/common/StandardPageBanner';
 import StandardBreadcrumbs from '@/components/common/StandardBreadcrumbs';
@@ -19,7 +19,6 @@ import {
   Calculator,
   Percent,
 } from 'lucide-react';
-import { useComandaStore } from '@/features/comandas/store/comandaStore';
 import { useRecordsStore } from '@/features/records/store/recordsStore';
 import Spinner from '@/components/common/Spinner';
 import ClientOnly from '@/components/common/ClientOnly';
@@ -36,6 +35,7 @@ import {
 } from '@/components/ui/dialog';
 import { useCurrencyConverter } from '@/hooks/useCurrencyConverter';
 import { formatARSNative } from '@/lib/utils';
+import useComandaStore from '@/features/comandas/store/comandaStore';
 
 const breadcrumbItems = [
   { label: 'Inicio', href: '/' },
@@ -46,9 +46,7 @@ const breadcrumbItems = [
 
 export default function CajaChicaResumenPage() {
   const { formatUSD, formatARSFromNative } = useCurrencyConverter();
-  const { validarComandasParaTraspasoParcial, obtenerResumenConMontoParcial, comandas } =
-    useComandaStore();
-  const { registrarTraspaso } = useRecordsStore();
+
   const [dateRange, setDateRange] = useState<DateRange | undefined>();
   const [loading, setLoading] = useState(false);
   const [showConfirmModal, setShowConfirmModal] = useState(false);
@@ -59,13 +57,28 @@ export default function CajaChicaResumenPage() {
     texto: string;
   } | null>(null);
 
-  const resumen = useMemo(() => {
-    if (!dateRange?.from) return null;
-    return obtenerResumenConMontoParcial(
-      dateRange.from,
-      dateRange.to ?? dateRange.from
-    );
-  }, [dateRange?.from, dateRange?.to, obtenerResumenConMontoParcial, comandas]);
+  const [resumen, setResumen] = useState<{
+    totalCompletados: number;
+    totalPendientes: number;
+    montoNetoUSD: number;
+    montoNetoARS: number;
+    montoDisponibleTrasladoUSD: number;
+    montoDisponibleTrasladoARS: number;
+    totalIngresosUSD: number;
+    totalIngresosARS: number;
+    totalEgresosUSD: number;
+    totalEgresosARS: number;
+  } | null>(null);
+
+  const {getResumen} = useComandaStore()
+
+  useEffect(() => {
+    const fetchResumen = async () => {
+      const resumen = await getResumen();
+      setResumen(resumen);
+    };
+    fetchResumen();
+  }, [getResumen]);
 
   const handleMontoParcialUSDChange = (value: string) => {
     // Solo permitir números y punto decimal
@@ -83,109 +96,7 @@ export default function CajaChicaResumenPage() {
     }
   };
 
-  const handleTrasladar = async () => {
-    if (!dateRange?.from || !resumen) return;
-
-    const montoUSD = montoParcialUSD
-      ? parseFloat(montoParcialUSD)
-      : resumen.montoDisponibleTrasladoUSD || 0;
-    const montoARS = montoParcialARS
-      ? parseFloat(montoParcialARS)
-      : resumen.montoDisponibleTrasladoARS || 0;
-
-    // Permitir traspasos independientemente del monto (incluso si es 0 o negativo)
-    // La lógica de negocio requiere permitir traspasos en cualquier situación
-
-    setLoading(true);
-    try {
-      // Validar comandas para traspaso parcial
-      const resultado = await validarComandasParaTraspasoParcial(
-        dateRange.from,
-        dateRange.to ?? dateRange.from,
-        montoUSD,
-        montoARS
-      );
-
-      // Para el registro del traspaso, usar la estructura correcta
-      const fechaInicio = dateRange.from.toISOString().split('T')[0];
-      const fechaFin = (dateRange.to ?? dateRange.from)
-        .toISOString()
-        .split('T')[0];
-
-      const esTraspasoParcial =
-        (montoUSD > 0 &&
-          montoUSD < (resumen.montoDisponibleTrasladoUSD || 0)) ||
-        (montoARS > 0 && montoARS < (resumen.montoDisponibleTrasladoARS || 0));
-
-      // Registrar el traspaso con la estructura correcta de TraspasoInfo
-      registrarTraspaso({
-        fechaTraspaso: new Date().toISOString(),
-        adminQueTraspaso: 'admin-actual', // Reemplazar con el usuario actual
-        comandasTraspasadas: resultado.idsValidados,
-        montoTotal: resultado.montoTrasladadoUSD + resultado.montoTrasladadoARS, // Campo requerido
-        montoTotalUSD: resultado.montoTrasladadoUSD,
-        montoTotalARS: resultado.montoTrasladadoARS,
-        rangoFechas: {
-          desde: fechaInicio,
-          hasta: fechaFin,
-        },
-        observaciones: esTraspasoParcial
-          ? `Traspaso parcial USD: ${resultado.montoTrasladadoUSD.toFixed(2)}, ARS: ${resultado.montoTrasladadoARS.toFixed(2)} (residual USD: ${resultado.montoResidualUSD.toFixed(2)}, ARS: ${resultado.montoResidualARS.toFixed(2)})`
-          : `Traspaso completo del ${fechaInicio} al ${fechaFin}`,
-        // campos para traspaso parcial
-        montoParcialUSD: esTraspasoParcial
-          ? resultado.montoTrasladadoUSD
-          : undefined,
-        montoParcialARS: esTraspasoParcial
-          ? resultado.montoTrasladadoARS
-          : undefined,
-        montoResidualUSD: esTraspasoParcial
-          ? resultado.montoResidualUSD
-          : undefined,
-        montoResidualARS: esTraspasoParcial
-          ? resultado.montoResidualARS
-          : undefined,
-        esTraspasoParcial,
-      });
-
-      const mensajeExito = esTraspasoParcial
-        ? `Traspaso parcial realizado exitosamente:
-           • ${resultado.idsValidados.length} comandas trasladadas
-           • Monto trasladado USD: $${resultado.montoTrasladadoUSD.toFixed(2)}, ARS: $${resultado.montoTrasladadoARS.toFixed(2)}
-           • Monto residual USD: $${resultado.montoResidualUSD.toFixed(2)}, ARS: $${resultado.montoResidualARS.toFixed(2)}
-           • Las comandas trasladadas ahora están en Caja Grande`
-        : `Traspaso completo realizado exitosamente:
-           • ${resultado.idsValidados.length} comandas trasladadas
-           • Monto total USD: $${resultado.montoTrasladadoUSD.toFixed(2)}, ARS: $${resultado.montoTrasladadoARS.toFixed(2)}
-           • Caja Chica limpiada para el período seleccionado`;
-
-      toast.success(mensajeExito);
-
-      setMensaje({
-        tipo: 'success',
-        texto: esTraspasoParcial
-          ? `Traspaso parcial realizado exitosamente. ${resultado.idsValidados.length} comandas trasladadas a Caja Grande.`
-          : `Traspaso completo realizado. Caja Chica limpiada para el período ${fechaInicio} - ${fechaFin}.`,
-      });
-
-      // Limpiar formulario y cerrar modal
-      setMontoParcialUSD('');
-      setMontoParcialARS('');
-      setShowConfirmModal(false);
-
-      // El resumen se actualiza automáticamente a través del useMemo
-    } catch (error) {
-      console.error('Error en traspaso:', error);
-      toast.error('Error al realizar el traspaso');
-      setMensaje({
-        tipo: 'warning',
-        texto: 'Error al realizar el traspaso. Intente nuevamente.',
-      });
-    } finally {
-      setLoading(false);
-    }
-  };
-
+ 
   return (
     <MainLayout>
       <div className="min-h-screen bg-gradient-to-br from-[#f9bbc4]/10 via-[#e8b4c6]/8 to-[#d4a7ca]/6">
@@ -215,7 +126,7 @@ export default function CajaChicaResumenPage() {
                         </h3>
                         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                           <SummaryCardCount
-                            title="Completadas"
+                            title="Validadas"
                             count={resumen.totalCompletados}
                             icon="✅"
                             valueClassName="text-green-700"
@@ -489,7 +400,7 @@ export default function CajaChicaResumenPage() {
               Cancelar
             </Button>
             <Button
-              onClick={handleTrasladar}
+              // onClick={handleTrasladar}
               disabled={loading}
               className="bg-gradient-to-r from-[#f9bbc4] to-[#e292a3] text-white transition-all duration-200 hover:from-[#e292a3] hover:to-[#d4869c] hover:shadow-md disabled:cursor-not-allowed disabled:opacity-50"
             >

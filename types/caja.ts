@@ -1,3 +1,4 @@
+import { ComandaNew } from "@/services/unidadNegocio.service";
 import { Trabajador } from "./trabajador";
 
 export type UnidadNegocio = 'tattoo' | 'estilismo' | 'formacion';
@@ -163,7 +164,7 @@ export type FiltrosEncomienda = FiltrosComanda;
 // Configuración de columnas para tablas
 export interface ColumnaComanda {
   key:
-    | keyof Comanda
+    | keyof ComandaNew
     | 'acciones'
     | 'cliente.nombre'
     | 'mainStaff.nombre'

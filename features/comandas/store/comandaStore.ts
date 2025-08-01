@@ -1,6 +1,6 @@
 'use client';
 import { create } from 'zustand';
-import { ComandaCreateNew, ComandaNew, ComandaUpdateNew, FiltrarComandasNew } from '@/services/unidadNegocio.service';
+import { ComandaCreateNew, ComandaNew, ComandaUpdateNew, EstadoDeComandaNew, FiltrarComandasNew } from '@/services/unidadNegocio.service';
 import { comandasService } from '@/services/comandas.service';
 
 interface ComandaState {
@@ -42,6 +42,22 @@ interface ComandaState {
       totalPages: number;
     };
   }
+  getUltimaComandaEgreso: () => Promise<ComandaNew | undefined>;
+  agregarComandaEgreso: (comanda: ComandaCreateNew) => Promise<void>;
+  getEgresosPaginados: (filters: FiltrarComandasNew) => Promise<void>;
+  getResumen: () => Promise<{
+    totalCompletados: number;
+    totalPendientes: number;
+    montoNetoUSD: number;
+    montoNetoARS: number;
+    montoDisponibleTrasladoUSD: number;
+    montoDisponibleTrasladoARS: number;
+    totalIngresosUSD: number;
+    totalIngresosARS: number;
+    totalEgresosUSD: number;
+    totalEgresosARS: number;
+  }>;
+  cambiarEstadoComanda: (comandaId: string, nuevoEstado: EstadoDeComandaNew) => Promise<void>;
 }
 
 const useComandaStore = create<ComandaState>((set, get) => ({
@@ -60,8 +76,38 @@ const useComandaStore = create<ComandaState>((set, get) => ({
   error: null,
   lastUpdate: 0,
 
+  cambiarEstadoComanda: async (comandaId: string, nuevoEstado: EstadoDeComandaNew) => {
+    set({ cargando: true, error: null });
+    try {
+    const comanda = await comandasService.cambiarEstadoComanda(comandaId, nuevoEstado);
+    set((state) => ({
+      comandas: state.comandas.map((c) => (c.id === comandaId ? { ...c, estadoDeComanda: nuevoEstado } : c)),
+    }));
+    } catch (error: any) {
+      set({ error: error.message });
+    } finally {
+      set({ cargando: false });
+    }
+  },
+  getEgresosPaginados: async (filters: FiltrarComandasNew) => {
+    const { data, pagination } = await comandasService.obtenerComandasEgresosPaginadas(filters);
+    set({ comandasPaginadas: { data, pagination } });
+  },
+
   getComandasPaginadas: () => {
     return get().comandasPaginadas;
+  },
+
+  getUltimaComandaEgreso: async () => {
+    const comanda = await comandasService.obtenerUltimaComandaEgreso();
+    return comanda;
+  },
+
+  agregarComandaEgreso: async (comanda: ComandaCreateNew) => {
+    const nuevaComanda = await comandasService.crearComandaEgreso(comanda);
+    set((state) => ({
+      comandas: [...state.comandas, nuevaComanda],
+    }));
   },
 
   persistirComanda: async (comanda: ComandaCreateNew) => {
@@ -134,6 +180,11 @@ const useComandaStore = create<ComandaState>((set, get) => ({
     } finally {
       set({ cargando: false });
     }
+  },
+
+  getResumen: async () => {
+    const resumen = await comandasService.obtenerResumen();
+    return resumen;
   },
 }));
 

@@ -298,14 +298,14 @@ export default function IngresosPage() {
             setSelectedTransactionId('');
           }}
           comandaId={selectedTransactionId}
-          estadoActual={
+          estadoActual = {
             (selectedTransaction && (selectedTransaction as any).estadoValidacion === 'validado')
-              ? 'completado'
-              : ((selectedTransaction?.estadoDeComanda === EstadoDeComandaNew.FINALIZADA)
-                  ? 'completado'
+              ? 'VALIDADO'
+              : ((selectedTransaction?.estadoDeComanda === EstadoDeComandaNew.VALIDADO)
+                  ? 'VALIDADO'
                   : (selectedTransaction?.estadoDeComanda === EstadoDeComandaNew.CANCELADA)
-                    ? 'cancelado'
-                    : 'pendiente')
+                    ? 'CANCELADA'
+                    : 'PENDIENTE')
           }
           onSuccess={() => {
             setShowChangeStatusModal(false);
@@ -347,7 +347,7 @@ const breadcrumbItems = [
 // Column configuration for incoming transactions
 const initialColumns: ColumnaCaja[] = [
   {
-    key: 'fecha',
+    key: 'createdAt',
     label: 'Fecha',
     visible: true,
     sortable: true,
@@ -381,15 +381,15 @@ const initialColumns: ColumnaCaja[] = [
     sortable: false,
     width: '200px',
   },
+  // {
+  //   key: 'subtotal',
+  //   label: 'Subtotal',
+  //   visible: true,
+  //   sortable: true,
+  //   width: '120px',
+  // },
   {
-    key: 'subtotal',
-    label: 'Subtotal',
-    visible: true,
-    sortable: true,
-    width: '120px',
-  },
-  {
-    key: 'totalFinal',
+    key: 'total',
     label: 'Total',
     visible: true,
     sortable: true,
@@ -403,7 +403,7 @@ const initialColumns: ColumnaCaja[] = [
     width: '100px',
   },
   {
-    key: 'estado',
+    key: 'estadoDeComanda',
     label: 'Estado',
     visible: false, // Oculto por defecto, usuario puede habilitarlo
     sortable: true,

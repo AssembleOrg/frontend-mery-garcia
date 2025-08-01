@@ -1,12 +1,10 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import MainLayout from '@/components/layout/MainLayout';
 import StandardPageBanner from '@/components/common/StandardPageBanner';
 import StandardBreadcrumbs from '@/components/common/StandardBreadcrumbs';
-import TableFilters from '@/components/cajas/TableFilters';
 import TransactionsTable from '@/components/cajas/TransactionsTableTanStack';
-import ModalCambiarEstado from '@/components/validacion/ModalCambiarEstado';
 import ModalVerDetalles from '@/components/validacion/ModalVerDetalles';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -14,17 +12,15 @@ import { Plus } from 'lucide-react';
 import { ColumnaCaja, Comanda } from '@/types/caja';
 import { Pagination } from '@/components/ui/pagination';
 import { DateRangePicker } from '@/components/ui/date-range-picker';
+// import { DateShortcuts } from '@/components/ui/date-shortcuts';
 import { DateRange } from 'react-day-picker';
 import ClientOnly from '@/components/common/ClientOnly';
 import Spinner from '@/components/common/Spinner';
-import SummaryCardDual from '@/components/common/SummaryCardDual';
-import SummaryCardCount from '@/components/common/SummaryCardCount';
-import ModalEditarTransaccion from '@/components/cajas/ModalEditarTransaccion';
 import { useCurrencyConverter } from '@/hooks/useCurrencyConverter';
-import { formatDate } from '@/lib/utils';
-import { useRecordsStore } from '@/features/records/store/recordsStore';
-import ResidualDisplay from '@/components/cajas/ResidualDisplay';
-import ModalTransaccionUnificado from '@/components/cajas/ModalTransaccionUnificado';
+import ModalEgreso from '@/components/cajas/ModalEgreso';
+import EgresosTotalsDisplay from '@/components/cajas/EgresosTotalsDisplay';
+import useComandaStore from '@/features/comandas/store/comandaStore';
+import { EstadoDeComandaNew } from '@/services/unidadNegocio.service';
 
 const breadcrumbItems = [
   { label: 'Inicio', href: '/' },
@@ -36,7 +32,7 @@ const breadcrumbItems = [
 // Column configuration for outgoing transactions
 const initialColumns: ColumnaCaja[] = [
   {
-    key: 'fecha',
+    key: 'createdAt',
     label: 'Fecha',
     visible: true,
     sortable: true,
@@ -50,68 +46,25 @@ const initialColumns: ColumnaCaja[] = [
     width: '100px',
   },
   {
-    key: 'cliente.nombre',
-    label: 'Proveedor',
-    visible: true,
-    sortable: true,
-    width: '150px',
-  },
-  {
-    key: 'mainStaff.nombre',
-    label: 'Responsable',
+    key: 'creadoPor',
+    label: 'Creador',
     visible: true,
     sortable: true,
     width: '120px',
-  },
-  {
-    key: 'servicios',
-    label: 'Conceptos',
-    visible: true,
-    sortable: false,
-    width: '200px',
-  },
-  {
-    key: 'subtotal',
-    label: 'Subtotal',
-    visible: true,
-    sortable: true,
-    width: '120px',
-  },
-  {
-    key: 'totalFinal',
-    label: 'Total',
-    visible: true,
-    sortable: true,
-    width: '120px',
-  },
-  {
-    key: 'metodosPago',
-    label: 'Método Pago',
-    visible: false, // Oculto por defecto, usuario puede habilitarlo
-    sortable: true,
-    width: '100px',
-  },
-  {
-    key: 'estado',
-    label: 'Estado',
-    visible: false, // Oculto por defecto, usuario puede habilitarlo
-    sortable: true,
-    width: '120px',
-  },
-  {
-    key: 'acciones',
-    label: 'Acciones',
-    visible: true,
-    sortable: false,
-    width: '100px',
   },
 ];
 
 export default function EgresosPage() {
   const { isInitialized } = useCurrencyConverter();
+  const { getEgresosPaginados, comandasPaginadas } = useComandaStore();
 
   // Date range filter state
   const [dateRange, setDateRange] = useState<DateRange | undefined>();
+
+  // Pagination state
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState(20);
+  const [loading, setLoading] = useState(false);
 
   // Local UI state
   const [columns, setColumns] = useState<ColumnaCaja[]>(initialColumns);
@@ -122,6 +75,57 @@ export default function EgresosPage() {
   const [selectedTransactionId, setSelectedTransactionId] =
     useState<string>('');
 
+    useEffect(() => {
+      setColumns(
+        initialColumns.filter(column => column.key !== 'servicios')
+      )
+    }, []);
+
+  // Load egresos data
+  const loadEgresos = async () => {
+    setLoading(true);
+    try {
+      // Preparar fechas para el backend
+      let fechaDesde: string | undefined;
+      let fechaHasta: string | undefined;
+
+      if (dateRange?.from) {
+        // Establecer la fecha desde al inicio del día (00:00:00)
+        const fromDate = new Date(dateRange.from);
+        fromDate.setHours(0, 0, 0, 0);
+        fechaDesde = fromDate.toISOString();
+      }
+
+      if (dateRange?.to) {
+        // Establecer la fecha hasta al final del día (23:59:59)
+        const toDate = new Date(dateRange.to);
+        toDate.setHours(23, 59, 59, 999);
+        fechaHasta = toDate.toISOString();
+      }
+
+      await getEgresosPaginados({
+        page: currentPage,
+        limit: itemsPerPage,
+        orderBy: 'createdAt',
+        order: 'DESC',
+        search: '',
+        estadoDeComanda: EstadoDeComandaNew.VALIDADO,
+        // Add date range filters if needed
+        ...(fechaDesde && { fechaDesde }),
+        ...(fechaHasta && { fechaHasta }),
+      });
+    } catch (error) {
+      console.error('Error loading egresos:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Load data on mount and when filters change
+  useEffect(() => {
+    loadEgresos();
+  }, [currentPage, itemsPerPage, dateRange]);
+
   if (!isInitialized) {
     return (
       <div className="flex min-h-screen items-center justify-center">
@@ -130,15 +134,39 @@ export default function EgresosPage() {
     );
   }
 
-  // // Get the selected transaction for the modal
-  // const selectedTransaction = transactions.find(
-  //   (t) => t.id === selectedTransactionId
-  // );
+  // Get the selected transaction for the modal
+  const selectedTransaction = comandasPaginadas?.data?.find(
+    (t) => t.id === selectedTransactionId
+  );
 
-  // Handle delete transaction
+  // Handle transaction actions
   const handleDelete = (id: string) => {
     // TODO: Implement delete functionality
     console.log('Delete transaction:', id);
+  };
+
+  const onEditTransaction = (id: string) => {
+    setSelectedTransactionId(id);
+    setShowEditModal(true);
+  };
+
+  const onViewTransaction = (id: string) => {
+    setSelectedTransactionId(id);
+    setShowViewModal(true);
+  };
+
+  const onChangeStatus = (id: string) => {
+    setSelectedTransactionId(id);
+    setShowChangeStatusModal(true);
+  };
+
+  const handlePageChange = (page: number) => {
+    setCurrentPage(page);
+  };
+
+  const handleItemsPerPageChange = (items: number) => {
+    setItemsPerPage(items);
+    setCurrentPage(1); // Reset to first page when changing items per page
   };
 
   const hiddenColumns = columns.filter((c) => !c.visible).map((c) => c.key);
@@ -290,9 +318,9 @@ export default function EgresosPage() {
               <div className="mb-6">
                 <Card className="border border-[#f9bbc4]/20 bg-white/80 shadow-sm">
                   <CardContent className="p-4">
-                    <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+                    <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-center">
                       {/* Date filter */}
-                      <div className="max-w-xs flex-1">
+                      <div className="flex justify-center">
                         <DateRangePicker
                           dateRange={dateRange}
                           onDateRangeChange={setDateRange}
@@ -300,31 +328,68 @@ export default function EgresosPage() {
                           accentColor="#f9bbc4"
                         />
                       </div>
-
-                      {/* Table tools */}
-                      {/* <div className="flex items-center gap-3">
-                        <TableFilters
-                          filters={filters}
-                          onFiltersChange={actualizarFiltros}
-                          onClearFilters={limpiarFiltros}
-                          columns={columns}
-                          onColumnsChange={setColumns}
-                          exportToPDF={exportToPDF}
-                          exportToCSV={exportToCSV}
-                        />
-                      </div> */}
                     </div>
+
+                    {/* Date shortcuts */}
+                    {/* <div className="mt-4">
+                      <DateShortcuts
+                        onDateRangeChange={setDateRange}
+                        accentColor="#f9bbc4"
+                      />
+                    </div> */}
+
+                    {/* Totals display */}
+                    {comandasPaginadas?.data && comandasPaginadas.data.length > 0 && (
+                      <div className="mt-6">
+                        <EgresosTotalsDisplay 
+                          data={comandasPaginadas.data}
+                          className="mb-6"
+                        />
+                      </div>
+                    )}
 
                     {/* Active filter indicator */}
                     {dateRange && (
-                      <div className="mt-3 flex items-center gap-2 text-xs text-[#6b4c57]">
-                        <div className="h-2 w-2 rounded-full bg-[#f9bbc4]"></div>
-                        <span>
-                          Filtrando desde{' '}
-                          {dateRange.from?.toLocaleDateString('es-ES')}
-                          {dateRange.to &&
-                            ` hasta ${dateRange.to.toLocaleDateString('es-ES')}`}
-                        </span>
+                      <div className="mt-3 flex items-center justify-between rounded-lg bg-gradient-to-r from-[#f9bbc4]/20 to-[#e292a3]/20 border border-[#f9bbc4]/30 p-3">
+                        <div className="flex items-center gap-2">
+                          <div className="flex h-6 w-6 items-center justify-center rounded-full bg-[#f9bbc4] text-white">
+                            <svg className="h-3 w-3" fill="currentColor" viewBox="0 0 20 20">
+                              <path fillRule="evenodd" d="M3 3a1 1 0 011-1h12a1 1 0 011 1v3a1 1 0 01-.293.707L12 11.414V15a1 1 0 01-.293.707l-2 2A1 1 0 018 17v-5.586L3.293 6.707A1 1 0 013 6V3z" clipRule="evenodd" />
+                            </svg>
+                          </div>
+                          <div className="flex flex-col">
+                            <span className="text-sm font-medium text-[#4a3540]">
+                              Filtro de fechas activo
+                            </span>
+                            <span className="text-xs text-[#6b4c57]">
+                              {dateRange.from?.toLocaleDateString('es-ES', {
+                                year: 'numeric',
+                                month: 'long',
+                                day: 'numeric'
+                              })}
+                              {dateRange.to && dateRange.to.getTime() !== dateRange.from?.getTime() && (
+                                <>
+                                  {' → '}
+                                  {dateRange.to.toLocaleDateString('es-ES', {
+                                    year: 'numeric',
+                                    month: 'long',
+                                    day: 'numeric'
+                                  })}
+                                </>
+                              )}
+                            </span>
+                          </div>
+                        </div>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => setDateRange(undefined)}
+                          className="h-6 w-6 p-0 text-[#6b4c57] hover:bg-[#f9bbc4]/20"
+                        >
+                          <svg className="h-3 w-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                          </svg>
+                        </Button>
                       </div>
                     )}
                   </CardContent>
@@ -335,51 +400,49 @@ export default function EgresosPage() {
               <div className="mb-6">
                 <Card className="border border-[#f9bbc4]/20 bg-white/80 shadow-sm">
                   <CardContent className="p-4">
-                    {/* Renderizar grupos ordenados - SIN TraspasoIndicator */}
-                    <div className="space-y-4">
-                      {/* {gruposOrdenados.map((grupo) => (
-                        <div key={grupo.key}>
-                          <TransactionsTable
-                            data={grupo.data}
-                            onEdit={onEditTransaction}
-                            onDelete={handleDelete}
-                            onView={onViewTransaction}
-                            onChangeStatus={onChangeStatus}
-                            hiddenColumns={hiddenColumns}
-                          />
-                        </div>
-                      ))} */}
-
-                      Si no hay grupos, mostrar tabla normal
-                      {/* {gruposOrdenados.length === 0 && (
+                    {loading ? (
+                      <div className="flex items-center justify-center py-8">
+                        <Spinner />
+                      </div>
+                    ) : comandasPaginadas?.data && comandasPaginadas.data.length > 0 ? (
+                      <div className="space-y-4">
                         <TransactionsTable
-                          data={transactions}
+                          data={comandasPaginadas.data}
                           onEdit={onEditTransaction}
                           onDelete={handleDelete}
                           onView={onViewTransaction}
                           onChangeStatus={onChangeStatus}
-                          hiddenColumns={hiddenColumns}
+                          hiddenColumns={['servicios', 'cliente', 'subtotal', 'metodosPago']}
                         />
-                      )} */}
-                    </div>
+                      </div>
+                    ) : (
+                      <div className="flex flex-col items-center justify-center py-12 text-gray-500">
+                        <div className="mb-4 text-6xl">📋</div>
+                        <h3 className="mb-2 text-lg font-semibold">No hay egresos</h3>
+                        <p className="text-sm">No se encontraron transacciones de egreso</p>
+                      </div>
+                    )}
 
                     {/* Pagination */}
-                    <div className="mt-6">
-                      {/* <Pagination
-                        paginaActual={pagination.paginaActual}
-                        totalPaginas={pagination.totalPaginas}
-                        totalItems={pagination.totalItems}
-                        itemsPorPagina={pagination.itemsPorPagina}
-                        itemInicio={pagination.itemInicio}
-                        itemFin={pagination.itemFin}
-                        onCambiarPagina={pagination.irAPagina}
-                        onCambiarItemsPorPagina={
-                          pagination.cambiarItemsPorPagina
-                        }
-                        hayPaginaAnterior={pagination.hayPaginaAnterior}
-                        hayPaginaSiguiente={pagination.hayPaginaSiguiente}
-                      /> */}
-                    </div>
+                    {comandasPaginadas?.pagination && (
+                      <div className="mt-6">
+                        <Pagination
+                          paginaActual={comandasPaginadas.pagination.page}
+                          totalPaginas={comandasPaginadas.pagination.totalPages}
+                          totalItems={comandasPaginadas.pagination.total}
+                          itemsPorPagina={comandasPaginadas.pagination.limit}
+                          itemInicio={(comandasPaginadas.pagination.page - 1) * comandasPaginadas.pagination.limit + 1}
+                          itemFin={Math.min(
+                            comandasPaginadas.pagination.page * comandasPaginadas.pagination.limit,
+                            comandasPaginadas.pagination.total
+                          )}
+                          onCambiarPagina={handlePageChange}
+                          onCambiarItemsPorPagina={handleItemsPerPageChange}
+                          hayPaginaAnterior={comandasPaginadas.pagination.page > 1}
+                          hayPaginaSiguiente={comandasPaginadas.pagination.page < comandasPaginadas.pagination.totalPages}
+                        />
+                      </div>
+                    )}
                   </CardContent>
                 </Card>
               </div>
@@ -388,10 +451,13 @@ export default function EgresosPage() {
         </ClientOnly>
 
         {/* Modals */}
-         <ModalTransaccionUnificado
+         <ModalEgreso
           isOpen={showAddModal}
-          onClose={() => setShowAddModal(false)}
-          tipo="egreso"
+          onClose={() => {
+            setShowAddModal(false);
+            // Reload data after adding new egreso
+            loadEgresos();
+          }}
         />
 
        {/* <ModalCambiarEstado

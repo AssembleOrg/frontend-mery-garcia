@@ -130,6 +130,9 @@ export default function ModalTransaccionUnificado({
     arsToUsd,
   } = useCurrencyConverter();
 
+  const [dolar, setDolar] = useState(0);
+  const { lastDolar } = useExchangeRateStore();
+
   // Helper function for dual currency display
   const formatAmount = (amount: number) => {
     return isExchangeRateValid ? formatDual(amount) : formatUSD(amount);
@@ -223,11 +226,19 @@ export default function ModalTransaccionUnificado({
   useEffect(() => {
     cargarComandasPaginadas({
       page: 1,
-      limit: 10,
+      limit: 20,
       orderBy: 'numero',
       order: 'DESC',
       search: '',
-      estadoDeComanda: EstadoDeComandaNew.PENDIENTE,
+      tipoDeComanda: tipo === 'ingreso' ? TipoDeComandaNew.INGRESO : TipoDeComandaNew.EGRESO,
+    });
+
+    lastDolar().then((dolarR) => {
+      if(dolar === 0) {
+        setDolar(dolarR.venta);
+      }
+    }).catch((error) => {
+      toast.error('Error al obtener el último dólar');
     });
   }, []);
 
@@ -933,6 +944,7 @@ export default function ModalTransaccionUnificado({
             montoFinal: m.montoFinal,
             descuentoGlobalPorcentaje: 100 - (m.montoFinal / m.monto) * 100,
             moneda: m.moneda as MonedaNew,
+            recargoPorcentaje: 0,
           };
         }),
         descuentosAplicados: [],
@@ -997,8 +1009,17 @@ export default function ModalTransaccionUnificado({
       console.log(nuevaComandaNew, items, nuevaComandaNew.items);
 
       await agregarComanda(nuevaComandaNew);
-      // resetForm();
-      // onClose();
+      resetForm();
+      onClose();
+      await cargarComandasPaginadas({
+        page: 1,
+        limit: 20,
+        orderBy: 'numero',
+        order: 'DESC',
+        search: '',
+        tipoDeComanda: tipo === 'ingreso' ? TipoDeComandaNew.INGRESO : TipoDeComandaNew.EGRESO,
+      });
+  
     } catch (error) {
       logger.error(`Error al guardar ${tipo}:`, error);
       setErrores({
@@ -1082,7 +1103,7 @@ export default function ModalTransaccionUnificado({
                 <div className="to-gray-150 flex items-center gap-2 rounded-lg border-2 border-gray-200 bg-gradient-to-r from-gray-100 px-3 py-2 shadow-sm">
                   <TrendingUp className="h-4 w-4 text-gray-600" />
                   <span className="text-sm font-medium text-gray-800">
-                    USD: {formatDual(exchangeRate, false)}
+                    USD: {formatDual(dolar, false)}
                   </span>
                 </div>
               )}
@@ -1144,7 +1165,7 @@ export default function ModalTransaccionUnificado({
                                 });
                               }
                             }}
-                            placeholder="00001"
+                            placeholder="0001"
                             maxLength={4}
                             className={`text-center ${
                               errores.numeroManual
@@ -1316,7 +1337,7 @@ export default function ModalTransaccionUnificado({
                 </CardHeader>
                 <CardContent className="space-y-4">
                   {/* Descuento Global - Solo para ingresos */}
-                  {items.length > 0 && tipo === 'ingreso' && (
+                  {/* {items.length > 0 && tipo === 'ingreso' && (
                     <div className="mb-6 rounded-lg border-2 border-gray-200 bg-gradient-to-r from-gray-100 to-gray-200 p-4 shadow-sm">
                       <div className="mb-4 flex items-center justify-between">
                         <h4 className="font-medium text-gray-900">
@@ -1347,7 +1368,7 @@ export default function ModalTransaccionUnificado({
                         maxDescuento={50}
                       />
                     </div>
-                  )}
+                  )} */}
 
                   {items.length === 0 ? (
                     <div className="to-gray-150 rounded-lg border-2 border-dashed border-gray-300 bg-gradient-to-r from-gray-100 p-8 text-center shadow-sm">

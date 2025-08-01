@@ -47,7 +47,7 @@ export function DataTable<T extends object>({
   hiddenColumns = [],
   enableSearch = false,
   enablePagination = false,
-  pageSize = 10,
+  pageSize = 20,
   getRowClassName,
 }: DataTableProps<T>) {
   const [sorting, setSorting] = React.useState<SortingState>([]);

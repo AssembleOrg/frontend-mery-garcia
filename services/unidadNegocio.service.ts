@@ -33,7 +33,7 @@ export interface FiltrarComandasNew {
   fechaHasta?: string;
 
   /** Campo por el que ordenar — *default*: 'createdAt' */
-  orderBy?: 'createdAt' | 'numero' | 'tipoDeComanda' | 'estadoDeComanda';
+  orderBy?: 'createdAt' | 'numero' | 'tipoDeComanda' | 'estadoDeComanda' | 'creadoPor';
 
   /** Dirección ASC/DESC — *default*: 'DESC' */
   order?: 'ASC' | 'DESC';
@@ -52,6 +52,27 @@ export enum EstadoDeComandaNew {
   TRASPASADA = 'TRASPASADA',
   VALIDADO = 'VALIDADO',
 }
+
+export interface Egreso {
+  id: string;
+  total: number;
+  totalDolar: number;
+  totalPesos: number;
+  valorDolar: number;
+  moneda: string;
+}
+
+export interface EgresoFromPaginacion {
+  id: string;
+  total: string;
+  totalDolar: string;
+  totalPesos: string;
+  valorDolar: string;
+  moneda: string;
+}
+
+export type EgresoCreateNew = Partial<Egreso>;
+export type EgresoUpdateNew = Partial<Egreso>;
 
 export enum CajaNew {
   CAJA_1 = 'caja_1',
@@ -302,6 +323,7 @@ export interface ComandaNew {
   descuentosAplicados: Partial<DescuentoNew>[];
   items: ItemComandaCreateNew[];
   productosServicios: ProductoServicioNew[];
+  egresos?: EgresoCreateNew[];
   precioDolar: number;
   precioPesos: number;
   valorDolar: number;
@@ -312,6 +334,7 @@ export type ComandaCreateNew = Partial<ComandaNew> & {
   clienteId?: string;
   creadoPorId?: string;
   unidadNegocioId?: string;
+  egresos?: EgresoCreateNew[];
 };
 export type ComandaUpdateNew = Partial<ComandaNew> & {
   clienteId?: string;

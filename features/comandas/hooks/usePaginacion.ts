@@ -32,7 +32,7 @@ interface UsePaginacionReturn<T> {
 
 export function usePaginacion<T>({
   data,
-  itemsPorPagina = 10,
+  itemsPorPagina = 20,
 }: UsePaginacionProps<T>): UsePaginacionReturn<T> {
   const [paginaActual, setPaginaActual] = useState(1);
   const [itemsPorPaginaState, setItemsPorPaginaState] =

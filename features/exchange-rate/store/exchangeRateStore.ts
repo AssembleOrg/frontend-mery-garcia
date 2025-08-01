@@ -45,6 +45,8 @@ interface ExchangeRateState {
   reiniciar: () => void;
   limpiarError: () => void;
   getTipoCambio: () => TipoCambio;
+  lastDolar: () => Promise<DolarResponse>;
+  cotizarDolar: () => Promise<DolarResponse | undefined>;
 }
 
 // Estado inicial
@@ -186,6 +188,14 @@ export const useExchangeRateStore = create<ExchangeRateState>()(
         // Limpiar error
         limpiarError: () => {
           set({ error: null });
+        },
+        lastDolar: async () => {
+          const historial = await getHistorial(1);
+          return historial[0];
+        },
+        cotizarDolar: async () => {
+          const cotizacion = await getCotizacion();
+          return cotizacion;
         },
       }),
       {

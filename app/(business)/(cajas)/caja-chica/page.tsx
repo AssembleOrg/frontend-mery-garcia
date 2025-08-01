@@ -7,13 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import Link from 'next/link';
 import { TrendingUp, TrendingDown, BarChart3, ArrowRight } from 'lucide-react';
 import { cn } from '@/lib/utils';
-// import {
-//   useResumenCaja,
-//   useComandaStore,
-// } from '@/features/comandas/store/comandaStore';
 import { useCurrencyConverter } from '@/hooks/useCurrencyConverter';
-import SummaryCardDual from '@/components/common/SummaryCardDual';
-import SummaryCardCount from '@/components/common/SummaryCardCount';
 import ClientOnly from '@/components/common/ClientOnly';
 import ManagerOrAdminOnly from '@/components/auth/ManagerOrAdminOnly';
 
@@ -44,38 +38,10 @@ export default function CajaChicaMenuPage() {
     string,
     { nombre: string; cantidad: number }
   > = {};
-  // comandas.forEach((c) => {
-  //   if (c.tipo !== 'ingreso') return;
-  //   const fechaObj =
-  //     typeof c.fecha === 'string' ? new Date(c.fecha) : (c.fecha as Date);
-  //   const fechaStr = fechaObj.toISOString().split('T')[0];
-  //   if (fechaStr !== today) return;
-  //   c.items.forEach((item) => {
-  //     if (!ventasPorServicio[item.nombre])
-  //       ventasPorServicio[item.nombre] = { nombre: item.nombre, cantidad: 0 };
-  //     ventasPorServicio[item.nombre].cantidad += item.cantidad;
-  //   });
-  // });
+
   const servicioMasVendido = Object.values(ventasPorServicio).sort(
     (a, b) => b.cantidad - a.cantidad
   )[0]?.nombre;
-
-  // const cantidadEgresos = comandas.filter((c) => {
-  //   if (c.tipo !== 'egreso') return false;
-  //   const fechaObj =
-  //     typeof c.fecha === 'string' ? new Date(c.fecha) : (c.fecha as Date);
-  //   return fechaObj.toISOString().split('T')[0] === today;
-  // }).length;
-
-  // const resumenDelDia = {
-  //   totalIncoming: resumen.totalIncoming,
-  //   totalOutgoing: resumen.totalOutgoing,
-  //   saldo: resumen.saldo,
-  //   cantidadIngresos: resumen.cantidadComandas,
-  //   cantidadEgresos,
-  //   clientesAtendidos: Math.floor(resumen.cantidadComandas * 0.8),
-  //   servicioMasVendido: servicioMasVendido || 'N/A',
-  // };
 
   const menuOptions = [
     {
