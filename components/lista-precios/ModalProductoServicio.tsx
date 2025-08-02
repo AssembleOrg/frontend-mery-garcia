@@ -213,12 +213,13 @@ export default function ModalProductoServicio({
 
     try {
       if (esEdicion && producto) {
+        console.log(unidadNegocio, 'unidadNegocio');
         const unidadNegocioC = unidadesNegocio.find(unidad => unidad.nombre === unidadNegocio);
         const productoServicio: ProductoServicioUpdateNew = {
-          nombre: producto.nombre,
-          descripcion: producto.descripcion || '',
-          precio: producto.precio,
-          tipo: producto.tipo,
+          nombre,
+          descripcion,
+          precio,
+          tipo,
           unidadNegocioId: unidadNegocioC?.id!,
           activo,
           duracion: tipo === TipoProductoServicioNew.SERVICIO ? duracion : undefined,
@@ -273,6 +274,12 @@ export default function ModalProductoServicio({
     }
 
     return { ars: montoARSFormatted, usd: montoUSD };
+  };
+
+  const changePrecio = (e: React.ChangeEvent<HTMLInputElement>) => {
+    console.log(e.target.value, Number(e.target.value), 'changePrecio');
+    const value = e.target.value;
+    setPrecio(Number(value));
   };
 
   if (!isOpen) return null;
@@ -466,7 +473,7 @@ export default function ModalProductoServicio({
                         id="precio"
                         type="number"
                         value={precio || ''}
-                        onChange={(e) => setPrecio(Number(e.target.value))}
+                        onChange={changePrecio}
                         placeholder="0"
                         className={`pl-10 ${errores.precio ? 'border-red-300' : ''}`}
                         min="0"

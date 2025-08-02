@@ -11,6 +11,16 @@ import ModalVerDetalles from '@/components/validacion/ModalVerDetalles';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Plus } from 'lucide-react';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import { ColumnaCaja, FiltrosEncomienda } from '@/types/caja';
 import ModalTransaccionUnificado from '@/components/cajas/ModalTransaccionUnificado';
 import { Pagination } from '@/components/ui/pagination';
@@ -130,6 +140,7 @@ export default function IngresosPage() {
   const [showExportModal, setShowExportModal] = useState(false);
   const [selectedTransactionId, setSelectedTransactionId] =
     useState<string>('');
+  const [alertaEliminar, setAlertaEliminar] = useState<any | null>(null);
 
   if (!isInitialized) {
     return (
@@ -146,8 +157,20 @@ export default function IngresosPage() {
 
   // Handle delete transaction
   const handleDelete = (id: string) => {
-    // TODO: Implement delete functionality
-    console.log('Delete transaction:', id);
+    const transaction = comandasPaginadas.data.find(t => t.id === id);
+    if (transaction) {
+      setAlertaEliminar(transaction);
+    }
+  };
+
+  const confirmarEliminar = () => {
+    if (alertaEliminar) {
+      // TODO: Implementar llamada al backend para eliminar
+      console.log('Eliminando transacción:', alertaEliminar.id);
+      // eliminarComanda(alertaEliminar.id); // Esta sería la llamada real al backend
+      setAlertaEliminar(null);
+      // Recargar datos después de eliminar cuando se conecte el backend
+    }
   };
 
   // Handle status change
@@ -599,6 +622,35 @@ export default function IngresosPage() {
           onClose={() => setShowExportModal(false)}
           comandas={comandasPaginadas.data}
         />
+
+        {/* Alert Dialog para eliminar */}
+        <AlertDialog
+          open={!!alertaEliminar}
+          onOpenChange={() => setAlertaEliminar(null)}
+        >
+          <AlertDialogContent className="bg-white">
+            <AlertDialogHeader>
+              <AlertDialogTitle className="text-gray-900">
+                ¿Eliminar transacción?
+              </AlertDialogTitle>
+              <AlertDialogDescription className="text-gray-600">
+                Esta acción eliminará permanentemente la transacción #{alertaEliminar?.numero}.
+                Esta acción no se puede deshacer.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel className="border-gray-300 text-gray-700 hover:bg-gray-50">
+                Cancelar
+              </AlertDialogCancel>
+              <AlertDialogAction
+                onClick={confirmarEliminar}
+                className="bg-red-600 text-white hover:bg-red-700"
+              >
+                Eliminar
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
       </div>
     </MainLayout>
   );

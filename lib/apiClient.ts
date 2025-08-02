@@ -40,7 +40,11 @@ export async function apiFetch<T = unknown>(
   };
 
   // Use Zustand token getter if available, fallback to localStorage for compatibility
-  const token = getAuthToken ? getAuthToken() : (typeof window !== 'undefined' ? localStorage.getItem('token') : null);
+  const token = getAuthToken
+    ? getAuthToken()
+    : typeof window !== 'undefined'
+      ? localStorage.getItem('token')
+      : null;
   if (token) finalHeaders['Authorization'] = `Bearer ${token}`;
 
   const response = await fetch(url, {

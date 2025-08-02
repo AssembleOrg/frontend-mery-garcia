@@ -9,6 +9,16 @@ import ModalVerDetalles from '@/components/validacion/ModalVerDetalles';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Plus } from 'lucide-react';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import { ColumnaCaja, Comanda } from '@/types/caja';
 import { Pagination } from '@/components/ui/pagination';
 import { DateRangePicker } from '@/components/ui/date-range-picker';
@@ -19,6 +29,8 @@ import Spinner from '@/components/common/Spinner';
 import { useCurrencyConverter } from '@/hooks/useCurrencyConverter';
 import ModalEgreso from '@/components/cajas/ModalEgreso';
 import EgresosTotalsDisplay from '@/components/cajas/EgresosTotalsDisplay';
+import ModalCambiarEstado from '@/components/validacion/ModalCambiarEstado';
+import ModalEditarTransaccion from '@/components/cajas/ModalEditarTransaccion';
 import useComandaStore from '@/features/comandas/store/comandaStore';
 import { EstadoDeComandaNew } from '@/services/unidadNegocio.service';
 
@@ -74,6 +86,7 @@ export default function EgresosPage() {
   const [showViewModal, setShowViewModal] = useState(false);
   const [selectedTransactionId, setSelectedTransactionId] =
     useState<string>('');
+  const [alertaEliminar, setAlertaEliminar] = useState<Comanda | null>(null);
 
     useEffect(() => {
       setColumns(
@@ -141,8 +154,20 @@ export default function EgresosPage() {
 
   // Handle transaction actions
   const handleDelete = (id: string) => {
-    // TODO: Implement delete functionality
-    console.log('Delete transaction:', id);
+    const transaction = comandasPaginadas?.data?.find(t => t.id === id);
+    if (transaction) {
+      setAlertaEliminar(transaction);
+    }
+  };
+
+  const confirmarEliminar = () => {
+    if (alertaEliminar) {
+      // TODO: Implementar llamada al backend para eliminar
+      console.log('Eliminando transacción:', alertaEliminar.id);
+      // eliminarComanda(alertaEliminar.id); // Esta sería la llamada real al backend
+      setAlertaEliminar(null);
+      // loadEgresos(); // Recargar datos después de eliminar
+    }
   };
 
   const onEditTransaction = (id: string) => {
@@ -460,7 +485,7 @@ export default function EgresosPage() {
           }}
         />
 
-       {/* <ModalCambiarEstado
+        <ModalCambiarEstado
           isOpen={showChangeStatusModal}
           onClose={() => {
             setShowChangeStatusModal(false);
@@ -469,8 +494,8 @@ export default function EgresosPage() {
           comandaId={selectedTransactionId}
           estadoActual={
             (selectedTransaction?.estadoValidacion === 'validado'
-              ? 'completado'
-              : selectedTransaction?.estado) || 'pendiente'
+              ? 'VALIDADO'
+              : selectedTransaction?.estado) || 'PENDIENTE'
           }
           onSuccess={() => {
             setShowChangeStatusModal(false);
@@ -496,6 +521,35 @@ export default function EgresosPage() {
           }}
           comandaId={selectedTransactionId}
         />
+
+        {/* Alert Dialog para eliminar */}
+        <AlertDialog
+          open={!!alertaEliminar}
+          onOpenChange={() => setAlertaEliminar(null)}
+        >
+          <AlertDialogContent className="bg-white">
+            <AlertDialogHeader>
+              <AlertDialogTitle className="text-gray-900">
+                ¿Eliminar transacción?
+              </AlertDialogTitle>
+              <AlertDialogDescription className="text-gray-600">
+                Esta acción eliminará permanentemente la transacción #{alertaEliminar?.numero}.
+                Esta acción no se puede deshacer.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel className="border-gray-300 text-gray-700 hover:bg-gray-50">
+                Cancelar
+              </AlertDialogCancel>
+              <AlertDialogAction
+                onClick={confirmarEliminar}
+                className="bg-red-600 text-white hover:bg-red-700"
+              >
+                Eliminar
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
       </div>
     </MainLayout>
   );
