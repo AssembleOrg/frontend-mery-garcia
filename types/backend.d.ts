@@ -20,6 +20,178 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  '/api/trabajadores': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * Obtener todos los trabajadores
+     * @description Obtiene una lista de trabajadores
+     */
+    get: operations['TrabajadorController_obtenerTodas'];
+    put?: never;
+    /**
+     * Crear un nuevo trabajador
+     * @description Crea un nuevo trabajador en el sistema
+     */
+    post: operations['TrabajadorController_crear'];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/api/trabajadores/paginado': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * Obtener todos los trabajadores
+     * @description Obtiene una lista paginada de trabajadores con filtros opcionales
+     */
+    get: operations['TrabajadorController_obtenerTodos'];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/api/trabajadores/list': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * Obtener todos los trabajadores sin paginación
+     * @description Obtiene una lista completa de trabajadores sin paginación
+     */
+    get: operations['TrabajadorController_obtenerTodosSinPaginacion'];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/api/trabajadores/activos': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * Obtener trabajadores activos
+     * @description Obtiene solo los trabajadores que están en estado activo
+     */
+    get: operations['TrabajadorController_obtenerTrabajadoresActivos'];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/api/trabajadores/estadisticas': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * Obtener estadísticas de trabajadores
+     * @description Obtiene estadísticas generales sobre los trabajadores
+     */
+    get: operations['TrabajadorController_obtenerEstadisticas'];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/api/trabajadores/{id}': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * Obtener trabajador por ID
+     * @description Obtiene un trabajador específico por su ID
+     */
+    get: operations['TrabajadorController_obtenerPorId'];
+    /**
+     * Actualizar trabajador
+     * @description Actualiza un trabajador existente con los datos proporcionados
+     */
+    put: operations['TrabajadorController_actualizar'];
+    post?: never;
+    /**
+     * Eliminar trabajador (soft delete)
+     * @description Elimina un trabajador de forma lógica (soft delete)
+     */
+    delete: operations['TrabajadorController_eliminar'];
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/api/trabajadores/{id}/restaurar': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /**
+     * Restaurar trabajador eliminado
+     * @description Restaura un trabajador que fue eliminado (soft delete)
+     */
+    post: operations['TrabajadorController_restaurar'];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/api/trabajadores/{id}/estado': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    /**
+     * Cambiar estado activo del trabajador
+     * @description Activa o desactiva un trabajador
+     */
+    patch: operations['TrabajadorController_cambiarEstadoActivo'];
+    trace?: never;
+  };
   '/api/comandas': {
     parameters: {
       query?: never;
@@ -28,16 +200,136 @@ export interface paths {
       cookie?: never;
     };
     /**
-     * Obtener comandas con filtros
-     * @description Obtiene una lista paginada de comandas con filtros opcionales
+     * Obtener todas las comandas
+     * @description Obtiene una lista de todas las comandas sin paginación
      */
-    get: operations['ComandaController_obtenerComandas'];
+    get: operations['ComandaController_obtenerTodos'];
     put?: never;
     /**
      * Crear una nueva comanda
-     * @description Crea una nueva comanda con sus items, cliente, personal y métodos de pago
+     * @description Crea una nueva comanda con todos sus datos
      */
-    post: operations['ComandaController_crearComanda'];
+    post: operations['ComandaController_crear'];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/api/comandas/egreso': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /**
+     * Crear un egreso
+     * @description Crea un egreso con todos sus datos
+     */
+    post: operations['ComandaController_crearComandaEgreso'];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/api/comandas/egreso/ultimo': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * Obtener el último egreso
+     * @description Obtiene el último egreso creado
+     */
+    get: operations['ComandaController_obtenerUltimoEgreso'];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/api/comandas/paginados': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * Obtener comandas con paginación
+     * @description Obtiene una lista paginada de comandas con filtros opcionales
+     */
+    get: operations['ComandaController_obtenerConPaginacion'];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/api/comandas/resumen-caja-chica': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * Obtener resumen de caja chica
+     * @description Obtiene un resumen de la caja chica
+     */
+    get: operations['ComandaController_obtenerResumenCajaChica'];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/api/comandas/ultima': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * Obtener la última comanda
+     * @description Obtiene la última comanda creada
+     */
+    get: operations['ComandaController_obtenerUltimaComanda'];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/api/comandas/existe/{numero}': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * Verificar si existe una comanda
+     * @description Verifica si una comanda existe en la base de datos
+     */
+    get: operations['ComandaController_existeComanda'];
+    put?: never;
+    post?: never;
     delete?: never;
     options?: never;
     head?: never;
@@ -53,40 +345,20 @@ export interface paths {
     };
     /**
      * Obtener comanda por ID
-     * @description Obtiene una comanda específica con todas sus relaciones
+     * @description Obtiene una comanda específica por su ID
      */
-    get: operations['ComandaController_obtenerComanda'];
+    get: operations['ComandaController_obtenerPorId'];
     /**
      * Actualizar comanda
-     * @description Actualiza una comanda existente con los datos proporcionados
+     * @description Actualiza una comanda existente
      */
-    put: operations['ComandaController_actualizarComanda'];
+    put: operations['ComandaController_actualizar'];
     post?: never;
     /**
-     * Eliminar comanda (soft delete)
-     * @description Elimina una comanda de forma lógica (soft delete)
+     * Eliminar comanda
+     * @description Elimina una comanda (soft delete)
      */
-    delete: operations['ComandaController_eliminarComanda'];
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
-  '/api/comandas/numero/{numero}': {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    /**
-     * Obtener comanda por número
-     * @description Obtiene una comanda específica por su número único
-     */
-    get: operations['ComandaController_obtenerComandaPorNumero'];
-    put?: never;
-    post?: never;
-    delete?: never;
+    delete: operations['ComandaController_eliminar'];
     options?: never;
     head?: never;
     patch?: never;
@@ -102,10 +374,10 @@ export interface paths {
     get?: never;
     put?: never;
     /**
-     * Restaurar comanda eliminada
-     * @description Restaura una comanda que fue eliminada (soft delete)
+     * Restaurar comanda
+     * @description Restaura una comanda eliminada
      */
-    post: operations['ComandaController_restaurarComanda'];
+    post: operations['ComandaController_restaurar'];
     delete?: never;
     options?: never;
     head?: never;
@@ -122,104 +394,10 @@ export interface paths {
     get?: never;
     /**
      * Cambiar estado de comanda
-     * @description Cambia el estado de una comanda (pendiente, en_proceso, completado, cancelado)
+     * @description Cambia el estado de una comanda
      */
-    put: operations['ComandaController_cambiarEstadoComanda'];
+    put: operations['ComandaController_cambiarEstado'];
     post?: never;
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
-  '/api/comandas/estadisticas/resumen': {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    /**
-     * Obtener estadísticas de comandas
-     * @description Obtiene un resumen estadístico de las comandas
-     */
-    get: operations['ComandaController_obtenerEstadisticas'];
-    put?: never;
-    post?: never;
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
-  '/api/comandas/exportar': {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    /**
-     * Exportar comandas
-     * @description Exporta las comandas filtradas en formato CSV, PDF o Excel
-     */
-    get: operations['ComandaController_exportarComandas'];
-    put?: never;
-    post?: never;
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
-  '/api/tipos-comanda': {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    /** Obtener todos los tipos de comanda activos */
-    get: operations['TipoComandaController_findAll'];
-    put?: never;
-    /** Crear un nuevo tipo de comanda */
-    post: operations['TipoComandaController_crear'];
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
-  '/api/tipos-comanda/{id}': {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    /** Obtener un tipo de comanda por ID */
-    get: operations['TipoComandaController_findOne'];
-    put?: never;
-    post?: never;
-    /** Eliminar lógicamente un tipo de comanda */
-    delete: operations['TipoComandaController_eliminar'];
-    options?: never;
-    head?: never;
-    /** Actualizar un tipo de comanda */
-    patch: operations['TipoComandaController_actualizar'];
-    trace?: never;
-  };
-  '/api/tipos-comanda/{id}/restaurar': {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    get?: never;
-    put?: never;
-    /** Restaurar un tipo de comanda eliminado */
-    post: operations['TipoComandaController_restaurar'];
     delete?: never;
     options?: never;
     head?: never;
@@ -274,6 +452,474 @@ export interface paths {
     put?: never;
     /** Restaurar un tipo de item eliminado */
     post: operations['TipoItemController_restaurar'];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/api/productos-servicios': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * Obtener todos los productos y servicios
+     * @description Obtiene una lista de productos y servicios
+     */
+    get: operations['ProductoServicioController_obtenerTodas'];
+    put?: never;
+    /**
+     * Crear un nuevo producto o servicio
+     * @description Crea un nuevo producto o servicio en el sistema
+     */
+    post: operations['ProductoServicioController_crear'];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/api/productos-servicios/paginado': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * Obtener todos los productos y servicios
+     * @description Obtiene una lista paginada de productos y servicios con filtros opcionales
+     */
+    get: operations['ProductoServicioController_obtenerTodos'];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/api/productos-servicios/activos': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * Obtener productos y servicios activos
+     * @description Obtiene solo los productos y servicios que están en estado activo
+     */
+    get: operations['ProductoServicioController_obtenerActivos'];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/api/productos-servicios/unidad-negocio/{unidadNegocioId}': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * Obtener productos y servicios por unidad de negocio
+     * @description Obtiene los productos y servicios activos de una unidad de negocio específica
+     */
+    get: operations['ProductoServicioController_obtenerPorUnidadNegocio'];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/api/productos-servicios/estadisticas': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * Obtener estadísticas de productos y servicios
+     * @description Obtiene estadísticas generales sobre productos y servicios
+     */
+    get: operations['ProductoServicioController_obtenerEstadisticas'];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/api/productos-servicios/{id}': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * Obtener un producto o servicio por ID
+     * @description Obtiene un producto o servicio específico por su ID
+     */
+    get: operations['ProductoServicioController_obtenerPorId'];
+    /**
+     * Actualizar un producto o servicio
+     * @description Actualiza un producto o servicio existente
+     */
+    put: operations['ProductoServicioController_actualizar'];
+    post?: never;
+    /**
+     * Eliminar un producto o servicio
+     * @description Elimina un producto o servicio (soft delete)
+     */
+    delete: operations['ProductoServicioController_eliminar'];
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/api/productos-servicios/{id}/restaurar': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /**
+     * Restaurar un producto o servicio
+     * @description Restaura un producto o servicio eliminado
+     */
+    post: operations['ProductoServicioController_restaurar'];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/api/productos-servicios/{id}/estado': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    /**
+     * Cambiar estado activo de un producto o servicio
+     * @description Cambia el estado activo de un producto o servicio
+     */
+    patch: operations['ProductoServicioController_cambiarEstadoActivo'];
+    trace?: never;
+  };
+  '/api/unidades-negocio': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * Obtener todas las unidades de negocio
+     * @description Obtiene una lista de unidades de negocio
+     */
+    get: operations['UnidadNegocioController_obtenerTodas'];
+    put?: never;
+    /**
+     * Crear una nueva unidad de negocio
+     * @description Crea una nueva unidad de negocio en el sistema
+     */
+    post: operations['UnidadNegocioController_crear'];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/api/unidades-negocio/paginado': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * Obtener todas las unidades de negocio
+     * @description Obtiene una lista paginada de unidades de negocio con filtros opcionales
+     */
+    get: operations['UnidadNegocioController_obtenerTodos'];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/api/unidades-negocio/{id}': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * Obtener una unidad de negocio por ID
+     * @description Obtiene una unidad de negocio específica por su ID
+     */
+    get: operations['UnidadNegocioController_obtenerPorId'];
+    /**
+     * Actualizar una unidad de negocio
+     * @description Actualiza una unidad de negocio existente
+     */
+    put: operations['UnidadNegocioController_actualizar'];
+    post?: never;
+    /**
+     * Eliminar una unidad de negocio
+     * @description Elimina una unidad de negocio (soft delete)
+     */
+    delete: operations['UnidadNegocioController_eliminar'];
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/api/unidades-negocio/{id}/restaurar': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /**
+     * Restaurar una unidad de negocio
+     * @description Restaura una unidad de negocio eliminada
+     */
+    post: operations['UnidadNegocioController_restaurar'];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/api/items-comanda': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * Obtener todos los items de comanda
+     * @description Obtiene una lista paginada de items de comanda con filtros opcionales
+     */
+    get: operations['ItemComandaController_obtenerTodos'];
+    put?: never;
+    /**
+     * Crear un nuevo item de comanda
+     * @description Crea un nuevo item de comanda en el sistema
+     */
+    post: operations['ItemComandaController_crear'];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/api/items-comanda/comanda/{comandaId}': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * Obtener items por comanda
+     * @description Obtiene todos los items de una comanda específica
+     */
+    get: operations['ItemComandaController_obtenerPorComanda'];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/api/items-comanda/{id}': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * Obtener un item de comanda por ID
+     * @description Obtiene un item de comanda específico por su ID
+     */
+    get: operations['ItemComandaController_obtenerPorId'];
+    /**
+     * Actualizar un item de comanda
+     * @description Actualiza un item de comanda existente
+     */
+    put: operations['ItemComandaController_actualizar'];
+    post?: never;
+    /**
+     * Eliminar un item de comanda
+     * @description Elimina un item de comanda (soft delete)
+     */
+    delete: operations['ItemComandaController_eliminar'];
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/api/items-comanda/{id}/restaurar': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /**
+     * Restaurar un item de comanda
+     * @description Restaura un item de comanda eliminado
+     */
+    post: operations['ItemComandaController_restaurar'];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/api/movimientos': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * Obtener todos los movimientos
+     * @description Obtiene una lista paginada de movimientos con filtros opcionales
+     */
+    get: operations['MovimientoController_obtenerTodos'];
+    put?: never;
+    /**
+     * Crear un nuevo movimiento
+     * @description Crea un nuevo movimiento en el sistema
+     */
+    post: operations['MovimientoController_crear'];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/api/movimientos/comanda/{comandaId}': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * Obtener movimientos por comanda
+     * @description Obtiene todos los movimientos de una comanda específica
+     */
+    get: operations['MovimientoController_obtenerPorComanda'];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/api/movimientos/personal/{personalId}': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * Obtener movimientos por personal
+     * @description Obtiene todos los movimientos de un personal específico
+     */
+    get: operations['MovimientoController_obtenerPorPersonal'];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/api/movimientos/{id}': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * Obtener un movimiento por ID
+     * @description Obtiene un movimiento específico por su ID
+     */
+    get: operations['MovimientoController_obtenerPorId'];
+    /**
+     * Actualizar un movimiento
+     * @description Actualiza un movimiento existente
+     */
+    put: operations['MovimientoController_actualizar'];
+    post?: never;
+    /**
+     * Eliminar un movimiento
+     * @description Elimina un movimiento (soft delete)
+     */
+    delete: operations['MovimientoController_eliminar'];
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/api/movimientos/{id}/restaurar': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /**
+     * Restaurar un movimiento
+     * @description Restaura un movimiento eliminado
+     */
+    post: operations['MovimientoController_restaurar'];
     delete?: never;
     options?: never;
     head?: never;
@@ -380,6 +1026,118 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  '/api/clientes': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * Obtener todos los clientes
+     * @description Retorna todos los clientes sin paginación
+     */
+    get: operations['ClienteController_obtenerTodos'];
+    put?: never;
+    /**
+     * Crear un nuevo cliente
+     * @description Crea un nuevo cliente en el sistema
+     */
+    post: operations['ClienteController_crear'];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/api/clientes/paginados': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * Obtener clientes con paginación
+     * @description Retorna clientes paginados con filtros opcionales
+     */
+    get: operations['ClienteController_obtenerConPaginacion'];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/api/clientes/{id}': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * Obtener cliente por ID
+     * @description Retorna un cliente específico por su ID
+     */
+    get: operations['ClienteController_obtenerPorId'];
+    /**
+     * Actualizar cliente
+     * @description Actualiza los datos de un cliente existente
+     */
+    put: operations['ClienteController_actualizar'];
+    post?: never;
+    /**
+     * Eliminar cliente
+     * @description Elimina un cliente (soft delete)
+     */
+    delete: operations['ClienteController_eliminar'];
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/api/clientes/{id}/restaurar': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /**
+     * Restaurar cliente eliminado
+     * @description Restaura un cliente que fue eliminado (soft delete)
+     */
+    post: operations['ClienteController_restaurar'];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/api/clientes/estadisticas/resumen': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * Obtener estadísticas de clientes
+     * @description Retorna estadísticas generales de clientes
+     */
+    get: operations['ClienteController_obtenerEstadisticas'];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   '/api/auth/login': {
     parameters: {
       query?: never;
@@ -431,24 +1189,7 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  '/api/cajas/balance/{caja}': {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    /** Obtener balance de una caja */
-    get: operations['CajaController_obtenerBalanceCaja'];
-    put?: never;
-    post?: never;
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
-  '/api/cajas/movimiento': {
+  '/api/database/clean': {
     parameters: {
       query?: never;
       header?: never;
@@ -457,23 +1198,21 @@ export interface paths {
     };
     get?: never;
     put?: never;
-    /** Crear un movimiento de caja (ingreso/egreso/ajuste) */
-    post: operations['CajaController_crearMovimiento'];
+    post: operations['DatabaseCleanupController_cleanDatabase'];
     delete?: never;
     options?: never;
     head?: never;
     patch?: never;
     trace?: never;
   };
-  '/api/cajas/movimientos': {
+  '/api/database/info': {
     parameters: {
       query?: never;
       header?: never;
       path?: never;
       cookie?: never;
     };
-    /** Obtener movimientos de caja con filtros */
-    get: operations['CajaController_obtenerMovimientos'];
+    get: operations['DatabaseCleanupController_getDatabaseInfo'];
     put?: never;
     post?: never;
     delete?: never;
@@ -482,7 +1221,7 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  '/api/cajas/transferir': {
+  '/api/database/clean-specific': {
     parameters: {
       query?: never;
       header?: never;
@@ -491,25 +1230,39 @@ export interface paths {
     };
     get?: never;
     put?: never;
-    /** Transferir comandas entre cajas */
-    post: operations['CajaController_transferirEntreCajas'];
+    post: operations['DatabaseCleanupController_cleanSpecificTables'];
     delete?: never;
     options?: never;
     head?: never;
     patch?: never;
     trace?: never;
   };
-  '/api/cajas/balance-todas': {
+  '/api/database/drop-all': {
     parameters: {
       query?: never;
       header?: never;
       path?: never;
       cookie?: never;
     };
-    /** Obtener balance de todas las cajas */
-    get: operations['CajaController_obtenerBalanceTodasLasCajas'];
+    get?: never;
     put?: never;
-    post?: never;
+    post: operations['DatabaseCleanupController_dropAllTables'];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/api/database/drop-all-complete': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    post: operations['DatabaseCleanupController_dropAllTablesComplete'];
     delete?: never;
     options?: never;
     head?: never;
@@ -520,256 +1273,331 @@ export interface paths {
 export type webhooks = Record<string, never>;
 export interface components {
   schemas: {
-    CrearItemComandaDto: {
+    CrearTrabajadorDto: {
       /**
-       * @description ID del producto o servicio
-       * @example uuid-del-producto
-       */
-      productoServicioId: string;
-      /**
-       * @description Nombre del producto o servicio
-       * @example Servicio de consultoría
+       * @description Nombre completo del trabajador
+       * @example Juan Pérez
        */
       nombre: string;
       /**
-       * @description ID del tipo de item
-       * @example uuid-del-tipo-item
+       * @description Rol del trabajador en la organización
+       * @default TRABAJADOR
+       * @example TRABAJADOR
+       * @enum {string}
        */
-      tipoId: string;
+      rol: 'TRABAJADOR' | 'ENCARGADO' | 'VENDEDOR';
       /**
-       * @description Precio unitario
-       * @example 100.5
+       * @description Teléfono del trabajador
+       * @example 1234567890
        */
-      precio: number;
+      telefono?: string;
       /**
-       * @description Cantidad
-       * @example 2
-       */
-      cantidad: number;
-      /**
-       * @description Descuento aplicado
+       * @description Porcentaje de comisión del trabajador (0-100)
        * @default 0
-       * @example 10
+       * @example 15.5
        */
-      descuento: number;
+      comisionPorcentaje: number;
       /**
-       * @description ID del personal asignado
-       * @example uuid-del-personal
-       */
-      personalId: string;
-    };
-    CrearComandaDto: {
-      /**
-       * @description Número de comanda
-       * @example CMD-2024-001
-       */
-      numero: string;
-      /**
-       * @description Fecha de la comanda
-       * @example 2024-01-15T10:30:00Z
-       */
-      fecha: string;
-      /**
-       * @description Unidad de negocio
-       * @example tattoo
-       * @enum {string}
-       */
-      unidadNegocio: 'tattoo' | 'estilismo' | 'formacion';
-      /**
-       * @description Caja asignada
-       * @default caja_1
-       * @example caja_1
-       * @enum {string}
-       */
-      enCaja: 'caja_1' | 'caja_2';
-      /**
-       * @description ID del cliente
-       * @example uuid-del-cliente
-       */
-      clienteId: string;
-      /**
-       * @description ID del personal principal
-       * @example uuid-del-personal-principal
-       */
-      personalPrincipalId: string;
-      /** @description Items de la comanda */
-      items: components['schemas']['CrearItemComandaDto'][];
-      /**
-       * @description IDs de métodos de pago
-       * @example [
-       *       "uuid-metodo-1",
-       *       "uuid-metodo-2"
-       *     ]
-       */
-      metodosPagoIds?: string[];
-      /**
-       * @description ID del prepago asociado
-       * @example uuid-del-prepago
-       */
-      prepagoId?: string;
-      /**
-       * @description Subtotal
-       * @example 1000
-       */
-      subtotal?: number;
-      /**
-       * @description Total de descuentos
-       * @example 100
-       */
-      totalDescuentos?: number;
-      /**
-       * @description Total de recargos
-       * @example 50
-       */
-      totalRecargos?: number;
-      /**
-       * @description Total prepago
-       * @example 200
-       */
-      totalPrepago?: number;
-      /**
-       * @description Total final
-       * @example 950
-       */
-      totalFinal?: number;
-      /**
-       * @description Estado de la comanda
-       * @default pendiente
-       * @example pendiente
-       * @enum {string}
-       */
-      estado: 'pendiente' | 'en_proceso' | 'completado' | 'cancelado';
-      /**
-       * @description ID del tipo de comanda
-       * @example uuid-del-tipo-comanda
-       */
-      tipoId: string;
-      /**
-       * @description Observaciones
-       * @example Cliente solicita atención especial
-       */
-      observaciones?: string;
-    };
-    ActualizarItemComandaDto: {
-      /** @description ID del item (para actualizar existente) */
-      id?: string;
-      /** @description ID del producto o servicio */
-      productoServicioId?: string;
-      /** @description Nombre del producto o servicio */
-      nombre?: string;
-      /**
-       * @description ID del tipo de item
-       * @example uuid-del-tipo-item
-       */
-      tipoId?: string;
-      /** @description Precio unitario */
-      precio?: number;
-      /** @description Cantidad */
-      cantidad?: number;
-      /** @description Descuento aplicado */
-      descuento?: number;
-      /** @description ID del personal que realiza el trabajo */
-      personalId?: string;
-    };
-    ActualizarComandaDto: {
-      /** @description Número de comanda */
-      numero?: string;
-      /** @description Fecha de la comanda */
-      fecha?: string;
-      /**
-       * @description Unidad de negocio
-       * @enum {string}
-       */
-      unidadNegocio?: 'tattoo' | 'estilismo' | 'formacion';
-      /**
-       * @description Caja asignada
-       * @enum {string}
-       */
-      enCaja?: 'caja_1' | 'caja_2';
-      /** @description ID del cliente */
-      clienteId?: string;
-      /** @description ID del personal principal */
-      personalPrincipalId?: string;
-      /** @description Items de la comanda */
-      items?: components['schemas']['ActualizarItemComandaDto'][];
-      /** @description IDs de métodos de pago */
-      metodosPagoIds?: string[];
-      /** @description ID del prepago asociado */
-      prepagoId?: string;
-      /** @description Subtotal */
-      subtotal?: number;
-      /** @description Total de descuentos */
-      totalDescuentos?: number;
-      /** @description Total de recargos */
-      totalRecargos?: number;
-      /** @description Total prepago */
-      totalPrepago?: number;
-      /** @description Total final */
-      totalFinal?: number;
-      /**
-       * @description Estado de la comanda
-       * @enum {string}
-       */
-      estado?: 'pendiente' | 'en_proceso' | 'completado' | 'cancelado';
-      /**
-       * @description ID del tipo de comanda
-       * @example uuid-del-tipo-comanda
-       */
-      tipoId?: string;
-      /** @description Observaciones */
-      observaciones?: string;
-      /**
-       * @description Precio en dólares
-       * @example 100
-       */
-      precioDolar?: number;
-    };
-    CrearTipoComandaDto: {
-      /**
-       * @description Nombre del tipo de comanda
-       * @example Ingreso
-       */
-      nombre: string;
-      /**
-       * @description Descripción del tipo de comanda
-       * @example Comandas de ingreso de dinero
-       */
-      descripcion?: string;
-      /**
-       * @description Orden de visualización
-       * @default 0
-       * @example 1
-       */
-      orden: number;
-      /**
-       * @description Si el tipo está activo
+       * @description Estado activo del trabajador
        * @default true
        * @example true
        */
       activo: boolean;
     };
-    TipoComanda: Record<string, never>;
-    ActualizarTipoComandaDto: {
+    Trabajador: Record<string, never>;
+    ActualizarTrabajadorDto: {
       /**
-       * @description Nombre del tipo de comanda
-       * @example Ingreso
+       * @description Nombre completo del trabajador
+       * @example Juan Pérez
        */
       nombre?: string;
       /**
-       * @description Descripción del tipo de comanda
-       * @example Comandas de ingreso de dinero
+       * @description Rol del trabajador en la organización
+       * @default TRABAJADOR
+       * @example TRABAJADOR
+       * @enum {string}
        */
-      descripcion?: string;
+      rol: 'TRABAJADOR' | 'ENCARGADO' | 'VENDEDOR';
       /**
-       * @description Orden de visualización
-       * @example 1
+       * @description Teléfono del trabajador
+       * @example 1234567890
        */
-      orden?: number;
+      telefono?: string;
       /**
-       * @description Si el tipo está activo
+       * @description Porcentaje de comisión del trabajador (0-100)
+       * @default 0
+       * @example 15.5
+       */
+      comisionPorcentaje: number;
+      /**
+       * @description Estado activo del trabajador
+       * @default true
        * @example true
        */
-      activo?: boolean;
+      activo: boolean;
+    };
+    CrearComandaDto: {
+      /**
+       * @description Número de comanda
+       * @example COM-2024-001
+       */
+      numero: string;
+      /**
+       * @description Caja de la comanda
+       * @example caja_1
+       * @enum {string}
+       */
+      caja: 'caja_1' | 'caja_2';
+      /**
+       * @description Tipo de comanda
+       * @example INGRESO
+       * @enum {string}
+       */
+      tipoDeComanda: 'INGRESO' | 'EGRESO';
+      /**
+       * @description Estado de la comanda
+       * @example PENDIENTE
+       * @enum {string}
+       */
+      estadoDeComanda:
+        | 'PENDIENTE'
+        | 'PAGADA'
+        | 'CANCELADA'
+        | 'FINALIZADA'
+        | 'TRASPASADA'
+        | 'VALIDADO';
+      /**
+       * @description ID del cliente
+       * @example 123e4567-e89b-12d3-a456-426614174000
+       */
+      clienteId?: string;
+      /**
+       * @description ID del personal que crea la comanda
+       * @example 123e4567-e89b-12d3-a456-426614174000
+       */
+      creadoPorId: string;
+      /**
+       * @description IDs de métodos de pago
+       * @example [
+       *       "123e4567-e89b-12d3-a456-426614174000"
+       *     ]
+       */
+      metodosPago?: string[];
+      /**
+       * @description Precio en dólares
+       * @example 100.5
+       */
+      precioDolar: number;
+      /**
+       * @description Precio en pesos
+       * @example 1000.5
+       */
+      precioPesos: number;
+      /**
+       * @description Valor del dólar
+       * @example 1000
+       */
+      valorDolar: number;
+      /**
+       * @description Observaciones de la comanda
+       * @example Comanda para tatuaje de manga
+       */
+      observaciones?: string;
+      /**
+       * @description Usuario consume prepago
+       * @example true
+       */
+      usuarioConsumePrepago: boolean;
+      /**
+       * @description Descuentos aplicados
+       * @example [
+       *       {
+       *         "id": "123e4567-e89b-12d3-a456-426614174000",
+       *         "descuento": 10
+       *       }
+       *     ]
+       */
+      descuentosAplicados: string[];
+      /**
+       * @description Items de la comanda
+       * @example [
+       *       {
+       *         "id": "123e4567-e89b-12d3-a456-426614174000",
+       *         "cantidad": 1
+       *       }
+       *     ]
+       */
+      items: string[];
+    };
+    Comanda: Record<string, never>;
+    CrearEgresoDto: {
+      /**
+       * @description Número de comanda
+       * @example COM-2024-001
+       */
+      numero: string;
+      /**
+       * @description Caja de la comanda
+       * @example caja_1
+       * @enum {string}
+       */
+      caja: 'caja_1' | 'caja_2';
+      /**
+       * @description Tipo de comanda
+       * @example INGRESO
+       * @enum {string}
+       */
+      tipoDeComanda: 'INGRESO' | 'EGRESO';
+      /**
+       * @description Estado de la comanda
+       * @example PENDIENTE
+       * @enum {string}
+       */
+      estadoDeComanda:
+        | 'PENDIENTE'
+        | 'PAGADA'
+        | 'CANCELADA'
+        | 'FINALIZADA'
+        | 'TRASPASADA'
+        | 'VALIDADO';
+      /**
+       * @description ID del personal que crea la comanda
+       * @example 123e4567-e89b-12d3-a456-426614174000
+       */
+      creadoPorId: string;
+      /**
+       * @description Precio en dólares
+       * @example 100.5
+       */
+      precioDolar: number;
+      /**
+       * @description Egresos
+       * @example [
+       *       {
+       *         "id": "123e4567-e89b-12d3-a456-426614174000",
+       *         "cantidad": 1
+       *       }
+       *     ]
+       */
+      egresos: string[];
+      /**
+       * @description Precio en pesos
+       * @example 1000.5
+       */
+      precioPesos: number;
+      /**
+       * @description Valor del dólar
+       * @example 1000
+       */
+      valorDolar: number;
+      /**
+       * @description Observaciones de la comanda
+       * @example Comanda para tatuaje de manga
+       */
+      observaciones?: string;
+      /**
+       * @description Items de la comanda
+       * @example [
+       *       {
+       *         "id": "123e4567-e89b-12d3-a456-426614174000",
+       *         "cantidad": 1
+       *       }
+       *     ]
+       */
+      items: string[];
+    };
+    ActualizarComandaDto: {
+      /**
+       * @description Número de comanda
+       * @example COM-2024-001
+       */
+      numero?: string;
+      /**
+       * @description Caja de la comanda
+       * @example caja_1
+       * @enum {string}
+       */
+      caja?: 'caja_1' | 'caja_2';
+      /**
+       * @description Tipo de comanda
+       * @example INGRESO
+       * @enum {string}
+       */
+      tipoDeComanda?: 'INGRESO' | 'EGRESO';
+      /**
+       * @description Estado de la comanda
+       * @example PENDIENTE
+       * @enum {string}
+       */
+      estadoDeComanda?:
+        | 'PENDIENTE'
+        | 'PAGADA'
+        | 'CANCELADA'
+        | 'FINALIZADA'
+        | 'TRASPASADA'
+        | 'VALIDADO';
+      /**
+       * @description ID del cliente
+       * @example 123e4567-e89b-12d3-a456-426614174000
+       */
+      clienteId?: string;
+      /**
+       * @description ID del personal que crea la comanda
+       * @example 123e4567-e89b-12d3-a456-426614174000
+       */
+      creadoPorId?: string;
+      /**
+       * @description IDs de métodos de pago
+       * @example [
+       *       "123e4567-e89b-12d3-a456-426614174000"
+       *     ]
+       */
+      metodosPago?: string[];
+      /**
+       * @description Precio en dólares
+       * @example 100.5
+       */
+      precioDolar?: number;
+      /**
+       * @description Precio en pesos
+       * @example 1000.5
+       */
+      precioPesos?: number;
+      /**
+       * @description Valor del dólar
+       * @example 1000
+       */
+      valorDolar?: number;
+      /**
+       * @description Observaciones de la comanda
+       * @example Comanda para tatuaje de manga
+       */
+      observaciones?: string;
+      /**
+       * @description Usuario consume prepago
+       * @example true
+       */
+      usuarioConsumePrepago?: boolean;
+      /**
+       * @description Descuentos aplicados
+       * @example [
+       *       {
+       *         "id": "123e4567-e89b-12d3-a456-426614174000",
+       *         "descuento": 10
+       *       }
+       *     ]
+       */
+      descuentosAplicados?: string[];
+      /**
+       * @description Items de la comanda
+       * @example [
+       *       {
+       *         "id": "123e4567-e89b-12d3-a456-426614174000",
+       *         "cantidad": 1
+       *       }
+       *     ]
+       */
+      items?: string[];
     };
     CrearTipoItemDto: {
       /**
@@ -818,6 +1646,292 @@ export interface components {
        */
       activo?: boolean;
     };
+    CrearProductoServicioDto: {
+      /**
+       * @description Nombre del producto o servicio
+       * @example Tatuaje pequeño
+       */
+      nombre: string;
+      /**
+       * @description Precio base del producto/servicio
+       * @example 25000.5
+       */
+      precio: number;
+      /**
+       * @description Tipo de producto o servicio
+       * @example SERVICIO
+       * @enum {string}
+       */
+      tipo: 'PRODUCTO' | 'SERVICIO';
+      /**
+       * @description ID de la unidad de negocio
+       * @example 123e4567-e89b-12d3-a456-426614174000
+       */
+      unidadNegocioId: string;
+      /**
+       * @description Descripción detallada del producto/servicio
+       * @example Tatuaje pequeño hasta 5cm, incluye diseño personalizado
+       */
+      descripcion?: string;
+      /**
+       * @description Estado activo del producto/servicio
+       * @default true
+       * @example true
+       */
+      activo: boolean;
+      /**
+       * @description Duración estimada en minutos (para servicios)
+       * @example 120
+       */
+      duracion?: number;
+      /**
+       * @description Código de barras del producto
+       * @example 1234567890123
+       */
+      codigoBarras?: string;
+      /**
+       * @description Indica si tiene precio congelado en ARS
+       * @default false
+       * @example false
+       */
+      esPrecioCongelado: boolean;
+      /**
+       * @description Precio fijo en ARS (si está congelado)
+       * @example 15000
+       */
+      precioFijoARS?: number;
+    };
+    ProductoServicio: Record<string, never>;
+    ActualizarProductoServicioDto: {
+      /**
+       * @description Nombre del producto o servicio
+       * @example Tatuaje pequeño
+       */
+      nombre?: string;
+      /**
+       * @description Precio base del producto/servicio
+       * @example 25000.5
+       */
+      precio?: number;
+      /**
+       * @description Tipo de producto o servicio
+       * @example SERVICIO
+       * @enum {string}
+       */
+      tipo?: 'PRODUCTO' | 'SERVICIO';
+      /**
+       * @description ID de la unidad de negocio
+       * @example 123e4567-e89b-12d3-a456-426614174000
+       */
+      unidadNegocioId?: string;
+      /**
+       * @description Descripción detallada del producto/servicio
+       * @example Tatuaje pequeño hasta 5cm, incluye diseño personalizado
+       */
+      descripcion?: string;
+      /**
+       * @description Estado activo del producto/servicio
+       * @default true
+       * @example true
+       */
+      activo: boolean;
+      /**
+       * @description Duración estimada en minutos (para servicios)
+       * @example 120
+       */
+      duracion?: number;
+      /**
+       * @description Código de barras del producto
+       * @example 1234567890123
+       */
+      codigoBarras?: string;
+      /**
+       * @description Indica si tiene precio congelado en ARS
+       * @default false
+       * @example false
+       */
+      esPrecioCongelado: boolean;
+      /**
+       * @description Precio fijo en ARS (si está congelado)
+       * @example 15000
+       */
+      precioFijoARS?: number;
+    };
+    CrearUnidadNegocioDto: {
+      /**
+       * @description Nombre de la unidad de negocio
+       * @example Tattoo
+       */
+      nombre: string;
+    };
+    UnidadNegocio: Record<string, never>;
+    ActualizarUnidadNegocioDto: {
+      /**
+       * @description Nombre de la unidad de negocio
+       * @example Tattoo
+       */
+      nombre?: string;
+    };
+    CrearItemComandaDto: {
+      /**
+       * @description Nombre del item
+       * @example Tatuaje pequeño
+       */
+      nombre: string;
+      /**
+       * @description Precio del item
+       * @example 25000.5
+       */
+      precio: number;
+      /**
+       * @description Cantidad del item
+       * @example 1
+       */
+      cantidad: number;
+      /**
+       * @description ID de la comanda
+       * @example 123e4567-e89b-12d3-a456-426614174000
+       */
+      comandaId: string;
+      /**
+       * @description ID del producto/servicio
+       * @example 123e4567-e89b-12d3-a456-426614174000
+       */
+      productoServicioId?: string;
+      /**
+       * @description ID del tipo de item
+       * @example 123e4567-e89b-12d3-a456-426614174000
+       */
+      tipoId?: string;
+      /**
+       * @description ID del trabajador
+       * @example 123e4567-e89b-12d3-a456-426614174000
+       */
+      trabajadorId?: string;
+      /**
+       * @description Descuento aplicado al item
+       * @example 0
+       */
+      descuento?: number;
+      /**
+       * @description Subtotal del item
+       * @example 25000.5
+       */
+      subtotal?: number;
+    };
+    ItemComanda: Record<string, never>;
+    ActualizarItemComandaDto: {
+      /**
+       * @description Nombre del item
+       * @example Tatuaje pequeño
+       */
+      nombre?: string;
+      /**
+       * @description Precio del item
+       * @example 25000.5
+       */
+      precio?: number;
+      /**
+       * @description Cantidad del item
+       * @example 1
+       */
+      cantidad?: number;
+      /**
+       * @description ID de la comanda
+       * @example 123e4567-e89b-12d3-a456-426614174000
+       */
+      comandaId?: string;
+      /**
+       * @description ID del producto/servicio
+       * @example 123e4567-e89b-12d3-a456-426614174000
+       */
+      productoServicioId?: string;
+      /**
+       * @description ID del tipo de item
+       * @example 123e4567-e89b-12d3-a456-426614174000
+       */
+      tipoId?: string;
+      /**
+       * @description ID del trabajador
+       * @example 123e4567-e89b-12d3-a456-426614174000
+       */
+      trabajadorId?: string;
+      /**
+       * @description Descuento aplicado al item
+       * @example 0
+       */
+      descuento?: number;
+      /**
+       * @description Subtotal del item
+       * @example 25000.5
+       */
+      subtotal?: number;
+    };
+    CrearMovimientoDto: {
+      /**
+       * @description Monto del movimiento
+       * @example 25000.5
+       */
+      montoARS: number;
+      /**
+       * @description Monto del movimiento
+       * @example 25000.5
+       */
+      montoUSD: number;
+      /**
+       * @description Residual del movimiento
+       * @example 0
+       */
+      residualARS: number;
+      /**
+       * @description Residual del movimiento
+       * @example 0
+       */
+      residualUSD: number;
+      /**
+       * @description ID de la comanda
+       * @example 123e4567-e89b-12d3-a456-426614174000
+       */
+      comandasValidadasIds: string[];
+      /**
+       * @description ID del personal
+       * @example 123e4567-e89b-12d3-a456-426614174000
+       */
+      personalId?: string;
+    };
+    Movimiento: Record<string, never>;
+    ActualizarMovimientoDto: {
+      /**
+       * @description Monto del movimiento
+       * @example 25000.5
+       */
+      montoARS?: number;
+      /**
+       * @description Monto del movimiento
+       * @example 25000.5
+       */
+      montoUSD?: number;
+      /**
+       * @description Residual del movimiento
+       * @example 0
+       */
+      residualARS?: number;
+      /**
+       * @description Residual del movimiento
+       * @example 0
+       */
+      residualUSD?: number;
+      /**
+       * @description ID de la comanda
+       * @example 123e4567-e89b-12d3-a456-426614174000
+       */
+      comandasValidadasIds?: string[];
+      /**
+       * @description ID del personal
+       * @example 123e4567-e89b-12d3-a456-426614174000
+       */
+      personalId?: string;
+    };
     ActualizarDolarDto: {
       /**
        * @description Precio de compra del dólar blue
@@ -849,6 +1963,71 @@ export interface components {
        * @example Cotización ingresada manualmente por el administrador
        */
       observaciones?: string;
+    };
+    CrearClienteDto: {
+      /**
+       * @description Nombre del cliente
+       * @example Juan Pérez
+       */
+      nombre: string;
+      /**
+       * @description Número de teléfono del cliente
+       * @example +54 11 1234-5678
+       */
+      telefono?: string;
+      /**
+       * @description Email del cliente
+       * @example juan.perez@email.com
+       */
+      email?: string;
+      /**
+       * @description CUIT del cliente
+       * @example 20-12345678-9
+       */
+      cuit?: string;
+      /**
+       * @description Seña USD del cliente
+       * @example 1000
+       */
+      'se\u00F1aUsd'?: number;
+      /**
+       * @description Seña ARS del cliente
+       * @example 1000
+       */
+      'se\u00F1aArs'?: number;
+    };
+    Cliente: Record<string, never>;
+    ActualizarClienteDto: {
+      /**
+       * @description Nombre del cliente
+       * @example Juan Pérez
+       */
+      nombre?: string;
+      /**
+       * @description Número de teléfono del cliente
+       * @example +54 11 1234-5678
+       */
+      telefono?: string;
+      /**
+       * @description Email del cliente
+       * @example juan.perez@email.com
+       */
+      email?: string;
+      /**
+       * @description CUIT del cliente
+       * @example 20-12345678-9
+       */
+      cuit?: string;
+      /**
+       * @description Seña USD del cliente
+       * @example 1000
+       */
+      'se\u00F1aUsd'?: number;
+      /**
+       * @description Seña ARS del cliente
+       * @example 1000
+       */
+      'se\u00F1aArs'?: number;
     };
     LoginDto: {
       /**
@@ -895,14 +2074,6 @@ export interface components {
        */
       rol?: 'admin' | 'user' | 'encargado';
       /**
-       * @description Unidades de negocio disponibles
-       * @example [
-       *       "tattoo",
-       *       "estilismo"
-       *     ]
-       */
-      unidadesDisponibles?: ('tattoo' | 'estilismo' | 'formacion')[];
-      /**
        * @description Número de teléfono
        * @example +54 11 1234-5678
        */
@@ -914,31 +2085,7 @@ export interface components {
        */
       fechaIngreso: string;
     };
-    CrearMovimientoCajaDto: Record<string, never>;
-    TransferirCajaDto: {
-      /**
-       * @description Caja de origen
-       * @example caja_1
-       * @enum {string}
-       */
-      cajaOrigen: 'caja_1' | 'caja_2';
-      /**
-       * @description Caja de destino
-       * @example caja_2
-       * @enum {string}
-       */
-      cajaDestino: 'caja_1' | 'caja_2';
-      /**
-       * @description Monto a transferir
-       * @example 15000.5
-       */
-      monto: number;
-      /**
-       * @description Observaciones de la transferencia
-       * @example Transferencia de cierre de día
-       */
-      observaciones?: string;
-    };
+    CleanTablesDto: Record<string, never>;
   };
   responses: never;
   parameters: never;
@@ -965,41 +2112,86 @@ export interface operations {
       };
     };
   };
-  ComandaController_obtenerComandas: {
+  TrabajadorController_obtenerTodas: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Trabajadores obtenidos exitosamente */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['Trabajador'][];
+        };
+      };
+    };
+  };
+  TrabajadorController_crear: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['CrearTrabajadorDto'];
+      };
+    };
+    responses: {
+      /** @description Trabajador creado exitosamente */
+      201: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['Trabajador'];
+        };
+      };
+      /** @description Datos inválidos */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Acceso denegado */
+      403: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Ya existe un trabajador con ese nombre */
+      409: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+    };
+  };
+  TrabajadorController_obtenerTodos: {
     parameters: {
       query?: {
-        /** @description Número de comanda para búsqueda exacta */
-        numero?: string;
-        /** @description Fecha de inicio para filtrar comandas */
-        fechaInicio?: string;
-        /** @description Fecha de fin para filtrar comandas */
-        fechaFin?: string;
-        /** @description Unidad de negocio */
-        unidadNegocio?: 'tattoo' | 'estilismo' | 'formacion';
-        /** @description Caja asignada */
-        enCaja?: 'caja_1' | 'caja_2';
-        /** @description ID del cliente */
-        clienteId?: string;
-        /** @description ID del personal principal */
-        personalPrincipalId?: string;
-        /** @description Estado de la comanda */
-        estado?: 'pendiente' | 'en_proceso' | 'completado' | 'cancelado';
-        /** @description ID del tipo de comanda */
-        tipoId?: string;
-        /** @description ID del tipo de item de comanda */
-        tipoItemId?: string;
-        /** @description Monto mínimo para filtrar por total final */
-        montoMinimo?: number;
-        /** @description Monto máximo para filtrar por total final */
-        montoMaximo?: number;
-        /** @description Término de búsqueda en observaciones */
-        observaciones?: string;
+        /** @description Filtrar por nombre (búsqueda parcial) */
+        nombre?: string;
+        /** @description Filtrar por rol */
+        rol?: 'TRABAJADOR' | 'ENCARGADO' | 'VENDEDOR';
+        /** @description Filtrar por estado activo */
+        activo?: boolean;
         /** @description Número de página */
         page?: number;
-        /** @description Cantidad de elementos por página */
+        /** @description Elementos por página */
         limit?: number;
         /** @description Campo para ordenar */
-        orderBy?: 'fecha' | 'numero' | 'totalFinal' | 'estado' | 'createdAt';
+        orderBy?: 'nombre' | 'rol' | 'comisionPorcentaje' | 'createdAt';
         /** @description Dirección del ordenamiento */
         orderDirection?: 'ASC' | 'DESC';
       };
@@ -1009,14 +2201,14 @@ export interface operations {
     };
     requestBody?: never;
     responses: {
-      /** @description Comandas obtenidas exitosamente */
+      /** @description Trabajadores obtenidos exitosamente */
       200: {
         headers: {
           [name: string]: unknown;
         };
         content: {
           'application/json': {
-            comandas?: unknown[];
+            trabajadores?: components['schemas']['Trabajador'][];
             total?: number;
             page?: number;
             limit?: number;
@@ -1033,7 +2225,321 @@ export interface operations {
       };
     };
   };
-  ComandaController_crearComanda: {
+  TrabajadorController_obtenerTodosSinPaginacion: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Trabajadores obtenidos exitosamente */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['Trabajador'][];
+        };
+      };
+      /** @description Acceso denegado */
+      403: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+    };
+  };
+  TrabajadorController_obtenerTrabajadoresActivos: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Trabajadores activos obtenidos exitosamente */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['Trabajador'][];
+        };
+      };
+    };
+  };
+  TrabajadorController_obtenerEstadisticas: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Estadísticas obtenidas exitosamente */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': {
+            total?: number;
+            activos?: number;
+            inactivos?: number;
+            porRol?: {
+              supervisores?: number;
+              trabajadores?: number;
+            };
+            promedioComision?: number;
+          };
+        };
+      };
+      /** @description Acceso denegado */
+      403: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+    };
+  };
+  TrabajadorController_obtenerPorId: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        /** @description ID del trabajador */
+        id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Trabajador obtenido exitosamente */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['Trabajador'];
+        };
+      };
+      /** @description Trabajador no encontrado */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+    };
+  };
+  TrabajadorController_actualizar: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        /** @description ID del trabajador */
+        id: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['ActualizarTrabajadorDto'];
+      };
+    };
+    responses: {
+      /** @description Trabajador actualizado exitosamente */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['Trabajador'];
+        };
+      };
+      /** @description Datos inválidos */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Acceso denegado */
+      403: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Trabajador no encontrado */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Ya existe un trabajador con ese nombre */
+      409: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+    };
+  };
+  TrabajadorController_eliminar: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        /** @description ID del trabajador */
+        id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Trabajador eliminado exitosamente */
+      204: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Acceso denegado */
+      403: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Trabajador no encontrado */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+    };
+  };
+  TrabajadorController_restaurar: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        /** @description ID del trabajador */
+        id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Trabajador restaurado exitosamente */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['Trabajador'];
+        };
+      };
+      /** @description El trabajador no está eliminado */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Acceso denegado */
+      403: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Trabajador no encontrado */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Ya existe un trabajador activo con ese nombre */
+      409: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+    };
+  };
+  TrabajadorController_cambiarEstadoActivo: {
+    parameters: {
+      query: {
+        /** @description Estado activo */
+        activo: boolean;
+      };
+      header?: never;
+      path: {
+        /** @description ID del trabajador */
+        id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Estado del trabajador cambiado exitosamente */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['Trabajador'];
+        };
+      };
+      /** @description Acceso denegado */
+      403: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Trabajador no encontrado */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+    };
+  };
+  ComandaController_obtenerTodos: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Comandas obtenidas exitosamente */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['Comanda'][];
+        };
+      };
+    };
+  };
+  ComandaController_crear: {
     parameters: {
       query?: never;
       header?: never;
@@ -1052,28 +2558,17 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': {
-            comanda?: Record<string, never>;
-            totalItems?: number;
-            totalCalculado?: number;
-          };
+          'application/json': components['schemas']['Comanda'];
         };
       };
-      /** @description Datos inválidos o comanda duplicada */
+      /** @description Datos inválidos */
       400: {
         headers: {
           [name: string]: unknown;
         };
         content?: never;
       };
-      /** @description Acceso denegado */
-      403: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content?: never;
-      };
-      /** @description Cliente o personal no encontrado */
+      /** @description Cliente, trabajador o personal no encontrado */
       404: {
         headers: {
           [name: string]: unknown;
@@ -1082,7 +2577,180 @@ export interface operations {
       };
     };
   };
-  ComandaController_obtenerComanda: {
+  ComandaController_crearComandaEgreso: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['CrearEgresoDto'];
+      };
+    };
+    responses: {
+      201: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+    };
+  };
+  ComandaController_obtenerUltimoEgreso: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+    };
+  };
+  ComandaController_obtenerConPaginacion: {
+    parameters: {
+      query?: {
+        /** @description Número de página */
+        page?: number;
+        /** @description Elementos por página */
+        limit?: number;
+        /** @description Término de búsqueda */
+        search?: string;
+        /** @description Tipo de comanda */
+        tipoDeComanda?: 'INGRESO' | 'EGRESO';
+        /** @description Incluir traspasadas */
+        incluirTraspasadas?: boolean;
+        /** @description Estado de la comanda */
+        estadoDeComanda?:
+          | 'PENDIENTE'
+          | 'PAGADA'
+          | 'CANCELADA'
+          | 'FINALIZADA'
+          | 'TRASPASADA';
+        /** @description ID del cliente */
+        clienteId?: string;
+        /** @description ID del personal que creó la comanda */
+        creadoPorId?: string;
+        /** @description Fecha desde */
+        fechaDesde?: string;
+        /** @description Fecha hasta */
+        fechaHasta?: string;
+        /** @description Campo de ordenamiento */
+        orderBy?: 'createdAt' | 'numero' | 'tipoDeComanda' | 'estadoDeComanda';
+        /** @description Orden de clasificación */
+        order?: 'ASC' | 'DESC';
+        /** @description ID del trabajador */
+        trabajadorId?: string;
+      };
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Comandas obtenidas exitosamente */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': {
+            data?: components['schemas']['Comanda'][];
+            meta?: {
+              page?: number;
+              limit?: number;
+              total?: number;
+              totalPages?: number;
+              hasNextPage?: boolean;
+              hasPreviousPage?: boolean;
+            };
+          };
+        };
+      };
+    };
+  };
+  ComandaController_obtenerResumenCajaChica: {
+    parameters: {
+      query?: {
+        /** @description Fecha hasta */
+        fechaHasta?: string;
+        /** @description Fecha desde */
+        fechaDesde?: string;
+      };
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Resumen de caja chica obtenido exitosamente */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': {
+            totalCompletados?: number;
+            totalPendientes?: number;
+            montoNetoUSD?: number;
+            montoNetoARS?: number;
+            montoDisponibleTrasladoUSD?: number;
+            montoDisponibleTrasladoARS?: number;
+            totalIngresosUSD?: number;
+            totalIngresosARS?: number;
+            totalEgresosUSD?: number;
+            totalEgresosARS?: number;
+            comandasValidadasIds?: string[];
+          };
+        };
+      };
+    };
+  };
+  ComandaController_obtenerUltimaComanda: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+    };
+  };
+  ComandaController_existeComanda: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        numero: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+    };
+  };
+  ComandaController_obtenerPorId: {
     parameters: {
       query?: never;
       header?: never;
@@ -1099,14 +2767,9 @@ export interface operations {
         headers: {
           [name: string]: unknown;
         };
-        content?: never;
-      };
-      /** @description Acceso denegado */
-      403: {
-        headers: {
-          [name: string]: unknown;
+        content: {
+          'application/json': components['schemas']['Comanda'];
         };
-        content?: never;
       };
       /** @description Comanda no encontrada */
       404: {
@@ -1117,7 +2780,7 @@ export interface operations {
       };
     };
   };
-  ComandaController_actualizarComanda: {
+  ComandaController_actualizar: {
     parameters: {
       query?: never;
       header?: never;
@@ -1138,21 +2801,9 @@ export interface operations {
         headers: {
           [name: string]: unknown;
         };
-        content?: never;
-      };
-      /** @description Datos inválidos o comanda duplicada */
-      400: {
-        headers: {
-          [name: string]: unknown;
+        content: {
+          'application/json': components['schemas']['Comanda'];
         };
-        content?: never;
-      };
-      /** @description Acceso denegado */
-      403: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content?: never;
       };
       /** @description Comanda no encontrada */
       404: {
@@ -1163,7 +2814,7 @@ export interface operations {
       };
     };
   };
-  ComandaController_eliminarComanda: {
+  ComandaController_eliminar: {
     parameters: {
       query?: never;
       header?: never;
@@ -1176,14 +2827,7 @@ export interface operations {
     requestBody?: never;
     responses: {
       /** @description Comanda eliminada exitosamente */
-      200: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content?: never;
-      };
-      /** @description Acceso denegado */
-      403: {
+      204: {
         headers: {
           [name: string]: unknown;
         };
@@ -1198,42 +2842,7 @@ export interface operations {
       };
     };
   };
-  ComandaController_obtenerComandaPorNumero: {
-    parameters: {
-      query?: never;
-      header?: never;
-      path: {
-        /** @description Número de la comanda */
-        numero: string;
-      };
-      cookie?: never;
-    };
-    requestBody?: never;
-    responses: {
-      /** @description Comanda obtenida exitosamente */
-      200: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content?: never;
-      };
-      /** @description Acceso denegado */
-      403: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content?: never;
-      };
-      /** @description Comanda no encontrada */
-      404: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content?: never;
-      };
-    };
-  };
-  ComandaController_restaurarComanda: {
+  ComandaController_restaurar: {
     parameters: {
       query?: never;
       header?: never;
@@ -1250,21 +2859,9 @@ export interface operations {
         headers: {
           [name: string]: unknown;
         };
-        content?: never;
-      };
-      /** @description La comanda no está eliminada */
-      400: {
-        headers: {
-          [name: string]: unknown;
+        content: {
+          'application/json': components['schemas']['Comanda'];
         };
-        content?: never;
-      };
-      /** @description Acceso denegado */
-      403: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content?: never;
       };
       /** @description Comanda no encontrada */
       404: {
@@ -1275,7 +2872,7 @@ export interface operations {
       };
     };
   };
-  ComandaController_cambiarEstadoComanda: {
+  ComandaController_cambiarEstado: {
     parameters: {
       query?: never;
       header?: never;
@@ -1292,295 +2889,12 @@ export interface operations {
         headers: {
           [name: string]: unknown;
         };
-        content?: never;
-      };
-      /** @description Acceso denegado */
-      403: {
-        headers: {
-          [name: string]: unknown;
+        content: {
+          'application/json': components['schemas']['Comanda'];
         };
-        content?: never;
       };
       /** @description Comanda no encontrada */
       404: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content?: never;
-      };
-    };
-  };
-  ComandaController_obtenerEstadisticas: {
-    parameters: {
-      query?: {
-        /** @description Fecha de inicio (YYYY-MM-DD) */
-        fechaInicio?: string;
-        /** @description Fecha de fin (YYYY-MM-DD) */
-        fechaFin?: string;
-      };
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    requestBody?: never;
-    responses: {
-      /** @description Estadísticas obtenidas exitosamente */
-      200: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content?: never;
-      };
-      /** @description Acceso denegado */
-      403: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content?: never;
-      };
-    };
-  };
-  ComandaController_exportarComandas: {
-    parameters: {
-      query?: {
-        /** @description Filtrar por estado de comanda */
-        estado?: 'pendiente' | 'en_proceso' | 'completado' | 'cancelado';
-        /** @description Fecha de inicio (YYYY-MM-DD) */
-        fechaInicio?: string;
-        /** @description Fecha de fin (YYYY-MM-DD) */
-        fechaFin?: string;
-        /** @description Filtrar por ID de cliente */
-        clienteId?: string;
-        /** @description Filtrar por ID de personal */
-        personalId?: string;
-        /** @description Filtrar por unidad de negocio */
-        unidadNegocio?: string;
-        /** @description Filtrar por ID de tipo */
-        tipoId?: string;
-        /** @description Filtrar por ID de tipo de item */
-        tipoItemId?: string;
-        /** @description Formato de exportación (default: csv) */
-        formato?: 'csv' | 'pdf' | 'excel';
-      };
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    requestBody?: never;
-    responses: {
-      /** @description Archivo exportado exitosamente */
-      200: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content?: never;
-      };
-      /** @description Formato de exportación no válido */
-      400: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content?: never;
-      };
-      /** @description Acceso denegado */
-      403: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content?: never;
-      };
-    };
-  };
-  TipoComandaController_findAll: {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    requestBody?: never;
-    responses: {
-      /** @description Lista de tipos de comanda obtenida exitosamente */
-      200: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          'application/json': components['schemas']['TipoComanda'][];
-        };
-      };
-    };
-  };
-  TipoComandaController_crear: {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    requestBody: {
-      content: {
-        'application/json': components['schemas']['CrearTipoComandaDto'];
-      };
-    };
-    responses: {
-      /** @description Tipo de comanda creado exitosamente */
-      201: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          'application/json': components['schemas']['TipoComanda'];
-        };
-      };
-      /** @description Datos inválidos */
-      400: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content?: never;
-      };
-      /** @description Ya existe un tipo con ese nombre */
-      409: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content?: never;
-      };
-    };
-  };
-  TipoComandaController_findOne: {
-    parameters: {
-      query?: never;
-      header?: never;
-      path: {
-        id: string;
-      };
-      cookie?: never;
-    };
-    requestBody?: never;
-    responses: {
-      /** @description Tipo de comanda encontrado exitosamente */
-      200: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          'application/json': components['schemas']['TipoComanda'];
-        };
-      };
-      /** @description Tipo de comanda no encontrado */
-      404: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content?: never;
-      };
-    };
-  };
-  TipoComandaController_eliminar: {
-    parameters: {
-      query?: never;
-      header?: never;
-      path: {
-        id: string;
-      };
-      cookie?: never;
-    };
-    requestBody?: never;
-    responses: {
-      /** @description Tipo de comanda eliminado exitosamente */
-      204: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content?: never;
-      };
-      /** @description Tipo de comanda no encontrado */
-      404: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content?: never;
-      };
-      /** @description No se puede eliminar porque está en uso */
-      409: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content?: never;
-      };
-    };
-  };
-  TipoComandaController_actualizar: {
-    parameters: {
-      query?: never;
-      header?: never;
-      path: {
-        id: string;
-      };
-      cookie?: never;
-    };
-    requestBody: {
-      content: {
-        'application/json': components['schemas']['ActualizarTipoComandaDto'];
-      };
-    };
-    responses: {
-      /** @description Tipo de comanda actualizado exitosamente */
-      200: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          'application/json': components['schemas']['TipoComanda'];
-        };
-      };
-      /** @description Tipo de comanda no encontrado */
-      404: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content?: never;
-      };
-      /** @description Ya existe un tipo con ese nombre */
-      409: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content?: never;
-      };
-    };
-  };
-  TipoComandaController_restaurar: {
-    parameters: {
-      query?: never;
-      header?: never;
-      path: {
-        id: string;
-      };
-      cookie?: never;
-    };
-    requestBody?: never;
-    responses: {
-      /** @description Tipo de comanda restaurado exitosamente */
-      200: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          'application/json': components['schemas']['TipoComanda'];
-        };
-      };
-      /** @description Tipo de comanda no encontrado */
-      404: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content?: never;
-      };
-      /** @description El tipo de comanda no está eliminado */
-      409: {
         headers: {
           [name: string]: unknown;
         };
@@ -1778,6 +3092,1116 @@ export interface operations {
       };
       /** @description El tipo de item no está eliminado */
       409: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+    };
+  };
+  ProductoServicioController_obtenerTodas: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Productos/Servicios obtenidos exitosamente */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ProductoServicio'][];
+        };
+      };
+    };
+  };
+  ProductoServicioController_crear: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['CrearProductoServicioDto'];
+      };
+    };
+    responses: {
+      /** @description Producto/Servicio creado exitosamente */
+      201: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ProductoServicio'];
+        };
+      };
+      /** @description Datos inválidos */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Acceso denegado */
+      403: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Ya existe un producto/servicio con ese nombre o código de barras */
+      409: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+    };
+  };
+  ProductoServicioController_obtenerTodos: {
+    parameters: {
+      query?: {
+        /** @description Filtrar por nombre */
+        nombre?: string;
+        /** @description Filtrar por tipo */
+        tipo?: 'PRODUCTO' | 'SERVICIO';
+        /** @description Filtrar por unidad de negocio ID */
+        unidadNegocioId?: string;
+        /** @description Filtrar por estado activo */
+        activo?: boolean;
+        /** @description Número de página */
+        page?: number;
+        /** @description Elementos por página */
+        limit?: number;
+        /** @description Filtrar por precio congelado */
+        esPrecioCongelado?: boolean;
+        /** @description Campo de ordenamiento */
+        orderBy?:
+          | 'nombre'
+          | 'precio'
+          | 'tipo'
+          | 'unidadNegocioId'
+          | 'createdAt';
+        /** @description Orden de clasificación */
+        orderDirection?: 'ASC' | 'DESC';
+      };
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Productos/Servicios obtenidos exitosamente */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': {
+            data?: components['schemas']['ProductoServicio'][];
+            meta?: {
+              page?: number;
+              limit?: number;
+              total?: number;
+              totalPages?: number;
+              hasNextPage?: boolean;
+              hasPreviousPage?: boolean;
+            };
+          };
+        };
+      };
+    };
+  };
+  ProductoServicioController_obtenerActivos: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Productos/Servicios activos obtenidos exitosamente */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ProductoServicio'][];
+        };
+      };
+    };
+  };
+  ProductoServicioController_obtenerPorUnidadNegocio: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        /** @description ID de la unidad de negocio */
+        unidadNegocioId: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Productos/Servicios obtenidos exitosamente */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ProductoServicio'][];
+        };
+      };
+      /** @description Unidad de negocio no encontrada */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+    };
+  };
+  ProductoServicioController_obtenerEstadisticas: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Estadísticas obtenidas exitosamente */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': {
+            total?: number;
+            activos?: number;
+            inactivos?: number;
+            productos?: number;
+            servicios?: number;
+          };
+        };
+      };
+    };
+  };
+  ProductoServicioController_obtenerPorId: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        /** @description ID del producto/servicio */
+        id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Producto/Servicio obtenido exitosamente */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ProductoServicio'];
+        };
+      };
+      /** @description Producto/Servicio no encontrado */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+    };
+  };
+  ProductoServicioController_actualizar: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        /** @description ID del producto/servicio */
+        id: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['ActualizarProductoServicioDto'];
+      };
+    };
+    responses: {
+      /** @description Producto/Servicio actualizado exitosamente */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ProductoServicio'];
+        };
+      };
+      /** @description Producto/Servicio no encontrado */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Ya existe un producto/servicio con ese nombre o código de barras */
+      409: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+    };
+  };
+  ProductoServicioController_eliminar: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        /** @description ID del producto/servicio */
+        id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Producto/Servicio eliminado exitosamente */
+      204: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Producto/Servicio no encontrado */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+    };
+  };
+  ProductoServicioController_restaurar: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        /** @description ID del producto/servicio */
+        id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Producto/Servicio restaurado exitosamente */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ProductoServicio'];
+        };
+      };
+      /** @description Producto/Servicio no encontrado */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+    };
+  };
+  ProductoServicioController_cambiarEstadoActivo: {
+    parameters: {
+      query: {
+        /** @description Estado activo (true/false) */
+        activo: boolean;
+      };
+      header?: never;
+      path: {
+        /** @description ID del producto/servicio */
+        id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Estado del producto/servicio cambiado exitosamente */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ProductoServicio'];
+        };
+      };
+      /** @description Producto/Servicio no encontrado */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+    };
+  };
+  UnidadNegocioController_obtenerTodas: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Unidades de negocio obtenidas exitosamente */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['UnidadNegocio'][];
+        };
+      };
+    };
+  };
+  UnidadNegocioController_crear: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['CrearUnidadNegocioDto'];
+      };
+    };
+    responses: {
+      /** @description Unidad de negocio creada exitosamente */
+      201: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['UnidadNegocio'];
+        };
+      };
+      /** @description Datos inválidos */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Acceso denegado */
+      403: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Ya existe una unidad de negocio con ese nombre */
+      409: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+    };
+  };
+  UnidadNegocioController_obtenerTodos: {
+    parameters: {
+      query?: {
+        /** @description Filtrar por nombre */
+        nombre?: string;
+        /** @description Número de página */
+        page?: number;
+        /** @description Elementos por página */
+        limit?: number;
+        /** @description Campo de ordenamiento */
+        orderBy?: 'nombre' | 'createdAt';
+        /** @description Orden de clasificación */
+        orderDirection?: 'ASC' | 'DESC';
+      };
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Unidades de negocio obtenidas exitosamente */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': {
+            data?: components['schemas']['UnidadNegocio'][];
+            meta?: {
+              page?: number;
+              limit?: number;
+              total?: number;
+              totalPages?: number;
+              hasNextPage?: boolean;
+              hasPreviousPage?: boolean;
+            };
+          };
+        };
+      };
+    };
+  };
+  UnidadNegocioController_obtenerPorId: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        /** @description ID de la unidad de negocio */
+        id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Unidad de negocio obtenida exitosamente */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['UnidadNegocio'];
+        };
+      };
+      /** @description Unidad de negocio no encontrada */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+    };
+  };
+  UnidadNegocioController_actualizar: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        /** @description ID de la unidad de negocio */
+        id: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['ActualizarUnidadNegocioDto'];
+      };
+    };
+    responses: {
+      /** @description Unidad de negocio actualizada exitosamente */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['UnidadNegocio'];
+        };
+      };
+      /** @description Unidad de negocio no encontrada */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Ya existe una unidad de negocio con ese nombre */
+      409: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+    };
+  };
+  UnidadNegocioController_eliminar: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        /** @description ID de la unidad de negocio */
+        id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Unidad de negocio eliminada exitosamente */
+      204: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Unidad de negocio no encontrada */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+    };
+  };
+  UnidadNegocioController_restaurar: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        /** @description ID de la unidad de negocio */
+        id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Unidad de negocio restaurada exitosamente */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['UnidadNegocio'];
+        };
+      };
+      /** @description Unidad de negocio no encontrada */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+    };
+  };
+  ItemComandaController_obtenerTodos: {
+    parameters: {
+      query?: {
+        /** @description Filtrar por nombre */
+        nombre?: string;
+        /** @description Filtrar por ID de comanda */
+        comandaId?: string;
+        /** @description Filtrar por ID de producto/servicio */
+        productoServicioId?: string;
+        /** @description Filtrar por ID de trabajador */
+        trabajadorId?: string;
+        /** @description Número de página */
+        page?: number;
+        /** @description Elementos por página */
+        limit?: number;
+        /** @description Campo de ordenamiento */
+        orderBy?: 'nombre' | 'precio' | 'cantidad' | 'createdAt';
+        /** @description Orden de clasificación */
+        orderDirection?: 'ASC' | 'DESC';
+      };
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Items de comanda obtenidos exitosamente */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': {
+            data?: components['schemas']['ItemComanda'][];
+            meta?: {
+              page?: number;
+              limit?: number;
+              total?: number;
+              totalPages?: number;
+              hasNextPage?: boolean;
+              hasPreviousPage?: boolean;
+            };
+          };
+        };
+      };
+    };
+  };
+  ItemComandaController_crear: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['CrearItemComandaDto'];
+      };
+    };
+    responses: {
+      /** @description Item de comanda creado exitosamente */
+      201: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ItemComanda'];
+        };
+      };
+      /** @description Datos inválidos */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Acceso denegado */
+      403: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Comanda, producto/servicio, tipo o trabajador no encontrado */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+    };
+  };
+  ItemComandaController_obtenerPorComanda: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        /** @description ID de la comanda */
+        comandaId: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Items de comanda obtenidos exitosamente */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ItemComanda'][];
+        };
+      };
+      /** @description Comanda no encontrada */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+    };
+  };
+  ItemComandaController_obtenerPorId: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        /** @description ID del item de comanda */
+        id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Item de comanda obtenido exitosamente */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ItemComanda'];
+        };
+      };
+      /** @description Item de comanda no encontrado */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+    };
+  };
+  ItemComandaController_actualizar: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        /** @description ID del item de comanda */
+        id: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['ActualizarItemComandaDto'];
+      };
+    };
+    responses: {
+      /** @description Item de comanda actualizado exitosamente */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ItemComanda'];
+        };
+      };
+      /** @description Item de comanda no encontrado */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+    };
+  };
+  ItemComandaController_eliminar: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        /** @description ID del item de comanda */
+        id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Item de comanda eliminado exitosamente */
+      204: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Item de comanda no encontrado */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+    };
+  };
+  ItemComandaController_restaurar: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        /** @description ID del item de comanda */
+        id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Item de comanda restaurado exitosamente */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ItemComanda'];
+        };
+      };
+      /** @description Item de comanda no encontrado */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+    };
+  };
+  MovimientoController_obtenerTodos: {
+    parameters: {
+      query?: {
+        /** @description Filtrar por ID de comanda */
+        comandaId?: string;
+        /** @description Filtrar por ID de personal */
+        personalId?: string;
+        /** @description Filtrar por monto mínimo */
+        montoMinimo?: number;
+        /** @description Filtrar por monto máximo */
+        montoMaximo?: number;
+        /** @description Número de página */
+        page?: number;
+        /** @description Elementos por página */
+        limit?: number;
+        /** @description Campo de ordenamiento */
+        orderBy?: 'monto' | 'residual' | 'createdAt';
+        /** @description Orden de clasificación */
+        orderDirection?: 'ASC' | 'DESC';
+      };
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Movimientos obtenidos exitosamente */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': {
+            data?: components['schemas']['Movimiento'][];
+            meta?: {
+              page?: number;
+              limit?: number;
+              total?: number;
+              totalPages?: number;
+              hasNextPage?: boolean;
+              hasPreviousPage?: boolean;
+            };
+          };
+        };
+      };
+    };
+  };
+  MovimientoController_crear: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['CrearMovimientoDto'];
+      };
+    };
+    responses: {
+      /** @description Movimiento creado exitosamente */
+      201: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['Movimiento'];
+        };
+      };
+      /** @description Datos inválidos */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Acceso denegado */
+      403: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Comanda o personal no encontrado */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+    };
+  };
+  MovimientoController_obtenerPorComanda: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        /** @description ID de la comanda */
+        comandaId: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Movimientos obtenidos exitosamente */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['Movimiento'][];
+        };
+      };
+      /** @description Comanda no encontrada */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+    };
+  };
+  MovimientoController_obtenerPorPersonal: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        /** @description ID del personal */
+        personalId: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Movimientos obtenidos exitosamente */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['Movimiento'][];
+        };
+      };
+      /** @description Personal no encontrado */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+    };
+  };
+  MovimientoController_obtenerPorId: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        /** @description ID del movimiento */
+        id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Movimiento obtenido exitosamente */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['Movimiento'];
+        };
+      };
+      /** @description Movimiento no encontrado */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+    };
+  };
+  MovimientoController_actualizar: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        /** @description ID del movimiento */
+        id: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['ActualizarMovimientoDto'];
+      };
+    };
+    responses: {
+      /** @description Movimiento actualizado exitosamente */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['Movimiento'];
+        };
+      };
+      /** @description Movimiento no encontrado */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+    };
+  };
+  MovimientoController_eliminar: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        /** @description ID del movimiento */
+        id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Movimiento eliminado exitosamente */
+      204: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Movimiento no encontrado */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+    };
+  };
+  MovimientoController_restaurar: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        /** @description ID del movimiento */
+        id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Movimiento restaurado exitosamente */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['Movimiento'];
+        };
+      };
+      /** @description Movimiento no encontrado */
+      404: {
         headers: {
           [name: string]: unknown;
         };
@@ -2008,6 +4432,319 @@ export interface operations {
       };
     };
   };
+  ClienteController_obtenerTodos: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Lista de clientes obtenida exitosamente */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['Cliente'][];
+        };
+      };
+      /** @description No autorizado */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+    };
+  };
+  ClienteController_crear: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['CrearClienteDto'];
+      };
+    };
+    responses: {
+      /** @description Cliente creado exitosamente */
+      201: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['Cliente'];
+        };
+      };
+      /** @description Datos inválidos o CUIT duplicado */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description No autorizado */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+    };
+  };
+  ClienteController_obtenerConPaginacion: {
+    parameters: {
+      query?: {
+        /** @description Número de página */
+        page?: number;
+        /** @description Elementos por página */
+        limit?: number;
+        /** @description Término de búsqueda */
+        search?: string;
+        /** @description Filtrar por nombre específico */
+        nombre?: string;
+        /** @description Campo de ordenamiento */
+        orderBy?: 'nombre' | 'fechaRegistro' | 'createdAt' | 'tieneSeñas';
+        /** @description Orden de clasificación */
+        orderDirection?: 'ASC' | 'DESC';
+        /** @description Orden de clasificación */
+        order?: 'ASC' | 'DESC';
+      };
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Clientes paginados obtenidos exitosamente */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': {
+            data?: components['schemas']['Cliente'][];
+            meta?: {
+              page?: number;
+              limit?: number;
+              total?: number;
+              totalPages?: number;
+              hasNextPage?: boolean;
+              hasPreviousPage?: boolean;
+            };
+          };
+        };
+      };
+      /** @description No autorizado */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+    };
+  };
+  ClienteController_obtenerPorId: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        /** @description ID del cliente */
+        id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Cliente obtenido exitosamente */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['Cliente'];
+        };
+      };
+      /** @description No autorizado */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Cliente no encontrado */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+    };
+  };
+  ClienteController_actualizar: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        /** @description ID del cliente */
+        id: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['ActualizarClienteDto'];
+      };
+    };
+    responses: {
+      /** @description Cliente actualizado exitosamente */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['Cliente'];
+        };
+      };
+      /** @description Datos inválidos o CUIT duplicado */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description No autorizado */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Cliente no encontrado */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+    };
+  };
+  ClienteController_eliminar: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        /** @description ID del cliente */
+        id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Cliente eliminado exitosamente */
+      204: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description No autorizado */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Cliente no encontrado */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+    };
+  };
+  ClienteController_restaurar: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        /** @description ID del cliente */
+        id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Cliente restaurado exitosamente */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['Cliente'];
+        };
+      };
+      /** @description El cliente no está eliminado */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description No autorizado */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Cliente no encontrado */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+    };
+  };
+  ClienteController_obtenerEstadisticas: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Estadísticas obtenidas exitosamente */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': {
+            totalClientes?: number;
+            clientesActivos?: number;
+            clientesEliminados?: number;
+            'clientesConSe\u00F1as'?: number;
+          };
+        };
+      };
+      /** @description No autorizado */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+    };
+  };
   AuthController_login: {
     parameters: {
       query?: never;
@@ -2098,27 +4835,16 @@ export interface operations {
       };
     };
   };
-  CajaController_obtenerBalanceCaja: {
+  DatabaseCleanupController_cleanDatabase: {
     parameters: {
       query?: never;
       header?: never;
-      path: {
-        /** @description Caja a consultar */
-        caja: 'caja_1' | 'caja_2';
-      };
+      path?: never;
       cookie?: never;
     };
     requestBody?: never;
     responses: {
-      /** @description Balance obtenido exitosamente */
       200: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content?: never;
-      };
-      /** @description Acceso denegado */
-      403: {
         headers: {
           [name: string]: unknown;
         };
@@ -2126,7 +4852,24 @@ export interface operations {
       };
     };
   };
-  CajaController_crearMovimiento: {
+  DatabaseCleanupController_getDatabaseInfo: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+    };
+  };
+  DatabaseCleanupController_cleanSpecificTables: {
     parameters: {
       query?: never;
       header?: never;
@@ -2135,113 +4878,19 @@ export interface operations {
     };
     requestBody: {
       content: {
-        'application/json': components['schemas']['CrearMovimientoCajaDto'];
+        'application/json': components['schemas']['CleanTablesDto'];
       };
     };
     responses: {
-      /** @description Movimiento creado exitosamente */
-      201: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content?: never;
-      };
-      /** @description Error en el movimiento */
-      400: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content?: never;
-      };
-      /** @description Acceso denegado */
-      403: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content?: never;
-      };
-    };
-  };
-  CajaController_obtenerMovimientos: {
-    parameters: {
-      query?: {
-        /** @description Filtrar por caja */
-        caja?: 'caja_1' | 'caja_2';
-        /** @description Filtrar por tipo de movimiento */
-        tipoMovimiento?:
-          | 'ingreso'
-          | 'egreso'
-          | 'transferencia_entrada'
-          | 'transferencia_salida'
-          | 'ajuste';
-        /** @description Fecha de inicio (YYYY-MM-DD) */
-        fechaInicio?: string;
-        /** @description Fecha de fin (YYYY-MM-DD) */
-        fechaFin?: string;
-        /** @description Límite de resultados */
-        limit?: number;
-        /** @description Offset para paginación */
-        offset?: number;
-      };
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    requestBody?: never;
-    responses: {
-      /** @description Movimientos obtenidos exitosamente */
       200: {
         headers: {
           [name: string]: unknown;
         };
         content?: never;
       };
-      /** @description Acceso denegado */
-      403: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content?: never;
-      };
     };
   };
-  CajaController_transferirEntreCajas: {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    requestBody: {
-      content: {
-        'application/json': components['schemas']['TransferirCajaDto'];
-      };
-    };
-    responses: {
-      /** @description Transferencia exitosa */
-      200: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content?: never;
-      };
-      /** @description Error en la transferencia */
-      400: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content?: never;
-      };
-      /** @description Acceso denegado */
-      403: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content?: never;
-      };
-    };
-  };
-  CajaController_obtenerBalanceTodasLasCajas: {
+  DatabaseCleanupController_dropAllTables: {
     parameters: {
       query?: never;
       header?: never;
@@ -2250,15 +4899,24 @@ export interface operations {
     };
     requestBody?: never;
     responses: {
-      /** @description Balances obtenidos exitosamente */
       200: {
         headers: {
           [name: string]: unknown;
         };
         content?: never;
       };
-      /** @description Acceso denegado */
-      403: {
+    };
+  };
+  DatabaseCleanupController_dropAllTablesComplete: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      200: {
         headers: {
           [name: string]: unknown;
         };

@@ -34,6 +34,8 @@ import {
 } from '@/services/unidadNegocio.service';
 import useProductosServiciosStore from '@/features/productos-servicios/store/productosServiciosStore';
 import { toast } from 'sonner';
+import { useMetodosPago } from '@/hooks/useMetodosPago';
+import MetodosPagoSection from './MetodosPagoSection';
 
 interface ModalEgresoProps {
   isOpen: boolean;
@@ -51,16 +53,10 @@ interface ItemEgreso {
   moneda: 'USD' | 'ARS';
 }
 
-export default function ModalEgreso({
-  isOpen,
-  onClose,
-}: ModalEgresoProps) {
+export default function ModalEgreso({ isOpen, onClose }: ModalEgresoProps) {
   // Store hooks
-  const {
-    agregarComandaEgreso,
-    existeComanda,
-    getUltimaComandaEgreso,
-  } = useComandaStore();
+  const { agregarComandaEgreso, existeComanda, getUltimaComandaEgreso } =
+    useComandaStore();
 
   const { productosServicios, loadProductosServicios } =
     useProductosServiciosStore();
@@ -73,17 +69,19 @@ export default function ModalEgreso({
     formatDual,
   } = useCurrencyConverter();
 
-  const {lastDolar, cotizarDolar } = useExchangeRateStore();
+  const { lastDolar, cotizarDolar } = useExchangeRateStore();
   const { user } = useAuth();
 
   // Form state
   const [observaciones, setObservaciones] = useState('');
-  const [itemsEgreso, setItemsEgreso] = useState<Array<{
-    id: string;
-    nombre: string;
-    monto: number;
-    moneda: 'USD' | 'ARS';
-  }>>([]);
+  const [itemsEgreso, setItemsEgreso] = useState<
+    Array<{
+      id: string;
+      nombre: string;
+      monto: number;
+      moneda: 'USD' | 'ARS';
+    }>
+  >([]);
 
   const [numeroManual, setNumeroManual] = useState('');
   const [numeroUltimaComanda, setNumeroUltimaComanda] = useState('');
@@ -95,18 +93,34 @@ export default function ModalEgreso({
   const [busqueda, setBusqueda] = useState('');
   const [dolar, setDolar] = useState(0);
 
+  // Hook para métodos de pago (sin descuentos para egresos)
+  const {
+    metodosPago,
+    agregarMetodoPago,
+    eliminarMetodoPago,
+    actualizarMetodoPago,
+    resetMetodosPago,
+    validarMetodosPago,
+  } = useMetodosPago(false); // false = no aplicar descuentos en egresos
+
   useModalScrollLock(isOpen);
 
   const calculateTotal = () => {
-    const preTotalUSD = itemsEgreso.reduce((sum, item) => item.moneda === 'USD' ? sum + item.monto : sum, 0);
-    const preTotalARS = itemsEgreso.reduce((sum, item) => item.moneda === 'ARS' ? sum + item.monto : sum, 0);
+    const preTotalUSD = itemsEgreso.reduce(
+      (sum, item) => (item.moneda === 'USD' ? sum + item.monto : sum),
+      0
+    );
+    const preTotalARS = itemsEgreso.reduce(
+      (sum, item) => (item.moneda === 'ARS' ? sum + item.monto : sum),
+      0
+    );
     const arsToUsd = preTotalARS / exchangeRate;
     const usdToArs = preTotalUSD * exchangeRate;
     const totalUSD = preTotalUSD + arsToUsd;
     const totalARS = preTotalARS + usdToArs;
 
     return { totalUSD: totalUSD, totalARS: totalARS };
-  }
+  };
 
   const validarNumeroManual = (numero: string): boolean => {
     if (!numero.trim()) return false;
@@ -143,19 +157,23 @@ export default function ModalEgreso({
   };
 
   useEffect(() => {
-    lastDolar().then((dolarR) => {
-      if(dolar === 0) {
-        setDolar(dolarR.venta);
-      }
-    }).catch((error) => {
-      cotizarDolar().then((dolarR) => {
-        if(dolarR) {
+    lastDolar()
+      .then((dolarR) => {
+        if (dolar === 0) {
           setDolar(dolarR.venta);
         }
-      }).catch((error) => {
-        toast.error('Error al obtener el último dólar');
+      })
+      .catch((error) => {
+        cotizarDolar()
+          .then((dolarR) => {
+            if (dolarR) {
+              setDolar(dolarR.venta);
+            }
+          })
+          .catch((error) => {
+            toast.error('Error al obtener el último dólar');
+          });
       });
-    });
     if (isOpen) {
       getUltimaComandaEgreso().then((comanda) => {
         if (comanda) {
@@ -222,19 +240,28 @@ export default function ModalEgreso({
 
     // Validar items
     itemsEgreso.forEach((item, index) => {
-      if(item.monto <= 0) {
+      if (item.monto <= 0) {
         toast.error('El monto debe ser mayor a 0 en todos los items');
         nuevosErrores[`item-${index}-monto`] = 'El monto debe ser mayor a 0';
       }
-      if(item.moneda !== 'USD' && item.moneda !== 'ARS') {
+      if (item.moneda !== 'USD' && item.moneda !== 'ARS') {
         nuevosErrores[`item-${index}-moneda`] = 'La moneda debe ser USD o ARS';
       }
     });
 
-    if(itemsEgreso.length === 0) {
+    if (itemsEgreso.length === 0) {
       nuevosErrores.itemsEgreso = 'Debe agregar al menos un item';
       toast.error('Debe agregar al menos un item');
     }
+
+    // Validar métodos de pago
+    const validacionMetodos = validarMetodosPago(calculateTotal().totalUSD);
+    if (!validacionMetodos.esValido) {
+      const errorMessage = validacionMetodos.error || 'Error en métodos de pago';
+      nuevosErrores.metodosPago = errorMessage;
+      toast.error(errorMessage);
+    }
+
     console.log(nuevosErrores);
     setErrores(nuevosErrores);
     return Object.keys(nuevosErrores).length === 0;
@@ -253,16 +280,28 @@ export default function ModalEgreso({
       const nuevaComandaNew: ComandaCreateNew = {
         creadoPorId: user?.id,
         tipoDeComanda: TipoDeComandaNew.EGRESO,
-        numero: numeroManual.trim() ? `02-${numeroManual.padStart(4, '0')}` : numeroUltimaComanda,
-        estadoDeComanda: EstadoDeComandaNew.VALIDADO ,
+        numero: numeroManual.trim()
+          ? `02-${numeroManual.padStart(4, '0')}`
+          : numeroUltimaComanda,
+        estadoDeComanda: EstadoDeComandaNew.VALIDADO,
         valorDolar: dolar,
         caja: CajaNew.CAJA_1,
-        metodosPago: [], // Egresos no tienen métodos de pago
+        metodosPago: metodosPago.map((m) => ({
+          tipo: m.tipo,
+          monto: m.montoFinal,
+          moneda: m.moneda,
+        })),
         descuentosAplicados: [],
         egresos: itemsEgreso.map((item) => ({
           total: item.monto,
-          totalDolar: item.moneda === 'USD' ? item.monto : parseFloat((item.monto / dolar).toFixed(2)),
-          totalPesos: item.moneda === 'ARS' ? item.monto : parseFloat((item.monto * dolar).toFixed(2)),
+          totalDolar:
+            item.moneda === 'USD'
+              ? item.monto
+              : parseFloat((item.monto / dolar).toFixed(2)),
+          totalPesos:
+            item.moneda === 'ARS'
+              ? item.monto
+              : parseFloat((item.monto * dolar).toFixed(2)),
           valorDolar: dolar,
           moneda: item.moneda,
         })),
@@ -303,6 +342,7 @@ export default function ModalEgreso({
     setObservaciones('');
     setItemsEgreso([]);
     setNumeroManual('');
+    resetMetodosPago();
     setNumeroUltimaComanda('');
     setGuardando(false);
     setErrores({});
@@ -329,7 +369,7 @@ export default function ModalEgreso({
         <div className="sticky top-0 z-10 border-b border-gray-200 bg-gradient-to-r from-gray-100 to-gray-50 backdrop-blur-sm">
           <div className="flex items-center justify-between p-6">
             <div className="flex items-center gap-3">
-              <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-gradient-to-r from-red-400 to-red-500 shadow-sm">
+              <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-gradient-to-r from-[#f9bbc4] to-[#e292a3] shadow-sm">
                 <ArrowDownCircle className="h-5 w-5 text-white" />
               </div>
               <div>
@@ -477,9 +517,10 @@ export default function ModalEgreso({
                 </CardHeader>
                 <CardContent className="space-y-4">
                   {itemsEgreso.length === 0 ? (
-                    <div className="rounded-lg border-2 border-dashed border-gray-300 bg-gradient-to-r from-gray-100 to-gray-150 p-6 text-center">
-                      <p className="text-sm text-gray-600">
-                        No hay items agregados
+                    <div className="rounded-lg border-2 border-dashed border-gray-300 bg-gradient-to-r from-gray-100 to-gray-150 p-8 text-center shadow-sm">
+                      <Calculator className="mx-auto h-12 w-12 text-gray-400" />
+                      <p className="mt-2 text-sm text-gray-600">
+                        No hay conceptos agregados
                       </p>
                       <p className="text-xs text-gray-500">
                         Haga clic en &quot;Agregar Item&quot; para comenzar
@@ -489,8 +530,9 @@ export default function ModalEgreso({
                     itemsEgreso.map((item, index) => (
                       <div
                         key={item.id}
-                        className="flex items-center gap-3 rounded-lg border border-gray-200 bg-white p-4"
+                        className="rounded-lg border-2 border-gray-300 bg-gradient-to-r from-white to-gray-50 p-4 shadow-md"
                       >
+                        <div className="flex items-center gap-3">
                         {/* <div className="flex-1">
                           <Input
                             type="text"
@@ -544,8 +586,38 @@ export default function ModalEgreso({
                         >
                           <Trash2 className="h-4 w-4" />
                         </Button>
+                        </div>
                       </div>
                     ))
+                  )}
+                </CardContent>
+              </Card>
+
+              {/* Métodos de Pago */}
+              <Card className="border border-gray-300 bg-white shadow-md">
+                <CardHeader className="bg-gradient-to-r from-gray-50 to-gray-100">
+                  <CardTitle className="flex items-center justify-between text-lg text-gray-900">
+                    <span>Métodos de Pago</span>
+                    <div className="text-sm font-normal text-gray-600">
+                      Total: {formatDual(calculateTotal().totalUSD, true)}
+                    </div>
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <MetodosPagoSection
+                    metodosPago={metodosPago}
+                    totalPagado={metodosPago.reduce(
+                      (sum, mp) => sum + mp.montoFinal,
+                      0
+                    )}
+                    montoTotal={calculateTotal().totalUSD}
+                    onAgregarMetodo={agregarMetodoPago}
+                    onEliminarMetodo={eliminarMetodoPago}
+                    onActualizarMetodo={actualizarMetodoPago}
+                    className="space-y-4"
+                  />
+                  {errores.metodosPago && (
+                    <p className="mt-2 text-sm text-red-600">{errores.metodosPago}</p>
                   )}
                 </CardContent>
               </Card>
@@ -569,7 +641,8 @@ export default function ModalEgreso({
                         </div>
                         <div className="text-right">
                           <div className="text-sm font-semibold text-gray-900">
-                            {itemsEgreso.length} {itemsEgreso.length === 1 ? 'item' : 'items'}
+                            {itemsEgreso.length}{' '}
+                            {itemsEgreso.length === 1 ? 'item' : 'items'}
                           </div>
                         </div>
                       </div>
@@ -606,7 +679,7 @@ export default function ModalEgreso({
                       <Button
                         onClick={handleSave}
                         disabled={guardando}
-                        className="w-full bg-gradient-to-r from-red-400 to-red-500 font-medium text-white hover:from-red-500 hover:to-red-600"
+                        className="w-full bg-gradient-to-r from-[#f9bbc4] to-[#e292a3] font-medium text-white hover:from-[#e292a3] hover:to-[#d4a7ca]"
                       >
                         {guardando ? (
                           <>
@@ -646,7 +719,7 @@ export default function ModalEgreso({
       {/* Product Search Modal */}
       {mostrarBuscador && (
         <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/50 p-4">
-          <div className="w-full max-w-3xl rounded-lg border border-gray-100 bg-white shadow-2xl">
+          <div className="w-full max-w-3xl rounded-lg border border-[#f9bbc4]/20 bg-white shadow-2xl">
             <div className="border-b p-4">
               <div className="flex items-center justify-between">
                 <h3 className="text-lg font-semibold text-gray-900">
@@ -725,4 +798,4 @@ export default function ModalEgreso({
       )}
     </div>
   );
-} 
+}
