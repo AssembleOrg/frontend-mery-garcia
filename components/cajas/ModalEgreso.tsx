@@ -21,7 +21,6 @@ import {
 } from 'lucide-react';
 import useComandaStore from '@/features/comandas/store/comandaStore';
 import { useExchangeRateStore } from '@/features/exchange-rate/store/exchangeRateStore';
-import { MONEDAS } from '@/lib/constants';
 import { useModalScrollLock } from '@/hooks/useModalScrollLock';
 import { logger } from '@/lib/utils';
 import { useCurrencyConverter } from '@/hooks/useCurrencyConverter';
@@ -31,9 +30,6 @@ import {
   EstadoDeComandaNew,
   TipoDeComandaNew,
   ProductoServicioNew,
-  TipoPagoNew,
-  MonedaNew,
-  TipoItemNew,
   CajaNew,
 } from '@/services/unidadNegocio.service';
 import useProductosServiciosStore from '@/features/productos-servicios/store/productosServiciosStore';
@@ -77,7 +73,7 @@ export default function ModalEgreso({
     formatDual,
   } = useCurrencyConverter();
 
-  const { getTipoCambio, lastDolar, cotizarDolar } = useExchangeRateStore();
+  const {lastDolar, cotizarDolar } = useExchangeRateStore();
   const { user } = useAuth();
 
   // Form state

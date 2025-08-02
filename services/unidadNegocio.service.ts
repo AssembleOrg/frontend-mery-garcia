@@ -1,5 +1,26 @@
 import { apiFetch } from "@/lib/apiClient";
 
+export interface Movimiento {
+  id: string;
+  montoARS: number;
+  montoUSD: number;
+  comandas: Partial<ComandaCreateNew>[];
+  residualARS: number;
+  residualUSD: number;
+  createdAt: Date;
+  updatedAt: Date;
+  deletedAt: Date;
+}
+
+export type MovimientoCreateNew = Partial<Movimiento> & {
+  comandasValidadasIds?: string[];
+  personalId?: string;
+};
+export type MovimientoUpdateNew = Partial<Movimiento> & {
+  comandasValidadasIds?: string[];
+  personalId?: string;
+};
+
 
 export interface FiltrarComandasNew {
   /** Número de página (≥ 1) — *default*: 1 */
@@ -37,6 +58,9 @@ export interface FiltrarComandasNew {
 
   /** Dirección ASC/DESC — *default*: 'DESC' */
   order?: 'ASC' | 'DESC';
+
+  /** Incluir comandas traspasadas */
+  incluirTraspasadas?: boolean;
 }
 
 export enum TipoDeComandaNew {

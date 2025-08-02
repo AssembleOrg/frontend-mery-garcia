@@ -27,6 +27,7 @@
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "date-fns": "^4.1.0",
+    "file-saver": "^2.0.5",
     "framer-motion": "^12.15.0",
     "jspdf": "^3.0.1",
     "jspdf-autotable": "^5.0.2",
@@ -41,6 +42,7 @@
     "react-hook-form": "^7.59.0",
     "sonner": "^2.0.5",
     "tailwind-merge": "^3.2.0",
+    "xlsx": "^0.18.5",
     "zod": "^3.25.67",
     "zustand": "^5.0.5"
   },
@@ -50,6 +52,7 @@
     "@next/eslint-plugin-next": "^15.4.3",
     "@tailwindcss/postcss": "^4.1.8",
     "@types/case-sensitive-paths-webpack-plugin": "^2.1.9",
+    "@types/file-saver": "^2.0.7",
     "@types/node": "^20.17.52",
     "@types/papaparse": "^5.3.16",
     "@types/react": "^19",

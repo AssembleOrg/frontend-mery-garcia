@@ -36,6 +36,9 @@ import {
 import { useCurrencyConverter } from '@/hooks/useCurrencyConverter';
 import { formatARSNative } from '@/lib/utils';
 import useComandaStore from '@/features/comandas/store/comandaStore';
+import { MovimientoCreateNew } from '@/services/unidadNegocio.service';
+import { useAuth } from '@/features/auth/hooks/useAuth';
+import { useMovimientosStore } from '@/features/movimientos/store/movimientosStore';
 
 const breadcrumbItems = [
   { label: 'Inicio', href: '/' },
@@ -46,7 +49,8 @@ const breadcrumbItems = [
 
 export default function CajaChicaResumenPage() {
   const { formatUSD, formatARSFromNative } = useCurrencyConverter();
-
+  const { user } = useAuth();
+  const { crearMovimiento } = useMovimientosStore();
   const [dateRange, setDateRange] = useState<DateRange | undefined>();
   const [loading, setLoading] = useState(false);
   const [showConfirmModal, setShowConfirmModal] = useState(false);
@@ -56,6 +60,8 @@ export default function CajaChicaResumenPage() {
     tipo: 'success' | 'warning';
     texto: string;
   } | null>(null);
+
+  const [loadingResumen, setLoadingResumen] = useState(false);
 
   const [resumen, setResumen] = useState<{
     totalCompletados: number;
@@ -68,17 +74,62 @@ export default function CajaChicaResumenPage() {
     totalIngresosARS: number;
     totalEgresosUSD: number;
     totalEgresosARS: number;
+    comandasValidadasIds: string[];
   } | null>(null);
 
-  const {getResumen} = useComandaStore()
+  const { getResumen } = useComandaStore();
+
+  useEffect(() => {
+    if (showConfirmModal) {
+      if (resumen?.montoDisponibleTrasladoUSD! < parseFloat(montoParcialUSD)) {
+        toast.error(
+          'El monto parcial en USD no puede ser mayor al monto disponible para traslado'
+        );
+        setShowConfirmModal(false);
+      } else if (
+        resumen?.montoDisponibleTrasladoARS! < parseFloat(montoParcialARS)
+      ) {
+        toast.error(
+          'El monto parcial en ARS no puede ser mayor al monto disponible para traslado'
+        );
+        setShowConfirmModal(false);
+      } else {
+        setShowConfirmModal(true);
+      }
+    }
+  }, [showConfirmModal]);
 
   useEffect(() => {
     const fetchResumen = async () => {
-      const resumen = await getResumen();
+      const resumen = await getResumen(
+        dateRange?.from?.toISOString() || '',
+        dateRange?.to?.toISOString() || ''
+      );
       setResumen(resumen);
     };
     fetchResumen();
   }, [getResumen]);
+
+  useEffect(() => {
+    setLoadingResumen(true);
+    if (dateRange?.from && dateRange?.to && !loadingResumen) {
+      const fetchResumen = async () => {
+        const resumen = await getResumen(
+          dateRange?.from?.toISOString() || '',
+          dateRange?.to?.toISOString() || ''
+        );
+        setResumen(resumen);
+      };
+      fetchResumen();
+    } else if (!dateRange?.from && !dateRange?.to && !loadingResumen) {
+      const fetchResumen = async () => {
+        const resumen = await getResumen('', '');
+        setResumen(resumen);
+      };
+      fetchResumen();
+    }
+    setLoadingResumen(false);
+  }, [dateRange]);
 
   const handleMontoParcialUSDChange = (value: string) => {
     // Solo permitir números y punto decimal
@@ -96,7 +147,30 @@ export default function CajaChicaResumenPage() {
     }
   };
 
- 
+  const handleTrasladar = async () => {
+    setLoading(true);
+   try {
+    const movimiento: MovimientoCreateNew = {
+      montoARS: montoParcialARS ? resumen?.montoDisponibleTrasladoARS! - parseFloat(montoParcialARS) : 0,
+      montoUSD: montoParcialUSD ? resumen?.montoDisponibleTrasladoUSD! - parseFloat(montoParcialUSD) : 0,
+      residualARS: montoParcialARS ? parseFloat(montoParcialARS) : 0,
+      residualUSD: montoParcialUSD ? parseFloat(montoParcialUSD) : 0,
+      comandasValidadasIds: resumen?.comandasValidadasIds,
+      personalId: user?.id,
+    };
+    console.table(movimiento);
+    await crearMovimiento(movimiento);
+    toast.success('Traspaso realizado correctamente');
+    setShowConfirmModal(false);
+    await getResumen(dateRange?.from?.toISOString() || '', dateRange?.to?.toISOString() || '');
+   } catch (error) {
+    console.error(error);
+    toast.error('Error al trasladar monto');
+   } finally {
+    setLoading(false);
+   }
+  };
+
   return (
     <MainLayout>
       <div className="min-h-screen bg-gradient-to-br from-[#f9bbc4]/10 via-[#e8b4c6]/8 to-[#d4a7ca]/6">
@@ -259,7 +333,11 @@ export default function CajaChicaResumenPage() {
 
                   <div className="border-t border-gray-200 pt-4">
                     <Button
-                      disabled={!dateRange?.from || loading}
+                      disabled={
+                        typeof resumen === 'undefined' ||
+                        loadingResumen ||
+                        resumen?.totalCompletados === 0
+                      }
                       onClick={() => setShowConfirmModal(true)}
                       className="w-full bg-gradient-to-r from-[#f9bbc4] to-[#e292a3] text-white hover:from-[#e292a3] hover:to-[#d4869c] sm:w-auto"
                     >
@@ -268,7 +346,7 @@ export default function CajaChicaResumenPage() {
                       ) : montoParcialUSD || montoParcialARS ? (
                         'Trasladar Monto Parcial'
                       ) : (
-                        'Trasladar Comandas Completadas'
+                        'Trasladar Comandas Validadas'
                       )}
                     </Button>
                   </div>
@@ -336,8 +414,8 @@ export default function CajaChicaResumenPage() {
                   <span className="text-sm font-semibold text-blue-700">
                     {formatUSD(
                       (montoParcialUSD
-                        ? parseFloat(montoParcialUSD)
-                        : resumen.montoDisponibleTrasladoUSD) || 0
+                        ? resumen.montoDisponibleTrasladoUSD - parseFloat(montoParcialUSD)
+                        : resumen.montoDisponibleTrasladoUSD) ?? 0
                     )}
                   </span>
                 </div>
@@ -348,8 +426,8 @@ export default function CajaChicaResumenPage() {
                   <span className="text-sm font-semibold text-blue-700">
                     {formatARSFromNative(
                       (montoParcialARS
-                        ? parseFloat(montoParcialARS)
-                        : resumen.montoDisponibleTrasladoARS) || 0
+                        ? resumen.montoDisponibleTrasladoARS - parseFloat(montoParcialARS)
+                        : resumen.montoDisponibleTrasladoARS) ?? 0
                     )}
                   </span>
                 </div>
@@ -370,8 +448,7 @@ export default function CajaChicaResumenPage() {
                     </span>
                     <span className="text-sm font-semibold text-orange-700">
                       {formatUSD(
-                        (resumen.montoDisponibleTrasladoUSD || 0) -
-                          (parseFloat(montoParcialUSD) || 0)
+                        montoParcialUSD ? parseFloat(montoParcialUSD) : 0
                       )}
                     </span>
                   </div>
@@ -381,8 +458,7 @@ export default function CajaChicaResumenPage() {
                     </span>
                     <span className="text-sm font-semibold text-orange-700">
                       {formatARSFromNative(
-                        (resumen.montoDisponibleTrasladoARS || 0) -
-                          (parseFloat(montoParcialARS) || 0)
+                        montoParcialARS ? parseFloat(montoParcialARS) : 0
                       )}
                     </span>
                   </div>
@@ -400,7 +476,7 @@ export default function CajaChicaResumenPage() {
               Cancelar
             </Button>
             <Button
-              // onClick={handleTrasladar}
+              onClick={handleTrasladar}
               disabled={loading}
               className="bg-gradient-to-r from-[#f9bbc4] to-[#e292a3] text-white transition-all duration-200 hover:from-[#e292a3] hover:to-[#d4869c] hover:shadow-md disabled:cursor-not-allowed disabled:opacity-50"
             >

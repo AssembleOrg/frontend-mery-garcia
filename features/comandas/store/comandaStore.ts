@@ -15,6 +15,19 @@ interface ComandaState {
       totalPages: number;
     };
   };
+  resumen: {
+    totalCompletados: number;
+    totalPendientes: number;
+    montoNetoUSD: number;
+    montoNetoARS: number;
+    montoDisponibleTrasladoUSD: number;
+    montoDisponibleTrasladoARS: number;
+    totalIngresosUSD: number;
+    totalIngresosARS: number;
+    totalEgresosUSD: number;
+    totalEgresosARS: number;
+    comandasValidadasIds: string[];
+  };
   filters: FiltrarComandasNew;
   cargando: boolean;
   error: string | null;
@@ -45,7 +58,7 @@ interface ComandaState {
   getUltimaComandaEgreso: () => Promise<ComandaNew | undefined>;
   agregarComandaEgreso: (comanda: ComandaCreateNew) => Promise<void>;
   getEgresosPaginados: (filters: FiltrarComandasNew) => Promise<void>;
-  getResumen: () => Promise<{
+  getResumen: (fechaDesde: string, fechaHasta: string) => Promise<{
     totalCompletados: number;
     totalPendientes: number;
     montoNetoUSD: number;
@@ -56,8 +69,10 @@ interface ComandaState {
     totalIngresosARS: number;
     totalEgresosUSD: number;
     totalEgresosARS: number;
+    comandasValidadasIds: string[];
   }>;
   cambiarEstadoComanda: (comandaId: string, nuevoEstado: EstadoDeComandaNew) => Promise<void>;
+  loadResumen: (fechaDesde: string, fechaHasta: string) => Promise<void>;
 }
 
 const useComandaStore = create<ComandaState>((set, get) => ({
@@ -70,6 +85,19 @@ const useComandaStore = create<ComandaState>((set, get) => ({
       limit: 10,
       totalPages: 1,
     },
+  },
+  resumen: {
+    totalCompletados: 0,
+    totalPendientes: 0,
+    montoNetoUSD: 0,
+    montoNetoARS: 0,
+    montoDisponibleTrasladoUSD: 0,
+    montoDisponibleTrasladoARS: 0,
+    totalIngresosUSD: 0,
+    totalIngresosARS: 0,
+    totalEgresosUSD: 0,
+    totalEgresosARS: 0,
+    comandasValidadasIds: [],
   },
   filters: {},
   cargando: false,
@@ -96,6 +124,10 @@ const useComandaStore = create<ComandaState>((set, get) => ({
 
   getComandasPaginadas: () => {
     return get().comandasPaginadas;
+  },
+  loadResumen: async (fechaDesde: string, fechaHasta: string) => {
+    const resumen = await comandasService.obtenerResumen(fechaDesde, fechaHasta);
+    set({ resumen });
   },
 
   getUltimaComandaEgreso: async () => {
@@ -182,8 +214,8 @@ const useComandaStore = create<ComandaState>((set, get) => ({
     }
   },
 
-  getResumen: async () => {
-    const resumen = await comandasService.obtenerResumen();
+  getResumen: async (fechaDesde: string, fechaHasta: string) => {
+    const resumen = await comandasService.obtenerResumen(fechaDesde, fechaHasta);
     return resumen;
   },
 }));

@@ -26,6 +26,7 @@ import { ESTADO_LABELS, ESTADO_COLORS } from '@/lib/constants';
 import { ColumnDef } from '@tanstack/react-table';
 import { ComandaNew, EstadoDeComandaNew, TipoDeComandaNew } from '@/services/unidadNegocio.service';
 import ModalDetallesServicios from './ModalDetallesServicios';
+import ModalVerComanda from './ModalVerComanda';
 
 interface Props {
   data: ComandaNew[];
@@ -48,8 +49,10 @@ export default function TransactionsTableTanStack({
     useCurrencyConverter();
   
   const [modalDetallesOpen, setModalDetallesOpen] = useState(false);
+  const [modalVerComandaOpen, setModalVerComandaOpen] = useState(false);
   const [selectedItems, setSelectedItems] = useState<any[]>([]);
   const [selectedValorDolar, setSelectedValorDolar] = useState(1);
+  const [selectedComanda, setSelectedComanda] = useState<ComandaNew | null>(null);
 
   // Detectar si todas las comandas son egresos
   const todasSonEgresos = data.every(comanda => comanda.tipoDeComanda === TipoDeComandaNew.EGRESO);
@@ -464,15 +467,23 @@ export default function TransactionsTableTanStack({
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
-              <DropdownMenuItem onClick={() => onView(id)}>
+              <DropdownMenuItem onClick={() => {
+                setSelectedComanda(row.original);
+                setModalVerComandaOpen(true);
+              }}>
                 <Eye className="mr-2 h-4 w-4" /> Ver
               </DropdownMenuItem>
 
+              <DropdownMenuItem 
+                onClick={() => onEdit(id)} 
+                disabled
+                className="opacity-50 cursor-not-allowed"
+              >
+                <Edit className="mr-2 h-4 w-4" /> Editar (Deshabilitado)
+              </DropdownMenuItem>
+              
               {!isValidated && (
                 <>
-                  <DropdownMenuItem onClick={() => onEdit(id)}>
-                    <Edit className="mr-2 h-4 w-4" /> Editar
-                  </DropdownMenuItem>
                   {onChangeStatus && (
                     <DropdownMenuItem onClick={() => onChangeStatus(id)}>
                       <Lock className="mr-2 h-4 w-4" /> Cambiar estado
@@ -520,6 +531,15 @@ export default function TransactionsTableTanStack({
         onClose={() => setModalDetallesOpen(false)}
         items={selectedItems}
         valorDolar={selectedValorDolar}
+      />
+      
+      <ModalVerComanda
+        isOpen={modalVerComandaOpen}
+        onClose={() => {
+          setModalVerComandaOpen(false);
+          setSelectedComanda(null);
+        }}
+        comanda={selectedComanda}
       />
     </>
   );

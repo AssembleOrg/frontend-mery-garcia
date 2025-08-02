@@ -86,9 +86,13 @@ class ComandasService {
             params.append(key, value);
           } else if (typeof value === 'object') {
             params.append(key, JSON.stringify(value));
+          } else if (typeof value === 'boolean') {
+            params.append(key, value.toString());
           }
         }
       });
+
+      console.table(params);
 
       const queryString = params.toString();
       const url = queryString
@@ -191,7 +195,7 @@ class ComandasService {
   }
   
   //GET /comandas/resumen-caja-chica
-  async obtenerResumen(): Promise<{
+  async obtenerResumen(fechaDesde: string, fechaHasta: string): Promise<{
     totalCompletados: number;
     totalPendientes: number;
     montoNetoUSD: number;
@@ -202,7 +206,38 @@ class ComandasService {
     totalIngresosARS: number;
     totalEgresosUSD: number;
     totalEgresosARS: number;
+    comandasValidadasIds: string[];
   }> {
+    if(!fechaDesde || !fechaHasta) {
+      const response = await apiFetch<{ data: {
+        totalCompletados: number;
+        totalPendientes: number;
+        montoNetoUSD: number;
+        montoNetoARS: number;
+        montoDisponibleTrasladoUSD: number;
+        montoDisponibleTrasladoARS: number;
+        totalIngresosUSD: number;
+        totalIngresosARS: number;
+        totalEgresosUSD: number;
+        totalEgresosARS: number;
+        comandasValidadasIds: string[];
+      } }>(`${this.baseUrl}/resumen-caja-chica`);
+      return response.data;
+    }
+    let newFechaDesde = new Date(fechaDesde);
+    let newFechaHasta = new Date(fechaHasta);
+    newFechaDesde.setHours(0, 0, 0, 0);
+    newFechaHasta.setHours(23, 59, 59, 999);
+    fechaDesde = newFechaDesde.toISOString();
+    fechaHasta = newFechaHasta.toISOString();
+    const params = new URLSearchParams();
+    params.append('fechaDesde', fechaDesde);
+    params.append('fechaHasta', fechaHasta);
+    const queryString = params.toString();
+    const url = queryString
+      ? `${this.baseUrl + '/resumen-caja-chica'}?${queryString}`
+      : this.baseUrl + '/resumen-caja-chica';
+
     const response = await apiFetch<{ data: {
       totalCompletados: number;
       totalPendientes: number;
@@ -214,7 +249,8 @@ class ComandasService {
       totalIngresosARS: number;
       totalEgresosUSD: number;
       totalEgresosARS: number;
-    } }>(`${this.baseUrl}/resumen-caja-chica`);
+      comandasValidadasIds: string[];
+    } }>(url);
     return response.data;
   }
 
@@ -226,6 +262,7 @@ class ComandasService {
     });
     return response.data;
   }
+
 }
 
 export const comandasService = new ComandasService();

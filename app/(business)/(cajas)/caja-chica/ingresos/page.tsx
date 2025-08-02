@@ -22,17 +22,32 @@ import SummaryCardDual from '@/components/common/SummaryCardDual';
 import SummaryCardCount from '@/components/common/SummaryCardCount';
 import ModalEditarTransaccion from '@/components/cajas/ModalEditarTransaccion';
 import { useCurrencyConverter } from '@/hooks/useCurrencyConverter';
-import { formatDate } from '@/lib/utils';
 import { useRecordsStore } from '@/features/records/store/recordsStore';
 import ResidualDisplay from '@/components/cajas/ResidualDisplay';
 import { EstadoDeComandaNew, UnidadNegocioNew, TipoDeComandaNew, ComandaNew } from '@/services/unidadNegocio.service';
 import useComandaStore from '@/features/comandas/store/comandaStore';
+import ModalExportarComandas from '@/components/cajas/ModalExportarComandas';
+import { Input } from '@/components/ui/input';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Label } from '@/components/ui/label';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Search, Filter, Calendar, User, Users, FileText, RefreshCw, Download, CheckSquare } from 'lucide-react';
 
 export default function IngresosPage() {
   const { isInitialized } = useCurrencyConverter();
 
   // Date range filter state
   const [dateRange, setDateRange] = useState<DateRange | undefined>();
+
+  // Filter states
+  const [searchTerm, setSearchTerm] = useState('');
+  const [estadoFilter, setEstadoFilter] = useState<EstadoDeComandaNew | 'todos'>('todos');
+  const [clienteFilter, setClienteFilter] = useState('');
+  const [trabajadorFilter, setTrabajadorFilter] = useState('');
+  const [creadoPorFilter, setCreadoPorFilter] = useState('');
+  const [orderBy, setOrderBy] = useState<'createdAt' | 'numero' | 'tipoDeComanda' | 'estadoDeComanda' | 'creadoPor'>('createdAt');
+  const [orderDirection, setOrderDirection] = useState<'ASC' | 'DESC'>('DESC');
+  const [incluirTraspasadas, setIncluirTraspasadas] = useState(false);
 
   // Get traspasos for residual display
   const { traspasos } = useRecordsStore();
@@ -56,17 +71,55 @@ export default function IngresosPage() {
     cargarComandasPaginadas,
   } = useComandaStore();
 
-  // Cargar comandas solo al entrar a la vista y cuando cambie la paginación
+  // Cargar comandas con filtros
   useEffect(() => {
-    console.log('cargando comandas'); 
+    console.log('cargando comandas con filtros'); 
+    
+    // Preparar fechas para el backend
+    let fechaDesde: string | undefined;
+    let fechaHasta: string | undefined;
+
+    if (dateRange?.from) {
+      const fromDate = new Date(dateRange.from);
+      fromDate.setHours(0, 0, 0, 0);
+      fechaDesde = fromDate.toISOString();
+    }
+
+    if (dateRange?.to) {
+      const toDate = new Date(dateRange.to);
+      toDate.setHours(23, 59, 59, 999);
+      fechaHasta = toDate.toISOString();
+    }
+
     cargarComandasPaginadas({
       page: paginaActual,
       limit: itemsPorPagina,
       tipoDeComanda: TipoDeComandaNew.INGRESO,
-      orderBy: 'numero',
-      order: 'DESC',
+      orderBy,
+      order: orderDirection,
+      search: searchTerm || undefined,
+      estadoDeComanda: estadoFilter === 'todos' ? undefined : estadoFilter,
+      clienteId: clienteFilter || undefined,
+      trabajadorId: trabajadorFilter || undefined,
+      creadoPorId: creadoPorFilter || undefined,
+      incluirTraspasadas,
+      ...(fechaDesde && { fechaDesde }),
+      ...(fechaHasta && { fechaHasta }),
     });
-  }, [paginaActual, itemsPorPagina, cargarComandasPaginadas]);
+  }, [
+    paginaActual, 
+    itemsPorPagina, 
+    cargarComandasPaginadas, 
+    searchTerm, 
+    estadoFilter, 
+    clienteFilter, 
+    trabajadorFilter, 
+    creadoPorFilter, 
+    orderBy, 
+    orderDirection, 
+    incluirTraspasadas,
+    dateRange
+  ]);
 
   // Local UI state
   const [columns, setColumns] = useState<ColumnaCaja[]>(initialColumns);
@@ -74,6 +127,7 @@ export default function IngresosPage() {
   const [showChangeStatusModal, setShowChangeStatusModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
   const [showViewModal, setShowViewModal] = useState(false);
+  const [showExportModal, setShowExportModal] = useState(false);
   const [selectedTransactionId, setSelectedTransactionId] =
     useState<string>('');
 
@@ -115,6 +169,20 @@ export default function IngresosPage() {
   };
 
   const hiddenColumns = columns.filter((c) => !c.visible).map((c) => c.key);
+
+  // Función para limpiar todos los filtros
+  const limpiarFiltros = () => {
+    setSearchTerm('');
+    setEstadoFilter('todos');
+    setClienteFilter('');
+    setTrabajadorFilter('');
+    setCreadoPorFilter('');
+    setDateRange(undefined);
+    setOrderBy('createdAt');
+    setOrderDirection('DESC');
+    setIncluirTraspasadas(false);
+    setPaginaActual(1);
+  };
 
   // Totales y estadísticas simples - usar datos paginados
   const totalIngresosUSD = comandasPaginadas.data.reduce((sum, comanda) => sum + (comanda.metodosPago.reduce((acc, item) => item.moneda === 'USD' ? acc + item.monto! : acc, 0)), 0);
@@ -178,57 +246,249 @@ export default function IngresosPage() {
                     </div>
                   </div>
 
-                  <Button
-                    onClick={() => setShowAddModal(true)}
-                    className="rounded-lg bg-gradient-to-r from-[#f9bbc4] to-[#e292a3] px-6 py-2 font-semibold text-white shadow-md transition-all duration-200 hover:scale-105 hover:from-[#e292a3] hover:to-[#d4a7ca] hover:shadow-lg"
-                  >
-                    <Plus className="mr-2 h-4 w-4" />
-                    Nueva Transacción
-                  </Button>
+                  <div className="flex flex-col gap-2 sm:flex-row">
+                    <Button
+                      onClick={() => setShowAddModal(true)}
+                      className="rounded-lg bg-gradient-to-r from-[#f9bbc4] to-[#e292a3] px-6 py-2 font-semibold text-white shadow-md transition-all duration-200 hover:scale-105 hover:from-[#e292a3] hover:to-[#d4a7ca] hover:shadow-lg"
+                    >
+                      <Plus className="mr-2 h-4 w-4" />
+                      Nueva Transacción
+                    </Button>
+                    <Button
+                      onClick={() => setShowExportModal(true)}
+                      variant="outline"
+                      className="rounded-lg border-[#f9bbc4] px-6 py-2 font-semibold text-[#4a3540] shadow-md transition-all duration-200 hover:scale-105 hover:bg-[#f9bbc4]/10 hover:shadow-lg"
+                    >
+                      <Download className="mr-2 h-4 w-4" />
+                      Exportar
+                    </Button>
+                  </div>
                 </div>
               </div>
 
               {/* Filters and tools */}
               <div className="mb-6">
                 <Card className="border border-[#f9bbc4]/20 bg-white/80 shadow-sm">
-                  <CardContent className="p-4">
-                    <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-                      {/* Date filter */}
-                      <div className="max-w-xs flex-1">
+                  <CardContent className="p-6">
+                    {/* Header de filtros */}
+                    <div className="mb-4 flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <div className="flex h-8 w-8 items-center justify-center rounded-full bg-gradient-to-r from-[#f9bbc4] to-[#e292a3] text-white">
+                          <Filter className="h-4 w-4" />
+                        </div>
+                        <h3 className="text-lg font-semibold text-[#4a3540]">Filtros Avanzados</h3>
+                      </div>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={limpiarFiltros}
+                        className="border-[#f9bbc4] text-[#4a3540] hover:bg-[#f9bbc4]/10"
+                      >
+                        <RefreshCw className="mr-2 h-4 w-4" />
+                        Limpiar Filtros
+                      </Button>
+                    </div>
+
+                    {/* Grid de filtros */}
+                    <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+                      {/* Búsqueda */}
+                      <div className="space-y-2">
+                        <Label className="flex items-center gap-2 text-sm font-medium text-[#4a3540]">
+                          <Search className="h-4 w-4" />
+                          Búsqueda
+                        </Label>
+                        <Input
+                          placeholder="Buscar por número..."
+                          value={searchTerm}
+                          onChange={(e) => setSearchTerm(e.target.value)}
+                          className="border-[#f9bbc4]/30 focus:border-[#f9bbc4]"
+                        />
+                      </div>
+
+                      {/* Estado */}
+                      <div className="space-y-2">
+                        <Label className="flex items-center gap-2 text-sm font-medium text-[#4a3540]">
+                          <FileText className="h-4 w-4" />
+                          Estado
+                        </Label>
+                        <Select value={estadoFilter} onValueChange={(value) => setEstadoFilter(value as EstadoDeComandaNew | 'todos')}>
+                          <SelectTrigger className="border-[#f9bbc4]/30 focus:border-[#f9bbc4]">
+                            <SelectValue placeholder="Todos los estados" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="todos">Todos los estados</SelectItem>
+                            <SelectItem value={EstadoDeComandaNew.PENDIENTE}>Pendiente</SelectItem>
+                            {/* <SelectItem value={EstadoDeComandaNew.PAGADA}>Pagada</SelectItem> */}
+                            <SelectItem value={EstadoDeComandaNew.CANCELADA}>Cancelada</SelectItem>
+                            {/* <SelectItem value={EstadoDeComandaNew.FINALIZADA}>Finalizada</SelectItem> */}
+                            <SelectItem value={EstadoDeComandaNew.TRASPASADA}>Traspasada</SelectItem>
+                            <SelectItem value={EstadoDeComandaNew.VALIDADO}>Validado</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+
+                      {/* Cliente */}
+                      <div className="space-y-2">
+                        <Label className="flex items-center gap-2 text-sm font-medium text-[#4a3540]">
+                          <User className="h-4 w-4" />
+                          Cliente
+                        </Label>
+                        <Input
+                          placeholder="Filtrar por cliente..."
+                          value={clienteFilter}
+                          onChange={(e) => setClienteFilter(e.target.value)}
+                          className="border-[#f9bbc4]/30 focus:border-[#f9bbc4]"
+                        />
+                      </div>
+
+                      {/* Trabajador */}
+                      <div className="space-y-2">
+                        <Label className="flex items-center gap-2 text-sm font-medium text-[#4a3540]">
+                          <Users className="h-4 w-4" />
+                          Trabajador
+                        </Label>
+                        <Input
+                          placeholder="Filtrar por trabajador..."
+                          value={trabajadorFilter}
+                          onChange={(e) => setTrabajadorFilter(e.target.value)}
+                          className="border-[#f9bbc4]/30 focus:border-[#f9bbc4]"
+                        />
+                      </div>
+
+                      {/* Creado por */}
+                      <div className="space-y-2">
+                        <Label className="flex items-center gap-2 text-sm font-medium text-[#4a3540]">
+                          <User className="h-4 w-4" />
+                          Creado por
+                        </Label>
+                        <Input
+                          placeholder="Filtrar por creador..."
+                          value={creadoPorFilter}
+                          onChange={(e) => setCreadoPorFilter(e.target.value)}
+                          className="border-[#f9bbc4]/30 focus:border-[#f9bbc4]"
+                        />
+                      </div>
+
+                      {/* Ordenar por */}
+                      <div className="space-y-2">
+                        <Label className="flex items-center gap-2 text-sm font-medium text-[#4a3540]">
+                          <FileText className="h-4 w-4" />
+                          Ordenar por
+                        </Label>
+                        <Select value={orderBy} onValueChange={(value) => setOrderBy(value as any)}>
+                          <SelectTrigger className="border-[#f9bbc4]/30 focus:border-[#f9bbc4]">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="createdAt">Fecha de creación</SelectItem>
+                            <SelectItem value="numero">Número</SelectItem>
+                            <SelectItem value="tipoDeComanda">Tipo de comanda</SelectItem>
+                            <SelectItem value="estadoDeComanda">Estado</SelectItem>
+                            <SelectItem value="creadoPor">Creado por</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+
+                      {/* Dirección de orden */}
+                      <div className="space-y-2">
+                        <Label className="flex items-center gap-2 text-sm font-medium text-[#4a3540]">
+                          <FileText className="h-4 w-4" />
+                          Dirección
+                        </Label>
+                        <Select value={orderDirection} onValueChange={(value) => setOrderDirection(value as 'ASC' | 'DESC')}>
+                          <SelectTrigger className="border-[#f9bbc4]/30 focus:border-[#f9bbc4]">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="DESC">Descendente</SelectItem>
+                            <SelectItem value="ASC">Ascendente</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+
+                      {/* Filtro de fechas */}
+                      <div className="space-y-2 md:col-span-2 lg:col-span-1">
+                        <Label className="flex items-center gap-2 text-sm font-medium text-[#4a3540]">
+                          <Calendar className="h-4 w-4" />
+                          Rango de fechas
+                        </Label>
                         <DateRangePicker
                           dateRange={dateRange}
                           onDateRangeChange={setDateRange}
-                          placeholder="Filtrar por fecha"
+                          placeholder="Seleccionar fechas"
                           accentColor="#f9bbc4"
                         />
                       </div>
 
-                      {/* Table tools */}
-                      <div className="flex items-center gap-3">
-                        <TableFilters
-                          filters={{
-                          }}
-                          onFiltersChange={() => {}}
-                          columns={columns}
-                          onColumnsChange={setColumns}
-                        />
+                      {/* Incluir Traspasadas */}
+                      <div className="space-y-2">
+                        <Label className="flex items-center gap-2 text-sm font-medium text-[#4a3540]">
+                          <CheckSquare className="h-4 w-4" />
+                          Opciones adicionales
+                        </Label>
+                        <div className="flex items-center space-x-2">
+                          <Checkbox
+                            id="incluir-traspasadas"
+                            checked={incluirTraspasadas}
+                            onCheckedChange={(checked) => setIncluirTraspasadas(checked as boolean)}
+                          />
+                          <label
+                            htmlFor="incluir-traspasadas"
+                            className="text-sm text-[#4a3540]"
+                          >
+                            Incluir Traspasadas
+                          </label>
+                        </div>
                       </div>
                     </div>
 
-                    {/* Active filter indicators */}
-                    <div className="mt-3 flex flex-wrap items-center gap-2 text-xs text-[#6b4c57]">
-                      {dateRange && (
-                        <div className="flex items-center gap-2">
+                    {/* Indicadores de filtros activos */}
+                    {(searchTerm || (estadoFilter && estadoFilter !== 'todos') || clienteFilter || trabajadorFilter || creadoPorFilter || dateRange || incluirTraspasadas) && (
+                      <div className="mt-4 rounded-lg bg-gradient-to-r from-[#f9bbc4]/10 to-[#e292a3]/10 border border-[#f9bbc4]/20 p-3">
+                        <div className="flex items-center gap-2 mb-2">
                           <div className="h-2 w-2 rounded-full bg-[#f9bbc4]"></div>
-                          <span>
-                            Filtrando desde{' '}
-                            {dateRange.from?.toLocaleDateString('es-ES')}
-                            {dateRange.to &&
-                              ` hasta ${dateRange.to.toLocaleDateString('es-ES')}`}
-                          </span>
+                          <span className="text-sm font-medium text-[#4a3540]">Filtros activos:</span>
                         </div>
-                      )}
-                    </div>
+                        <div className="flex flex-wrap gap-2 text-xs text-[#6b4c57]">
+                          {searchTerm && (
+                            <span className="rounded-full bg-[#f9bbc4]/20 px-2 py-1">
+                              Búsqueda: "{searchTerm}"
+                            </span>
+                          )}
+                          {estadoFilter && estadoFilter !== 'todos' && (
+                            <span className="rounded-full bg-[#f9bbc4]/20 px-2 py-1">
+                              Estado: {estadoFilter}
+                            </span>
+                          )}
+                          {clienteFilter && (
+                            <span className="rounded-full bg-[#f9bbc4]/20 px-2 py-1">
+                              Cliente: "{clienteFilter}"
+                            </span>
+                          )}
+                          {trabajadorFilter && (
+                            <span className="rounded-full bg-[#f9bbc4]/20 px-2 py-1">
+                              Trabajador: "{trabajadorFilter}"
+                            </span>
+                          )}
+                          {creadoPorFilter && (
+                            <span className="rounded-full bg-[#f9bbc4]/20 px-2 py-1">
+                              Creado por: "{creadoPorFilter}"
+                            </span>
+                          )}
+                          {dateRange && (
+                            <span className="rounded-full bg-[#f9bbc4]/20 px-2 py-1">
+                              Fechas: {dateRange.from?.toLocaleDateString('es-ES')}
+                              {dateRange.to && ` - ${dateRange.to.toLocaleDateString('es-ES')}`}
+                            </span>
+                          )}
+                          {incluirTraspasadas && (
+                            <span className="rounded-full bg-[#f9bbc4]/20 px-2 py-1">
+                              Incluir Traspasadas: Sí
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    )}
                   </CardContent>
                 </Card>
               </div>
@@ -331,6 +591,13 @@ export default function IngresosPage() {
             setSelectedTransactionId('');
           }}
           comandaId={selectedTransactionId}
+        />
+
+        {/* Modal de Exportar Comandas */}
+        <ModalExportarComandas
+          isOpen={showExportModal}
+          onClose={() => setShowExportModal(false)}
+          comandas={comandasPaginadas.data}
         />
       </div>
     </MainLayout>
