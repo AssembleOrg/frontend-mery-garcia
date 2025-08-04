@@ -32,7 +32,7 @@ import EgresosTotalsDisplay from '@/components/cajas/EgresosTotalsDisplay';
 import ModalCambiarEstado from '@/components/validacion/ModalCambiarEstado';
 import ModalEditarTransaccion from '@/components/cajas/ModalEditarTransaccion';
 import useComandaStore from '@/features/comandas/store/comandaStore';
-import { EstadoDeComandaNew } from '@/services/unidadNegocio.service';
+import { ComandaNew, EstadoDeComandaNew } from '@/services/unidadNegocio.service';
 
 const breadcrumbItems = [
   { label: 'Inicio', href: '/' },
@@ -86,7 +86,7 @@ export default function EgresosPage() {
   const [showViewModal, setShowViewModal] = useState(false);
   const [selectedTransactionId, setSelectedTransactionId] =
     useState<string>('');
-  const [alertaEliminar, setAlertaEliminar] = useState<Comanda | null>(null);
+  const [alertaEliminar, setAlertaEliminar] = useState<ComandaNew | null>(null);
 
     useEffect(() => {
       setColumns(
@@ -493,9 +493,7 @@ export default function EgresosPage() {
           }}
           comandaId={selectedTransactionId}
           estadoActual={
-            (selectedTransaction?.estadoValidacion === 'validado'
-              ? 'VALIDADO'
-              : selectedTransaction?.estado) || 'PENDIENTE'
+            (selectedTransaction?.estadoDeComanda || EstadoDeComandaNew.PENDIENTE)
           }
           onSuccess={() => {
             setShowChangeStatusModal(false);

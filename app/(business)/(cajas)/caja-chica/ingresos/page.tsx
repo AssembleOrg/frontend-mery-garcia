@@ -581,15 +581,7 @@ export default function IngresosPage() {
             setSelectedTransactionId('');
           }}
           comandaId={selectedTransactionId}
-          estadoActual = {
-            (selectedTransaction && (selectedTransaction as any).estadoValidacion === 'validado')
-              ? 'VALIDADO'
-              : ((selectedTransaction?.estadoDeComanda === EstadoDeComandaNew.VALIDADO)
-                  ? 'VALIDADO'
-                  : (selectedTransaction?.estadoDeComanda === EstadoDeComandaNew.CANCELADA)
-                    ? 'CANCELADA'
-                    : 'PENDIENTE')
-          }
+          estadoActual={selectedTransaction?.estadoDeComanda || EstadoDeComandaNew.PENDIENTE}
           onSuccess={() => {
             setShowChangeStatusModal(false);
             setSelectedTransactionId('');

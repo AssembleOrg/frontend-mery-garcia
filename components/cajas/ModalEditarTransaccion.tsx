@@ -141,10 +141,10 @@ export default function ModalEditarTransaccion({
         // Convertir MetodoPago a MetodoPagoForm
         const metodosPagoForm = comandaEncontrada.metodosPago.map((metodo) => {
           const montoOriginal = calcularMontoOriginal(
-            metodo.tipo,
-            metodo.monto
+            metodo.tipo || '',
+            metodo.monto || 0
           );
-          const descuentoAplicado = montoOriginal - metodo.monto;
+          const descuentoAplicado = montoOriginal - (metodo.monto || 0);
           return {
             ...metodo,
             montoFinal: metodo.monto,

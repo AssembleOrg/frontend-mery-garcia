@@ -1,6 +1,6 @@
 'use client';
 
-import React from 'react';
+import React, { useCallback, useMemo } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { MoneyInput } from '@/components/ui/money-input';
@@ -46,7 +46,7 @@ interface MetodosPagoSectionProps {
   hayItemsCongelados?: boolean; // Nueva prop para restricción de moneda
 }
 
-export default function MetodosPagoSection({
+const MetodosPagoSection = React.memo(function MetodosPagoSection({
   metodosPago,
   totalPagado,
   montoTotal,
@@ -92,10 +92,49 @@ export default function MetodosPagoSection({
     }
   };
 
-  const totalDescuentos = metodosPago.reduce(
-    (sum, mp) => sum + mp.descuentoAplicado,
-    0
+  const totalDescuentos = useMemo(() => 
+    metodosPago.reduce(
+      (sum, mp) => sum + mp.descuentoAplicado,
+      0
+    ), [metodosPago]
   );
+
+  // Memoize callbacks to prevent re-renders
+  const handleTipoChange = useCallback((index: number) => (value: string) => {
+    onActualizarMetodo?.(index, 'tipo', value);
+  }, [onActualizarMetodo]);
+
+  const handleMonedaChange = useCallback((index: number) => (value: string) => {
+    onActualizarMetodo?.(index, 'moneda', value);
+  }, [onActualizarMetodo]);
+
+  const handleMontoChange = useCallback((index: number) => (value: number) => {
+    onActualizarMetodo?.(index, 'monto', value);
+  }, [onActualizarMetodo]);
+
+  const handleConfirmarMetodo = useCallback((index: number) => () => {
+    onConfirmarMetodo?.(index);
+  }, [onConfirmarMetodo]);
+
+  const handleEliminarMetodo = useCallback((index: number) => () => {
+    onEliminarMetodo?.(index);
+  }, [onEliminarMetodo]);
+
+  const handleGiftCardNombreChange = useCallback((index: number) => (e: React.ChangeEvent<HTMLInputElement>) => {
+    const giftcardData = {
+      nombre: e.target.value,
+      codigo: metodosPago[index]?.giftcard?.codigo || '',
+    };
+    onActualizarMetodo?.(index, 'giftcard', giftcardData);
+  }, [onActualizarMetodo, metodosPago]);
+
+  const handleGiftCardCodigoChange = useCallback((index: number) => (e: React.ChangeEvent<HTMLInputElement>) => {
+    const giftcardData = {
+      nombre: metodosPago[index]?.giftcard?.nombre || '',
+      codigo: e.target.value,
+    };
+    onActualizarMetodo?.(index, 'giftcard', giftcardData);
+  }, [onActualizarMetodo, metodosPago]);
 
   return (
     <Card className={className}>
@@ -118,7 +157,7 @@ export default function MetodosPagoSection({
       </CardHeader>
       <CardContent className="space-y-4">
         {metodosPago.map((metodo, index) => (
-          <div key={`metodo-${index}-${metodo.tipo}-${metodo.monto}`} className="space-y-2">
+          <div key={`metodo-${index}-${metodo.tipo}`} className="space-y-2">
             {/* Fila principal del método de pago */}
             <div className="flex items-center gap-2">
               <div className="flex items-center gap-2">
@@ -127,9 +166,7 @@ export default function MetodosPagoSection({
 
               <Select
                 value={metodo.tipo}
-                onValueChange={(value) =>
-                  onActualizarMetodo?.(index, 'tipo', value)
-                }
+                onValueChange={handleTipoChange(index)}
                 disabled={isReadOnly}
               >
                 <SelectTrigger className="w-[140px]">
@@ -153,9 +190,7 @@ export default function MetodosPagoSection({
               {/* Selector de Moneda */}
               <Select
                 value={metodo.moneda || (hayItemsCongelados ? MONEDAS.ARS : MONEDAS.USD)}
-                onValueChange={(value) =>
-                  onActualizarMetodo?.(index, 'moneda', value)
-                }
+                onValueChange={handleMonedaChange(index)}
                 disabled={isReadOnly || hayItemsCongelados}
               >
                 <SelectTrigger className="w-[80px]">
@@ -175,13 +210,7 @@ export default function MetodosPagoSection({
 
               <MoneyInput
                 value={metodo.monto || 0}
-                onChange={(value) =>
-                  onActualizarMetodo?.(
-                    index,
-                    'monto',
-                    value
-                  )
-                }
+                onChange={handleMontoChange(index)}
                 disabled={isReadOnly || montoTotal === 0}
                 placeholder="Monto"
                 className="lg:w-64 md:w-33 sm:24 text-right"
@@ -206,7 +235,7 @@ export default function MetodosPagoSection({
                     type="button"
                     variant="ghost"
                     size="sm"
-                    onClick={() => onConfirmarMetodo?.(index)}
+                    onClick={handleConfirmarMetodo(index)}
                     className="text-green-500 hover:text-green-700"
                     title="Confirmar método de pago"
                   >
@@ -217,7 +246,7 @@ export default function MetodosPagoSection({
                       type="button"
                       variant="ghost"
                       size="sm"
-                      onClick={() => onEliminarMetodo?.(index)}
+                      onClick={handleEliminarMetodo(index)}
                       className="text-red-500 hover:text-red-700"
                     >
                       <Trash2 className="h-4 w-4" />
@@ -233,26 +262,14 @@ export default function MetodosPagoSection({
                 <Input
                   placeholder="Nombre"
                   value={metodo.giftcard?.nombre || ''}
-                  onChange={(e) => {
-                    const giftcardData = {
-                      nombre: e.target.value,
-                      codigo: metodo.giftcard?.codigo || '',
-                    };
-                    onActualizarMetodo?.(index, 'giftcard', giftcardData);
-                  }}
+                  onChange={handleGiftCardNombreChange(index)}
                   className="w-32"
                   readOnly={isReadOnly}
                 />
                 <Input
                   placeholder="Código"
                   value={metodo.giftcard?.codigo || ''}
-                  onChange={(e) => {
-                    const giftcardData = {
-                      nombre: metodo.giftcard?.nombre || '',
-                      codigo: e.target.value,
-                    };
-                    onActualizarMetodo?.(index, 'giftcard', giftcardData);
-                  }}
+                  onChange={handleGiftCardCodigoChange(index)}
                   className="w-32"
                   readOnly={isReadOnly}
                 />
@@ -375,4 +392,6 @@ export default function MetodosPagoSection({
       </CardContent>
     </Card>
   );
-}
+});
+
+export default MetodosPagoSection;

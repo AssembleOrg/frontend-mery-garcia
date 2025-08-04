@@ -238,11 +238,11 @@ export default function ModalVerComanda({ isOpen, onClose, comanda }: ModalVerCo
 
                   <div className="space-y-2">
                     <div className="flex justify-between">
-                      <span className="text-sm font-medium text-gray-600">Total USD:</span>
+                      <span className="text-sm font-medium text-gray-600">Total USD(caja):</span>
                       <span className="font-semibold text-[#4a3540]">{formatUSD(totalUSD)}</span>
                     </div>
                     <div className="flex justify-between">
-                      <span className="text-sm font-medium text-gray-600">Total ARS:</span>
+                      <span className="text-sm font-medium text-gray-600">Total ARS(caja):</span>
                       <span className="font-semibold text-[#4a3540]">{formatARSFromNative(totalARS)}</span>
                     </div>
                   </div>

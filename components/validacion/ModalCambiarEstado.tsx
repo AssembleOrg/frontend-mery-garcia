@@ -15,6 +15,7 @@ import { X, Clock, CheckCircle, XCircle } from 'lucide-react';
 import useComandaStore from '@/features/comandas/store/comandaStore';
 import { toast } from 'sonner';
 import { EstadoDeComandaNew, TipoDeComandaNew } from '@/services/unidadNegocio.service';
+import { EstadoValidacion } from '@/types/caja';
 
 // Tipo simplificado para estados de tabla
 export type EstadoSimple = 'PENDIENTE' | 'VALIDADO' | 'CANCELADA';
@@ -23,7 +24,7 @@ interface ModalCambiarEstadoProps {
   isOpen: boolean;
   onClose: () => void;
   comandaId: string;
-  estadoActual: EstadoSimple;
+  estadoActual: EstadoDeComandaNew;
   onSuccess?: () => void;
 }
 
@@ -61,7 +62,7 @@ export default function ModalCambiarEstado({
   estadoActual,
   onSuccess,
 }: ModalCambiarEstadoProps) {
-  const [nuevoEstado, setNuevoEstado] = useState<EstadoSimple>(estadoActual);
+  const [nuevoEstado, setNuevoEstado] = useState<EstadoDeComandaNew>(estadoActual);
   // const [observaciones, setObservaciones] = useState('');
   const [cargando, setCargando] = useState(false);
 
@@ -184,7 +185,7 @@ export default function ModalCambiarEstado({
                 <Select
                   value={nuevoEstado}
                   onValueChange={(value) =>
-                    setNuevoEstado(value as EstadoSimple)
+                    setNuevoEstado(value as EstadoDeComandaNew)
                   }
                 >
                   <SelectTrigger className="mt-2">
