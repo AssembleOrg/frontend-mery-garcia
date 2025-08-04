@@ -481,7 +481,7 @@ export default function TransactionsTableTanStack({
               >
                 <Edit className="mr-2 h-4 w-4" /> Editar (Deshabilitado)
               </DropdownMenuItem>
-              
+
               {!isValidated && (
                 <>
                   {onChangeStatus && (

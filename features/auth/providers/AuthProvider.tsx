@@ -2,6 +2,7 @@
 import { ReactNode, useEffect } from 'react';
 import { useAuth } from '../hooks/useAuth';
 import { useRouter, usePathname } from 'next/navigation';
+import { useAuthErrorHandler } from '@/hooks/useAuthErrorHandler';
 
 interface AuthProviderProps {
   children: ReactNode;
@@ -21,10 +22,36 @@ export function AuthProvider({ children }: AuthProviderProps) {
   const { isAuthenticated, isLoading, initializeAuth } = useAuth();
   const router = useRouter();
   const pathname = usePathname();
+  const { handleAuthError } = useAuthErrorHandler();
 
   useEffect(() => {
     initializeAuth();
   }, [initializeAuth]);
+
+  // Manejador global de errores para autenticación
+  useEffect(() => {
+    const handleGlobalError = (event: ErrorEvent) => {
+      const error = event.error;
+      if (error && handleAuthError(error)) {
+        event.preventDefault();
+      }
+    };
+
+    const handleUnhandledRejection = (event: PromiseRejectionEvent) => {
+      const error = event.reason;
+      if (error && handleAuthError(error)) {
+        event.preventDefault();
+      }
+    };
+
+    window.addEventListener('error', handleGlobalError);
+    window.addEventListener('unhandledrejection', handleUnhandledRejection);
+
+    return () => {
+      window.removeEventListener('error', handleGlobalError);
+      window.removeEventListener('unhandledrejection', handleUnhandledRejection);
+    };
+  }, [handleAuthError]);
 
   useEffect(() => {
     if (isLoading) return;

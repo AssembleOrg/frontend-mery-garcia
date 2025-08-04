@@ -32,7 +32,7 @@ export default function Breadcrumbs({ items }: BreadcrumbsProps) {
       <ol className="relative flex items-center space-x-2 text-sm md:space-x-3">
         {items.map((item, index) => (
           <motion.li
-            key={index}
+            key={`breadcrumb-${index}-${item.label}`}
             initial={{ opacity: 0, x: -20 }}
             animate={{ opacity: 1, x: 0 }}
             transition={{ duration: 0.3, delay: index * 0.1 }}

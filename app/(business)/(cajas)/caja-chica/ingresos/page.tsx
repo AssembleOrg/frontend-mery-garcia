@@ -270,13 +270,13 @@ export default function IngresosPage() {
                   </div>
 
                   <div className="flex flex-col gap-2 sm:flex-row">
-                    <Button
-                      onClick={() => setShowAddModal(true)}
-                      className="rounded-lg bg-gradient-to-r from-[#f9bbc4] to-[#e292a3] px-6 py-2 font-semibold text-white shadow-md transition-all duration-200 hover:scale-105 hover:from-[#e292a3] hover:to-[#d4a7ca] hover:shadow-lg"
-                    >
-                      <Plus className="mr-2 h-4 w-4" />
-                      Nueva Transacción
-                    </Button>
+                  <Button
+                    onClick={() => setShowAddModal(true)}
+                    className="rounded-lg bg-gradient-to-r from-[#f9bbc4] to-[#e292a3] px-6 py-2 font-semibold text-white shadow-md transition-all duration-200 hover:scale-105 hover:from-[#e292a3] hover:to-[#d4a7ca] hover:shadow-lg"
+                  >
+                    <Plus className="mr-2 h-4 w-4" />
+                    Nueva Transacción
+                  </Button>
                     <Button
                       onClick={() => setShowExportModal(true)}
                       variant="outline"
@@ -508,8 +508,8 @@ export default function IngresosPage() {
                             <span className="rounded-full bg-[#f9bbc4]/20 px-2 py-1">
                               Incluir Traspasadas: Sí
                             </span>
-                          )}
-                        </div>
+                      )}
+                    </div>
                       </div>
                     )}
                   </CardContent>

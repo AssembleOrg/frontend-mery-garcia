@@ -193,7 +193,8 @@ export interface ClienteNew {
   email: string;
   telefono: string;
   activo: boolean;
-  cuit: string;
+  cuit?: string;
+  dni?: string;
   fechaRegistro: string;
   comentarios: string;
   createdAt: string;

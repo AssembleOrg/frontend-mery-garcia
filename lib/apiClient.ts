@@ -59,17 +59,45 @@ export async function apiFetch<T = unknown>(
     return undefined as T;
   }
 
-  if (!response.ok) {
-    // Intentar parsear mensaje de error JSON
-    let message: string | undefined;
-    try {
-      const data = await response.json();
-      message = data?.message || JSON.stringify(data);
-    } catch {
-      message = response.statusText;
-    }
-    console.log('Error:', response, message);
-    throw new Error(`API ${response.status}: ${message}`);
+      if (!response.ok) {
+      // Manejar errores de autenticación
+      if (response.status === 401 || response.status === 403) {
+        // Limpiar token y redirigir al login
+        if (typeof window !== 'undefined') {
+          // Limpiar localStorage
+          localStorage.removeItem('token');
+          localStorage.removeItem('user');
+          
+          // Limpiar Zustand store si está disponible
+          try {
+            const { useAuthStore } = await import('@/features/auth/store/authStore');
+            useAuthStore.getState().logout();
+          } catch {
+            // Si no está disponible el store, continuar
+          }
+          
+          // Mostrar mensaje y redirigir
+          console.error('Sesión expirada. Por favor, inicia sesión nuevamente.');
+          
+          // Redirigir al login de manera más simple
+          window.location.replace('/');
+          return undefined as T;
+        }
+      }
+    
+          // Intentar parsear mensaje de error JSON
+      let message: string | undefined;
+      try {
+        const data = await response.json();
+        message = data?.message || JSON.stringify(data);
+      } catch {
+        message = response.statusText;
+      }
+      
+      const error = new Error(`API ${response.status}: ${message}`);
+      (error as any).status = response.status;
+      console.log('Error:', response, message);
+      throw error;
   }
 
   // Intentar devolver JSON; si no hay cuerpo, devolver void 0

@@ -337,9 +337,9 @@ export default function TipoCambioPage() {
                     {(showHistorialBackend
                       ? historial
                       : historial.slice(0, 5)
-                    ).map((registro: DolarResponse) => (
+                    ).map((registro: DolarResponse, index: number) => (
                       <div
-                        key={`${registro.fechaActualizacion}-${registro.venta}`}
+                        key={`${registro.fechaActualizacion || registro.fechaCreacion || index}-${registro.venta}-${index}`}
                         className="flex items-center justify-between border-b pb-2 text-sm last:border-b-0"
                       >
                         <span className="text-gray-600">

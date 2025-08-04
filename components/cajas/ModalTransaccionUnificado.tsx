@@ -71,6 +71,7 @@ import useProductosServiciosStore from '@/features/productos-servicios/store/pro
 import { useClientesStore } from '@/features/clientes/store/clientesStore';
 import ClienteSelector from '@/components/comandas/ClienteSelector';
 import { toast } from 'sonner';
+import { useErrorHandler } from '@/hooks/useErrorHandler';
 
 interface ModalTransaccionUnificadoProps {
   isOpen: boolean;
@@ -119,6 +120,7 @@ export default function ModalTransaccionUnificado({
   const { trabajadores, loadTrabajadores } = useTrabajadoresStore();
   const personal = trabajadores;
   const { cargarClientes } = useClientesStore();
+  const { handleError } = useErrorHandler();
 
   const {
     exchangeRate,
@@ -230,16 +232,19 @@ export default function ModalTransaccionUnificado({
       orderBy: 'numero',
       order: 'DESC',
       search: '',
-      tipoDeComanda: tipo === 'ingreso' ? TipoDeComandaNew.INGRESO : TipoDeComandaNew.EGRESO,
+      tipoDeComanda:
+        tipo === 'ingreso' ? TipoDeComandaNew.INGRESO : TipoDeComandaNew.EGRESO,
     });
 
-    lastDolar().then((dolarR) => {
-      if(dolar === 0) {
-        setDolar(dolarR.venta);
-      }
-    }).catch((error) => {
-      toast.error('Error al obtener el último dólar');
-    });
+    lastDolar()
+      .then((dolarR) => {
+        if (dolar === 0) {
+          setDolar(dolarR.venta);
+        }
+      })
+      .catch((error) => {
+        toast.error('Error al obtener el último dólar');
+      });
   }, []);
 
   // Auto-switch payment methods to ARS when frozen items are detected
@@ -342,11 +347,20 @@ export default function ModalTransaccionUnificado({
   }, [isOpen]);
 
   useEffect(() => {
-    loadTrabajadores();
-    cargarClientes();
-    loadProductosServicios();
-    console.log(productosServicios, 'TEST1');
-  }, [loadTrabajadores, cargarClientes, loadProductosServicios]);
+    const loadData = async () => {
+      try {
+        await Promise.all([
+          loadTrabajadores(),
+          cargarClientes(),
+          loadProductosServicios()
+        ]);
+      } catch (error) {
+        handleError(error, 'cargar datos del modal');
+      }
+    };
+    
+    loadData();
+  }, [loadTrabajadores, cargarClientes, loadProductosServicios, handleError]);
 
   // Debug useEffect para el modal de búsqueda
   useEffect(() => {
@@ -566,7 +580,16 @@ export default function ModalTransaccionUnificado({
     setItems(
       items.map((item) => {
         if (item.id === id) {
-          const precioBase = item.precio * item.cantidad;
+          let precioBase;
+
+          // Para items con monto fijo ARS (egresos): trabajar en ARS nativo
+          if (item.esMontoFijoARS && tipo === 'egreso') {
+            precioBase = item.precio * item.cantidad;
+          } else {
+            // Para items normales: usar el cálculo dinámico USD
+            precioBase = item.precio * item.cantidad;
+          }
+
           const descuentoCalculado = (precioBase * porcentaje) / 100;
 
           return {
@@ -586,7 +609,15 @@ export default function ModalTransaccionUnificado({
     setItems(
       items.map((item) => {
         if (item.id === id) {
-          const precioBase = item.precio * item.cantidad;
+          let precioBase;
+
+          // Para items con monto fijo ARS (egresos): trabajar en ARS nativo
+          if (item.esMontoFijoARS && tipo === 'egreso') {
+            precioBase = item.precio * item.cantidad;
+          } else {
+            // Para items normales: usar el cálculo dinámico USD
+            precioBase = item.precio * item.cantidad;
+          }
 
           return {
             ...item,
@@ -691,16 +722,19 @@ export default function ModalTransaccionUnificado({
   const calcularTotalesARS = () => {
     if (tipo === 'egreso' && hayItemsCongelados) {
       // Para egresos con items ARS fijo: trabajar en ARS nativo
+      // Usar directamente los subtotales calculados en actualizarItem
       const subtotalBaseARS = items.reduce((sum, item) => {
         if (item.esMontoFijoARS) {
-          // Items ARS fijo: usar valor nativo sin conversión
-          return sum + item.precio * item.cantidad;
+          // Items ARS fijo: usar subtotal ya calculado (que incluye descuentos)
+          return sum + item.subtotal;
         } else {
           // Items normales: convertir USD a ARS para consistencia
-          return sum + item.precio * item.cantidad * getTipoCambio().valorVenta;
+          return sum + item.subtotal * getTipoCambio().valorVenta;
         }
       }, 0);
 
+      // Los descuentos ya están incluidos en los subtotales de cada item
+      // Solo los calculamos para mostrar en el resumen
       const totalDescuentosARS = items.reduce((sum, item) => {
         if (item.esMontoFijoARS) {
           // Descuentos en ARS nativo
@@ -711,7 +745,7 @@ export default function ModalTransaccionUnificado({
         }
       }, 0);
 
-      const subtotalConDescuentosARS = subtotalBaseARS - totalDescuentosARS;
+      const subtotalConDescuentosARS = subtotalBaseARS;
 
       // Para egresos ARS fijo: usar directamente totalPagado que ya está en ARS nativo
       const totalPagadoARS = metodosPago.reduce(
@@ -731,7 +765,7 @@ export default function ModalTransaccionUnificado({
       const diferenciaARS = totalPagadoARS - totalFinalARS;
 
       return {
-        subtotalBase: subtotalBaseARS,
+        subtotalBase: subtotalBaseARS + totalDescuentosARS, // Subtotal sin descuentos
         totalDescuentos: totalDescuentosARS,
         subtotalConDescuentosItems: subtotalConDescuentosARS,
         totalFinal: totalFinalARS,
@@ -753,10 +787,10 @@ export default function ModalTransaccionUnificado({
       if (item.esPrecioCongelado && item.precioFijoARS) {
         // Para items congelados (ingresos): usar ARS nativo sin convertir
         // Solo para compatibilidad interna, pero el display real será en ARS
-        return sum + (item.precioFijoARS * item.cantidad) / 1000; // Valor nominal para cálculos
+        return sum + item.precioFijoARS * item.cantidad; // Usar valor real, no dividir por 1000
       } else if (item.esMontoFijoARS && tipo === 'egreso') {
         // Para items egresos con monto fijo ARS: usar valor nominal para cálculos
-        return sum + (item.precio * item.cantidad) / 1000; // Valor nominal para cálculos
+        return sum + item.precio * item.cantidad; // Usar valor real, no dividir por 1000
       } else {
         // Para items normales: usar el cálculo dinámico actual
         return sum + item.precio * item.cantidad;
@@ -822,18 +856,20 @@ export default function ModalTransaccionUnificado({
     const nuevosErrores: Record<string, string> = {};
 
     if (!clienteProveedor.trim()) {
-      nuevosErrores.clienteProveedor =
-        'El nombre del cliente/proveedor es requerido';
+      nuevosErrores.clienteProveedor = 'El cliente es requerido';
+      toast.error('El cliente es requerido');
+      return false;
     }
 
     if (
       items.every((item) => item.responsablesIds.length === 0) &&
       tipo === 'ingreso'
     ) {
-      toast.error('Debe seleccionar al menos un responsable', {
+      toast.error('Debe seleccionar un responsable por item', {
         position: 'top-center',
       });
-      nuevosErrores.responsable = 'Debe seleccionar al menos un responsable';
+      nuevosErrores.responsable = 'Debe seleccionar un responsable por item';
+      return false;
     }
 
     // if (responsablesIds.length === 0 && tipo === 'ingreso') {
@@ -853,19 +889,24 @@ export default function ModalTransaccionUnificado({
 
     if (items.length === 0) {
       nuevosErrores.items = 'Debe agregar al menos un item';
+      toast.error('Debe agregar al menos un item');
+      return false;
     }
 
     // Validar items
     items.forEach((item, index) => {
       if (!item.nombre.trim()) {
         nuevosErrores[`item-${index}-nombre`] = 'El nombre es requerido';
+        return false;
       }
       if (item.precio <= 0) {
         nuevosErrores[`item-${index}-precio`] = 'El precio debe ser mayor a 0';
+        return false;
       }
       if (item.cantidad <= 0) {
         nuevosErrores[`item-${index}-cantidad`] =
           'La cantidad debe ser mayor a 0';
+        return false;
       }
     });
 
@@ -873,6 +914,7 @@ export default function ModalTransaccionUnificado({
     const validacionMetodos = validarMetodosPago(totales.totalFinal);
     if (!validacionMetodos.esValido && validacionMetodos.error) {
       nuevosErrores.pagos = validacionMetodos.error;
+      return false;
     }
 
     console.table(nuevosErrores);
@@ -1017,9 +1059,11 @@ export default function ModalTransaccionUnificado({
         orderBy: 'numero',
         order: 'DESC',
         search: '',
-        tipoDeComanda: tipo === 'ingreso' ? TipoDeComandaNew.INGRESO : TipoDeComandaNew.EGRESO,
+        tipoDeComanda:
+          tipo === 'ingreso'
+            ? TipoDeComandaNew.INGRESO
+            : TipoDeComandaNew.EGRESO,
       });
-  
     } catch (error) {
       logger.error(`Error al guardar ${tipo}:`, error);
       setErrores({
@@ -1495,17 +1539,13 @@ export default function ModalTransaccionUnificado({
                             <div>
                               <Label className="text-gray-700">Subtotal</Label>
                               <div className="to-gray-150 flex h-10 items-center justify-between rounded-md border-2 border-gray-300 bg-gradient-to-r from-gray-100 px-3">
-                                <span className="text-sm font-medium text-green-600">
+                                {/* <span className="text-sm font-medium text-green-600">
                                   {formatItemAmount(item)}
+                                </span> */}
+                                <span className="text-xs text-gray-600">
+                                  {item.subtotal} (
+                                  {item.esPrecioCongelado ? 'ARS' : 'USD'})
                                 </span>
-                                {!item.esPrecioCongelado &&
-                                  !item.esMontoFijoARS &&
-                                  isExchangeRateValid &&
-                                  item.subtotal > 0 && (
-                                    <span className="text-xs text-gray-600">
-                                      {formatARS(item.subtotal)}
-                                    </span>
-                                  )}
                               </div>
                             </div>
                           </div>
@@ -1681,7 +1721,7 @@ export default function ModalTransaccionUnificado({
                           )}
 
                           {/* Descuento por Item - Solo para ingresos */}
-                          {tipo === 'ingreso' && (
+                          {/* {tipo === 'ingreso' && (
                             <div className="mt-4 border-t pt-4">
                               <DiscountControls
                                 descuentoPorcentaje={item.descuentoPorcentaje}
@@ -1697,7 +1737,7 @@ export default function ModalTransaccionUnificado({
                                 maxDescuento={50}
                               />
                             </div>
-                          )}
+                          )} */}
                         </div>
                       );
                     })
@@ -1871,20 +1911,20 @@ export default function ModalTransaccionUnificado({
                         </div>
                         <div className="text-right">
                           <div className="text-sm font-semibold text-gray-900">
-                            {formatAmountForARSFixed(
-                              totales.subtotalBase,
-                              (totales as any).esCalculoARS
-                            )}
+                            {hayItemsCongelados
+                              ? `🔒 ${formatARSFromNative(totales.subtotalBase)}`
+                              : formatAmountForARSFixed(
+                                  totales.subtotalBase,
+                                  (totales as any).esCalculoARS
+                                )}
                           </div>
-                          {isExchangeRateValid && totales.subtotalBase > 0 && (
-                            <div className="text-xs text-gray-600">
-                              {hayItemsCongelados
-                                ? formatARSFromNative(
-                                    totales.totalARSRespetandoCongelados
-                                  )
-                                : formatARS(totales.subtotalBase)}
-                            </div>
-                          )}
+                          {isExchangeRateValid &&
+                            totales.subtotalBase > 0 &&
+                            !hayItemsCongelados && (
+                              <div className="text-xs text-gray-600">
+                                {formatARS(totales.subtotalBase)}
+                              </div>
+                            )}
                         </div>
                       </div>
 
@@ -1897,13 +1937,16 @@ export default function ModalTransaccionUnificado({
                           <div className="text-right">
                             <div className="text-sm font-semibold text-orange-700">
                               -
-                              {formatAmountForARSFixed(
-                                totales.totalDescuentos,
-                                (totales as any).esCalculoARS
-                              )}
+                              {hayItemsCongelados
+                                ? `🔒 ${formatARSFromNative(totales.totalDescuentos)}`
+                                : formatAmountForARSFixed(
+                                    totales.totalDescuentos,
+                                    (totales as any).esCalculoARS
+                                  )}
                             </div>
                             {isExchangeRateValid &&
-                              totales.totalDescuentos > 0 && (
+                              totales.totalDescuentos > 0 &&
+                              !hayItemsCongelados && (
                                 <div className="text-xs text-orange-600">
                                   -{formatARS(totales.totalDescuentos)}
                                 </div>
@@ -2024,13 +2067,16 @@ export default function ModalTransaccionUnificado({
                           <div className="text-right">
                             <div className="text-sm font-semibold text-green-700">
                               -
-                              {formatAmountForARSFixed(
-                                totales.descuentosPorMetodo,
-                                (totales as any).esCalculoARS
-                              )}
+                              {hayItemsCongelados
+                                ? `🔒 ${formatARSFromNative(totales.descuentosPorMetodo)}`
+                                : formatAmountForARSFixed(
+                                    totales.descuentosPorMetodo,
+                                    (totales as any).esCalculoARS
+                                  )}
                             </div>
                             {isExchangeRateValid &&
-                              totales.descuentosPorMetodo > 0 && (
+                              totales.descuentosPorMetodo > 0 &&
+                              !hayItemsCongelados && (
                                 <div className="text-xs text-green-600">
                                   -{formatARS(totales.descuentosPorMetodo)}
                                 </div>
@@ -2046,20 +2092,20 @@ export default function ModalTransaccionUnificado({
                         </div>
                         <div className="text-right">
                           <div className="text-base font-bold text-blue-900">
-                            {formatAmountForARSFixed(
-                              totales.totalFinal,
-                              (totales as any).esCalculoARS
-                            )}
+                            {hayItemsCongelados
+                              ? `🔒 ${formatARSFromNative(totales.totalFinal)}`
+                              : formatAmountForARSFixed(
+                                  totales.totalFinal,
+                                  (totales as any).esCalculoARS
+                                )}
                           </div>
-                          {isExchangeRateValid && totales.totalFinal > 0 && (
-                            <div className="text-sm text-blue-700">
-                              {hayItemsCongelados
-                                ? formatARSFromNative(
-                                    totales.totalARSRespetandoCongelados
-                                  )
-                                : formatARS(totales.totalFinal)}
-                            </div>
-                          )}
+                          {isExchangeRateValid &&
+                            totales.totalFinal > 0 &&
+                            !hayItemsCongelados && (
+                              <div className="text-sm text-blue-700">
+                                {formatARS(totales.totalFinal)}
+                              </div>
+                            )}
                         </div>
                       </div>
 
@@ -2070,13 +2116,16 @@ export default function ModalTransaccionUnificado({
                         </div>
                         <div className="text-right">
                           <div className="text-sm font-semibold text-green-700">
-                            {formatAmountForARSFixed(
-                              totales.totalPagadoConDescuentos,
-                              (totales as any).esCalculoARS
-                            )}
+                            {hayItemsCongelados
+                              ? `🔒 ${formatARSFromNative(totales.totalPagadoConDescuentos)}`
+                              : formatAmountForARSFixed(
+                                  totales.totalPagadoConDescuentos,
+                                  (totales as any).esCalculoARS
+                                )}
                           </div>
                           {isExchangeRateValid &&
-                            totales.totalPagadoConDescuentos > 0 && (
+                            totales.totalPagadoConDescuentos > 0 &&
+                            !hayItemsCongelados && (
                               <div className="text-xs text-green-600">
                                 {formatARS(totales.totalPagadoConDescuentos)}
                               </div>
@@ -2100,8 +2149,22 @@ export default function ModalTransaccionUnificado({
                             {Math.abs(totales.diferencia) < 0.01
                               ? '✓ Balanceado'
                               : totales.diferencia > 0
-                                ? `+${formatAmountForARSFixed(totales.diferencia, (totales as any).esCalculoARS)} (exceso)`
-                                : `${formatAmountForARSFixed(totales.diferencia, (totales as any).esCalculoARS)} (faltante)`}
+                                ? `+${
+                                    hayItemsCongelados
+                                      ? formatARSFromNative(totales.diferencia)
+                                      : formatAmountForARSFixed(
+                                          totales.diferencia,
+                                          (totales as any).esCalculoARS
+                                        )
+                                  } (exceso)`
+                                : `${
+                                    hayItemsCongelados
+                                      ? formatARSFromNative(totales.diferencia)
+                                      : formatAmountForARSFixed(
+                                          totales.diferencia,
+                                          (totales as any).esCalculoARS
+                                        )
+                                  } (faltante)`}
                           </div>
                         </div>
                       </div>
@@ -2200,11 +2263,20 @@ export default function ModalTransaccionUnificado({
                           onClick={() => agregarDesdeProducto(producto)}
                         >
                           <div className="flex-1">
-                            <div className="font-medium text-gray-900">
+                            <div className="flex items-center gap-2 font-medium text-gray-900">
                               {producto.nombre}
+                              {producto.esPrecioCongelado && (
+                                <Badge variant="outline" className="text-xs">
+                                  🔒 Precio fijo
+                                </Badge>
+                              )}
                             </div>
                             <div className="text-sm text-gray-600">
-                              {producto.tipo} - {producto.precio} USD
+                              {producto.tipo} -{' '}
+                              {producto.esPrecioCongelado &&
+                              producto.precioFijoARS
+                                ? `${formatARSFromNative(producto.precioFijoARS)} ARS`
+                                : `${producto.precio} USD`}
                             </div>
                             {producto.descripcion && (
                               <div className="mt-1 text-xs text-gray-500">
@@ -2239,11 +2311,20 @@ export default function ModalTransaccionUnificado({
                           onClick={() => agregarDesdeProducto(producto)}
                         >
                           <div>
-                            <div className="font-medium text-gray-900">
+                            <div className="flex items-center gap-2 font-medium text-gray-900">
                               {producto.nombre}
+                              {producto.esPrecioCongelado && (
+                                <Badge variant="outline" className="text-xs">
+                                  🔒 Precio fijo
+                                </Badge>
+                              )}
                             </div>
                             <div className="text-sm text-gray-600">
-                              {producto.tipo} - {producto.precio} USD
+                              {producto.tipo} -{' '}
+                              {producto.esPrecioCongelado &&
+                              producto.precioFijoARS
+                                ? `${formatARSFromNative(producto.precioFijoARS)} ARS`
+                                : `${producto.precio} USD`}
                             </div>
                           </div>
                           <Button

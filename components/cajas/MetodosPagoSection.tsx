@@ -3,6 +3,7 @@
 import React from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { MoneyInput } from '@/components/ui/money-input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import {
   Select,
@@ -117,7 +118,7 @@ export default function MetodosPagoSection({
       </CardHeader>
       <CardContent className="space-y-4">
         {metodosPago.map((metodo, index) => (
-          <div key={index} className="space-y-2">
+          <div key={`metodo-${index}-${metodo.tipo}-${metodo.monto}`} className="space-y-2">
             {/* Fila principal del método de pago */}
             <div className="flex items-center gap-2">
               <div className="flex items-center gap-2">
@@ -172,25 +173,23 @@ export default function MetodosPagoSection({
                 </SelectContent>
               </Select>
 
-              <Input
-                type="number"
-                placeholder="Monto"
-                value={metodo.monto || ''}
-                onChange={(e) =>
+              <MoneyInput
+                value={metodo.monto || 0}
+                onChange={(value) =>
                   onActualizarMetodo?.(
                     index,
                     'monto',
-                    parseFloat(e.target.value) || 0
+                    value
                   )
                 }
-                className="w-24"
-                min="0"
-                step="0.01"
+                disabled={isReadOnly || montoTotal === 0}
+                placeholder="Monto"
+                className="lg:w-64 md:w-33 sm:24 text-right"
                 readOnly={isReadOnly}
               />
 
               {/* Mostrar descuento aplicado si existe */}
-              {metodo.descuentoAplicado > 0 && (
+              {/* {metodo.descuentoAplicado > 0 && (
                 <div className="min-w-[60px] text-xs text-green-600">
                   {metodo.moneda === MONEDAS.ARS &&
                   metodo.descuentoOriginalARS ? (
@@ -199,28 +198,7 @@ export default function MetodosPagoSection({
                     <>-{formatAmount(metodo.descuentoAplicado)}</>
                   )}
                 </div>
-              )}
-
-              <div className="min-w-[80px] text-sm font-medium">
-                {metodo.moneda === MONEDAS.ARS ? (
-                  <>
-                    ={' '}
-                    {formatARSFromNative(
-                      metodo.montoFinalOriginalARS || metodo.monto
-                    )}
-                    <div className="text-xs text-gray-500">
-                      ≈ {formatAmount(metodo.montoFinal)}
-                    </div>
-                  </>
-                ) : (
-                  <>
-                    = {formatAmount(metodo.montoFinal)}
-                    <div className="text-xs text-gray-500">
-                      ≈ {formatARS(metodo.montoFinal)}
-                    </div>
-                  </>
-                )}
-              </div>
+              )} */}
 
               {!isReadOnly && (
                 <div className="flex gap-1">
@@ -283,111 +261,117 @@ export default function MetodosPagoSection({
           </div>
         ))}
 
-        {/* Resumen con descuentos y dual currency */}
-        <div className="space-y-2 border-t pt-4">
-          {/* Resumen Dual USD/ARS */}
-          {obtenerResumenDual && (
-            <div className="space-y-1 border-t pt-2">
-              {(() => {
-                const resumen = obtenerResumenDual();
-                return (
-                  <>
-                    <div className="text-xs font-medium text-gray-600">
-                      Resumen por Moneda:
-                    </div>
-                    {resumen.detallesPorMoneda.USD.metodos > 0 && (
-                      <div className="flex justify-between text-xs">
-                        <span>
-                          USD ({resumen.detallesPorMoneda.USD.metodos} método
-                          {resumen.detallesPorMoneda.USD.metodos > 1 ? 's' : ''}
-                          ):
-                        </span>
-                        <span>
-                          {formatAmount(resumen.detallesPorMoneda.USD.total)}
-                        </span>
-                      </div>
-                    )}
-                    {resumen.detallesPorMoneda.ARS.metodos > 0 && (
-                      <div className="flex justify-between text-xs">
-                        <span>
-                          ARS ({resumen.detallesPorMoneda.ARS.metodos} método
-                          {resumen.detallesPorMoneda.ARS.metodos > 1 ? 's' : ''}
-                          ):
-                        </span>
-                        <span>
-                          {formatARSFromNative(
-                            resumen.detallesPorMoneda.ARS.total
-                          )}
-                        </span>
-                      </div>
-                    )}
-                    {(resumen.totalPagadoUSD > 0 ||
-                      resumen.totalPagadoARS > 0) && (
-                      <div className="flex justify-between border-t pt-1 text-xs text-gray-500">
-                        <span>Total Equivalente ARS:</span>
-                        <span>{formatARSFromNative(resumen.totalARS)}</span>
-                      </div>
-                    )}
-                  </>
-                );
-              })()}
-            </div>
-          )}
-
-          <div className="flex justify-between text-sm">
-            <span>Total a Pagar:</span>
-            <span className="font-medium">
-              {hayItemsCongelados 
-                ? `🔒 ${formatARSFromNative(montoTotal)}`
-                : formatAmount(montoTotal)
-              }
-            </span>
-          </div>
-          {totalDescuentos > 0 && (
-            <div className="flex justify-between text-sm text-green-600">
-              <span>Descuentos Aplicados:</span>
-              <span className="font-medium">
-                -{formatAmount(totalDescuentos)}
-              </span>
-            </div>
-          )}
-
-          <div className="flex justify-between border-t pt-2 text-sm font-medium">
-            <span>Total Pagado {hayItemsCongelados ? '(ARS)' : '(USD)'}:</span>
-            <div className="text-right">
-              <div>
-                {hayItemsCongelados 
-                  ? `🔒 ${formatARSFromNative(totalPagado)}`
-                  : formatAmount(totalPagado)
-                }
-              </div>
-              {!hayItemsCongelados && obtenerResumenDual &&
-                (() => {
+                  {/* Resumen con descuentos y dual currency */}
+          <div className="space-y-2 border-t pt-4">
+            {/* Resumen Dual USD/ARS - Solo mostrar si NO hay items congelados */}
+            {obtenerResumenDual && !hayItemsCongelados && (
+              <div className="space-y-1 border-t pt-2">
+                {(() => {
                   const resumen = obtenerResumenDual();
                   return (
-                    resumen.totalPagadoARS > 0 && (
-                      <div className="text-xs text-gray-500">
-                        ≈ {formatARSFromNative(resumen.totalARS)}
+                    <>
+                      <div className="text-xs font-medium text-gray-600">
+                        Resumen por Moneda:
                       </div>
-                    )
+                      {resumen.detallesPorMoneda.USD.metodos > 0 && (
+                        <div className="flex justify-between text-xs">
+                          <span>
+                            USD ({resumen.detallesPorMoneda.USD.metodos} método
+                            {resumen.detallesPorMoneda.USD.metodos > 1 ? 's' : ''}
+                            ):
+                          </span>
+                          <span>
+                            {formatAmount(resumen.detallesPorMoneda.USD.total)}
+                          </span>
+                        </div>
+                      )}
+                      {resumen.detallesPorMoneda.ARS.metodos > 0 && (
+                        <div className="flex justify-between text-xs">
+                          <span>
+                            ARS ({resumen.detallesPorMoneda.ARS.metodos} método
+                            {resumen.detallesPorMoneda.ARS.metodos > 1 ? 's' : ''}
+                            ):
+                          </span>
+                          <span>
+                            {formatARSFromNative(
+                              resumen.detallesPorMoneda.ARS.total
+                            )}
+                          </span>
+                        </div>
+                      )}
+                      {(resumen.totalPagadoUSD > 0 ||
+                        resumen.totalPagadoARS > 0) && (
+                        <div className="flex justify-between border-t pt-1 text-xs text-gray-500">
+                          <span>Total Equivalente ARS:</span>
+                          <span>{formatARSFromNative(resumen.totalARS)}</span>
+                        </div>
+                      )}
+                    </>
                   );
                 })()}
-            </div>
-          </div>
-          {Math.abs(totalPagado - montoTotal) > 0.01 && (
-            <div
-              className={`flex justify-between text-sm ${
-                totalPagado > montoTotal ? 'text-blue-600' : 'text-red-600'
-              }`}
-            >
-              <span>Diferencia:</span>
+              </div>
+            )}
+
+            <div className="flex justify-between text-sm">
+              <span>Total a Pagar:</span>
               <span className="font-medium">
-                {totalPagado > montoTotal ? '+' : ''}
-                {formatAmount(totalPagado - montoTotal)}
+                {hayItemsCongelados 
+                  ? `🔒 ${formatARSFromNative(montoTotal)}`
+                  : formatAmount(montoTotal)
+                }
               </span>
             </div>
-          )}
-        </div>
+            {totalDescuentos > 0 && (
+              <div className="flex justify-between text-sm text-green-600">
+                <span>Descuentos Aplicados:</span>
+                <span className="font-medium">
+                  {hayItemsCongelados
+                    ? `🔒 -${formatARSFromNative(totalDescuentos)}`
+                    : `-${formatAmount(totalDescuentos)}`
+                  }
+                </span>
+              </div>
+            )}
+
+            <div className="flex justify-between border-t pt-2 text-sm font-medium">
+              <span>Total Pagado {hayItemsCongelados ? '(ARS)' : '(USD)'}:</span>
+              <div className="text-right">
+                <div>
+                  {hayItemsCongelados 
+                    ? `🔒 ${formatARSFromNative(totalPagado)}`
+                    : formatAmount(totalPagado)
+                  }
+                </div>
+                {!hayItemsCongelados && obtenerResumenDual &&
+                  (() => {
+                    const resumen = obtenerResumenDual();
+                    return (
+                      resumen.totalPagadoARS > 0 && (
+                        <div className="text-xs text-gray-500">
+                          ≈ {formatARSFromNative(resumen.totalARS)}
+                        </div>
+                      )
+                    );
+                  })()}
+              </div>
+            </div>
+            {Math.abs(totalPagado - montoTotal) > 0.01 && (
+              <div
+                className={`flex justify-between text-sm ${
+                  totalPagado > montoTotal ? 'text-blue-600' : 'text-red-600'
+                }`}
+              >
+                <span>Diferencia:</span>
+                <span className="font-medium">
+                  {totalPagado > montoTotal ? '+' : ''}
+                  {hayItemsCongelados 
+                    ? formatARSFromNative(totalPagado - montoTotal)
+                    : formatAmount(totalPagado - montoTotal)
+                  }
+                </span>
+              </div>
+            )}
+          </div>
       </CardContent>
     </Card>
   );

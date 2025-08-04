@@ -194,7 +194,7 @@ export default function TraspasoModal({
                   <p className="mb-2 text-sm text-gray-600">Métodos de Pago</p>
                   <div className="flex flex-wrap gap-2">
                     {traspaso.metodosPago.map((metodo, index) => (
-                      <Badge key={index} className={getMetodoPagoColor(metodo)}>
+                      <Badge key={`metodo-${index}-${metodo}`} className={getMetodoPagoColor(metodo)}>
                         <CreditCard className="mr-1 h-3 w-3" />
                         {metodo}
                       </Badge>

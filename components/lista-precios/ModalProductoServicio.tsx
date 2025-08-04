@@ -27,6 +27,7 @@ import { UnidadNegocio } from '@/types/caja';
 import { useExchangeRate } from '@/features/exchange-rate/hooks/useExchangeRate';
 import { ProductoServicioCreateNew, ProductoServicioNew, ProductoServicioUpdateNew, TipoProductoServicioNew, UnidadNegocioNew, unidadNegocioService } from '@/services/unidadNegocio.service';
 import { productosServiciosService } from '@/services/productosServicios.service';
+import { toast } from 'sonner';
 
 interface ModalProductoServicioProps {
   isOpen: boolean;
@@ -112,7 +113,7 @@ export default function ModalProductoServicio({
         setUnidadNegocio(producto.unidadNegocio.nombre);
         setActivo(producto.activo);
         setDuracion(producto.duracion);
-        setCodigoBarras(producto.codigoBarras || '');
+        setCodigoBarras(producto.codigoBarras &&producto.codigoBarras.trim().length > 0 ? producto.codigoBarras : undefined);
         setEsPrecioCongelado(producto.esPrecioCongelado || false);
         setPrecioARS(producto.precioFijoARS || 0);
       } else {
@@ -223,7 +224,7 @@ export default function ModalProductoServicio({
           unidadNegocioId: unidadNegocioC?.id!,
           activo,
           duracion: tipo === TipoProductoServicioNew.SERVICIO ? duracion : undefined,
-          codigoBarras: tipo === TipoProductoServicioNew.PRODUCTO ? codigoBarras : undefined,
+          codigoBarras: tipo === TipoProductoServicioNew.PRODUCTO ? codigoBarras && codigoBarras?.length > 0 ? codigoBarras : undefined : undefined,
           esPrecioCongelado,
           precioFijoARS: esPrecioCongelado ? precioARS : 0,
         }
@@ -234,6 +235,10 @@ export default function ModalProductoServicio({
        
       } else {
         const unidadNegocioC = unidadesNegocio.find(unidad => unidad.nombre === unidadNegocio);
+        if (!unidadNegocioC) {
+          toast.error('Unidad de negocio es requerida');
+          return;
+        }
         const productoServicio: ProductoServicioCreateNew = {
           nombre,
           descripcion,

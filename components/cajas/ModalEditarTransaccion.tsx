@@ -573,7 +573,7 @@ export default function ModalEditarTransaccion({
                 <CardContent>
                   <div className="space-y-3">
                     {items.map((item, index) => (
-                      <div key={index} className="rounded-lg border p-4">
+                      <div key={`item-${index}-${item.nombre}-${item.precio}`} className="rounded-lg border p-4">
                         <div className="grid gap-4 md:grid-cols-6">
                           <div className="md:col-span-2">
                             <Label>Producto/Servicio</Label>
