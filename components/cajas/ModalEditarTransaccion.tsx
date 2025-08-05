@@ -1,12 +1,11 @@
 'use client';
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
+import { Checkbox } from '@/components/ui/checkbox';
 import {
   Select,
   SelectContent,
@@ -14,39 +13,56 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import MetodosPagoSection from './MetodosPagoSection';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
 import {
-  X,
-  Edit3,
   Plus,
   Trash2,
-  Shield,
-  CheckCircle,
-  Clock,
-  User,
-  Package,
-  CreditCard,
-  FileText,
-  XCircle,
-  DollarSign,
   Save,
-  Calendar,
+  X,
+  TrendingUp,
+  Calculator,
+  ArrowUpCircle,
+  ArrowDownCircle,
+  Search,
+  Hash,
+  Package,
+  User,
+  DollarSign,
+  Lock,
+  ChevronDown,
 } from 'lucide-react';
-import { toast } from 'sonner';
-import {
-  Comanda,
-  ItemComanda,
-  MetodoPago,
-  MetodoPagoForm,
-  Personal,
-  UnidadNegocio,
-  EstadoComandaNegocio,
-  EstadoValidacion,
-} from '@/types/caja';
 import useComandaStore from '@/features/comandas/store/comandaStore';
+import { useExchangeRateStore } from '@/features/exchange-rate/store/exchangeRateStore';
+import { MONEDAS } from '@/lib/constants';
 import { usePersonal } from '@/features/personal/hooks/usePersonal';
+import { useModalScrollLock } from '@/hooks/useModalScrollLock';
+import { logger } from '@/lib/utils';
 import { useCurrencyConverter } from '@/hooks/useCurrencyConverter';
-import { useConfiguracion } from '@/features/configuracion/store/configuracionStore';
-import { ComandaNew } from '@/services/unidadNegocio.service';
+import { Comanda, ItemComanda, UnidadNegocio, Cliente } from '@/types/caja';
+import { useInitializeComandaStore } from '@/hooks/useInitializeComandaStore';
+import { useMetodosPago } from '@/hooks/useMetodosPago';
+import { useAuth } from '@/features/auth/hooks/useAuth';
+import useTrabajadoresStore from '@/features/personal/store/trabajadoresStore';
+import {
+  ComandaUpdateNew,
+  EstadoDeComandaNew,
+  TipoDeComandaNew,
+  ProductoServicioNew,
+  TipoPagoNew,
+  MonedaNew,
+  TipoItemNew,
+  CajaNew,
+  ComandaNew,
+  ClienteNew,
+} from '@/services/unidadNegocio.service';
+import useProductosServiciosStore from '@/features/productos-servicios/store/productosServiciosStore';
+import { useClientesStore } from '@/features/clientes/store/clientesStore';
+import ClienteSelector from '@/components/comandas/ClienteSelector';
+import { toast } from 'sonner';
+import { useErrorHandler } from '@/hooks/useErrorHandler';
+import ModalTransaccionUnificado from './ModalTransaccionUnificado';
 
 interface ModalEditarTransaccionProps {
   isOpen: boolean;
@@ -54,931 +70,1199 @@ interface ModalEditarTransaccionProps {
   comandaId: string;
 }
 
-const ESTADOS_CONFIG = {
-  pendiente: {
-    label: 'Pendiente',
-    color: 'bg-yellow-100 text-yellow-800 border-yellow-200',
-    icon: Clock,
-  },
-  completado: {
-    label: 'Completo',
-    color: 'bg-green-100 text-green-800 border-green-200',
-    icon: CheckCircle,
-  },
-  incompleto: {
-    label: 'Incompleto',
-    color: 'bg-red-100 text-red-800 border-red-200',
-    icon: XCircle,
-  },
-} as const;
-
-const VALIDACION_CONFIG = {
-  no_validado: {
-    label: 'Sin Validar',
-    color: 'bg-gray-100 text-gray-800 border-gray-200',
-  },
-  validado: {
-    label: 'Validado',
-    color: 'bg-blue-100 text-blue-800 border-blue-200',
-  },
-} as const;
+interface ItemTransaccion {
+  id: string;
+  productoServicioId: string;
+  nombre: string;
+  precio: number;
+  cantidad: number;
+  descuentoPorcentaje: number;
+  descuento: number;
+  subtotal: number;
+  descripcion?: string;
+  esPrecioCongelado?: boolean;
+  precioFijoARS?: number;
+  esMontoFijoARS?: boolean;
+  responsablesIds: string[];
+  mostrarSelectorResponsables?: boolean;
+}
 
 export default function ModalEditarTransaccion({
   isOpen,
   onClose,
   comandaId,
 }: ModalEditarTransaccionProps) {
-  const [comanda, setComanda] = useState<Comanda | null>(null);
-  const [isLoading, setIsLoading] = useState(false);
-  const { descuentosPorMetodo } = useConfiguracion();
+  // Store hooks
+  const {
+    actualizarComanda,
+    obtenerComandaPorId,
+  } = useComandaStore();
 
-  // Estados del formulario
-  const [clienteNombre, setClienteNombre] = useState('');
-  const [clienteTelefono, setClienteTelefono] = useState('');
-  const [clienteCuit, setClienteCuit] = useState('');
-  const [items, setItems] = useState<ItemComanda[]>([]);
-  const [metodosPago, setMetodosPago] = useState<MetodoPagoForm[]>([]);
-  const [observaciones, setObservaciones] = useState('');
-  const [vendedorId, setVendedorId] = useState('');
+  const { productosServicios, loadProductosServicios } =
+    useProductosServiciosStore();
+  const { trabajadores, loadTrabajadores } = useTrabajadoresStore();
+  const personal = trabajadores;
+  const { cargarClientes } = useClientesStore();
+  const { handleError } = useErrorHandler();
 
-  const { actualizarComanda } = useComandaStore();
-  const { comandas } = useComandaStore();
-  const { personal } = usePersonal();
-  const { formatUSD, formatARSFromNative, formatDual, isExchangeRateValid, arsToUsd } =
-    useCurrencyConverter();
+  const {
+    exchangeRate,
+    isExchangeRateValid,
+    formatARS,
+    formatUSD,
+    formatDual,
+    formatARSFromNative,
+    arsToUsd,
+  } = useCurrencyConverter();
 
-  // Helper para formatear montos con dual currency
+  const [dolar, setDolar] = useState(0);
+  const { lastDolar } = useExchangeRateStore();
+
+  // Helper function for dual currency display
   const formatAmount = (amount: number) => {
     return isExchangeRateValid ? formatDual(amount) : formatUSD(amount);
   };
 
-  const calcularMontoOriginal = useCallback(
-    (tipo: string, montoFinal: number) => {
-      // Excluir métodos que no tienen descuentos
-      if (tipo === 'mixto' || tipo === 'giftcard' || tipo === 'qr') {
-        return montoFinal;
-      }
+  const { getTipoCambio, cargando } = useExchangeRateStore();
+  const { user } = useAuth();
 
-      const descuentoPorcentaje =
-        descuentosPorMetodo[tipo as keyof typeof descuentosPorMetodo] || 0;
-      if (descuentoPorcentaje > 0) {
-        return montoFinal / (1 - descuentoPorcentaje / 100);
-      }
-      return montoFinal;
-    },
-    [descuentosPorMetodo]
-  );
+  useInitializeComandaStore();
 
-  useEffect(() => {
-    if (isOpen && comandaId) {
-      const comandaEncontrada = comandas.find((c) => c.id === comandaId);
-      if (comandaEncontrada) {
-        // setComanda(comandaEncontrada);
-        // Cargar datos en el formulario
-        setClienteNombre(comandaEncontrada.cliente.nombre);
-        setClienteTelefono(comandaEncontrada.cliente.telefono || '');
-        setClienteCuit(comandaEncontrada.cliente.cuit || '');
-        // Convertir MetodoPago a MetodoPagoForm
-        const metodosPagoForm = comandaEncontrada.metodosPago.map((metodo) => {
-          const montoOriginal = calcularMontoOriginal(
-            metodo.tipo || '',
-            metodo.monto || 0
-          );
-          const descuentoAplicado = montoOriginal - (metodo.monto || 0);
-          return {
-            ...metodo,
-            montoFinal: metodo.monto,
-            descuentoAplicado,
-            montoOriginal,
-          };
-        });
-        // setMetodosPago(metodosPagoForm);
-        setObservaciones(comandaEncontrada.observaciones || '');
-        // setVendedorId(comandaEncontrada.mainStaff?.id || '');
-      }
+  // Estados
+  const [comanda, setComanda] = useState<ComandaNew | undefined>(undefined);
+  const [isLoading, setIsLoading] = useState(false);
+  const [tipo, setTipo] = useState<'ingreso' | 'egreso'>('ingreso');
+
+  // Form state
+  const [clienteSeleccionado, setClienteSeleccionado] =
+    useState<ClienteNew | null>(null);
+  const [clienteProveedor, setClienteProveedor] = useState('');
+  const [telefono, setTelefono] = useState('');
+  const [observaciones, setObservaciones] = useState('');
+  const [items, setItems] = useState<ItemTransaccion[]>([]);
+  const [descuentoGlobalPorcentaje, setDescuentoGlobalPorcentaje] = useState(0);
+
+  // UI state
+  const [guardando, setGuardando] = useState(false);
+  const [errores, setErrores] = useState<Record<string, string>>({});
+  const [mostrarBuscador, setMostrarBuscador] = useState(false);
+  const [busqueda, setBusqueda] = useState('');
+  
+  // Estados adicionales para cargar todos los datos de la comanda
+  const [montoSeñaAplicada, setMontoSeñaAplicada] = useState(0);
+  const [monedaSeñaAplicada, setMonedaSeñaAplicada] = useState<'ars' | 'usd' | null>(null);
+  const [numeroManual, setNumeroManual] = useState('');
+  const [numeroUltimaComanda, setNumeroUltimaComanda] = useState('');
+  const [cambiosTemporales, setCambiosTemporales] = useState<{
+    metodosPago: any[];
+    montoSeñaAplicada: number;
+    monedaSeñaAplicada: 'ars' | 'usd' | null;
+  }>({
+    metodosPago: [],
+    montoSeñaAplicada: 0,
+    monedaSeñaAplicada: null,
+  });
+
+  // Detectar si hay items con precio congelado
+  const hayItemsCongelados = useMemo(() => {
+    if (tipo === 'ingreso') {
+      return items.some((item) => item.esPrecioCongelado);
+    } else {
+      return items.some((item) => item.esMontoFijoARS);
     }
-  }, [isOpen, comandaId, comandas, calcularMontoOriginal]);
+  }, [items, tipo]);
 
-  if (!isOpen || !comanda) return null;
+  // Hook para métodos de pago
+  const {
+    metodosPago,
+    agregarMetodoPago: agregarMetodoPagoBase,
+    eliminarMetodoPago,
+    actualizarMetodoPago,
+    resetMetodosPago,
+    validarMetodosPago,
+    obtenerResumenDual,
+  } = useMetodosPago(tipo === 'ingreso', hayItemsCongelados);
 
-  // Obtener configuración de estados
-  const estadoNegocio = (comanda.estadoNegocio ||
-    'pendiente') as EstadoComandaNegocio;
-  const estadoValidacion = (comanda.estadoValidacion ||
-    'no_validado') as EstadoValidacion;
-  const estadoConfig = ESTADOS_CONFIG[estadoNegocio];
-  const validacionConfig = VALIDACION_CONFIG[estadoValidacion];
-  const IconoEstado = estadoConfig.icon;
 
-  // Verificar si la comanda está validada (no se puede editar)
-  const esComandaValidada = estadoValidacion === 'validado';
 
-  const formatDate = (fecha: Date | string) => {
-    return new Intl.DateTimeFormat('es-ES', {
-      day: '2-digit',
-      month: '2-digit',
-      year: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit',
-    }).format(new Date(fecha));
-  };
+//   const agregarMetodoPago = useCallback(() => {
+//     agregarMetodoPagoBase();
+//     if (hayItemsCongelados && metodosPago.length >= 0) {
+//       const ultimoIndex = metodosPago.length;
+//       setTimeout(() => {
+//         actualizarMetodoPago(ultimoIndex, 'moneda', MONEDAS.ARS);
+//       }, 0);
+//     }
+//   }, [agregarMetodoPagoBase, hayItemsCongelados, metodosPago.length, actualizarMetodoPago]);
 
-  const subtotal = items.reduce((sum, item) => sum + item.subtotal, 0);
+//   // Función para manejar el cambio de monto en métodos de pago
+//   const handleMontoMetodoPago = useCallback((index: number, monto: number) => {
+//     // Si el usuario pone 450, automáticamente calcular el descuento
+//     const metodo = metodosPago[index];
+//     if (metodo && monto > 0) {
+//       // Actualizar el monto y dejar que el hook calcule automáticamente el descuento
+//       actualizarMetodoPago(index, 'monto', monto);
+//     }
+//   }, [metodosPago, actualizarMetodoPago]);
+
+  // Calcular totales
+  const calcularTotales = useCallback(() => {
+    const subtotalBase = items.reduce((sum, item) => {
+      return sum + (item.precio * item.cantidad);
+    }, 0);
+    
   const totalDescuentos = items.reduce(
     (sum, item) => sum + (item.descuento || 0),
     0
   );
-  const totalSeña = comanda.totalSeña || 0;
+    
+    const subtotalConDescuentosItems = subtotalBase - totalDescuentos;
+    const totalPagadoConDescuentos = metodosPago.reduce(
+      (sum, metodo) => sum + (metodo.montoFinal || 0),
+      0
+    );
+    
+    const diferencia = totalPagadoConDescuentos - subtotalConDescuentosItems;
 
-  // Calcular descuentos por método de pago
-  const descuentosPorMetodoPago = metodosPago.reduce((sum, metodo) => {
-    const montoOriginal = metodo.montoOriginal || metodo.monto;
-    const descuentoAplicado = montoOriginal - metodo.monto;
-    return sum + descuentoAplicado;
-  }, 0);
-
-  // El total final debe considerar los descuentos por método de pago
-  const totalFinal =
-    subtotal - totalDescuentos - totalSeña - descuentosPorMetodoPago;
-
-  // Calcular total de pagos convirtiendo ARS a USD
-  const totalPagos = metodosPago.reduce((sum, metodo) => {
-    if (metodo.moneda === 'ARS') {
-      return sum + arsToUsd(metodo.monto);
-    }
-    return sum + metodo.monto;
-  }, 0);
-
-  const diferencia = totalFinal - totalPagos;
-
-  const agregarItem = () => {
-    const nuevoItem: ItemComanda = {
-      nombre: '',
-      tipo: 'servicio',
-      cantidad: 1,
-      precio: 0,
-      precioOriginalUSD: 0,
-      subtotal: 0,
-      descuento: 0,
-      productoServicioId: '',
+    return {
+      subtotalBase,
+      totalDescuentos,
+      subtotalConDescuentosItems,
+      totalFinal: subtotalConDescuentosItems,
+      totalPagadoConDescuentos,
+      diferencia,
+      descuentosPorMetodo: 0,
     };
-    setItems([...items, nuevoItem]);
-  };
+  }, [items, metodosPago]);
 
-  // Eliminar item
-  const eliminarItem = (index: number) => {
-    setItems(items.filter((_, i) => i !== index));
-  };
-
-  // Actualizar item
-  const actualizarItem = (
-    index: number,
-    campo: keyof ItemComanda,
-    valor: string | number
-  ) => {
-    const nuevosItems = [...items];
-    nuevosItems[index] = { ...nuevosItems[index], [campo]: valor };
-
-    // Recalcular subtotal si cambia cantidad o precio
-    if (campo === 'cantidad' || campo === 'precio') {
-      nuevosItems[index].subtotal =
-        nuevosItems[index].cantidad * nuevosItems[index].precio;
+  // Validar exceso de pago
+  const validarExcesoPago = useCallback((totalPagado: number, totalFinal: number) => {
+    const diferencia = totalPagado - totalFinal;
+    if (diferencia > 0.01) {
+      const exceso = Math.abs(diferencia);
+      toast.warning(
+        `⚠️ Estás cobrando ${formatAmount(exceso)} más del total a pagar.`
+      );
+      return false;
     }
+    return true;
+  }, [formatAmount]);
 
-    setItems(nuevosItems);
-  };
+  // Calcular faltante cuando se termina de cargar el método de pago
+  const calcularFaltante = useCallback(() => {
+    if (metodosPago.length === 0) return;
 
-  const agregarMetodoPago = () => {
-    const nuevoMetodo: MetodoPagoForm = {
-      tipo: 'efectivo',
-      monto: 0,
-      moneda: 'USD', // Valor por defecto
-      montoFinal: 0,
-      descuentoAplicado: 0,
-      montoOriginal: 0,
-    };
-    setMetodosPago([...metodosPago, nuevoMetodo]);
-  };
+    const totales = calcularTotales();
+    const totalFinal = totales.totalFinal;
+    const totalPagado = metodosPago.reduce((sum, mp) => sum + (mp.montoFinal || 0), 0);
+    const faltante = totalFinal - totalPagado;
 
-  // Eliminar método de pago
-  const eliminarMetodoPago = (index: number) => {
-    setMetodosPago(metodosPago.filter((_, i) => i !== index));
-  };
+    // Si hay faltante, mostrar toast informativo
+    if (faltante > 0.01) {
+      // toast.info(`Faltante a pagar: ${formatAmount(faltante)}`);
+    } else if (faltante < -0.01) {
+      toast.info(`Excedente: ${formatAmount(Math.abs(faltante))}`);
+    } else {
+      // toast.success('Pago completo');
+    }
+  }, [metodosPago, calcularTotales, formatAmount]);
 
-  // Actualizar método de pago
-  const actualizarMetodoPago = (
-    index: number,
-    campo: keyof MetodoPagoForm,
-    valor: string | number
-  ) => {
-    const nuevosMetodos = [...metodosPago];
-    nuevosMetodos[index] = { ...nuevosMetodos[index], [campo]: valor };
+//   useModalScrollLock(isOpen);
 
-    // Si se actualiza el monto original o el tipo, recalcular el monto final
-    if (campo === 'montoOriginal' || campo === 'tipo') {
-      const metodo = nuevosMetodos[index];
-      const montoOriginal =
-        campo === 'montoOriginal' ? Number(valor) : metodo.montoOriginal;
-      const tipo = campo === 'tipo' ? String(valor) : metodo.tipo;
+  // Cargar comanda al abrir el modal
+  useEffect(() => {
+    console.log('comandaId', comandaId);
+    if (isOpen && comandaId) {
+      cargarComanda();
+    }
+  }, [isOpen, comandaId]);
 
-      const descuentoPorcentaje =
-        descuentosPorMetodo[tipo as keyof typeof descuentosPorMetodo] || 0;
-      const tieneDescuento =
-        descuentoPorcentaje > 0 &&
-        tipo !== 'mixto' &&
-        tipo !== 'giftcard' &&
-        tipo !== 'qr';
+  // Cargar todos los datos de la comanda cuando se actualiza
+  useEffect(() => {
+    if (comanda) {
+      setClienteSeleccionado(comanda.cliente || null);
+      setClienteProveedor(comanda.cliente?.nombre || '');
+      setTelefono(comanda.cliente?.telefono || '');
+      setObservaciones(comanda.observaciones || '');
+      setItems(comanda.items?.map((item) => {
+        return {
+          id: item.id || `temp-${Date.now()}`,
+          productoServicioId: item.productoServicioId || '',
+          nombre: item.nombre || '',
+          precio: item.precio || 0,
+          cantidad: item.cantidad || 1,
+          descuentoPorcentaje: item.descuento || 0,
+          descuento: item.descuento || 0,
+          subtotal: item.subtotal || 0,
+          responsablesIds: item.trabajadorId ? [item.trabajadorId] : [],
+          mostrarSelectorResponsables: false,
+        };
+      }) || []);
+      // Los métodos de pago se cargan a través del hook useMetodosPago
+      setDescuentoGlobalPorcentaje(comanda.descuentosAplicados?.reduce((sum, descuento) => sum + (descuento.porcentaje || 0), 0) || 0);
+      setMontoSeñaAplicada(comanda.metodosPago?.reduce((sum, mp) => {
+        return mp.moneda === MonedaNew.ARS ? sum + (mp.montoFinal || 0) : sum;
+      }, 0) ?? 0);
+      setMonedaSeñaAplicada(comanda.metodosPago?.find((mp) => mp.moneda === MonedaNew.ARS)?.moneda === MonedaNew.ARS ? 'ars' : null);
+      setNumeroManual(comanda.numero?.split('-')[1] || '');
+      setNumeroUltimaComanda(comanda.numero?.split('-')[1] || '');
+      setCambiosTemporales({
+        metodosPago: comanda.metodosPago || [],
+        montoSeñaAplicada: comanda.metodosPago?.reduce((sum, mp) => {
+          return mp.moneda === MonedaNew.ARS ? sum + (mp.montoFinal || 0) : sum;
+        }, 0) ?? 0,
+        monedaSeñaAplicada: comanda.metodosPago?.find((mp) => mp.moneda === MonedaNew.ARS)?.moneda === MonedaNew.ARS ? 'ars' : null,
+      });
+    }
+  }, [comanda]);
 
-      const montoFinal = tieneDescuento
-        ? montoOriginal * (1 - descuentoPorcentaje / 100)
-        : montoOriginal;
+// //   // Cargar datos necesarios
+// //   useEffect(() => {
+// //     const loadData = async () => {
+// //       try {
+// //         await Promise.all([
+// //           loadTrabajadores(),
+// //           cargarClientes(),
+// //           loadProductosServicios()
+// //         ]);
+// //       } catch (error) {
+// //         handleError(error, 'cargar datos del modal');
+// //       }
+// //     };
+    
+// //     loadData();
+// //   }, [loadTrabajadores, cargarClientes, loadProductosServicios, handleError]);
 
-      nuevosMetodos[index].monto = montoFinal;
-      nuevosMetodos[index].montoFinal = montoFinal;
-      nuevosMetodos[index].descuentoAplicado = montoOriginal - montoFinal;
-
-      if (campo === 'montoOriginal') {
-        nuevosMetodos[index].montoOriginal = montoOriginal;
+  // Manejar ESC para cerrar modal
+  useEffect(() => {
+    const handleEsc = (event: KeyboardEvent) => {
+      if (event.key === 'Escape' && isOpen) {
+        if (mostrarBuscador) {
+          setMostrarBuscador(false);
+        } else {
+          onClose();
+        }
       }
+    };
+
+    if (isOpen) {
+      document.addEventListener('keydown', handleEsc);
+      return () => document.removeEventListener('keydown', handleEsc);
     }
+  }, [isOpen, onClose, mostrarBuscador]);
 
-    setMetodosPago(nuevosMetodos);
-  };
+  // useEffect para calcular faltante cuando cambian los métodos de pago
+  useEffect(() => {
+    if (metodosPago.length > 0 && metodosPago.some((mp) => mp.monto > 0)) {
+      calcularFaltante();
+    }
+  }, [metodosPago, calcularFaltante]);
 
-  // Guardar cambios
-  const handleGuardar = async () => {
+  // useEffect para mostrar información de descuentos cuando cambian los métodos de pago
+  useEffect(() => {
+    metodosPago.forEach((metodo, index) => {
+      if (metodo.monto > 0 && metodo.descuentoAplicado > 0) {
+        console.log(`Método ${index + 1}: Descuento aplicado: ${metodo.descuentoAplicado}`);
+      }
+    });
+  }, [metodosPago]);
+
+
+
+  const cargarComanda = async () => {
     try {
       setIsLoading(true);
+      const comandaData = await obtenerComandaPorId(comandaId);
+      setComanda(comandaData);
+      setTipo(comandaData.tipoDeComanda === TipoDeComandaNew.INGRESO ? 'ingreso' : 'egreso');
+      
+      // Cargar datos en el formulario
+      setClienteSeleccionado(comandaData.cliente);
+      setClienteProveedor(comandaData.cliente.nombre);
+      setTelefono(comandaData.cliente.telefono || '');
+      setObservaciones(comandaData.observaciones || '');
+      
+      // Convertir items
+      const itemsConvertidos = comandaData.items.map(item => ({
+        id: item.id || `temp-${Date.now()}`,
+        productoServicioId: item.productoServicioId || '',
+        nombre: item.nombre || '',
+        precio: item.precio || 0,
+        cantidad: item.cantidad || 1,
+        descuentoPorcentaje: 0,
+        descuento: item.descuento || 0,
+        subtotal: item.subtotal || 0,
+        responsablesIds: item.trabajadorId ? [item.trabajadorId] : [],
+        mostrarSelectorResponsables: false,
+      }));
+      setItems(itemsConvertidos);
 
-      // Validaciones básicas
-      if (!clienteNombre.trim()) {
-        toast.error('El nombre del cliente es requerido');
-        return;
+      // Cargar métodos de pago existentes
+      if (comandaData.metodosPago && comandaData.metodosPago.length > 0) {
+        // Resetear métodos de pago primero
+        resetMetodosPago();
+        
+        // Cargar cada método de pago
+        comandaData.metodosPago.forEach((metodo, index) => {
+          if (index > 0) {
+            // Agregar método adicional si no es el primero
+            agregarMetodoPagoBase();
+          }
+          
+          const metodoIndex = index;
+          if (metodo.tipo) actualizarMetodoPago(metodoIndex, 'tipo', metodo.tipo);
+          if (metodo.moneda) actualizarMetodoPago(metodoIndex, 'moneda', metodo.moneda);
+          // Cargar el monto final (que ya incluye descuentos aplicados)
+          actualizarMetodoPago(metodoIndex, 'monto', metodo.montoFinal || 0);
+        });
       }
-
-      if (items.length === 0) {
-        toast.error('Debe agregar al menos un item');
-        return;
-      }
-
-      if (metodosPago.length === 0) {
-        toast.error('Debe agregar al menos un método de pago');
-        return;
-      }
-
-      if (Math.abs(diferencia) > 0.01) {
-        toast.error(
-          `El total de pagos (${formatAmount(totalPagos)}) debe coincidir con el total final (${formatAmount(totalFinal)})`
-        );
-        return;
-      }
-
-      // Convertir MetodoPagoForm a MetodoPago para guardar
-      const metodosPagoParaGuardar: MetodoPago[] = metodosPago.map(
-        // eslint-disable-next-line @typescript-eslint/no-unused-vars
-        ({ montoFinal, descuentoAplicado, montoOriginal, ...metodo }) => metodo
-      );
-
-      // const comandaActualizada: ComandaNew = {
-      //   ...comanda,
-      //   cliente: {
-      //     ...comanda.cliente,
-      //     nombre: clienteNombre,
-      //     telefono: clienteTelefono,
-      //     cuit: clienteCuit,
-      //   },
-      //   items,
-      //   metodosPago: metodosPagoParaGuardar,
-      //   observaciones,
-      //   // mainStaff: (() => {
-      //   //   const personalEncontrado = personal.find(
-      //   //     (p: { id: string; nombre: string }) => p.id === vendedorId
-      //   //   );
-
-      //   //   if (personalEncontrado) {
-      //   //     // Convertir PersonalSimple a Personal
-      //   //     return {
-      //   //       id: personalEncontrado.id,
-      //   //       nombre: personalEncontrado.nombre,
-      //   //       activo: true,
-      //   //       unidadesDisponibles: [
-      //   //         'tattoo',
-      //   //         'estilismo',
-      //   //         'formacion',
-      //   //       ] as UnidadNegocio[],
-      //   //       fechaIngreso: new Date(),
-      //   //     } as Personal;
-      //   //   }
-
-      //   //   return comanda.mainStaff;
-      //   // })(),
-      //   subtotal,
-      //   totalDescuentos,
-      //   totalSeña, // Mantener la seña original
-      //   totalFinal,
-      // };
-
-      // await actualizarComanda(comandaId, comandaActualizada);
-      toast.success('Transacción actualizada correctamente');
-      onClose();
+      
     } catch (error) {
-      console.error('Error al actualizar transacción:', error);
-      toast.error('Error al actualizar la transacción');
+      console.error('Error al cargar comanda:', error);
+      toast.error('Error al cargar la comanda');
     } finally {
       setIsLoading(false);
     }
   };
 
+//   if (!isOpen || !comanda) return null;
+
+//   // Verificar si la comanda está validada (no se puede editar)
+//   const esComandaValidada = comanda.estadoDeComanda === EstadoDeComandaNew.VALIDADO;
+
+//   const agregarItem = () => {
+//     const nuevoItem: ItemTransaccion = {
+//       id: `temp-${Date.now()}`,
+//       productoServicioId: '',
+//       nombre: '',
+//       precio: 0,
+//       cantidad: 1,
+//       descuentoPorcentaje: 0,
+//       descuento: 0,
+//       subtotal: 0,
+//       descripcion: '',
+//       responsablesIds: [],
+//       mostrarSelectorResponsables: false,
+//     };
+//     setItems([...items, nuevoItem]);
+//   };
+
+//   const agregarDesdeProducto = (producto: ProductoServicioNew) => {
+//     // Para productos congelados: NO convertir, usar precio ARS como base
+//     // Para productos normales: mantener lógica USD actual
+//     let precioBase = producto.precio;
+//     let subtotalBase = producto.precio;
+
+//     if (producto.esPrecioCongelado && producto.precioFijoARS) {
+//       // Items congelados: usar ARS fijo, sin conversiones
+//       precioBase = producto.precioFijoARS;
+//       subtotalBase = producto.precioFijoARS;
+//     }
+
+//     const nuevoItem: ItemTransaccion = {
+//       id: `temp-${Date.now()}`,
+//       productoServicioId: producto.id,
+//       nombre: producto.nombre,
+//       precio: precioBase,
+//       cantidad: 1,
+//       descuentoPorcentaje: 0,
+//       descuento: 0,
+//       subtotal: subtotalBase,
+//       descripcion: producto.descripcion || '',
+//       // Propagar campos de precio congelado
+//       esPrecioCongelado: producto.esPrecioCongelado,
+//       precioFijoARS: producto.precioFijoARS,
+//       responsablesIds: [],
+//       mostrarSelectorResponsables: false,
+//     };
+//     setItems([...items, nuevoItem]);
+//     setMostrarBuscador(false);
+//     setBusqueda('');
+//   };
+
+//   const eliminarItem = (id: string) => {
+//     setItems(items.filter((item) => item.id !== id));
+//   };
+
+//   const actualizarItem = (
+//     id: string,
+//     campo: keyof ItemTransaccion,
+//     valor: string | number | boolean | string[]
+//   ) => {
+//     setItems(
+//       items.map((item) => {
+//         if (item.id === id) {
+//           const updatedItem = { ...item, [campo]: valor };
+
+//           // Recalcular subtotal y descuento
+//           if (
+//             campo === 'cantidad' ||
+//             campo === 'precio' ||
+//             campo === 'descuentoPorcentaje'
+//           ) {
+//             const precioBase = updatedItem.precio * updatedItem.cantidad;
+//             const porcentaje = Math.max(0, Math.min(100, updatedItem.descuentoPorcentaje));
+//             const descuentoCalculado = (precioBase * porcentaje) / 100;
+
+//             updatedItem.descuentoPorcentaje = porcentaje;
+//             updatedItem.descuento = descuentoCalculado;
+//             updatedItem.subtotal = precioBase - descuentoCalculado;
+//           }
+
+//           return updatedItem;
+//         }
+//         return item;
+//       })
+//     );
+//   };
+
+
+
+//   // useEffect para calcular faltante cuando cambian los métodos de pago
+//   useEffect(() => {
+//     if (metodosPago.length > 0 && metodosPago.some((mp) => mp.monto > 0)) {
+//       calcularFaltante();
+//     }
+//   }, [metodosPago, calcularFaltante]);
+
+//   // Calcular totales
+//   const totales = calcularTotales();
+
+//   // Validar formulario
+//   const validarFormulario = (): boolean => {
+//     const nuevosErrores: Record<string, string> = {};
+
+//     if (!clienteProveedor.trim()) {
+//       nuevosErrores.clienteProveedor = 'El cliente es requerido';
+//       toast.error('El cliente es requerido');
+//       return false;
+//     }
+
+//     if (items.length === 0) {
+//       nuevosErrores.items = 'Debe agregar al menos un item';
+//       toast.error('Debe agregar al menos un item');
+//       return false;
+//     }
+
+//     // Validar items
+//     items.forEach((item, index) => {
+//       if (!item.nombre.trim()) {
+//         nuevosErrores[`item-${index}-nombre`] = 'El nombre es requerido';
+//         return false;
+//       }
+//       if (item.precio <= 0) {
+//         nuevosErrores[`item-${index}-precio`] = 'El precio debe ser mayor a 0';
+//         return false;
+//       }
+//       if (item.cantidad <= 0) {
+//         nuevosErrores[`item-${index}-cantidad`] = 'La cantidad debe ser mayor a 0';
+//         return false;
+//       }
+//     });
+
+//     const validacionMetodos = validarMetodosPago(totales.totalFinal);
+//     if (!validacionMetodos.esValido && validacionMetodos.error) {
+//       nuevosErrores.pagos = validacionMetodos.error;
+//       return false;
+//     }
+
+//     setErrores(nuevosErrores);
+//     return Object.keys(nuevosErrores).length === 0;
+//   };
+
+//   // Guardar cambios
+//   const handleSave = async () => {
+//     if (!validarFormulario()) return;
+//     setGuardando(true);
+
+//     try {
+//       // Preparar datos para actualizar usando ComandaUpdateNew
+//       const comandaUpdate: ComandaUpdateNew = {
+//         clienteId: comanda.cliente.id,
+//         observaciones,
+//         items: items.map((item) => {
+//             return {
+//               productoServicioId: item.productoServicioId,
+//               nombre: item.nombre,
+//               tipo: tipo === 'ingreso' ? TipoItemNew.INGRESO : TipoItemNew.EGRESO,
+//               precio: item.precio,
+//               cantidad: item.cantidad,
+//               descuento: item.descuento,
+//               trabajadorId: item.responsablesIds[0],
+//               subtotal: item.subtotal,
+//             };
+//           }),
+//         metodosPago: metodosPago.map((m) => {
+//             return {
+//               tipo: m.tipo as TipoPagoNew,
+//               monto: m.monto,
+//               montoFinal: m.montoFinal,
+//               descuentoGlobalPorcentaje: 100 - (m.montoFinal / m.monto) * 100,
+//               moneda: m.moneda as MonedaNew,
+//               recargoPorcentaje: 0,
+//             };
+//           }),
+//       };
+
+//       await actualizarComanda(comandaId, comandaUpdate);
+//       toast.success('Transacción actualizada correctamente');
+//       onClose();
+//     } catch (error) {
+//       console.error('Error al actualizar transacción:', error);
+//       toast.error('Error al actualizar la transacción');
+//     } finally {
+//       setGuardando(false);
+//     }
+//   };
+
+//   const handleOverlayClick = (e: React.MouseEvent) => {
+//     if (e.target === e.currentTarget) {
+//       onClose();
+//     }
+//   };
+
+  useEffect(() => {
+    if (isOpen) {
+      cargarComanda();
+    }
+  }, [isOpen]);
+
   return (
-    <>
-      {/* Overlay */}
-      <div
-        className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm"
-        onClick={onClose}
-      />
+    // <div
+    //   className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
+    //   onClick={handleOverlayClick}
+    // >
+    //   <div className="relative max-h-[90vh] w-full max-w-6xl overflow-y-auto rounded-lg bg-white shadow-2xl">
+    //     {/* Header */}
+    //     <div className="sticky top-0 z-10 border-b border-gray-200 bg-gradient-to-r from-gray-100 to-gray-50 backdrop-blur-sm">
+    //       <div className="flex items-center justify-between p-6">
+    //         <div className="flex items-center gap-3">
+    //           <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-gradient-to-r from-[#f9bbc4] to-[#e292a3] shadow-sm">
+    //             {tipo === 'ingreso' ? (
+    //               <ArrowUpCircle className="h-5 w-5 text-white" />
+    //             ) : (
+    //               <ArrowDownCircle className="h-5 w-5 text-white" />
+    //             )}
+    //           </div>
+    //           <div>
+    //             <h2 className="text-xl font-semibold text-gray-900">
+    //               Editar {tipo === 'ingreso' ? 'Ingreso' : 'Egreso'}
+    //             </h2>
+    //             <p className="text-sm text-gray-600">
+    //               Comanda #{comanda.numero} - {comanda.estadoDeComanda}
+    //             </p>
+    //           </div>
+    //         </div>
+    //         <div className="flex items-center gap-3">
+    //           {isExchangeRateValid && (
+    //             <div className="flex items-center gap-2 rounded-lg border-2 border-gray-200 bg-gradient-to-r from-gray-100 to-gray-150 px-3 py-2 shadow-sm">
+    //               <TrendingUp className="h-4 w-4 text-gray-600" />
+    //               <span className="text-sm font-medium text-gray-800">
+    //                 USD: {formatDual(0, false)}
+    //               </span>
+    //             </div>
+    //           )}
+    //           <Button
+    //             variant="ghost"
+    //             size="sm"
+    //             onClick={onClose}
+    //             className="text-gray-500 hover:bg-gray-50 hover:text-gray-700"
+    //           >
+    //             <X className="h-5 w-5" />
+    //           </Button>
+    //         </div>
+    //       </div>
+    //     </div>
 
-      {/* Modal */}
-      <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-        <div
-          className="flex max-h-[90vh] w-full max-w-5xl flex-col rounded-lg bg-white shadow-2xl"
-          onClick={(e) => e.stopPropagation()}
-        >
-          {/* Header */}
-          <div className="flex items-center justify-between border-b p-6">
-            <div className="flex items-center gap-3">
-              <div className="rounded-full bg-[#f9bbc4]/20 p-2">
-                <Edit3 className="h-5 w-5 text-[#8b5a6b]" />
-              </div>
-              <div>
-                <h2 className="text-xl font-semibold text-[#4a3540]">
-                  Editar Transacción
-                </h2>
-                <p className="text-sm text-gray-600">
-                  {comanda.numero} -{' '}
-                  {comanda.tipo === 'ingreso' ? 'Ingreso' : 'Egreso'}
-                </p>
-              </div>
-            </div>
-            <Button variant="ghost" size="sm" onClick={onClose}>
-              <X className="h-4 w-4" />
-            </Button>
-          </div>
+    //     {/* Content */}
+    //     <div className="bg-gradient-to-br from-gray-100/50 to-gray-50/30 p-6">
+    //       <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
+    //         {/* Left Column - Form */}
+    //         <div className="space-y-6 lg:col-span-2">
+    //           {/* Basic Info */}
+    //           <Card className="border border-gray-300 bg-white shadow-md">
+    //             <CardHeader className="bg-gradient-to-r from-gray-50 to-gray-100">
+    //               <CardTitle className="text-lg text-gray-900">
+    //                 Información Básica
+    //               </CardTitle>
+    //             </CardHeader>
+    //             <CardContent className="space-y-4">
+    //               <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+    //                 {/* Número de comanda (solo lectura) */}
+    //                 <div className="md:col-span-2">
+    //                   <Label className="mb-2 block font-medium text-gray-700">
+    //                     Número de Comanda
+    //                   </Label>
+    //                   <div className="flex items-center gap-2">
+    //                     <div className="flex items-center gap-1 rounded-md border bg-gray-100 px-3 py-2">
+    //                       <Hash className="h-4 w-4 text-gray-500" />
+    //                       <span className="text-sm font-medium text-gray-700">
+    //                         {comanda.numero}
+    //                       </span>
+    //                     </div>
+    //                     <Badge variant="outline" className="text-xs">
+    //                       {comanda.estadoDeComanda}
+    //                     </Badge>
+    //                   </div>
+    //                 </div>
 
-          {/* Content */}
-          <div className="flex-1 overflow-y-auto p-6">
-            <div className="space-y-6">
-              {/* Estados y Información General */}
-              <div className="grid gap-4 lg:grid-cols-2">
-                {/* Estados */}
-                <Card>
-                  <CardHeader className="pb-3">
-                    <CardTitle className="flex items-center gap-2 text-lg">
-                      <Shield className="h-5 w-5" />
-                      Estados
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent className="space-y-3">
-                    <div className="flex items-center justify-between">
-                      <span className="text-sm text-gray-600">
-                        Estado del Negocio:
-                      </span>
-                      <Badge
-                        variant="outline"
-                        className={`flex items-center gap-1 ${estadoConfig.color}`}
-                      >
-                        <IconoEstado className="h-3 w-3" />
-                        {estadoConfig.label}
-                      </Badge>
-                    </div>
-                    <div className="flex items-center justify-between">
-                      <span className="text-sm text-gray-600">Validación:</span>
-                      <Badge
-                        variant="outline"
-                        className={validacionConfig.color}
-                      >
-                        <Shield className="h-3 w-3" />
-                        {validacionConfig.label}
-                      </Badge>
-                    </div>
-                  </CardContent>
-                </Card>
+    //                 {/* Selector de cliente - Solo para ingresos */}
+    //                 {tipo === 'ingreso' && (
+    //                   <div className="md:col-span-2">
+    //                     <ClienteSelector
+    //                       clienteSeleccionado={clienteSeleccionado}
+    //                       onClienteChange={(cliente) => {
+    //                         setClienteSeleccionado(cliente);
+    //                         if (cliente) {
+    //                           setClienteProveedor(cliente.nombre);
+    //                           setTelefono(cliente.telefono || '');
+    //                         } else {
+    //                           setClienteProveedor('');
+    //                           setTelefono('');
+    //                         }
+    //                       }}
+    //                       required={true}
+    //                       disabled={!esComandaValidada}
+    //                     />
+    //                     {errores.clienteProveedor && (
+    //                       <p className="mt-1 text-xs text-red-600">
+    //                         {errores.clienteProveedor}
+    //                       </p>
+    //                     )}
+    //                   </div>
+    //                 )}
 
-                {/* Información General */}
-                <Card>
-                  <CardHeader className="pb-3">
-                    <CardTitle className="flex items-center gap-2 text-lg">
-                      <Calendar className="h-5 w-5" />
-                      Información General
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent className="space-y-3">
-                    <div className="flex items-center justify-between">
-                      <span className="text-sm text-gray-600">Fecha:</span>
-                      <span className="font-medium">
-                        {formatDate(comanda.fecha)}
-                      </span>
-                    </div>
-                    <div className="flex items-center justify-between">
-                      <span className="text-sm text-gray-600">Unidad:</span>
-                      <span className="font-medium capitalize">
-                        {comanda.businessUnit}
-                      </span>
-                    </div>
-                  </CardContent>
-                </Card>
-              </div>
+    //                 {tipo === 'ingreso' && (
+    //                   <div>
+    //                     <Label className="text-gray-700">Teléfono</Label>
+    //                     <Input
+    //                       value={telefono}
+    //                       onChange={(e) => setTelefono(e.target.value)}
+    //                       placeholder="Teléfono"
+    //                       className="border-gray-300"
+    //                       readOnly={!esComandaValidada}
+    //                     />
+    //                   </div>
+    //                 )}
 
-              {/* Cliente */}
-              <Card>
-                <CardHeader className="pb-3">
-                  <CardTitle className="flex items-center gap-2 text-lg">
-                    <User className="h-5 w-5" />
-                    Cliente
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <div className="grid gap-4 md:grid-cols-2">
-                    <Input
-                      value={clienteNombre}
-                      onChange={(e) => setClienteNombre(e.target.value)}
-                      placeholder="Nombre del cliente"
-                      disabled={esComandaValidada}
-                      className={
-                        esComandaValidada ? 'bg-gray-100 text-gray-500' : ''
-                      }
-                    />
-                    <Input
-                      value={clienteTelefono}
-                      onChange={(e) => setClienteTelefono(e.target.value)}
-                      placeholder="Teléfono (opcional)"
-                      disabled={esComandaValidada}
-                      className={
-                        esComandaValidada ? 'bg-gray-100 text-gray-500' : ''
-                      }
-                    />
-                    <Input
-                      value={clienteCuit}
-                      onChange={(e) => setClienteCuit(e.target.value)}
-                      placeholder="CUIT (opcional)"
-                      disabled={esComandaValidada}
-                      className={
-                        esComandaValidada ? 'bg-gray-100 text-gray-500' : ''
-                      }
-                    />
-                  </div>
-                  <div>
-                    <Label htmlFor="clienteCuit">CUIT</Label>
-                    <Input
-                      id="clienteCuit"
-                      value={clienteCuit}
-                      onChange={(e) => setClienteCuit(e.target.value)}
-                      placeholder="CUIT del cliente"
-                    />
-                  </div>
-                </CardContent>
-              </Card>
+    //                 <div className="md:col-span-2">
+    //                   <Label className="text-gray-700">Observaciones</Label>
+    //                   <Textarea
+    //                     value={observaciones}
+    //                     onChange={(e) => setObservaciones(e.target.value)}
+    //                     placeholder="Observaciones adicionales"
+    //                     rows={3}
+    //                     className="border-gray-300"
+    //                     readOnly={!esComandaValidada}
+    //                   />
+    //                 </div>
+    //               </div>
+    //             </CardContent>
+    //           </Card>
 
-              {/* Vendedor */}
-              <Card>
-                <CardHeader className="pb-3">
-                  <CardTitle className="flex items-center gap-2 text-lg">
-                    <User className="h-5 w-5" />
-                    Personal Principal
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <Select value={vendedorId} onValueChange={setVendedorId}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Seleccionar vendedor" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {personal.map((p: { id: string; nombre: string }) => (
-                        <SelectItem key={p.id} value={p.id}>
-                          {p.nombre}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </CardContent>
-              </Card>
+    //           {/* Items */}
+    //           <Card className="border border-gray-300 bg-white shadow-md">
+    //             <CardHeader className="bg-gradient-to-r from-gray-50 to-gray-100">
+    //               <CardTitle className="flex items-center justify-between text-lg text-gray-900">
+    //                 <span>
+    //                   {tipo === 'ingreso'
+    //                     ? 'Servicios y Productos'
+    //                     : 'Conceptos del Egreso'}
+    //                 </span>
+    //                 <div className="flex gap-2">
+    //                   {tipo === 'ingreso' && esComandaValidada && (
+    //                     <Button
+    //                       type="button"
+    //                       variant="outline"
+    //                       size="sm"
+    //                       onClick={() => setMostrarBuscador(true)}
+    //                       className="border-gray-300 text-gray-700 hover:bg-gray-50"
+    //                     >
+    //                       <Search className="mr-2 h-4 w-4" />
+    //                       Buscar
+    //                     </Button>
+    //                   )}
+    //                   {esComandaValidada && (
+    //                     <Button
+    //                       type="button"
+    //                       variant="outline"
+    //                       size="sm"
+    //                       onClick={agregarItem}
+    //                       className="border-[#f9bbc4] bg-[#f9bbc4] font-medium text-white hover:bg-[#e292a3]"
+    //                     >
+    //                       <Plus className="mr-2 h-4 w-4" />
+    //                       Agregar
+    //                     </Button>
+    //                   )}
+    //                 </div>
+    //               </CardTitle>
+    //             </CardHeader>
+    //             <CardContent className="space-y-4">
+    //               {items.length === 0 ? (
+    //                 <div className="rounded-lg border-2 border-dashed border-gray-300 bg-gradient-to-r from-gray-100 to-gray-150 p-8 text-center shadow-sm">
+    //                   <Calculator className="mx-auto h-12 w-12 text-gray-400" />
+    //                   <p className="mt-2 text-sm text-gray-600">
+    //                     {tipo === 'ingreso'
+    //                       ? 'No hay servicios agregados'
+    //                       : 'No hay conceptos agregados'}
+    //                   </p>
+    //                   <p className="text-xs text-gray-500">
+    //                     Haga clic en &quot;Agregar&quot; para comenzar
+    //                   </p>
+    //                 </div>
+    //               ) : (
+    //                 items.map((item, index) => (
+    //                   <div
+    //                     key={item.id}
+    //                     className="rounded-lg border-2 border-gray-300 bg-gradient-to-r from-white to-gray-50 p-4 shadow-md"
+    //                   >
+    //                     <div className="mb-3 flex items-center justify-between">
+    //                       <Badge variant="outline" className="text-gray-700">
+    //                         {tipo === 'ingreso' ? 'Servicio' : 'Concepto'} #{index + 1}
+    //                       </Badge>
+    //                       {esComandaValidada && (
+    //                         <Button
+    //                           type="button"
+    //                           variant="ghost"
+    //                           size="sm"
+    //                           onClick={() => eliminarItem(item.id)}
+    //                           className="text-gray-500 hover:bg-gray-100 hover:text-gray-700"
+    //                         >
+    //                           <Trash2 className="h-4 w-4" />
+    //                         </Button>
+    //                       )}
+    //                     </div>
 
-              {/* Items/Servicios */}
-              <Card>
-                <CardHeader className="pb-3">
-                  <CardTitle className="flex items-center gap-2 text-lg">
-                    <Package className="h-5 w-5" />
-                    Items / Servicios
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-3">
-                    {items.map((item, index) => (
-                      <div key={`item-${index}-${item.nombre}-${item.precio}`} className="rounded-lg border p-4">
-                        <div className="grid gap-4 md:grid-cols-6">
-                          <div className="md:col-span-2">
-                            <Label>Producto/Servicio</Label>
-                            <Select
-                              value={item.productoServicioId}
-                              onValueChange={(value) => {
-                                // const producto = productosServicios.find(
-                                //   (p: { id: string; nombre: string }) =>
-                                //     p.id === value
-                                // );
-                                // if (producto) {
-                                //   actualizarItem(
-                                //     index,
-                                //     'productoServicioId',
-                                //     value
-                                //   );
-                                //   actualizarItem(
-                                //     index,
-                                //     'nombre',
-                                //     producto.nombre
-                                //   );
-                                //   actualizarItem(
-                                //     index,
-                                //     'precio',
-                                //     producto.precio
-                                //   );
-                                //   actualizarItem(
-                                //     index,
-                                //     'subtotal',
-                                //     item.cantidad * producto.precio
-                                //   );
-                                // }
-                              }}
-                            >
-                              <SelectTrigger>
-                                <SelectValue placeholder="Seleccionar" />
-                              </SelectTrigger>
-                              <SelectContent>
-                                {/* {productosServicios.map(
-                                  (p: {
-                                    id: string;
-                                    nombre: string;
-                                    precio: number;
-                                  }) => (
-                                    <SelectItem key={p.id} value={p.id}>
-                                      {p.nombre} - {formatAmount(p.precio)}
-                                    </SelectItem>
-                                  )
-                                )} */}
-                              </SelectContent>
-                            </Select>
-                          </div>
-                          <div>
-                            <Label>Cantidad</Label>
-                            <Input
-                              type="number"
-                              value={item.cantidad}
-                              onChange={(e) =>
-                                actualizarItem(
-                                  index,
-                                  'cantidad',
-                                  Number(e.target.value)
-                                )
-                              }
-                              min="1"
-                            />
-                          </div>
-                          <div>
-                            <Label>Precio</Label>
-                            <Input
-                              type="number"
-                              value={item.precio}
-                              onChange={(e) =>
-                                actualizarItem(
-                                  index,
-                                  'precio',
-                                  Number(e.target.value)
-                                )
-                              }
-                              step="0.01"
-                            />
-                          </div>
-                          <div>
-                            <Label>Descuento</Label>
-                            <Input
-                              type="number"
-                              value={item.descuento || 0}
-                              onChange={(e) =>
-                                actualizarItem(
-                                  index,
-                                  'descuento',
-                                  Number(e.target.value)
-                                )
-                              }
-                              step="0.01"
-                            />
-                          </div>
-                          <div className="flex items-end">
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() => eliminarItem(index)}
-                              className="text-red-600 hover:text-red-700"
-                            >
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
-                          </div>
-                        </div>
-                        <div className="mt-2 text-right">
-                          <span className="font-bold">
-                            Subtotal: {formatAmount(item.subtotal)}
-                          </span>
-                        </div>
-                      </div>
-                    ))}
-                    <Button
-                      variant="outline"
-                      onClick={agregarItem}
-                      className="w-full"
-                    >
-                      <Plus className="mr-2 h-4 w-4" />
-                      Agregar Item
-                    </Button>
-                  </div>
-                </CardContent>
-              </Card>
+    //                     <div className="grid grid-cols-1 gap-3 md:grid-cols-4">
+    //                       <div>
+    //                         <Label className="text-gray-700">Nombre *</Label>
+    //                         <Input
+    //                           value={item.nombre}
+    //                           onChange={(e) =>
+    //                             actualizarItem(item.id, 'nombre', e.target.value)
+    //                           }
+    //                           placeholder="Nombre del item"
+    //                           className={
+    //                             errores[`item-${index}-nombre`]
+    //                               ? 'border-red-500'
+    //                               : 'border-gray-300'
+    //                           }
+    //                           readOnly={!esComandaValidada}
+    //                         />
+    //                         {errores[`item-${index}-nombre`] && (
+    //                           <p className="mt-1 text-xs text-red-600">
+    //                             {errores[`item-${index}-nombre`]}
+    //                           </p>
+    //                         )}
+    //                       </div>
 
-              {/* Métodos de Pago */}
-              <Card>
-                <CardHeader className="pb-3">
-                  <CardTitle className="flex items-center gap-2 text-lg">
-                    <CreditCard className="h-5 w-5" />
-                    Métodos de Pago
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-3">
-                    {metodosPago.map((metodo, index) => {
-                      const descuentoPorcentaje =
-                        descuentosPorMetodo[
-                          metodo.tipo as keyof typeof descuentosPorMetodo
-                        ] || 0;
-                      const tieneDescuento =
-                        descuentoPorcentaje > 0 &&
-                        metodo.tipo !== 'mixto' &&
-                        metodo.tipo !== 'giftcard' &&
-                        metodo.tipo !== 'qr';
+    //                       <div>
+    //                         <Label className="text-gray-700">Precio *</Label>
+    //                         <Input
+    //                           type="number"
+    //                           min="0"
+    //                           step="0.01"
+    //                           value={item.precio || ''}
+    //                           onChange={(e) =>
+    //                             actualizarItem(
+    //                               item.id,
+    //                               'precio',
+    //                               parseFloat(e.target.value) || 0
+    //                             )
+    //                           }
+    //                           placeholder="0.00"
+    //                           className={
+    //                             errores[`item-${index}-precio`]
+    //                               ? 'border-red-500'
+    //                               : 'border-gray-300'
+    //                           }
+    //                           readOnly={!esComandaValidada}
+    //                         />
+    //                         {errores[`item-${index}-precio`] && (
+    //                           <p className="mt-1 text-xs text-red-600">
+    //                             {errores[`item-${index}-precio`]}
+    //                           </p>
+    //                         )}
+    //                       </div>
 
-                      return (
-                        <div
-                          key={index}
-                          className="flex items-center gap-4 rounded-lg border p-3"
-                        >
-                          <Select
-                            value={metodo.tipo}
-                            onValueChange={(value) =>
-                              actualizarMetodoPago(index, 'tipo', value)
-                            }
-                          >
-                            <SelectTrigger className="w-40">
-                              <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="efectivo">
-                                💰 Efectivo
-                              </SelectItem>
-                              <SelectItem value="tarjeta">
-                                💳 Tarjeta
-                              </SelectItem>
-                              <SelectItem value="transferencia">
-                                🏦 Transferencia
-                              </SelectItem>
-                              <SelectItem value="qr">📱 QR</SelectItem>
-                           
-                              <SelectItem value="giftcard">
-                                🎁 Giftcard
-                              </SelectItem>
-                            </SelectContent>
-                          </Select>
-                          <div className="flex-1">
-                            <div className="space-y-2">
-                              <div className="flex gap-2">
-                                <Input
-                                  type="number"
-                                  value={metodo.montoOriginal}
-                                  onChange={(e) => {
-                                    const valor =
-                                      parseFloat(e.target.value) || 0;
-                                    actualizarMetodoPago(
-                                      index,
-                                      'montoOriginal',
-                                      valor
-                                    );
-                                  }}
-                                  placeholder="Monto"
-                                  step="0.01"
-                                  min="0"
-                                  className="flex-1"
-                                />
-                                <Select
-                                  value={metodo.moneda || 'USD'}
-                                  onValueChange={(value) =>
-                                    actualizarMetodoPago(index, 'moneda', value)
-                                  }
-                                >
-                                  <SelectTrigger className="w-20">
-                                    <SelectValue />
-                                  </SelectTrigger>
-                                  <SelectContent>
-                                    <SelectItem value="USD">USD</SelectItem>
-                                    <SelectItem value="ARS">ARS</SelectItem>
-                                  </SelectContent>
-                                </Select>
-                              </div>
-                              {tieneDescuento && (
-                                <p className="text-xs text-green-600">
-                                  Final: {formatAmount(metodo.monto)} (desc.{' '}
-                                  {descuentoPorcentaje}%)
-                                </p>
-                              )}
-                            </div>
-                          </div>
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => eliminarMetodoPago(index)}
-                            className="text-red-600 hover:text-red-700"
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
-                        </div>
-                      );
-                    })}
-                    <Button
-                      variant="outline"
-                      onClick={agregarMetodoPago}
-                      className="w-full"
-                    >
-                      <Plus className="mr-2 h-4 w-4" />
-                      Agregar Método de Pago
-                    </Button>
-                  </div>
-                </CardContent>
-              </Card>
+    //                       <div>
+    //                         <Label className="text-gray-700">Cantidad *</Label>
+    //                         <Input
+    //                           type="number"
+    //                           min="1"
+    //                           value={item.cantidad || ''}
+    //                           onChange={(e) =>
+    //                             actualizarItem(
+    //                               item.id,
+    //                               'cantidad',
+    //                               parseInt(e.target.value) || 1
+    //                             )
+    //                           }
+    //                           className={
+    //                             errores[`item-${index}-cantidad`]
+    //                               ? 'border-red-500'
+    //                               : 'border-gray-300'
+    //                           }
+    //                           readOnly={!esComandaValidada}
+    //                         />
+    //                         {errores[`item-${index}-cantidad`] && (
+    //                           <p className="mt-1 text-xs text-red-600">
+    //                             {errores[`item-${index}-cantidad`]}
+    //                           </p>
+    //                         )}
+    //                       </div>
 
-              {/* Resumen Financiero */}
-              <Card>
-                <CardHeader className="pb-3">
-                  <CardTitle className="flex items-center gap-2 text-lg">
-                    <DollarSign className="h-5 w-5" />
-                    Resumen
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-2">
-                    <div className="flex justify-between">
-                      <span>Subtotal:</span>
-                      <div className="text-right">
-                        <div>{formatAmount(subtotal)}</div>
-                        {isExchangeRateValid && subtotal > 0 && comanda.cliente.nombre !== 'Movimiento Manual' && (
-                          <div className="text-xs text-gray-600">
-                            {formatARSFromNative(subtotal)}
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                    {totalDescuentos > 0 && (
-                      <div className="flex justify-between text-red-600">
-                        <span>Descuentos:</span>
-                        <div className="text-right">
-                          <div>-{formatAmount(totalDescuentos)}</div>
-                          {isExchangeRateValid && totalDescuentos > 0 && (
-                            <div className="text-xs text-red-500">
-                              -{formatARSFromNative(totalDescuentos)}
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                    )}
-                    {totalSeña > 0 && (
-                      <div className="flex justify-between text-blue-600">
-                        <span>Seña aplicada:</span>
-                        <div className="text-right">
-                          <div>-{formatAmount(totalSeña)}</div>
-                          {isExchangeRateValid && totalSeña > 0 && (
-                            <div className="text-xs text-blue-500">
-                              -{formatARSFromNative(totalSeña)}
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                    )}
-                    {descuentosPorMetodoPago > 0 && (
-                      <div className="flex justify-between text-green-600">
-                        <span>Desc. métodos pago:</span>
-                        <div className="text-right">
-                          <div>-{formatAmount(descuentosPorMetodoPago)}</div>
-                          {isExchangeRateValid &&
-                            descuentosPorMetodoPago > 0 && comanda.cliente.nombre !== 'Movimiento Manual' && (
-                              <div className="text-xs text-green-500">
-                                -{formatARSFromNative(descuentosPorMetodoPago)}
-                              </div>
-                            )}
-                        </div>
-                      </div>
-                    )}
-                    <div className="flex justify-between border-t pt-2 text-sm font-bold">
-                      <span>Total Final:</span>
-                      <div className="text-right">
-                        <div>{formatAmount(totalFinal)}</div>
-                        {isExchangeRateValid && totalFinal > 0 && comanda.cliente.nombre !== 'Movimiento Manual' && (
-                          <div className="text-xs font-medium">
-                            {formatARSFromNative(totalFinal)}
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                    <div className="flex justify-between">
-                      <span>Total Pagos:</span>
-                      <div
-                        className={`text-right ${
-                          Math.abs(diferencia) > 0.01
-                            ? 'text-red-600'
-                            : 'text-green-600'
-                        }`}
-                      >
-                        <div>{formatAmount(totalPagos)}</div>
-                        {isExchangeRateValid && totalPagos > 0 && (
-                          <div className="text-xs">{formatARSFromNative(totalPagos)}</div>
-                        )}
-                      </div>
-                    </div>
-                    {Math.abs(diferencia) > 0.01 && (
-                      <div className="flex justify-between font-medium text-red-600">
-                        <span>Diferencia:</span>
-                        <div className="text-right">
-                          <div>{formatAmount(diferencia)}</div>
-                          {isExchangeRateValid && Math.abs(diferencia) > 0 && (
-                            <div className="text-xs">
-                              {formatARSFromNative(diferencia)}
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                </CardContent>
-              </Card>
+    //                       <div>
+    //                         <Label className="text-gray-700">Subtotal</Label>
+    //                         <div className="flex h-10 items-center justify-between rounded-md border-2 border-gray-300 bg-gradient-to-r from-gray-100 to-gray-150 px-3">
+    //                           <span className="text-xs text-gray-600">
+    //                             {item.subtotal} (USD)
+    //                           </span>
+    //                         </div>
+    //                       </div>
+    //                     </div>
+    //                   </div>
+    //                 ))
+    //               )}
 
-              {/* Observaciones */}
-              <Card>
-                <CardHeader className="pb-3">
-                  <CardTitle className="flex items-center gap-2 text-lg">
-                    <FileText className="h-5 w-5" />
-                    Observaciones
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <Textarea
-                    value={observaciones}
-                    onChange={(e) => setObservaciones(e.target.value)}
-                    placeholder="Observaciones adicionales..."
-                    rows={3}
-                    disabled={esComandaValidada}
-                    className={
-                      esComandaValidada ? 'bg-gray-100 text-gray-500' : ''
-                    }
-                  />
-                  {esComandaValidada && (
-                    <p className="mt-2 text-sm text-gray-500">
-                      Esta comanda ha sido validada y no se puede editar
-                    </p>
-                  )}
-                </CardContent>
-              </Card>
-            </div>
-          </div>
+    //               {errores.items && (
+    //                 <p className="text-sm text-red-600">{errores.items}</p>
+    //               )}
+    //             </CardContent>
+    //           </Card>
 
-          {/* Footer */}
-          <div className="flex justify-end gap-3 border-t p-6">
-            <Button variant="outline" onClick={onClose}>
-              Cancelar
-            </Button>
-            <Button
-              onClick={handleGuardar}
-              disabled={isLoading || esComandaValidada}
-              className={`${esComandaValidada ? 'cursor-not-allowed bg-gray-400' : 'bg-[#f9bbc4] hover:bg-[#e292a3]'}`}
-            >
-              {isLoading ? (
-                <>Guardando...</>
-              ) : esComandaValidada ? (
-                <>
-                  <Shield className="mr-2 h-4 w-4" />
-                  Validada - No Editable
-                </>
-              ) : (
-                <>
-                  <Save className="mr-2 h-4 w-4" />
-                  Guardar Cambios
-                </>
-              )}
-            </Button>
-          </div>
-        </div>
-      </div>
-    </>
-  );
-}
+    //           {/* Métodos de Pago - Solo para ingresos */}
+    //           {tipo === 'ingreso' && (
+    //             <div className="space-y-4">
+    //               <div className="flex items-center justify-between">
+    //                 <h3 className="text-lg font-semibold text-gray-900">
+    //                   Métodos de Pago
+    //                 </h3>
+    //               </div>
+
+    //               <MetodosPagoSection
+    //                 metodosPago={metodosPago}
+    //                 totalPagado={totales.totalPagadoConDescuentos}
+    //                 montoTotal={totales.totalFinal}
+    //                 onAgregarMetodo={agregarMetodoPago}
+    //                 onEliminarMetodo={eliminarMetodoPago}
+    //                 onActualizarMetodo={actualizarMetodoPago}
+    //                 obtenerResumenDual={obtenerResumenDual}
+    //                 hayItemsCongelados={hayItemsCongelados}
+    //               />
+    //             </div>
+    //           )}
+
+    //           {errores.pagos && (
+    //             <div className="mt-2">
+    //               <p className="text-sm text-red-600">{errores.pagos}</p>
+    //             </div>
+    //           )}
+    //         </div>
+
+    //         {/* Right Column - Summary */}
+    //         <div className="space-y-6">
+    //           <div className="sticky top-24 space-y-6">
+    //             <Card className="border border-gray-300 bg-white shadow-md">
+    //               <CardHeader className="bg-gradient-to-r from-gray-50 to-gray-100">
+    //                 <CardTitle className="text-lg text-gray-900">
+    //                   Resumen
+    //                 </CardTitle>
+    //               </CardHeader>
+    //               <CardContent className="space-y-4">
+    //                 <div className="space-y-3">
+    //                   {/* Subtotal base */}
+    //                   <div className="flex items-center justify-between rounded-lg bg-gradient-to-r from-gray-100 to-gray-200 p-3 shadow-sm">
+    //                     <div className="text-sm text-gray-700">
+    //                       Subtotal base
+    //                     </div>
+    //                     <div className="text-right">
+    //                       <div className="text-sm font-semibold text-gray-900">
+    //                         {formatAmount(totales.subtotalBase)}
+    //                       </div>
+    //                       {isExchangeRateValid && totales.subtotalBase > 0 && (
+    //                         <div className="text-xs text-gray-600">
+    //                           {formatARS(totales.subtotalBase)}
+    //                         </div>
+    //                       )}
+    //                     </div>
+    //                   </div>
+
+    //                   {/* Descuentos por ítem */}
+    //                   {totales.totalDescuentos > 0 && (
+    //                     <div className="flex items-center justify-between rounded-lg bg-gradient-to-r from-orange-100 to-orange-200 p-3 shadow-sm">
+    //                       <div className="text-sm text-orange-700">
+    //                         Descuentos por ítem
+    //                       </div>
+    //                       <div className="text-right">
+    //                         <div className="text-sm font-semibold text-orange-700">
+    //                           -{formatAmount(totales.totalDescuentos)}
+    //                         </div>
+    //                         {isExchangeRateValid && totales.totalDescuentos > 0 && (
+    //                           <div className="text-xs text-orange-600">
+    //                             -{formatARS(totales.totalDescuentos)}
+    //                           </div>
+    //                         )}
+    //                       </div>
+    //                     </div>
+    //                   )}
+
+    //                   {/* Total a pagar */}
+    //                   <div className="flex items-center justify-between rounded-lg border-2 border-blue-300 bg-gradient-to-r from-blue-100 to-blue-200 p-3 shadow-md">
+    //                     <div className="text-sm font-medium text-blue-900">
+    //                       Total a pagar
+    //                     </div>
+    //                     <div className="text-right">
+    //                       <div className="text-base font-bold text-blue-900">
+    //                         {formatAmount(totales.totalFinal)}
+    //                       </div>
+    //                       {isExchangeRateValid && totales.totalFinal > 0 && (
+    //                         <div className="text-sm text-blue-700">
+    //                           {formatARS(totales.totalFinal)}
+    //                         </div>
+    //                       )}
+    //                     </div>
+    //                   </div>
+
+    //                   {/* Total pagado */}
+    //                   <div className="flex items-center justify-between rounded-lg bg-gradient-to-r from-green-100 to-green-200 p-3 shadow-sm">
+    //                     <div className="text-sm text-green-700">
+    //                       Total pagado
+    //                     </div>
+    //                     <div className="text-right">
+    //                       <div className="text-sm font-semibold text-green-700">
+    //                         {formatAmount(totales.totalPagadoConDescuentos)}
+    //                       </div>
+    //                       {isExchangeRateValid && totales.totalPagadoConDescuentos > 0 && (
+    //                         <div className="text-xs text-green-600">
+    //                           {formatARS(totales.totalPagadoConDescuentos)}
+    //                         </div>
+    //                       )}
+    //                     </div>
+    //                   </div>
+
+    //                   {/* Diferencia/Balance */}
+    //                   <div className="flex items-center justify-between rounded-lg bg-gradient-to-r from-gray-100 to-gray-200 p-3 shadow-sm">
+    //                     <div className="text-sm text-gray-700">Balance</div>
+    //                     <div className="text-right">
+    //                       <div
+    //                         className={`text-sm font-semibold ${
+    //                           Math.abs(totales.diferencia) < 0.01
+    //                             ? 'text-green-600'
+    //                             : totales.diferencia > 0
+    //                               ? 'text-blue-600'
+    //                               : 'text-red-600'
+    //                         }`}
+    //                       >
+    //                         {Math.abs(totales.diferencia) < 0.01
+    //                           ? '✓ Balanceado'
+    //                           : totales.diferencia > 0
+    //                             ? `+${formatAmount(totales.diferencia)} (exceso)`
+    //                             : `${formatAmount(totales.diferencia)} (faltante)`}
+    //                       </div>
+    //                       {isExchangeRateValid && Math.abs(totales.diferencia) > 0.01 && (
+    //                         <div className="text-xs text-gray-600">
+    //                           {totales.diferencia > 0 ? '+' : ''}{formatARS(totales.diferencia)}
+    //                         </div>
+    //                       )}
+    //                     </div>
+    //                   </div>
+    //                 </div>
+    //               </CardContent>
+    //             </Card>
+
+    //             {/* Actions */}
+    //             <Card className="border border-gray-300 bg-white shadow-md">
+    //               <CardContent className="pt-6">
+    //                 <div className="space-y-3">
+    //                   <Button
+    //                     onClick={handleSave}
+    //                     disabled={guardando || cargando || !esComandaValidada}
+    //                     className="w-full bg-gradient-to-r from-[#f9bbc4] to-[#e292a3] font-medium text-white hover:from-[#e292a3] hover:to-[#d4a7ca]"
+    //                   >
+    //                     {guardando ? (
+    //                       <>
+    //                         <div className="mr-2 h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
+    //                         Guardando...
+    //                       </>
+    //                     ) : (
+    //                       <>
+    //                         <Save className="mr-2 h-4 w-4" />
+    //                         Guardar Cambios
+    //                       </>
+    //                     )}
+    //                   </Button>
+
+    //                   <Button
+    //                     variant="outline"
+    //                     onClick={onClose}
+    //                     className="w-full border-gray-300 text-gray-700 hover:bg-gray-50"
+    //                   >
+    //                     Cancelar
+    //                   </Button>
+    //                 </div>
+
+    //                 {errores.general && (
+    //                   <p className="mt-3 text-center text-sm text-red-600">
+    //                     {errores.general}
+    //                   </p>
+    //                 )}
+    //               </CardContent>
+    //             </Card>
+    //           </div>
+    //         </div>
+    //                  </div>
+    //      </div>
+    //    </div>
+
+    //    {/* Product Search Modal */}
+    //    {mostrarBuscador && (
+    //      <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/50 p-4">
+    //        <div className="w-full max-w-3xl rounded-lg border border-gray-100 bg-white shadow-2xl">
+    //          <div className="border-b p-4">
+    //            <div className="flex items-center justify-between">
+    //              <h3 className="text-lg font-semibold text-gray-900">
+    //                Buscar Productos/Servicios
+    //              </h3>
+    //              <Button
+    //                variant="ghost"
+    //                size="sm"
+    //                onClick={() => setMostrarBuscador(false)}
+    //                className="text-gray-500 hover:text-gray-700"
+    //              >
+    //                <X className="h-5 w-5" />
+    //              </Button>
+    //            </div>
+    //            <div className="mt-4">
+    //              <Input
+    //                value={busqueda}
+    //                onChange={(e) => setBusqueda(e.target.value)}
+    //                placeholder="Buscar por nombre..."
+    //                className="border-gray-300"
+    //                autoFocus
+    //              />
+    //            </div>
+    //          </div>
+    //          <div className="max-h-96 overflow-y-auto p-4">
+    //            <div className="space-y-6">
+    //              {tipo === 'ingreso' ? (
+    //                // Vista agrupada para ingresos
+    //                <div className="space-y-2">
+    //                  {productosServicios
+    //                    .filter(
+    //                      (producto) =>
+    //                        producto.nombre
+    //                          .toLowerCase()
+    //                          .includes(busqueda.toLowerCase()) && producto.activo
+    //                    )
+    //                    .map((producto) => (
+    //                      <div
+    //                        key={producto.id}
+    //                        className="flex cursor-pointer items-center justify-between rounded-lg border border-gray-200 p-3 transition-colors hover:bg-gray-50"
+    //                        onClick={() => agregarDesdeProducto(producto)}
+    //                      >
+    //                        <div className="flex-1">
+    //                          <div className="flex items-center gap-2 font-medium text-gray-900">
+    //                            {producto.nombre}
+    //                            {producto.esPrecioCongelado && (
+    //                              <Badge variant="outline" className="text-xs">
+    //                                🔒 Precio fijo
+    //                              </Badge>
+    //                            )}
+    //                          </div>
+    //                          <div className="text-sm text-gray-600">
+    //                            {producto.tipo} -{' '}
+    //                            {producto.esPrecioCongelado &&
+    //                            producto.precioFijoARS
+    //                              ? `${formatARSFromNative(producto.precioFijoARS)} ARS`
+    //                              : `${producto.precio} USD`}
+    //                          </div>
+    //                          {producto.descripcion && (
+    //                            <div className="mt-1 text-xs text-gray-500">
+    //                              {producto.descripcion}
+    //                            </div>
+    //                          )}
+    //                        </div>
+    //                        <Button
+    //                          size="sm"
+    //                          variant="outline"
+    //                          className="border-[#f9bbc4] text-[#8b5a6b] hover:bg-[#f9bbc4] hover:text-white"
+    //                        >
+    //                          Agregar
+    //                        </Button>
+    //                      </div>
+    //                    ))}
+    //                </div>
+    //              ) : (
+    //                // Vista simple para egresos
+    //                <div className="space-y-2">
+    //                  {productosServicios
+    //                    .filter(
+    //                      (producto) =>
+    //                        producto.nombre
+    //                          .toLowerCase()
+    //                          .includes(busqueda.toLowerCase()) && producto.activo
+    //                    )
+    //                    .map((producto) => (
+    //                      <div
+    //                        key={producto.id}
+    //                        className="flex cursor-pointer items-center justify-between rounded-lg border border-gray-200 p-3 hover:bg-gray-50"
+    //                        onClick={() => agregarDesdeProducto(producto)}
+    //                      >
+    //                        <div>
+    //                          <div className="flex items-center gap-2 font-medium text-gray-900">
+    //                            {producto.nombre}
+    //                            {producto.esPrecioCongelado && (
+    //                              <Badge variant="outline" className="text-xs">
+    //                                🔒 Precio fijo
+    //                              </Badge>
+    //                            )}
+    //                          </div>
+    //                          <div className="text-sm text-gray-600">
+    //                            {producto.tipo} -{' '}
+    //                            {producto.esPrecioCongelado &&
+    //                            producto.precioFijoARS
+    //                              ? `${formatARSFromNative(producto.precioFijoARS)} ARS`
+    //                              : `${producto.precio} USD`}
+    //                          </div>
+    //                        </div>
+    //                        <Button
+    //                          size="sm"
+    //                          variant="outline"
+    //                          className="border-gray-300"
+    //                        >
+    //                          Agregar
+    //                        </Button>
+    //                      </div>
+    //                    ))}
+    //                </div>
+    //              )}
+
+    //              {productosServicios.filter(
+    //                (producto) =>
+    //                  producto.nombre
+    //                    .toLowerCase()
+    //                    .includes(busqueda.toLowerCase()) && producto.activo
+    //              ).length === 0 && (
+    //                <div className="py-8 text-center text-gray-500">
+    //                  <Package className="mx-auto mb-3 h-12 w-12 text-gray-300" />
+    //                  <p>No se encontraron productos/servicios</p>
+    //                  <p className="mt-1 text-sm text-gray-400">
+    //                    Intenta con otros términos de búsqueda
+    //                  </p>
+    //                </div>
+    //              )}
+    //            </div>
+    //          </div>
+    //        </div>
+    //      </div>
+    //    )}
+    //  </div>
+    <ModalTransaccionUnificado
+      isOpen={isOpen}
+      onClose={onClose}
+      comandaId={comandaId}
+      tipo={tipo}
+    />
+   );
+ } 

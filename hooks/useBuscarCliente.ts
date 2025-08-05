@@ -1,18 +1,18 @@
 import { useState } from 'react';
-import { Cliente } from '@/types/caja';
+import { ClienteNew } from '@/services/unidadNegocio.service';
 
 interface UseBuscarClienteReturn {
   isOpen: boolean;
-  clienteSeleccionado: Cliente | null;
+  clienteSeleccionado: ClienteNew | null;
   abrirBusqueda: () => void;
   cerrarBusqueda: () => void;
-  seleccionarCliente: (cliente: Cliente) => void;
+  seleccionarCliente: (cliente: ClienteNew) => void;
   limpiarSeleccion: () => void;
 }
 
 export function useBuscarCliente(): UseBuscarClienteReturn {
   const [isOpen, setIsOpen] = useState(false);
-  const [clienteSeleccionado, setClienteSeleccionado] = useState<Cliente | null>(null);
+  const [clienteSeleccionado, setClienteSeleccionado] = useState<ClienteNew | null>(null);
 
   const abrirBusqueda = () => {
     setIsOpen(true);
@@ -22,7 +22,7 @@ export function useBuscarCliente(): UseBuscarClienteReturn {
     setIsOpen(false);
   };
 
-  const seleccionarCliente = (cliente: Cliente) => {
+  const seleccionarCliente = (cliente: ClienteNew) => {
     setClienteSeleccionado(cliente);
     setIsOpen(false);
   };

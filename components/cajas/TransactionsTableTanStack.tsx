@@ -476,10 +476,10 @@ export default function TransactionsTableTanStack({
 
               <DropdownMenuItem 
                 onClick={() => onEdit(id)} 
-                disabled
-                className="opacity-50 cursor-not-allowed"
+                disabled = {row.original.estadoDeComanda !== EstadoDeComandaNew.PENDIENTE}
+                className="cursor-pointer"
               >
-                <Edit className="mr-2 h-4 w-4" /> Editar (Deshabilitado)
+                <Edit className="mr-2 h-4 w-4" /> Editar 
               </DropdownMenuItem>
 
               {!isValidated && (

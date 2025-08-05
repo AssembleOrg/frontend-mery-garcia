@@ -187,6 +187,11 @@ export interface PrepagoGuardadoNew {
   deletedAt: string;
 }
 
+export interface SeñaNew {
+  ars: number;
+  usd: number;
+}
+
 export interface ClienteNew {
   id: string;
   nombre: string;
@@ -201,6 +206,7 @@ export interface ClienteNew {
   updatedAt: string;
   deletedAt: string;
   items: ComandaNew[];
+  señasDisponibles: SeñaNew;
   prepagosGuardados: PrepagoGuardadoNew[];
 }
 
@@ -300,7 +306,10 @@ export interface ItemComandaNew {
 export type ItemComandaCreateNew = Partial<ItemComandaNew> & {
   comandaId?: string;
   productoServicioId?: string;
+  trabajador?: TrabajadorNew;
   trabajadorId?: string;
+  responsablesIds?: string[];
+  mostrarSelectorResponsables?: boolean;
 } 
 
 export type ItemComandaUpdateNew = Partial<ItemComandaNew> & {
@@ -352,6 +361,7 @@ export interface ComandaNew {
   precioDolar: number;
   precioPesos: number;
   valorDolar: number;
+  responsablesIds?: string[];
   observaciones: string;
 }
 

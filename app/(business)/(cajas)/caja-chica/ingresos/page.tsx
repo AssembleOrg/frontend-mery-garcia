@@ -208,8 +208,8 @@ export default function IngresosPage() {
   };
 
   // Totales y estadísticas simples - usar datos paginados
-  const totalIngresosUSD = comandasPaginadas.data.reduce((sum, comanda) => sum + (comanda.metodosPago.reduce((acc, item) => item.moneda === 'USD' ? acc + item.monto! : acc, 0)), 0);
-  const totalIngresosARS = comandasPaginadas.data.reduce((sum, comanda) => sum + (comanda.metodosPago.reduce((acc, item) => item.moneda === 'ARS' ? acc + item.monto! : acc, 0)), 0);
+  const totalIngresosUSD = comandasPaginadas.data.reduce((sum, comanda) => sum + (comanda.metodosPago.reduce((acc, item) => item.moneda === 'USD' ? acc + item.montoFinal! : acc, 0)), 0);
+  const totalIngresosARS = comandasPaginadas.data.reduce((sum, comanda) => sum + (comanda.metodosPago.reduce((acc, item) => item.moneda === 'ARS' ? acc + item.montoFinal! : acc, 0)), 0);
   const transactionCountARS = comandasPaginadas.data.reduce((sum, comanda) => sum + (comanda.metodosPago.reduce((acc, item) => item.moneda === 'ARS' ? acc + 1 : acc, 0)), 0);
   const transactionCountUSD = comandasPaginadas.data.reduce((sum, comanda) => sum + (comanda.metodosPago.reduce((acc, item) => item.moneda === 'USD' ? acc + 1 : acc, 0)), 0);
   const clientCount = new Set(comandasPaginadas.data.map(c => c.cliente?.id)).size;

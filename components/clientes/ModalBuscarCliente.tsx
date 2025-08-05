@@ -19,15 +19,15 @@ import {
 } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { Search, Users, Phone, Mail, DollarSign } from 'lucide-react';
-import { Cliente } from '@/types/caja';
 import { clientesService, FiltrarClientesDto } from '@/services/clientes.service';
 import { useCurrencyConverter } from '@/hooks/useCurrencyConverter';
 import { toast } from 'sonner';
+import { ClienteNew } from '@/services/unidadNegocio.service';
 
 interface ModalBuscarClienteProps {
   isOpen: boolean;
   onClose: () => void;
-  onSelectCliente: (cliente: Cliente) => void;
+  onSelectCliente: (cliente: ClienteNew) => void;
   title?: string;
   description?: string;
 }
@@ -40,7 +40,7 @@ export default function ModalBuscarCliente({
   description = 'Selecciona un cliente para continuar'
 }: ModalBuscarClienteProps) {
   const [busqueda, setBusqueda] = useState('');
-  const [clientes, setClientes] = useState<Cliente[]>([]);
+  const [clientes, setClientes] = useState<ClienteNew[]>([]);
   const [cargando, setCargando] = useState(false);
   const { formatUSD, formatARSFromNative } = useCurrencyConverter();
 
@@ -78,7 +78,7 @@ export default function ModalBuscarCliente({
     return () => clearTimeout(timeoutId);
   }, [busqueda]);
 
-  const handleSeleccionarCliente = (cliente: Cliente) => {
+  const handleSeleccionarCliente = (cliente: ClienteNew) => {
     onSelectCliente(cliente);
     onClose();
     setBusqueda('');

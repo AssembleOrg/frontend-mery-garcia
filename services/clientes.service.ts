@@ -1,5 +1,5 @@
 import { apiFetch } from '@/lib/apiClient';
-import { Cliente } from '@/types/caja';
+import { ClienteNew } from './unidadNegocio.service';
 
 // DTOs para crear y actualizar clientes
 export interface CrearClienteDto {
@@ -33,7 +33,7 @@ export interface FiltrarClientesDto {
 
 // Interfaz para la respuesta con paginación
 export interface ClientesResponse {
-  clientes: Cliente[];
+  clientes: ClienteNew[];
   total: number;
   page: number;
   limit: number;
@@ -42,7 +42,7 @@ export interface ClientesResponse {
 
 // Interfaz para respuestas individuales
 export interface ClienteSingleResponse {
-  data: Cliente;
+  data: ClienteNew;
 }
 
 // Interfaz para estadísticas
@@ -59,11 +59,11 @@ class ClientesService {
   private readonly baseUrl = '/api/clientes';
 
   // GET /clientes - Obtener todos los clientes (sin paginación)
-  async obtenerClientes(): Promise<{ data: Cliente[] }> {
+  async obtenerClientes(): Promise<{ data: ClienteNew[] }> {
     try {
         console.log('obteniendo clientes');
       const response = await apiFetch<{
-        data: Cliente[];
+        data: ClienteNew[];
         status: string;
       }>(this.baseUrl);
       return { data: response.data };
@@ -74,12 +74,17 @@ class ClientesService {
   }
 
   // GET /clientes/paginados - Obtener clientes con paginación y filtros
-  async obtenerClientesPaginados(filtros: FiltrarClientesDto = {}): Promise<{ data: Cliente[]; pagination: any }> {
+  async obtenerClientesPaginados(filtros: FiltrarClientesDto = {}): Promise<{ data: ClienteNew[]; pagination: {
+    total: number;
+    page: number;
+    limit: number;
+    totalPages: number;
+  } }> {
     try {
       const params = new URLSearchParams();
       
       // Agregar parámetros de filtro
-      Object.entries(filtros).forEach(([key, value]) => {
+      Object.entries(filtros).forEach(([key, value]) => { 
         if (value !== undefined && value !== null && value !== '') {
           if (typeof value === 'number') {
             params.append(key, value.toString());
@@ -93,7 +98,7 @@ class ClientesService {
       const url = queryString ? `${this.baseUrl}/paginados?${queryString}` : `${this.baseUrl}/paginados`;
       const response = await apiFetch<{
         data: {
-            data: Cliente[];
+            data: ClienteNew[];
             meta: {
                 total: number;
                 page: number;
@@ -120,7 +125,7 @@ class ClientesService {
   }
 
   // POST /clientes - Crear nuevo cliente
-  async crearCliente(clienteData: CrearClienteDto): Promise<{ data: Cliente }> {
+  async crearCliente(clienteData: CrearClienteDto): Promise<{ data: ClienteNew }> {
     try {
       const response = await apiFetch<ClienteSingleResponse>(this.baseUrl, {
         method: 'POST',
@@ -135,7 +140,7 @@ class ClientesService {
   }
 
   // GET /clientes/:id - Obtener cliente específico
-  async obtenerCliente(id: string): Promise<{ data: Cliente }> {
+  async obtenerCliente(id: string): Promise<{ data: ClienteNew }> {
     try {
       const response = await apiFetch<ClienteSingleResponse>(`${this.baseUrl}/${id}`);
       return { data: response.data };
@@ -146,7 +151,7 @@ class ClientesService {
   }
 
   // PUT /clientes/:id - Actualizar cliente
-  async actualizarCliente(id: string, clienteData: ActualizarClienteDto): Promise<{ data: Cliente }> {
+  async actualizarCliente(id: string, clienteData: ActualizarClienteDto): Promise<{ data: ClienteNew }> {
     try {
       const response = await apiFetch<ClienteSingleResponse>(`${this.baseUrl}/${id}`, {
         method: 'PUT',
@@ -161,7 +166,7 @@ class ClientesService {
   }
 
   // DELETE /clientes/:id - Eliminar cliente (soft delete)
-  async eliminarCliente(id: string): Promise<{ data: Cliente }> {
+  async eliminarCliente(id: string): Promise<{ data: ClienteNew }> {
     try {
       const response = await apiFetch<ClienteSingleResponse>(`${this.baseUrl}/${id}`, {
         method: 'DELETE'
@@ -175,7 +180,7 @@ class ClientesService {
   }
 
   // POST /clientes/:id/restaurar - Restaurar cliente eliminado
-  async restaurarCliente(id: string): Promise<{ data: Cliente }> {
+  async restaurarCliente(id: string): Promise<{ data: ClienteNew }> {
     try {
       const response = await apiFetch<ClienteSingleResponse>(`${this.baseUrl}/${id}/restaurar`, {
         method: 'POST'

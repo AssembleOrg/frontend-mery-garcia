@@ -5,14 +5,14 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
 import { Users, Search, X } from 'lucide-react';
-import { Cliente } from '@/types/caja';
 import { useBuscarCliente } from '@/hooks/useBuscarCliente';
 import ModalBuscarCliente from '@/components/clientes/ModalBuscarCliente';
 import { useCurrencyConverter } from '@/hooks/useCurrencyConverter';
+import { ClienteNew } from '@/services/unidadNegocio.service';
 
 interface ClienteSelectorProps {
-  clienteSeleccionado: Cliente | null;
-  onClienteChange: (cliente: Cliente | null) => void;
+  clienteSeleccionado: ClienteNew | null;
+  onClienteChange: (cliente: ClienteNew | null) => void;
   disabled?: boolean;
   required?: boolean;
 }
@@ -31,7 +31,7 @@ export default function ClienteSelector({
     seleccionarCliente
   } = useBuscarCliente();
 
-  const handleSeleccionarCliente = (cliente: Cliente) => {
+  const handleSeleccionarCliente = (cliente: ClienteNew) => {
     seleccionarCliente(cliente);
     onClienteChange(cliente);
   };

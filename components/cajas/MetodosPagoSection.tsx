@@ -94,8 +94,8 @@ const MetodosPagoSection = React.memo(function MetodosPagoSection({
 
   const totalDescuentos = useMemo(() => 
     metodosPago.reduce(
-      (sum, mp) => sum + mp.descuentoAplicado,
-      0
+    (sum, mp) => sum + mp.descuentoAplicado,
+    0
     ), [metodosPago]
   );
 

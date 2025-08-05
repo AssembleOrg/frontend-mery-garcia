@@ -201,7 +201,6 @@ export default function ModalPersonal({
                     className={`pl-10 ${errores.comisionPorcentaje ? 'border-red-300' : ''}`}
                     min="0"
                     max="100"
-                    step="0.01"
                   />
                 </div>
               </div>

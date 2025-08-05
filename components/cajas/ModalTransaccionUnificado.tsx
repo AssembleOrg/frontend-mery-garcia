@@ -1,18 +1,11 @@
 'use client';
 
-import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Checkbox } from '@/components/ui/checkbox';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
 import MetodosPagoSection from './MetodosPagoSection';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -27,37 +20,26 @@ import {
   ArrowDownCircle,
   Search,
   Hash,
-  Scissors,
-  Edit,
-  GraduationCap,
   Package,
-  User,
-  DollarSign,
   Lock,
   ChevronDown,
 } from 'lucide-react';
 import useComandaStore from '@/features/comandas/store/comandaStore';
-import { useActivityStore } from '@/features/activity/store/activityStore';
 import { useExchangeRateStore } from '@/features/exchange-rate/store/exchangeRateStore';
 import { MONEDAS } from '@/lib/constants';
-import { usePersonal } from '@/features/personal/hooks/usePersonal';
 import { useModalScrollLock } from '@/hooks/useModalScrollLock';
 import { logger } from '@/lib/utils';
 import { useCurrencyConverter } from '@/hooks/useCurrencyConverter';
-import { Comanda, ItemComanda, UnidadNegocio, Cliente } from '@/types/caja';
 import {
   useInitializeComandaStore,
   generateUniqueId,
 } from '@/hooks/useInitializeComandaStore';
-import { DiscountControls } from './DiscountControls';
-import { useExchangeRate } from '@/features/exchange-rate/hooks/useExchangeRate';
 import { useMetodosPago } from '@/hooks/useMetodosPago';
 import { useAuth } from '@/features/auth/hooks/useAuth';
 import useTrabajadoresStore from '@/features/personal/store/trabajadoresStore';
 import {
   ComandaCreateNew,
   EstadoDeComandaNew,
-  RolTrabajadorNew,
   TipoDeComandaNew,
   ProductoServicioNew,
   TipoPagoNew,
@@ -65,6 +47,11 @@ import {
   TipoItemNew,
   NombreDescuentoNew,
   CajaNew,
+  ClienteNew,
+  UnidadNegocioNew,
+  ComandaNew,
+  ItemComandaCreateNew,
+  ItemComandaNew,
 } from '@/services/unidadNegocio.service';
 import { RolTrabajador } from '@/types/trabajador';
 import useProductosServiciosStore from '@/features/productos-servicios/store/productosServiciosStore';
@@ -77,33 +64,14 @@ interface ModalTransaccionUnificadoProps {
   isOpen: boolean;
   onClose: () => void;
   tipo: 'ingreso' | 'egreso';
-}
-
-interface ItemTransaccion {
-  id: string;
-  productoServicioId: string;
-  nombre: string;
-  precio: number;
-  cantidad: number;
-  descuentoPorcentaje: number;
-  descuento: number;
-  subtotal: number;
-  descripcion?: string;
-  // Campos para precios congelados (ingresos)
-  esPrecioCongelado?: boolean;
-  precioFijoARS?: number;
-  // Campo para egresos con monto fijo en ARS
-  esMontoFijoARS?: boolean;
-  // Responsables asignados a este item
-  responsablesIds: string[];
-  // Estado para mostrar/ocultar el selector de responsables
-  mostrarSelectorResponsables?: boolean;
+  comandaId?: string;
 }
 
 export default function ModalTransaccionUnificado({
   isOpen,
   onClose,
   tipo,
+  comandaId,
 }: ModalTransaccionUnificadoProps) {
   // Store hooks
   const {
@@ -113,6 +81,7 @@ export default function ModalTransaccionUnificado({
     comandasPaginadas,
     getUltimaComanda,
     existeComanda,
+    obtenerComandaPorId,
   } = useComandaStore();
 
   const { productosServicios, loadProductosServicios } =
@@ -134,6 +103,9 @@ export default function ModalTransaccionUnificado({
 
   const [dolar, setDolar] = useState(0);
   const { lastDolar } = useExchangeRateStore();
+  const [comandaState, setComandaState] = useState<ComandaNew | undefined>(
+    undefined
+  );
 
   // Helper function for dual currency display
   const formatAmount = (amount: number) => {
@@ -142,6 +114,8 @@ export default function ModalTransaccionUnificado({
 
   // Helper function for ARS-native amounts (cuando hay items con monto fijo ARS)
   const formatAmountForARSFixed = (amount: number, esCalculoARS?: boolean) => {
+    console.log('amount', amount);
+    console.log('esCalculoARS', esCalculoARS);
     if (tipo === 'egreso' && hayItemsCongelados && esCalculoARS) {
       // Para egresos con monto fijo ARS: mostrar valor nativo sin conversión
       return `🔒 ${formatARSFromNative(amount)}`;
@@ -151,21 +125,21 @@ export default function ModalTransaccionUnificado({
   };
 
   // Helper function para items en comanda con precio congelado
-  const formatItemAmount = (item: ItemTransaccion) => {
+  const formatItemAmount = (item: ItemComandaNew | ItemComandaCreateNew) => {
     // Items con precio congelado (ingresos)
-    if (item.esPrecioCongelado && item.precioFijoARS) {
+    if (item.productoServicio?.esPrecioCongelado && item.productoServicio?.precioFijoARS) {
       // Para items congelados: mostrar ARS fijo - descuentos (ambos en ARS)
-      const totalARS = item.precioFijoARS * item.cantidad - item.descuento;
+      const totalARS = item.productoServicio.precioFijoARS * (item.cantidad || 1) - (item.descuento || 0);
       return `🔒 ${formatARSFromNative(totalARS)}`;
     }
     // Items con monto fijo ARS (egresos)
-    if (item.esMontoFijoARS && tipo === 'egreso') {
+    if (item.productoServicio?.esPrecioCongelado && tipo === 'egreso') {
       // Para egresos con monto fijo ARS: mostrar precio en ARS nativo
-      const totalARS = item.precio * item.cantidad - item.descuento;
+      const totalARS = item.productoServicio.precio * (item.cantidad || 1) - (item.descuento || 0);
       return `🔒 ${formatARSFromNative(totalARS)}`;
     }
     // Para items normales: usar lógica actual
-    return formatAmount(item.subtotal);
+    return formatAmount(item.subtotal || 0);
   };
 
   const { getTipoCambio, cargando } = useExchangeRateStore();
@@ -175,29 +149,27 @@ export default function ModalTransaccionUnificado({
 
   // Form state
   const [clienteSeleccionado, setClienteSeleccionado] =
-    useState<Cliente | null>(null);
+    useState<ClienteNew | null>(null);
   const [clienteProveedor, setClienteProveedor] = useState('');
   const [telefono, setTelefono] = useState('');
   const [montoSeñaAplicada, setMontoSeñaAplicada] = useState(0);
   const [monedaSeñaAplicada, setMonedaSeñaAplicada] = useState<
     'ars' | 'usd' | null
   >(null);
-  const [unidadNegocio, setUnidadNegocio] =
-    useState<UnidadNegocio>('estilismo');
   const [responsableId, setResponsableId] = useState('');
   const [responsablesIds, setResponsablesIds] = useState<string[]>([]);
   const [observaciones, setObservaciones] = useState('');
-  const [items, setItems] = useState<ItemTransaccion[]>([]);
+  const [items, setItems] = useState<ItemComandaCreateNew[]>([]);
   // Removemos el estado local de metodosPago ya que ahora usamos el hook
   const [descuentoGlobalPorcentaje, setDescuentoGlobalPorcentaje] = useState(0);
 
   // Detectar si hay items con precio congelado en ARS (ingresos) o monto fijo ARS (egresos)
   const hayItemsCongelados = useMemo(() => {
     if (tipo === 'ingreso') {
-      return items.some((item) => item.esPrecioCongelado);
+      return items.some((item) => item.productoServicio?.esPrecioCongelado);
     } else {
       // Para egresos: detectar items con monto fijo en ARS
-      return items.some((item) => item.esMontoFijoARS);
+      return items.some((item) => item.productoServicio?.esPrecioCongelado);
     }
   }, [items, tipo]);
 
@@ -352,13 +324,13 @@ export default function ModalTransaccionUnificado({
         await Promise.all([
           loadTrabajadores(),
           cargarClientes(),
-          loadProductosServicios()
+          loadProductosServicios(),
         ]);
       } catch (error) {
         handleError(error, 'cargar datos del modal');
       }
     };
-    
+
     loadData();
   }, [loadTrabajadores, cargarClientes, loadProductosServicios, handleError]);
 
@@ -372,23 +344,30 @@ export default function ModalTransaccionUnificado({
     }
   }, [mostrarBuscador, productosServicios.length]);
 
-  // useEffect para cerrar selector de responsables al hacer clic fuera
+  // useEffect para cerrar selectores de responsables al hacer clic fuera
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       const target = event.target as Element;
       if (!target.closest('.responsables-selector')) {
-        setMostrarSelectorResponsables(false);
+        // Cerrar todos los selectores abiertos
+        setItems(items.map(item => ({
+          ...item,
+          mostrarSelectorResponsables: false
+        })));
       }
     };
 
-    if (mostrarSelectorResponsables) {
+    // Verificar si hay algún selector abierto
+    const haySelectorAbierto = items.some(item => item.mostrarSelectorResponsables);
+    
+    if (haySelectorAbierto) {
       document.addEventListener('mousedown', handleClickOutside);
     }
 
     return () => {
       document.removeEventListener('mousedown', handleClickOutside);
     };
-  }, [mostrarSelectorResponsables]);
+  }, [items]);
 
   // Manejar aplicación de seña
   const handleAplicarSeña = (moneda: 'ars' | 'usd') => {
@@ -469,22 +448,19 @@ export default function ModalTransaccionUnificado({
     toast.success('Cambios aplicados correctamente');
   };
 
-  const agregarItem = () => {
-    const nuevoItem: ItemTransaccion = {
-      id: `temp-${Date.now()}`,
-      productoServicioId: '',
-      nombre: '',
-      precio: 0,
-      cantidad: 1,
-      descuentoPorcentaje: 0,
-      descuento: 0,
-      subtotal: 0,
-      descripcion: '',
-      responsablesIds: [],
-      mostrarSelectorResponsables: false,
-    };
-    setItems([...items, nuevoItem]);
-  };
+  // const agregarItem = () => {
+  //   const nuevoItem: ItemComandaCreateNew = {
+  //     productoServicioId: '',
+  //     nombre: '',
+  //     precio: 0,
+  //     cantidad: 1,
+  //     descuento: 0,
+  //     subtotal: 0,
+  //     responsablesIds: [],
+  //     mostrarSelectorResponsables: false,
+  //   };
+  //   setItems([...items, nuevoItem]);
+  // };
 
   const agregarDesdeProducto = (producto: ProductoServicioNew) => {
     // Para productos congelados: NO convertir, usar precio ARS como base
@@ -498,21 +474,16 @@ export default function ModalTransaccionUnificado({
       subtotalBase = producto.precioFijoARS;
     }
 
-    const nuevoItem: ItemTransaccion = {
+    const nuevoItem: ItemComandaCreateNew = {
       id: `temp-${Date.now()}`,
       productoServicioId: producto.id,
+      productoServicio: producto, // mantener objeto completo para cálculos
       nombre: producto.nombre,
       precio: precioBase,
       cantidad: 1,
-      descuentoPorcentaje: 0,
       descuento: 0,
       subtotal: subtotalBase,
-      descripcion: producto.descripcion || '',
-      // Propagar campos de precio congelado
-      esPrecioCongelado: producto.esPrecioCongelado,
-      precioFijoARS: producto.precioFijoARS,
       responsablesIds: [],
-      mostrarSelectorResponsables: false,
     };
     setItems([...items, nuevoItem]);
     setMostrarBuscador(false);
@@ -526,7 +497,7 @@ export default function ModalTransaccionUnificado({
   // Update item
   const actualizarItem = (
     id: string,
-    campo: keyof ItemTransaccion,
+    campo: keyof ItemComandaCreateNew,
     valor: string | number | boolean | string[]
   ) => {
     setItems(
@@ -538,33 +509,26 @@ export default function ModalTransaccionUnificado({
           if (
             campo === 'cantidad' ||
             campo === 'precio' ||
-            campo === 'descuentoPorcentaje' ||
-            campo === 'esMontoFijoARS'
+            campo === 'descuento' ||
+            campo === 'productoServicio'
           ) {
-            let precioBase;
+            let precioBase = 0;
 
             // Para items congelados (ingresos): trabajar solo en ARS, sin conversiones
-            if (updatedItem.esPrecioCongelado && updatedItem.precioFijoARS) {
+            if (updatedItem.productoServicio?.esPrecioCongelado && updatedItem.productoServicio?.precioFijoARS) {
               // Items congelados: usar ARS nativo multiplicado por cantidad
-              precioBase = updatedItem.precioFijoARS * updatedItem.cantidad;
+              precioBase = updatedItem.productoServicio.precioFijoARS * (updatedItem.cantidad || 1);
             }
             // Para items con monto fijo ARS (egresos): trabajar en ARS nativo
-            else if (updatedItem.esMontoFijoARS && tipo === 'egreso') {
+            else if (updatedItem.productoServicio?.esPrecioCongelado && tipo === 'egreso') {
               // Items egresos ARS: usar precio como ARS nativo
-              precioBase = updatedItem.precio * updatedItem.cantidad;
+              precioBase = updatedItem.productoServicio.precio * (updatedItem.cantidad || 1);
             } else {
               // Para items normales: usar el cálculo dinámico USD
-              precioBase = updatedItem.precio * updatedItem.cantidad;
+              precioBase = (updatedItem.productoServicio?.precio || 0) * (updatedItem.cantidad || 1);
             }
 
-            const porcentaje = Math.max(
-              0,
-              Math.min(100, updatedItem.descuentoPorcentaje)
-            );
-            const descuentoCalculado = (precioBase * porcentaje) / 100;
-
-            updatedItem.descuentoPorcentaje = porcentaje;
-            updatedItem.descuento = descuentoCalculado;
+            const descuentoCalculado = updatedItem.descuento || 0;
             updatedItem.subtotal = precioBase - descuentoCalculado;
           }
 
@@ -575,143 +539,47 @@ export default function ModalTransaccionUnificado({
     );
   };
 
-  // Aplicar descuento a un ítem específico
-  const aplicarDescuentoItem = (id: string, porcentaje: number) => {
-    setItems(
-      items.map((item) => {
-        if (item.id === id) {
-          let precioBase;
-
-          // Para items con monto fijo ARS (egresos): trabajar en ARS nativo
-          if (item.esMontoFijoARS && tipo === 'egreso') {
-            precioBase = item.precio * item.cantidad;
-          } else {
-            // Para items normales: usar el cálculo dinámico USD
-            precioBase = item.precio * item.cantidad;
-          }
-
-          const descuentoCalculado = (precioBase * porcentaje) / 100;
-
-          return {
-            ...item,
-            descuentoPorcentaje: porcentaje,
-            descuento: descuentoCalculado,
-            subtotal: precioBase - descuentoCalculado,
-          };
-        }
-        return item;
-      })
-    );
-  };
-
-  // Eliminar descuento de un ítem específico
-  const eliminarDescuentoItem = (id: string) => {
-    setItems(
-      items.map((item) => {
-        if (item.id === id) {
-          let precioBase;
-
-          // Para items con monto fijo ARS (egresos): trabajar en ARS nativo
-          if (item.esMontoFijoARS && tipo === 'egreso') {
-            precioBase = item.precio * item.cantidad;
-          } else {
-            // Para items normales: usar el cálculo dinámico USD
-            precioBase = item.precio * item.cantidad;
-          }
-
-          return {
-            ...item,
-            descuentoPorcentaje: 0,
-            descuento: 0,
-            subtotal: precioBase,
-          };
-        }
-        return item;
-      })
-    );
-  };
-
-  // Aplicar descuento global
-  const aplicarDescuentoGlobal = (porcentaje: number) => {
-    if (porcentaje <= 0 || items.length === 0) return;
-
-    const itemsConDescuento = items.map((item) => {
-      const precioBase = item.precio * item.cantidad;
-      const descuentoCalculado = (precioBase * porcentaje) / 100;
-
-      return {
-        ...item,
-        descuentoPorcentaje: porcentaje,
-        descuento: descuentoCalculado,
-        subtotal: precioBase - descuentoCalculado,
-      };
-    });
-
-    setItems(itemsConDescuento);
-    setDescuentoGlobalPorcentaje(0);
-  };
-
-  const limpiarDescuentos = () => {
-    const itemsSinDescuento = items.map((item) => {
-      let subtotal;
-
-      if (item.esPrecioCongelado && item.precioFijoARS) {
-        // Para items congelados (ingresos): usar ARS nativo, sin conversiones
-        subtotal = item.precioFijoARS * item.cantidad;
-      } else if (item.esMontoFijoARS && tipo === 'egreso') {
-        // Para items egresos con monto fijo ARS: usar precio como ARS nativo
-        subtotal = item.precio * item.cantidad;
-      } else {
-        // Para items normales: usar precio USD
-        subtotal = item.precio * item.cantidad;
-      }
-
-      return {
-        ...item,
-        descuentoPorcentaje: 0,
-        descuento: 0,
-        subtotal,
-      };
-    });
-    setItems(itemsSinDescuento);
-    setDescuentoGlobalPorcentaje(0);
-  };
-
   // Función para calcular total ARS respetando items congelados/monto fijo
   const calcularTotalARS = () => {
+    if (items.length === 0) return 0;
+    
     if (tipo === 'ingreso') {
       // Lógica original para ingresos con items congelados
       const itemsCongelados = items.filter(
-        (item) => item.esPrecioCongelado && item.precioFijoARS
+        (item) => item.productoServicio?.esPrecioCongelado && item.productoServicio?.precioFijoARS
       );
 
       if (itemsCongelados.length > 0) {
         // Solo calcular total de items congelados
         return itemsCongelados.reduce((sum, item) => {
-          const subtotalARS = item.precioFijoARS! * item.cantidad;
-          return sum + subtotalARS - item.descuento;
+          if (!item.productoServicio?.precioFijoARS || !item.cantidad) return sum;
+          const subtotalARS = item.productoServicio.precioFijoARS * item.cantidad;
+          return sum + subtotalARS - (item.descuento || 0);
         }, 0);
       } else {
         // Si no hay items congelados, usar conversión normal
         return items.reduce((sum, item) => {
-          const subtotalUSD = item.precio * item.cantidad - item.descuento;
+          if (!item.productoServicio?.precio || !item.cantidad) return sum;
+          const subtotalUSD = (item.precio || 0) * (item.cantidad || 1) - (item.descuento || 0);
           return sum + subtotalUSD * getTipoCambio().valorVenta;
         }, 0);
       }
     } else {
       // Lógica para egresos con items de monto fijo ARS
-      const itemsARSFijo = items.filter((item) => item.esMontoFijoARS);
+      const itemsARSFijo = items.filter((item) => item.productoServicio?.esPrecioCongelado);
 
       if (itemsARSFijo.length > 0) {
         // Calcular total solo de items con monto fijo en ARS
         return itemsARSFijo.reduce((sum, item) => {
-          const subtotalARS = item.precio * item.cantidad;
-          return sum + subtotalARS - item.descuento;
+          if (!item.productoServicio?.precio || !item.cantidad) return sum;
+          const subtotalARS = item.productoServicio.precio * item.cantidad;
+          return sum + subtotalARS - (item.descuento || 0);
         }, 0);
       } else {
         // Si no hay items ARS fijo, usar conversión normal
         return items.reduce((sum, item) => {
-          const subtotalUSD = item.precio * item.cantidad - item.descuento;
+          if (!item.productoServicio?.precio || !item.cantidad) return sum;
+          const subtotalUSD = (item.precio || 0) * (item.cantidad || 1) - (item.descuento || 0);
           return sum + subtotalUSD * getTipoCambio().valorVenta;
         }, 0);
       }
@@ -720,11 +588,27 @@ export default function ModalTransaccionUnificado({
 
   // Función específica para egresos con monto fijo ARS - NO convierte a USD
   const calcularTotalesARS = () => {
+    if (items.length === 0) {
+      return {
+        subtotalBase: 0,
+        totalDescuentos: 0,
+        subtotalConDescuentosItems: 0,
+        totalFinal: 0,
+        totalPagadoConDescuentos: 0,
+        diferencia: 0,
+        descuentosPorMetodo: 0,
+        montoSeñaAplicada,
+        totalARSRespetandoCongelados: 0,
+        esCalculoARS: false,
+      };
+    }
+    
     if (tipo === 'egreso' && hayItemsCongelados) {
       // Para egresos con items ARS fijo: trabajar en ARS nativo
       // Usar directamente los subtotales calculados en actualizarItem
       const subtotalBaseARS = items.reduce((sum, item) => {
-        if (item.esMontoFijoARS) {
+        if (!item.subtotal) return sum;
+        if (item.productoServicio?.esPrecioCongelado) {
           // Items ARS fijo: usar subtotal ya calculado (que incluye descuentos)
           return sum + item.subtotal;
         } else {
@@ -736,7 +620,8 @@ export default function ModalTransaccionUnificado({
       // Los descuentos ya están incluidos en los subtotales de cada item
       // Solo los calculamos para mostrar en el resumen
       const totalDescuentosARS = items.reduce((sum, item) => {
-        if (item.esMontoFijoARS) {
+        if (!item.descuento) return sum;
+        if (item.productoServicio?.esPrecioCongelado) {
           // Descuentos en ARS nativo
           return sum + item.descuento;
         } else {
@@ -783,21 +668,38 @@ export default function ModalTransaccionUnificado({
   };
 
   const calcularTotales = () => {
+    // Si no hay items, retornar valores por defecto para evitar NaN
+    if (items.length === 0) {
+      return {
+        subtotalBase: 0,
+        totalDescuentos: 0,
+        subtotalConDescuentosItems: 0,
+        totalFinal: 0,
+        totalPagadoConDescuentos: 0,
+        diferencia: 0,
+        descuentosPorMetodo: 0,
+        montoSeñaAplicada,
+        totalARSRespetandoCongelados: 0,
+      };
+    }
+
     const subtotalBase = items.reduce((sum, item) => {
-      if (item.esPrecioCongelado && item.precioFijoARS) {
+      if (!item.productoServicio?.precio || !item.cantidad) return sum;
+      
+      if (item.productoServicio?.esPrecioCongelado && item.productoServicio?.precioFijoARS) {
         // Para items congelados (ingresos): usar ARS nativo sin convertir
-        // Solo para compatibilidad interna, pero el display real será en ARS
-        return sum + item.precioFijoARS * item.cantidad; // Usar valor real, no dividir por 1000
-      } else if (item.esMontoFijoARS && tipo === 'egreso') {
+        return sum + item.productoServicio.precioFijoARS * item.cantidad;
+      } else if (item.productoServicio?.esPrecioCongelado && tipo === 'egreso') {
         // Para items egresos con monto fijo ARS: usar valor nominal para cálculos
-        return sum + item.precio * item.cantidad; // Usar valor real, no dividir por 1000
+        return sum + item.productoServicio.precio * item.cantidad;
       } else {
         // Para items normales: usar el cálculo dinámico actual
-        return sum + item.precio * item.cantidad;
+        return sum + item.productoServicio.precio * item.cantidad;
       }
     }, 0);
+    
     const totalDescuentos = items.reduce(
-      (sum, item) => sum + item.descuento,
+      (sum, item) => sum + (item.descuento || 0),
       0
     );
     const subtotalConDescuentosItems = subtotalBase - totalDescuentos;
@@ -816,15 +718,6 @@ export default function ModalTransaccionUnificado({
 
     // El total final debe ser el subtotal menos la seña menos los descuentos por método de pago
     // para que coincida con lo que realmente se debe pagar
-    const montoSeñaEnUSD =
-      monedaSeñaAplicada === 'ars'
-        ? arsToUsd(montoSeñaAplicada)
-        : montoSeñaAplicada;
-
-    const totalSeñaUSD = monedaSeñaAplicada === 'usd' ? montoSeñaAplicada : 0;
-    const totalSeñaARS = monedaSeñaAplicada === 'ars' ? montoSeñaAplicada : 0;
-
-    // Los totales están en USD, convertir seña ARS a USD solo para el cálculo
     const montoSeñaARestar =
       monedaSeñaAplicada === 'ars'
         ? arsToUsd(montoSeñaAplicada)
@@ -862,7 +755,7 @@ export default function ModalTransaccionUnificado({
     }
 
     if (
-      items.every((item) => item.responsablesIds.length === 0) &&
+      items.every((item) => item.responsablesIds?.length === 0) &&
       tipo === 'ingreso'
     ) {
       toast.error('Debe seleccionar un responsable por item', {
@@ -895,15 +788,15 @@ export default function ModalTransaccionUnificado({
 
     // Validar items
     items.forEach((item, index) => {
-      if (!item.nombre.trim()) {
+      if (!item.nombre?.trim()) {
         nuevosErrores[`item-${index}-nombre`] = 'El nombre es requerido';
         return false;
       }
-      if (item.precio <= 0) {
+      if (item.precio! <= 0) {
         nuevosErrores[`item-${index}-precio`] = 'El precio debe ser mayor a 0';
         return false;
       }
-      if (item.cantidad <= 0) {
+      if (item.cantidad! <= 0) {
         nuevosErrores[`item-${index}-cantidad`] =
           'La cantidad debe ser mayor a 0';
         return false;
@@ -963,7 +856,6 @@ export default function ModalTransaccionUnificado({
     setGuardando(true);
 
     try {
-      const totales = calcularTotalesARS();
       const numeroTransaccion = numeroManual.trim()
         ? '01-' + numeroManual
         : numeroUltimaComanda;
@@ -992,14 +884,14 @@ export default function ModalTransaccionUnificado({
         descuentosAplicados: [],
         items: items.map((item) => {
           return {
-            productoServicioId: item.productoServicioId,
-            nombre: item.nombre,
+            productoServicioId: item.productoServicio?.id!,
+            nombre: item.nombre!,
             tipo: tipo === 'ingreso' ? TipoItemNew.INGRESO : TipoItemNew.EGRESO,
-            precio: item.precio,
-            cantidad: item.cantidad,
-            descuento: item.descuento,
-            trabajadorId: item.responsablesIds[0],
-            subtotal: item.subtotal,
+            precio: item.precio!,
+            cantidad: item.cantidad!,
+            descuento: item.descuento!,
+            trabajadorId: item.responsablesIds?.[0] || '',
+            subtotal: item.subtotal!,
           };
         }),
       };
@@ -1021,16 +913,6 @@ export default function ModalTransaccionUnificado({
           ? (clienteSeleccionado?.señasDisponibles?.usd ?? 0)
           : 0;
 
-      console.log(
-        'seña',
-        seña,
-        señaUSD,
-        monedaSeñaAplicada,
-        monedaSeñaAplicada === 'ars',
-        monedaSeñaAplicada === 'usd',
-        clienteSeleccionado?.señasDisponibles
-      );
-
       nuevaComandaNew.descuentosAplicados = descuentos;
       nuevaComandaNew.precioDolar =
         (nuevaComandaNew.metodosPago?.reduce((sum, mp) => {
@@ -1042,10 +924,12 @@ export default function ModalTransaccionUnificado({
         }, 0) ?? 0) + seña;
       nuevaComandaNew.usuarioConsumePrepago = seña > 0 || señaUSD > 0;
 
-      const existe = await existeComanda(numeroTransaccion.toString());
-      if (existe) {
-        toast.error('El número de comanda ya existe');
-        return;
+      if (!comandaId) {
+        const existe = await existeComanda(numeroTransaccion.toString());
+        if (existe) {
+          toast.error('El número de comanda ya existe');
+          return;
+        }
       }
 
       console.log(nuevaComandaNew, items, nuevaComandaNew.items);
@@ -1064,8 +948,10 @@ export default function ModalTransaccionUnificado({
             ? TipoDeComandaNew.INGRESO
             : TipoDeComandaNew.EGRESO,
       });
+      toast.success('Comanda creada/actualizada con éxito');
     } catch (error) {
       logger.error(`Error al guardar ${tipo}:`, error);
+      toast.error('Hubo un error al crear/actualizar la comanda');
       setErrores({
         general: 'Error al guardar la transacción. Intente nuevamente.',
       });
@@ -1079,7 +965,6 @@ export default function ModalTransaccionUnificado({
     setClienteSeleccionado(null);
     setClienteProveedor('');
     setTelefono('');
-    setUnidadNegocio('estilismo');
     setResponsableId('');
     setResponsablesIds([]);
     setObservaciones('');
@@ -1103,6 +988,105 @@ export default function ModalTransaccionUnificado({
 
     resetMetodosPago();
   };
+
+  useEffect(() => {
+    console.log('comandaId', comandaId);
+    const cargarComanda = async () => {
+      if (comandaId && isOpen) {
+        try {
+          const comanda = await obtenerComandaPorId(comandaId);
+          setComandaState(comanda);
+
+          // Cargar todos los datos de la comanda
+          setClienteSeleccionado(comanda.cliente || null);
+          setClienteProveedor(comanda.cliente?.nombre || '');
+          setTelefono(comanda.cliente?.telefono || '');
+          setObservaciones(comanda.observaciones || '');
+          setNumeroManual(comanda.numero?.split('-')[1] || '');
+
+          // Convertir items al formato correcto
+          const itemsConvertidos =
+            comanda.items?.map((item) => {
+              console.log('item', item);
+              return {
+                id: item.id || `temp-${Date.now()}`,
+                productoServicioId: item.productoServicioId || '',
+                nombre: item.nombre || '',
+                precio: item.precio || 0,
+                cantidad: item.cantidad || 1,
+                descuentoPorcentaje: 0,
+                descuento: item.descuento || 0,
+                subtotal: item.subtotal || 0,
+                responsablesIds: item.trabajador ? [item.trabajador.id] : [],
+                mostrarSelectorResponsables: false,
+                productoServicio: item.productoServicio,
+              };
+            }) || [];
+          console.log('itemsConvertidos', itemsConvertidos);
+          setItems(itemsConvertidos);
+
+          // Cargar métodos de pago
+          if (comanda.metodosPago && comanda.metodosPago.length > 0) {
+            resetMetodosPago();
+            console.log('metodosPago', comanda.metodosPago);
+            comanda.metodosPago.forEach((metodo, index) => {
+              if (index > 0) {
+                agregarMetodoPagoBase();
+              }
+              const metodoIndex = index;
+              if (metodo.tipo)
+                actualizarMetodoPago(metodoIndex, 'tipo', metodo.tipo);
+              if (metodo.moneda)
+                actualizarMetodoPago(metodoIndex, 'moneda', metodo.moneda);
+              actualizarMetodoPago(metodoIndex, 'monto', metodo.monto || 0);
+            });
+          }
+
+          // Cargar descuentos y señas
+          setDescuentoGlobalPorcentaje(
+            comanda.descuentosAplicados?.reduce(
+              (sum, descuento) => sum + (descuento.porcentaje || 0),
+              0
+            ) || 0
+          );
+          // setMontoSeñaAplicada(
+          //   comanda.metodosPago?.reduce((sum, mp) => {
+          //     return mp.moneda === MonedaNew.ARS
+          //       ? sum + (mp.montoFinal || 0)
+          //       : sum;
+          //   }, 0) ?? 0
+          // );
+          // setMonedaSeñaAplicada(
+          //   comanda.metodosPago?.find((mp) => mp.moneda === MonedaNew.ARS)
+          //     ?.moneda === MonedaNew.ARS
+          //     ? 'ars'
+          //     : null
+          // );
+
+          // Cargar cambios temporales
+          // setCambiosTemporales({
+          //   metodosPago: comanda.metodosPago || [],
+          //   montoSeñaAplicada:
+          //     comanda.metodosPago?.reduce((sum, mp) => {
+          //       return mp.moneda === MonedaNew.ARS
+          //         ? sum + (mp.montoFinal || 0)
+          //         : sum;
+          //     }, 0) ?? 0,
+          //   monedaSeñaAplicada:
+          //     comanda.metodosPago?.find((mp) => mp.moneda === MonedaNew.ARS)
+          //       ?.moneda === MonedaNew.ARS
+          //       ? 'ars'
+          //       : null,
+          // });
+        } catch (error) {
+          console.error('Error al cargar comanda:', error);
+          toast.error('Error al cargar la comanda');
+        }
+      }
+    };
+
+    cargarComanda();
+  }, [isOpen]);
 
   const totales = calcularTotalesARS();
 
@@ -1366,7 +1350,7 @@ export default function ModalTransaccionUnificado({
                           Buscar {mostrarBuscador ? '(Abierto)' : ''}
                         </Button>
                       )}
-                      <Button
+                      {/* <Button
                         type="button"
                         variant="outline"
                         size="sm"
@@ -1375,7 +1359,7 @@ export default function ModalTransaccionUnificado({
                       >
                         <Plus className="mr-2 h-4 w-4" />
                         Agregar
-                      </Button>
+                      </Button> */}
                     </div>
                   </CardTitle>
                 </CardHeader>
@@ -1428,8 +1412,8 @@ export default function ModalTransaccionUnificado({
                     </div>
                   ) : (
                     items.map((item, index) => {
-                      const precioBase = item.precio * item.cantidad;
-
+                      const precioBase = item.productoServicio?.precio! * item.cantidad!;
+                      {JSON.stringify(item)}
                       return (
                         <div
                           key={item.id}
@@ -1437,8 +1421,8 @@ export default function ModalTransaccionUnificado({
                         >
                           <div className="mb-3 flex items-center justify-between">
                             <Badge variant="outline" className="text-gray-700">
-                              {(item.esPrecioCongelado ||
-                                item.esMontoFijoARS) &&
+                              {(item.productoServicio?.esPrecioCongelado ||
+                                item.productoServicio?.esPrecioCongelado) &&
                                 '🔒 '}
                               {tipo === 'ingreso' ? 'Servicio' : 'Concepto'} #
                               {index + 1}
@@ -1447,7 +1431,7 @@ export default function ModalTransaccionUnificado({
                               type="button"
                               variant="ghost"
                               size="sm"
-                              onClick={() => eliminarItem(item.id)}
+                              onClick={() => eliminarItem(item.id!)}
                               className="text-gray-500 hover:bg-gray-100 hover:text-gray-700"
                             >
                               <Trash2 className="h-4 w-4" />
@@ -1461,7 +1445,7 @@ export default function ModalTransaccionUnificado({
                                 value={item.nombre}
                                 onChange={(e) =>
                                   actualizarItem(
-                                    item.id,
+                                    item.id!,
                                     'nombre',
                                     e.target.value
                                   )
@@ -1489,7 +1473,7 @@ export default function ModalTransaccionUnificado({
                                 value={item.precio || ''}
                                 onChange={(e) =>
                                   actualizarItem(
-                                    item.id,
+                                    item.id!,
                                     'precio',
                                     parseFloat(e.target.value) || 0
                                   )
@@ -1518,7 +1502,7 @@ export default function ModalTransaccionUnificado({
                                 value={item.cantidad || ''}
                                 onChange={(e) =>
                                   actualizarItem(
-                                    item.id,
+                                    item.id!,
                                     'cantidad',
                                     parseInt(e.target.value) || 1
                                   )
@@ -1544,7 +1528,7 @@ export default function ModalTransaccionUnificado({
                                 </span> */}
                                 <span className="text-xs text-gray-600">
                                   {item.subtotal} (
-                                  {item.esPrecioCongelado ? 'ARS' : 'USD'})
+                                  {item.productoServicio?.esPrecioCongelado || item.productoServicio?.esPrecioCongelado ? 'ARS' : 'USD'})
                                 </span>
                               </div>
                             </div>
@@ -1556,14 +1540,12 @@ export default function ModalTransaccionUnificado({
                               <div className="flex items-center space-x-2">
                                 <Checkbox
                                   id={`monto-fijo-ars-${item.id}`}
-                                  checked={item.esMontoFijoARS || false}
-                                  onCheckedChange={(checked) =>
-                                    actualizarItem(
-                                      item.id,
-                                      'esMontoFijoARS',
-                                      checked === true
-                                    )
-                                  }
+                                  checked={item.productoServicio?.esPrecioCongelado || false}
+                                  onCheckedChange={(checked) => {
+                                    // Actualizar el estado del checkbox sin usar actualizarItem
+                                    // ya que esMontoFijoARS no es parte de ItemComandaCreateNew
+                                    console.log('Checkbox changed:', checked);
+                                  }}
                                 />
                                 <Label
                                   htmlFor={`monto-fijo-ars-${item.id}`}
@@ -1578,7 +1560,7 @@ export default function ModalTransaccionUnificado({
                                   </div>
                                 </Label>
                               </div>
-                              {item.esMontoFijoARS && (
+                              {item.productoServicio?.esPrecioCongelado && (
                                 <p className="mt-2 text-xs text-orange-600">
                                   💡 Este item se facturará únicamente en pesos
                                   argentinos sin conversión de tipo de cambio.
@@ -1594,21 +1576,14 @@ export default function ModalTransaccionUnificado({
                                 <Label className="text-sm font-medium text-gray-700">
                                   Responsables para este item
                                 </Label>
-                                <div className="relative">
+                                <div className="relative responsables-selector">
                                   <div
                                     onClick={() => {
+                                      // actualizar lista: sólo el ítem clicado cambia, los demás se cierran
                                       const newItems = items.map((i) =>
                                         i.id === item.id
-                                          ? {
-                                              ...i,
-                                              mostrarSelectorResponsables:
-                                                !i.mostrarSelectorResponsables,
-                                            }
-                                          : {
-                                              ...i,
-                                              mostrarSelectorResponsables:
-                                                false,
-                                            }
+                                          ? { ...i, mostrarSelectorResponsables: !i.mostrarSelectorResponsables }
+                                          : { ...i, mostrarSelectorResponsables: false }
                                       );
                                       setItems(newItems);
                                     }}
@@ -1616,7 +1591,7 @@ export default function ModalTransaccionUnificado({
                                   >
                                     <span
                                       className={
-                                        item.responsablesIds.length > 0
+                                        item.responsablesIds?.length! > 0
                                           ? 'text-gray-900'
                                           : 'text-gray-500'
                                       }
@@ -1628,10 +1603,10 @@ export default function ModalTransaccionUnificado({
                                           'responsablesIds:',
                                           item.responsablesIds
                                         );
-                                        if (item.responsablesIds.length > 0) {
+                                        if (item.responsablesIds?.length! > 0) {
                                           const persona = personal.find(
                                             (p) =>
-                                              p.id === item.responsablesIds[0]
+                                              p.id === item.responsablesIds?.[0]
                                           );
                                           return persona
                                             ? persona.nombre
@@ -1650,28 +1625,33 @@ export default function ModalTransaccionUnificado({
                                         {personal.map((persona) => (
                                           <div
                                             key={persona.id}
-                                            onClick={() => {
+                                            onClick={(e) => {
+                                              e.preventDefault();
+                                              e.stopPropagation();
+                                              
                                               console.log(
                                                 'Seleccionando responsable:',
                                                 persona.nombre,
                                                 'para item:',
                                                 item.id
                                               );
-                                              // Actualizar el item con el responsable seleccionado y cerrar el selector
-                                              setItems(
-                                                items.map((i) =>
-                                                  i.id === item.id
-                                                    ? {
-                                                        ...i,
-                                                        responsablesIds: [
-                                                          persona.id,
-                                                        ],
-                                                        mostrarSelectorResponsables:
-                                                          false,
+                                              
+                                              // Asegurar que se actualiza el estado correctamente
+                                              setItems(prevItems => 
+                                                prevItems.map(prevItem => 
+                                                  prevItem.id === item.id 
+                                                    ? { 
+                                                        ...prevItem, 
+                                                        responsablesIds: [persona.id],
+                                                        mostrarSelectorResponsables: false 
                                                       }
-                                                    : i
+                                                    : { 
+                                                        ...prevItem, 
+                                                        mostrarSelectorResponsables: false 
+                                                      }
                                                 )
                                               );
+                                              
                                               console.log(
                                                 'Responsable seleccionado. Nuevo estado:',
                                                 [persona.id]
@@ -1689,11 +1669,11 @@ export default function ModalTransaccionUnificado({
                                   )}
                                 </div>
 
-                                {item.responsablesIds.length > 0 && (
+                                {item.responsablesIds?.length! > 0 && (
                                   <div className="flex flex-wrap gap-1">
                                     {(() => {
                                       const persona = personal.find(
-                                        (p) => p.id === item.responsablesIds[0]
+                                        (p) => p.id === item.responsablesIds![0]
                                       );
                                       return persona ? (
                                         <Badge
@@ -1705,7 +1685,7 @@ export default function ModalTransaccionUnificado({
                                             className="ml-1 h-3 w-3 cursor-pointer"
                                             onClick={() => {
                                               actualizarItem(
-                                                item.id,
+                                                item.id!,
                                                 'responsablesIds',
                                                 []
                                               );

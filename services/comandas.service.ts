@@ -1,6 +1,6 @@
 import { apiFetch } from '@/lib/apiClient';
 import { logger } from '@/lib/utils';
-import { ComandaCreateNew, ComandaNew, EstadoDeComandaNew, FiltrarComandasNew, TipoDeComandaNew } from './unidadNegocio.service';
+import { ComandaCreateNew, ComandaNew, ComandaUpdateNew, EstadoDeComandaNew, FiltrarComandasNew, TipoDeComandaNew } from './unidadNegocio.service';
 
 class ComandasService {
   private readonly baseUrl = '/api/comandas';
@@ -261,6 +261,31 @@ class ComandasService {
       json: { estadoDeComanda: nuevoEstado }
     });
     return response.data;
+  }
+
+  // PUT /comandas/:id - Update existing order
+  async actualizarComanda(id: string, comanda: ComandaUpdateNew): Promise<ComandaNew> {
+    try {
+      const response = await apiFetch<{ data: ComandaNew }>(`${this.baseUrl}/${id}`, {
+        method: 'PUT',
+        json: comanda
+      });
+      return response.data;
+    } catch (error) {
+      console.error('Error al actualizar la comanda:', error);
+      throw error;
+    }
+  }
+
+  // GET /comandas/:id - Get order by ID
+  async obtenerComandaPorId(id: string): Promise<ComandaNew> {
+    try {
+      const response = await apiFetch<{ data: ComandaNew }>(`${this.baseUrl}/${id}`);
+      return response.data;
+    } catch (error) {
+      console.error('Error al obtener la comanda:', error);
+      throw error;
+    }
   }
 
 }

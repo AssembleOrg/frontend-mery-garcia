@@ -36,7 +36,8 @@ interface ComandaState {
   // Acciones - Comandas
   agregarComanda: (comanda: ComandaCreateNew) => void;
   persistirComanda: (comanda: ComandaCreateNew) => void;
-  actualizarComanda: (id: string, comanda: ComandaUpdateNew) => void;
+  actualizarComanda: (id: string, comanda: ComandaUpdateNew) => Promise<ComandaNew>;
+  obtenerComandaPorId: (id: string) => Promise<ComandaNew>;
 
   // Acciones - Filtros
   setFilters: (filters: FiltrarComandasNew) => void;
@@ -168,10 +169,37 @@ const useComandaStore = create<ComandaState>((set, get) => ({
     set({ cargando: false });
    }
   },
-  actualizarComanda: (id: string, comanda: Partial<ComandaNew>) => {
-    set((state) => ({
-      comandas: state.comandas.map((c) => (c.id === id ? { ...c, ...comanda } : c)),
-    }));
+  actualizarComanda: async (id: string, comanda: ComandaUpdateNew) => {
+    set({ cargando: true, error: null });
+    try {
+      const comandaActualizada = await comandasService.actualizarComanda(id, comanda);
+      set((state) => ({
+        comandas: state.comandas.map((c) => (c.id === id ? comandaActualizada : c)),
+        comandasPaginadas: {
+          ...state.comandasPaginadas,
+          data: state.comandasPaginadas.data.map((c) => (c.id === id ? comandaActualizada : c)),
+        },
+      }));
+      return comandaActualizada;
+    } catch (error) {
+      set({ error: error instanceof Error ? error.message : 'Error al actualizar comanda' });
+      throw error;
+    } finally {
+      set({ cargando: false });
+    }
+  },
+
+  obtenerComandaPorId: async (id: string) => {
+    set({ cargando: true, error: null });
+    try {
+      const comanda = await comandasService.obtenerComandaPorId(id);
+      return comanda;
+    } catch (error) {
+      set({ error: error instanceof Error ? error.message : 'Error al obtener comanda' });
+      throw error;
+    } finally {
+      set({ cargando: false });
+    }
   },
   setFilters: (filters: FiltrarComandasNew) => {
     set({ filters });
