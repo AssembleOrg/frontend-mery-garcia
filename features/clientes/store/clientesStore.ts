@@ -451,13 +451,25 @@ export const useClientesStore = create<ClientesState>()(
       {
         name: 'clientes-store',
         storage: safeJSONStorage,
+        version: 2, // Incrementar para invalidar cache de todos los usuarios
+        migrate: (persistedState: any, version: number) => {
+          // Si la versión es anterior, resetear completamente el store
+          if (version < 2) {
+            console.log('🔄 Invalidando cache de clientes por actualización a v2');
+            return estadoInicial;
+          }
+          return persistedState;
+        },
         partialize: (state) => ({
-          clientes: state.clientes,
+          // NO persistir datos de API para evitar cache stale
+          // clientes: state.clientes, ← REMOVIDO para prevenir cache de datos borrados
+          clienteSeleccionado: state.clienteSeleccionado,
         }),
       }
     ),
     {
       name: 'ClientesStore',
+      enabled: process.env.NODE_ENV === 'development'
     }
   )
 ); 
