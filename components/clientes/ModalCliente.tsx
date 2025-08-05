@@ -12,6 +12,7 @@ import {
   CreditCard,
   DollarSign,
   Plus,
+  IdCard,
 } from 'lucide-react';
 import { Cliente } from '@/types/caja';
 import { useCurrencyConverter } from '@/hooks/useCurrencyConverter';
@@ -38,6 +39,7 @@ export default function ModalCliente({
   const [telefono, setTelefono] = useState('');
   const [email, setEmail] = useState('');
   const [cuit, setCuit] = useState('');
+  const [dni, setDni] = useState('');
 
   // Estados para señas
   const [señaArs, setSeñaArs] = useState('0');
@@ -61,6 +63,7 @@ export default function ModalCliente({
         setTelefono(cliente.telefono || '');
         setEmail(cliente.email || '');
         setCuit(cliente.cuit || '');
+        setDni(cliente.dni || '');
         setSeñaArs(String(cliente.señasDisponibles?.ars || 0));
         setSeñaUsd(String(cliente.señasDisponibles?.usd || 0));
       } else {
@@ -76,6 +79,7 @@ export default function ModalCliente({
     setTelefono('');
     setEmail('');
     setCuit('');
+    setDni('');
     setSeñaArs('0');
     setSeñaUsd('0');
     setErrores({});
@@ -88,6 +92,14 @@ export default function ModalCliente({
       nuevosErrores.nombre = 'El nombre es obligatorio';
     }
 
+    // Validar que al menos uno de los dos esté presente (CUIT o DNI)
+    const tieneCuit = cuit.trim().length > 0;
+    const tieneDni = dni.trim().length > 0;
+
+    if (!tieneCuit && !tieneDni) {
+      nuevosErrores.documento = 'Debe ingresar al menos CUIT o DNI';
+    }
+
     if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
       nuevosErrores.email = 'Email inválido';
     }
@@ -96,9 +108,14 @@ export default function ModalCliente({
       nuevosErrores.telefono = 'Teléfono inválido';
     }
 
-    if (cuit && !/^\d{2}-\d{8}-\d{1}$/.test(cuit) && !/^\d{11}$/.test(cuit)) {
-      nuevosErrores.cuit =
-        'CUIT inválido (formato: 20-12345678-9 o 20123456789)';
+    // Validar CUIT solo si se ingresó
+    if (tieneCuit && !/^\d{2}-\d{8}-\d{1}$/.test(cuit) && !/^\d{11}$/.test(cuit)) {
+      nuevosErrores.cuit = 'CUIT inválido (formato: 20-12345678-9 o 20123456789)';
+    }
+
+    // Validar DNI solo si se ingresó
+    if (tieneDni && (!/^\d{7,8}$/.test(dni.replace(/\D/g, '')) || dni.replace(/\D/g, '').length < 7)) {
+      nuevosErrores.dni = 'DNI inválido (7-8 dígitos)';
     }
 
     if (parseFloat(señaArs) < 0) {
@@ -127,6 +144,7 @@ export default function ModalCliente({
         telefono: telefono.trim() || undefined,
         email: email.trim() || undefined,
         cuit: cuit.trim() || undefined,
+        dni: dni.trim() || undefined,
       };
 
       const señas = {
@@ -258,25 +276,61 @@ export default function ModalCliente({
                 </div>
               </div>
 
-              {/* CUIT */}
-              <div>
-                <Label htmlFor="cuit" className="font-medium text-[#4a3540]">
-                  CUIT
-                  {errores.cuit && (
-                    <span className="ml-1 text-xs text-red-500">
-                      ({errores.cuit})
+              {/* Documentos - CUIT y DNI */}
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <Label className="font-medium text-[#4a3540]">
+                    Documentos (al menos uno obligatorio) *
+                  </Label>
+                  {errores.documento && (
+                    <span className="text-xs text-red-500">
+                      {errores.documento}
                     </span>
                   )}
-                </Label>
-                <div className="relative mt-1">
-                  <CreditCard className="absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-[#8b5a6b]" />
-                  <Input
-                    id="cuit"
-                    value={cuit}
-                    onChange={(e) => setCuit(e.target.value)}
-                    placeholder="Ej: 20-12345678-9"
-                    className={`pl-10 ${errores.cuit ? 'border-red-300' : 'border-[#f9bbc4]/30 focus:border-[#f9bbc4]'}`}
-                  />
+                </div>
+                
+                {/* CUIT */}
+                <div>
+                  <Label htmlFor="cuit" className="text-sm text-[#6b4c57]">
+                    CUIT
+                    {errores.cuit && (
+                      <span className="ml-1 text-xs text-red-500">
+                        ({errores.cuit})
+                      </span>
+                    )}
+                  </Label>
+                  <div className="relative mt-1">
+                    <CreditCard className="absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-[#8b5a6b]" />
+                    <Input
+                      id="cuit"
+                      value={cuit}
+                      onChange={(e) => setCuit(e.target.value)}
+                      placeholder="Ej: 20-12345678-9"
+                      className={`pl-10 ${errores.cuit || errores.documento ? 'border-red-300' : 'border-[#f9bbc4]/30 focus:border-[#f9bbc4]'}`}
+                    />
+                  </div>
+                </div>
+
+                {/* DNI */}
+                <div>
+                  <Label htmlFor="dni" className="text-sm text-[#6b4c57]">
+                    DNI
+                    {errores.dni && (
+                      <span className="ml-1 text-xs text-red-500">
+                        ({errores.dni})
+                      </span>
+                    )}
+                  </Label>
+                  <div className="relative mt-1">
+                    <IdCard className="absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-[#8b5a6b]" />
+                    <Input
+                      id="dni"
+                      value={dni}
+                      onChange={(e) => setDni(e.target.value)}
+                      placeholder="Ej: 12345678"
+                      className={`pl-10 ${errores.dni || errores.documento ? 'border-red-300' : 'border-[#f9bbc4]/30 focus:border-[#f9bbc4]'}`}
+                    />
+                  </div>
                 </div>
               </div>
 
@@ -325,8 +379,6 @@ export default function ModalCliente({
                   </div>
                 </div>
               </div>
-
-
             </div>
           </div>
 

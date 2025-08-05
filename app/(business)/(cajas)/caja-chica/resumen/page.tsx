@@ -36,7 +36,7 @@ import {
 import { useCurrencyConverter } from '@/hooks/useCurrencyConverter';
 import { formatARSNative } from '@/lib/utils';
 import useComandaStore from '@/features/comandas/store/comandaStore';
-import { MovimientoCreateNew } from '@/services/unidadNegocio.service';
+import { MovimientoCreateNew, EstadoDeComandaNew } from '@/services/unidadNegocio.service';
 import { useAuth } from '@/features/auth/hooks/useAuth';
 import { useMovimientosStore } from '@/features/movimientos/store/movimientosStore';
 
@@ -51,6 +51,7 @@ export default function CajaChicaResumenPage() {
   const { formatUSD, formatARSFromNative } = useCurrencyConverter();
   const { user } = useAuth();
   const { crearMovimiento } = useMovimientosStore();
+  const { cargarComandasPaginadas } = useComandaStore();
   const [dateRange, setDateRange] = useState<DateRange | undefined>();
   const [loading, setLoading] = useState(false);
   const [showConfirmModal, setShowConfirmModal] = useState(false);
@@ -81,13 +82,13 @@ export default function CajaChicaResumenPage() {
 
   useEffect(() => {
     if (showConfirmModal) {
-      if (resumen?.montoDisponibleTrasladoUSD! < parseFloat(montoParcialUSD)) {
+      if (resumen?.montoDisponibleTrasladoUSD! < Number(montoParcialUSD)) {
         toast.error(
           'El monto parcial en USD no puede ser mayor al monto disponible para traslado'
         );
         setShowConfirmModal(false);
       } else if (
-        resumen?.montoDisponibleTrasladoARS! < parseFloat(montoParcialARS)
+        resumen?.montoDisponibleTrasladoARS! < Number(montoParcialARS)
       ) {
         toast.error(
           'El monto parcial en ARS no puede ser mayor al monto disponible para traslado'
@@ -149,26 +150,64 @@ export default function CajaChicaResumenPage() {
 
   const handleTrasladar = async () => {
     setLoading(true);
-   try {
-    const movimiento: MovimientoCreateNew = {
-      montoARS: montoParcialARS ? resumen?.montoDisponibleTrasladoARS! - parseFloat(montoParcialARS) : 0,
-      montoUSD: montoParcialUSD ? resumen?.montoDisponibleTrasladoUSD! - parseFloat(montoParcialUSD) : 0,
-      residualARS: montoParcialARS ? parseFloat(montoParcialARS) : 0,
-      residualUSD: montoParcialUSD ? parseFloat(montoParcialUSD) : 0,
-      comandasValidadasIds: resumen?.comandasValidadasIds,
-      personalId: user?.id,
-    };
-    console.table(movimiento);
-    await crearMovimiento(movimiento);
-    toast.success('Traspaso realizado correctamente');
-    setShowConfirmModal(false);
-    await getResumen(dateRange?.from?.toISOString() || '', dateRange?.to?.toISOString() || '');
-   } catch (error) {
-    console.error(error);
-    toast.error('Error al trasladar monto');
-   } finally {
-    setLoading(false);
-   }
+    try {
+      console.table(resumen);
+      const movimiento: MovimientoCreateNew = {
+        montoARS: montoParcialARS ? resumen?.montoDisponibleTrasladoARS! - Number(montoParcialARS) : resumen?.montoDisponibleTrasladoARS!,
+        montoUSD: montoParcialUSD ? resumen?.montoDisponibleTrasladoUSD! - Number(montoParcialUSD) : resumen?.montoDisponibleTrasladoUSD!,
+        residualARS: montoParcialARS ? Number(montoParcialARS) : 0,
+        residualUSD: montoParcialUSD ? Number(montoParcialUSD) : 0,
+        comandasValidadasIds: resumen?.comandasValidadasIds,
+        personalId: user?.id,
+      };
+      
+      console.table(movimiento);
+      await crearMovimiento(movimiento);
+      
+      // Limpiar los campos de monto parcial
+      setMontoParcialARS('');
+      setMontoParcialUSD('');
+      
+      // Cerrar modal antes del refresh
+      setShowConfirmModal(false);
+      
+      // Recargar todos los datos necesarios
+      await Promise.all([
+        // 1. Recargar el resumen
+        getResumen(dateRange?.from?.toISOString() || '', dateRange?.to?.toISOString() || '').then(setResumen),
+        
+        // 2. Recargar comandas validadas (para caja chica)
+        cargarComandasPaginadas({
+          page: 1,
+          limit: 100,
+          orderBy: 'createdAt',
+          order: 'DESC',
+          estadoDeComanda: EstadoDeComandaNew.VALIDADO,
+          // Agregar filtro de fecha si es necesario
+          fechaDesde: dateRange?.from?.toISOString(),
+          fechaHasta: dateRange?.to?.toISOString(),
+        }),
+        
+        // 3. Recargar comandas pendientes (para actualizar el contador)
+        cargarComandasPaginadas({
+          page: 1,
+          limit: 100,
+          orderBy: 'createdAt',
+          order: 'DESC',
+          estadoDeComanda: EstadoDeComandaNew.PENDIENTE,
+          fechaDesde: dateRange?.from?.toISOString(),
+          fechaHasta: dateRange?.to?.toISOString(),
+        }),
+      ]);
+      
+      toast.success('Traspaso realizado correctamente');
+      
+    } catch (error) {
+      console.error(error);
+      toast.error('Error al trasladar monto');
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -225,7 +264,7 @@ export default function CajaChicaResumenPage() {
                         </h3>
                         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
                           <SummaryCardDual
-                            title="Total Ingresos"
+                            title="Total Ingresos (Sin Descuentos)"
                             totalUSD={resumen.totalIngresosUSD || 0}
                             totalARS={resumen.totalIngresosARS || 0}
                             showTransactionCount={false}
@@ -239,7 +278,7 @@ export default function CajaChicaResumenPage() {
                             valueClassName="text-red-700"
                           />
                           <SummaryCardDual
-                            title="Balance Neto"
+                            title="Balance Neto (Con Descuentos)"
                             totalUSD={resumen.montoNetoUSD || 0}
                             totalARS={resumen.montoNetoARS || 0}
                             showTransactionCount={false}
@@ -414,7 +453,7 @@ export default function CajaChicaResumenPage() {
                   <span className="text-sm font-semibold text-blue-700">
                     {formatUSD(
                       (montoParcialUSD
-                        ? resumen.montoDisponibleTrasladoUSD - parseFloat(montoParcialUSD)
+                        ? resumen.montoDisponibleTrasladoUSD - Number(montoParcialUSD)
                         : resumen.montoDisponibleTrasladoUSD) ?? 0
                     )}
                   </span>
@@ -426,7 +465,7 @@ export default function CajaChicaResumenPage() {
                   <span className="text-sm font-semibold text-blue-700">
                     {formatARSFromNative(
                       (montoParcialARS
-                        ? resumen.montoDisponibleTrasladoARS - parseFloat(montoParcialARS)
+                        ? resumen.montoDisponibleTrasladoARS - Number(montoParcialARS)
                         : resumen.montoDisponibleTrasladoARS) ?? 0
                     )}
                   </span>
@@ -448,7 +487,7 @@ export default function CajaChicaResumenPage() {
                     </span>
                     <span className="text-sm font-semibold text-orange-700">
                       {formatUSD(
-                        montoParcialUSD ? parseFloat(montoParcialUSD) : 0
+                        montoParcialUSD ? Number(montoParcialUSD) : 0
                       )}
                     </span>
                   </div>
@@ -458,7 +497,7 @@ export default function CajaChicaResumenPage() {
                     </span>
                     <span className="text-sm font-semibold text-orange-700">
                       {formatARSFromNative(
-                        montoParcialARS ? parseFloat(montoParcialARS) : 0
+                        montoParcialARS ? Number(montoParcialARS) : 0
                       )}
                     </span>
                   </div>

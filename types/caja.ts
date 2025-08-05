@@ -28,6 +28,7 @@ export interface Cliente {
   telefono?: string;
   email?: string;
   cuit?: string;
+  dni?: string;
   señasDisponibles: {
     ars: number;
     usd: number;

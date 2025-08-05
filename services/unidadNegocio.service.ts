@@ -4,9 +4,11 @@ export interface Movimiento {
   id: string;
   montoARS: number;
   montoUSD: number;
-  comandas: Partial<ComandaCreateNew>[];
+  comandas?: Partial<ComandaCreateNew>[];
+  esIngreso: boolean;
   residualARS: number;
   residualUSD: number;
+  comentario?: string;
   createdAt: Date;
   updatedAt: Date;
   deletedAt: Date;
@@ -15,6 +17,7 @@ export interface Movimiento {
 export type MovimientoCreateNew = Partial<Movimiento> & {
   comandasValidadasIds?: string[];
   personalId?: string;
+  comandas?: Partial<ComandaNew>[];
 };
 export type MovimientoUpdateNew = Partial<Movimiento> & {
   comandasValidadasIds?: string[];
@@ -140,6 +143,7 @@ export interface PersonalNew {
   activo: boolean;
   rol: RolPersonalNew;
   comandas: ComandaNew[];
+  nombre: string;
   createdAt: string;
   updatedAt: string;
   deletedAt: string;
@@ -167,10 +171,10 @@ export enum MonedaNew {
   USD = 'USD',
 }
 export enum EstadoPrepagoNew {
-  ACTIVA = 'activa',
-  UTILIZADA = 'utilizada',
-  VENCIDA = 'vencida',
-  CANCELADA = 'cancelada',
+  ACTIVA = 'ACTIVO',
+  UTILIZADA = 'UTILIZADO',
+  VENCIDA = 'VENCIDO',
+  CANCELADA = 'CANCELADO',
 }
 
 export interface PrepagoGuardadoNew {
@@ -310,7 +314,7 @@ export type ItemComandaCreateNew = Partial<ItemComandaNew> & {
   trabajadorId?: string;
   responsablesIds?: string[];
   mostrarSelectorResponsables?: boolean;
-} 
+}
 
 export type ItemComandaUpdateNew = Partial<ItemComandaNew> & {
   comandaId?: string;
@@ -323,10 +327,20 @@ export interface MovimientoNew {
   id: string;
 
   /** Monto del movimiento en AR$ */
-  monto: number;
+  montoARS: number;
+
+  /** Monto del movimiento en US$ */
+  montoUSD: number;
+
+  residualARS: number;
+
+  residualUSD: number;
+  comentario?: string[];
+  esIngreso?: boolean;
 
   /** Comanda asociada (relación obligatoria) */
-  comanda: ComandaNew;
+  comandas: ComandaNew[];
+
 
   /** Personal que lo registró (puede ser nulo) */
   personal?: PersonalNew | null;
@@ -404,82 +418,82 @@ export type ProductoServicioCreateNew = Partial<ProductoServicioNew> & { unidadN
 export type ProductoServicioUpdateNew = Partial<ProductoServicioNew> & { unidadNegocioId: string };
 
 export interface FiltrarProductosServiciosNew {
-    /** Búsqueda parcial por nombre (case-insensitive) */
-    nombre?: string;
-  
-    /** Producto o servicio */
-    tipo?: TipoProductoServicioNew;
-  
-    /** UUID de la unidad de negocio */
-    unidadNegocioId?: string;
-  
-    /** Sólo activos/inactivos */
-    activo?: boolean;
-  
-    /** Paginación ─ número de página (>= 1, default 1) */
-    page?: number;
-  
-    /** Paginación ─ items por página (1-100, default 20) */
-    limit?: number;
-  
-    /** Sólo ítems con precio congelado */
-    esPrecioCongelado?: boolean;
-  
-    /** Campo por el que se ordena (default 'nombre') */
-    orderBy?: 'nombre' | 'precio' | 'tipo' | 'unidadNegocioId' | 'createdAt';
-  
-    /** Dirección ASC/DESC (default 'ASC') */
-    orderDirection?: 'ASC' | 'DESC';
-  }
+  /** Búsqueda parcial por nombre (case-insensitive) */
+  nombre?: string;
+
+  /** Producto o servicio */
+  tipo?: TipoProductoServicioNew;
+
+  /** UUID de la unidad de negocio */
+  unidadNegocioId?: string;
+
+  /** Sólo activos/inactivos */
+  activo?: boolean;
+
+  /** Paginación ─ número de página (>= 1, default 1) */
+  page?: number;
+
+  /** Paginación ─ items por página (1-100, default 20) */
+  limit?: number;
+
+  /** Sólo ítems con precio congelado */
+  esPrecioCongelado?: boolean;
+
+  /** Campo por el que se ordena (default 'nombre') */
+  orderBy?: 'nombre' | 'precio' | 'tipo' | 'unidadNegocioId' | 'createdAt';
+
+  /** Dirección ASC/DESC (default 'ASC') */
+  orderDirection?: 'ASC' | 'DESC';
+}
 
 
 export class UnidadNegocioService {
-    private readonly baseUrl = '/api/unidades-negocio';
+  private readonly baseUrl = '/api/unidades-negocio';
 
-    async crearUnidadNegocio(unidadNegocio: UnidadNegocioCreateNew): Promise<UnidadNegocioNew> {
-        const response = await apiFetch<
-        {
-            data: UnidadNegocioNew;
-            status: string;
-        }
-        >(`${this.baseUrl}`, {
-            method: 'POST',
-            json: unidadNegocio,
-        });
-        return response.data;
-    }
+  async crearUnidadNegocio(unidadNegocio: UnidadNegocioCreateNew): Promise<UnidadNegocioNew> {
+    const response = await apiFetch<
+      {
+        data: UnidadNegocioNew;
+        status: string;
+      }
+    >(`${this.baseUrl}`, {
+      method: 'POST',
+      json: unidadNegocio,
+    });
+    return response.data;
+  }
 
-    async getAllUnidadesNegocio(): Promise<UnidadNegocioNew[]> {
-        const response = await apiFetch<
-        {
-            data: UnidadNegocioNew[];
-            status: string;
-        }
-        >(`${this.baseUrl}`);
-        return response.data;
-    }
+  async getAllUnidadesNegocio(): Promise<UnidadNegocioNew[]> {
+    const response = await apiFetch<
+      {
+        data: UnidadNegocioNew[];
+        status: string;
+      }
+    >(`${this.baseUrl}`);
+    return response.data;
+  }
 
-    async getUnidadNegocioById(id: string): Promise<UnidadNegocioNew> {
-        const response = await apiFetch<
-        {
-            data: UnidadNegocioNew;
-            status: string;
-        }
-        >(`${this.baseUrl}/${id}`);
-        return response.data;
-    }
+  async getUnidadNegocioById(id: string): Promise<UnidadNegocioNew> {
+    const response = await apiFetch<
+      {
+        data: UnidadNegocioNew;
+        status: string;
+      }
+    >(`${this.baseUrl}/${id}`);
+    return response.data;
+  }
 
-    async actualizarUnidadNegocio(id: string, unidadNegocio: UnidadNegocioCreateNew): Promise<UnidadNegocioNew> {
-        const response = await apiFetch<
-        {
-            data: UnidadNegocioNew;
-            status: string;
-        }
-        >(`${this.baseUrl}/${id}`, {
-            method: 'PUT',
-            json: unidadNegocio,
-        });
-        return response.data;
-    } 
+  async actualizarUnidadNegocio(id: string, unidadNegocio: UnidadNegocioCreateNew): Promise<UnidadNegocioNew> {
+    const response = await apiFetch<
+      {
+        data: UnidadNegocioNew;
+        status: string;
+      }
+    >(`${this.baseUrl}/${id}`, {
+      method: 'PUT',
+      json: unidadNegocio,
+    });
+    return response.data;
+  }
 }
 export const unidadNegocioService = new UnidadNegocioService();

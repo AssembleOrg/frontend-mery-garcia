@@ -7,6 +7,7 @@ export interface CrearClienteDto {
   telefono?: string;
   email?: string;
   cuit?: string;
+  dni?: string;
   señaUsd?: number;
   señaArs?: number;
 }
@@ -16,6 +17,7 @@ export interface ActualizarClienteDto {
   telefono?: string;
   email?: string;
   cuit?: string;
+  dni?: string;
   señaUsd?: number;
   señaArs?: number;
 }
@@ -25,6 +27,7 @@ export interface FiltrarClientesDto {
   email?: string;
   telefono?: string;
   cuit?: string;
+  dni?: string;
   page?: number;
   limit?: number;
   orderBy?: 'nombre' | 'fechaRegistro' | 'email';

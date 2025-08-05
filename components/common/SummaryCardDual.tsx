@@ -29,6 +29,16 @@ export default function SummaryCardDual({
 }: SummaryCardDualProps) {
   const { formatUSD, formatARSFromNative } = useCurrencyConverter();
 
+  // Función para determinar el color basado en el valor del saldo
+  const getColorClass = (amount: number, isNetBalance: boolean, fallbackClass?: string) => {
+    if (isNetBalance) {
+      return amount >= 0 ? 'text-green-700' : 'text-red-700';
+    }
+    return fallbackClass || '';
+  };
+
+  const isNetBalance = title === 'Saldo Neto';
+
   return (
     <Card
       className={cn(
@@ -49,7 +59,10 @@ export default function SummaryCardDual({
             <div className="flex items-center justify-between">
               <span className="text-xs text-gray-600">USD:</span>
               <div className="text-right">
-                <div className={cn('text-sm font-bold', valueClassName)}>
+                <div className={cn(
+                  'text-sm font-bold',
+                  getColorClass(totalUSD, isNetBalance, valueClassName)
+                )}>
                   {formatUSD(totalUSD)}
                 </div>
                 {showTransactionCount && transactionCountUSD > 0 && (
@@ -65,7 +78,10 @@ export default function SummaryCardDual({
             <div className="flex items-center justify-between">
               <span className="text-xs text-gray-600">ARS:</span>
               <div className="text-right">
-                <div className={cn('text-sm font-bold', valueClassName)}>
+                <div className={cn(
+                  'text-sm font-bold',
+                  getColorClass(totalARS, isNetBalance, valueClassName)
+                )}>
                   {formatARSFromNative(totalARS)}
                 </div>
                 {showTransactionCount && transactionCountARS > 0 && (
