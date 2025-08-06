@@ -517,18 +517,18 @@ export default function ModalTransaccionUnificado({
             // Para items congelados (ingresos): trabajar solo en ARS, sin conversiones
             if (updatedItem.productoServicio?.esPrecioCongelado && updatedItem.productoServicio?.precioFijoARS) {
               // Items congelados: usar ARS nativo multiplicado por cantidad
-              precioBase = updatedItem.productoServicio.precioFijoARS * (updatedItem.cantidad || 1);
+              precioBase = Number(updatedItem.productoServicio.precioFijoARS) * Number(updatedItem.cantidad || 1);
             }
             // Para items con monto fijo ARS (egresos): trabajar en ARS nativo
             else if (updatedItem.productoServicio?.esPrecioCongelado && tipo === 'egreso') {
               // Items egresos ARS: usar precio como ARS nativo
-              precioBase = updatedItem.productoServicio.precio * (updatedItem.cantidad || 1);
+              precioBase = Number(updatedItem.productoServicio.precio) * Number(updatedItem.cantidad || 1);
             } else {
               // Para items normales: usar el cálculo dinámico USD
-              precioBase = (updatedItem.productoServicio?.precio || 0) * (updatedItem.cantidad || 1);
+              precioBase = (Number(updatedItem.productoServicio?.precio) || 0) * Number(updatedItem.cantidad || 1);
             }
 
-            const descuentoCalculado = updatedItem.descuento || 0;
+            const descuentoCalculado = Number(updatedItem.descuento || 0);
             updatedItem.subtotal = precioBase - descuentoCalculado;
           }
 
@@ -553,14 +553,14 @@ export default function ModalTransaccionUnificado({
         // Solo calcular total de items congelados
         return itemsCongelados.reduce((sum, item) => {
           if (!item.productoServicio?.precioFijoARS || !item.cantidad) return sum;
-          const subtotalARS = item.productoServicio.precioFijoARS * item.cantidad;
-          return sum + subtotalARS - (item.descuento || 0);
+          const subtotalARS = Number(item.productoServicio.precioFijoARS) * Number(item.cantidad);
+          return sum + subtotalARS - Number(item.descuento || 0);
         }, 0);
       } else {
         // Si no hay items congelados, usar conversión normal
         return items.reduce((sum, item) => {
           if (!item.productoServicio?.precio || !item.cantidad) return sum;
-          const subtotalUSD = (item.precio || 0) * (item.cantidad || 1) - (item.descuento || 0);
+          const subtotalUSD = (Number(item.precio) || 0) * (Number(item.cantidad) || 1) - Number(item.descuento || 0);
           return sum + subtotalUSD * getTipoCambio().valorVenta;
         }, 0);
       }
@@ -572,14 +572,14 @@ export default function ModalTransaccionUnificado({
         // Calcular total solo de items con monto fijo en ARS
         return itemsARSFijo.reduce((sum, item) => {
           if (!item.productoServicio?.precio || !item.cantidad) return sum;
-          const subtotalARS = item.productoServicio.precio * item.cantidad;
-          return sum + subtotalARS - (item.descuento || 0);
+          const subtotalARS = Number(item.productoServicio.precio) * Number(item.cantidad);
+          return sum + subtotalARS - Number(item.descuento || 0);
         }, 0);
       } else {
         // Si no hay items ARS fijo, usar conversión normal
         return items.reduce((sum, item) => {
           if (!item.productoServicio?.precio || !item.cantidad) return sum;
-          const subtotalUSD = (item.precio || 0) * (item.cantidad || 1) - (item.descuento || 0);
+          const subtotalUSD = (Number(item.precio) || 0) * (Number(item.cantidad) || 1) - Number(item.descuento || 0);
           return sum + subtotalUSD * getTipoCambio().valorVenta;
         }, 0);
       }
@@ -610,10 +610,10 @@ export default function ModalTransaccionUnificado({
         if (!item.subtotal) return sum;
         if (item.productoServicio?.esPrecioCongelado) {
           // Items ARS fijo: usar subtotal ya calculado (que incluye descuentos)
-          return sum + item.subtotal;
+          return sum + Number(item.subtotal);
         } else {
           // Items normales: convertir USD a ARS para consistencia
-          return sum + item.subtotal * getTipoCambio().valorVenta;
+          return sum + Number(item.subtotal) * getTipoCambio().valorVenta;
         }
       }, 0);
 
@@ -623,10 +623,10 @@ export default function ModalTransaccionUnificado({
         if (!item.descuento) return sum;
         if (item.productoServicio?.esPrecioCongelado) {
           // Descuentos en ARS nativo
-          return sum + item.descuento;
+          return sum + Number(item.descuento);
         } else {
           // Descuentos en USD convertidos a ARS
-          return sum + item.descuento * getTipoCambio().valorVenta;
+          return sum + Number(item.descuento) * getTipoCambio().valorVenta;
         }
       }, 0);
 
@@ -709,18 +709,18 @@ export default function ModalTransaccionUnificado({
       
       if (item.productoServicio?.esPrecioCongelado && item.productoServicio?.precioFijoARS) {
         // Para items congelados (ingresos): usar ARS nativo sin convertir
-        return sum + item.productoServicio.precioFijoARS * item.cantidad;
+        return sum + Number(item.productoServicio.precioFijoARS) * Number(item.cantidad);
       } else if (item.productoServicio?.esPrecioCongelado && tipo === 'egreso') {
         // Para items egresos con monto fijo ARS: usar valor nominal para cálculos
-        return sum + item.productoServicio.precio * item.cantidad;
+        return sum + Number(item.productoServicio.precio) * Number(item.cantidad);
       } else {
         // Para items normales: usar el cálculo dinámico actual
-        return sum + item.productoServicio.precio * item.cantidad;
+        return sum + Number(item.productoServicio.precio) * Number(item.cantidad);
       }
     }, 0);
     
     const totalDescuentos = items.reduce(
-      (sum, item) => sum + (item.descuento || 0),
+      (sum, item) => sum + Number(item.descuento || 0),
       0
     );
     const subtotalConDescuentosItems = subtotalBase - totalDescuentos;
