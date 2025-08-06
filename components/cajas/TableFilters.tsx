@@ -343,7 +343,7 @@ export default function TableFilters({
                       Todos los Métodos
                     </div>
                   </SelectItem>
-                  <SelectItem value="efectivo">
+                  <SelectItem value="EFECTIVO">
                     <div className="flex items-center gap-2">
                       <Banknote className="h-4 w-4 text-green-600" />
                       <span className="font-medium">Efectivo</span>
@@ -361,9 +361,9 @@ export default function TableFilters({
                       <span className="font-medium">Transferencia</span>
                     </div>
                   </SelectItem>
-                  <SelectItem value="giftcard">
+                  <SelectItem value="GIFT_CARD">
                     <div className="flex items-center gap-2">
-                      <Gift className="h-4 w-4 text-pink-600" />
+                      <Gift className="h-4 w-4 text-purple-600" />
                       <span className="font-medium">Gift Card</span>
                     </div>
                   </SelectItem>

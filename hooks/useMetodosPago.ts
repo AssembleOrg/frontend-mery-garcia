@@ -46,7 +46,7 @@ export function useMetodosPago(
 
   const [metodosPago, setMetodosPago] = useState<MetodoPagoForm[]>([
     {
-      tipo: 'efectivo',
+      tipo: 'EFECTIVO',
       monto: 0,
       montoOriginal: 0,
       montoFinal: 0,
@@ -81,7 +81,7 @@ export function useMetodosPago(
         };
       }
 
-      if (tipo === 'mixto' || tipo === 'giftcard' || tipo === 'qr') {
+      if (tipo === 'MIXTO' || tipo === 'GIFT_CARD' || tipo === 'QR') {
         // Para items congelados (ARS fijo): NO convertir a USD, mantener ARS nativo
         if (hayItemsCongelados && moneda === MONEDAS.ARS) {
           return {
@@ -143,7 +143,7 @@ export function useMetodosPago(
 
   const agregarMetodoPago = useCallback(() => {
     const nuevoMetodo: MetodoPagoForm = {
-      tipo: 'efectivo',
+      tipo: 'EFECTIVO',
       monto: 0,
       montoOriginal: 0,
       montoFinal: 0,
@@ -199,7 +199,7 @@ export function useMetodosPago(
   const resetMetodosPago = useCallback(() => {
     setMetodosPago([
       {
-        tipo: 'efectivo',
+        tipo: 'EFECTIVO',
         monto: 0,
         montoOriginal: 0,
         montoFinal: 0,
@@ -255,7 +255,7 @@ export function useMetodosPago(
         moneda: monedaActual,
       };
 
-      if (metodo.tipo === 'giftcard' && metodo.giftcard) {
+      if (metodo.tipo === 'GIFT_CARD' && metodo.giftcard) {
         metodoPersistencia.giftcard = metodo.giftcard;
       }
 

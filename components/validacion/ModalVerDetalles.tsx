@@ -338,17 +338,17 @@ export default function ModalVerDetalles({
                         >
                           <div className="flex items-center gap-2">
                             <span>
-                              {metodo.tipo === 'efectivo'
+                              {metodo.tipo === 'EFECTIVO'
                                 ? '💰 Efectivo'
-                                : metodo.tipo === 'tarjeta'
+                                : metodo.tipo === 'TARJETA'
                                   ? '💳 Tarjeta'
-                                  : metodo.tipo === 'transferencia'
+                                  : metodo.tipo === 'TRANSFERENCIA'
                                     ? '🏦 Transferencia'
-                                    : metodo.tipo === 'giftcard'
+                                    : metodo.tipo === 'GIFT_CARD'
                                       ? '🎁 Giftcard'
-                                      : metodo.tipo === 'qr'
+                                      : metodo.tipo === 'QR'
                                         ? '📱 QR'
-                                        : metodo.tipo === 'precio_lista'
+                                        : metodo.tipo === 'PRECIO_LISTA'
                                           ? '📋 Precio de Lista'
                                           : '🔄 Mixto'}
                             </span>
@@ -356,7 +356,7 @@ export default function ModalVerDetalles({
                             <span className="rounded bg-gray-100 px-2 py-1 text-xs font-medium text-gray-700">
                               {metodo.moneda || 'USD'}
                             </span>
-                            {metodo.tipo === 'giftcard' && metodo.giftcard && (
+                            {metodo.tipo === 'GIFT_CARD' && metodo.giftcard && (
                               <div className="text-xs text-gray-600">
                                 <div>Nombre: {metodo.giftcard.nombre}</div>
                                 <div>Código: {metodo.giftcard.codigo}</div>

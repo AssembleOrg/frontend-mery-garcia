@@ -50,21 +50,21 @@ export default function ConfiguracionPage() {
   const handleReset = () => {
     resetearConfiguracion();
     setTempValues({
-      efectivo: '10',
-      transferencia: '5',
-      tarjeta: '0',
-      giftcard: '0',
-      qr: '0',
+      EFECTIVO: '10',
+      TRANSFERENCIA: '5',
+      TARJETA: '0',
+      GIFT_CARD: '0',
+      QR: '0',
     });
     toast.success('Configuración restablecida a valores por defecto');
   };
 
   const todosLosMetodos = [
-    'efectivo',
-    'transferencia',
-    'tarjeta',
-    'giftcard',
-    'qr',
+    'EFECTIVO',
+    'TRANSFERENCIA',
+    'TARJETA',
+    'GIFT_CARD',
+    'QR',
   ] as const;
 
   return (

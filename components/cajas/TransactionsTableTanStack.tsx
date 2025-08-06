@@ -357,7 +357,7 @@ export default function TransactionsTableTanStack({
                   moneda: (m as { moneda?: string }).moneda || 'USD',
                 }))
               )
-            : 'efectivo';
+            : 'EFECTIVO';
 
         const style = (method: string): string => {
           if (isValidated) {
@@ -370,7 +370,7 @@ export default function TransactionsTableTanStack({
               return 'bg-blue-100 text-blue-800';
             case 'transferencia':
               return 'bg-purple-100 text-purple-800';
-            case 'giftcard':
+            case 'GIFT_CARD':
               return 'bg-pink-100 text-pink-800';
             case 'qr':
               return 'bg-indigo-100 text-indigo-800';

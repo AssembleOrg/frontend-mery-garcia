@@ -88,6 +88,8 @@ export interface MetodoPago {
     | 'TRANSFERENCIA'
     | 'GIFT_CARD'
     | 'QR'
+    | 'MIXTO'
+    | 'PRECIO_LISTA'
   monto: number;
   moneda: 'USD' | 'ARS';
   giftcard?: {

@@ -5,12 +5,12 @@ import { persist, devtools, createJSONStorage } from 'zustand/middleware';
 
 // Configuraciones de descuentos por método de pago
 export interface ConfiguracionDescuentos {
-  efectivo: number;
-  transferencia: number;
-  tarjeta: number;
-  giftcard: number;
-  qr: number;
-  precio_lista: number;
+  EFECTIVO: number;
+  TRANSFERENCIA: number;
+  TARJETA: number;
+  GIFT_CARD: number;
+  QR: number;
+  PRECIO_LISTA: number;
 }
 
 interface ConfiguracionState {
@@ -23,12 +23,12 @@ interface ConfiguracionState {
 }
 
 const configuracionInicial: ConfiguracionDescuentos = {
-  efectivo: 10,
-  transferencia: 5,
-  tarjeta: 0,
-  giftcard: 0,
-  qr: 0,
-  precio_lista: 0,
+  EFECTIVO: 10,
+  TRANSFERENCIA: 5,
+  TARJETA: 0,
+  GIFT_CARD: 0,
+  QR: 0,
+  PRECIO_LISTA: 0,
 };
 
 // Storage helper para evitar acceso a localStorage en SSR

@@ -1787,7 +1787,7 @@ export default function ModalTransaccionUnificado({
                           agregarMetodoPago();
                           // Actualizar el último método agregado con efectivo
                           const ultimoIndex = metodosPago.length;
-                          actualizarMetodoPago(ultimoIndex, 'tipo', 'efectivo');
+                          actualizarMetodoPago(ultimoIndex, 'tipo', 'EFECTIVO');
                         }}
                         className="border-green-300 text-green-700 hover:bg-green-50"
                       >
@@ -1800,7 +1800,7 @@ export default function ModalTransaccionUnificado({
                         onClick={() => {
                           agregarMetodoPago();
                           const ultimoIndex = metodosPago.length;
-                          actualizarMetodoPago(ultimoIndex, 'tipo', 'tarjeta');
+                          actualizarMetodoPago(ultimoIndex, 'tipo', 'TARJETA');
                         }}
                         className="border-blue-300 text-blue-700 hover:bg-blue-50"
                       >
@@ -1816,7 +1816,7 @@ export default function ModalTransaccionUnificado({
                           actualizarMetodoPago(
                             ultimoIndex,
                             'tipo',
-                            'transferencia'
+                            'TRANSFERENCIA'
                           );
                         }}
                         className="border-purple-300 text-purple-700 hover:bg-purple-50"
@@ -1830,7 +1830,7 @@ export default function ModalTransaccionUnificado({
                         onClick={() => {
                           agregarMetodoPago();
                           const ultimoIndex = metodosPago.length;
-                          actualizarMetodoPago(ultimoIndex, 'tipo', 'giftcard');
+                          actualizarMetodoPago(ultimoIndex, 'tipo', 'GIFT_CARD');
                         }}
                         className="border-orange-300 text-orange-700 hover:bg-orange-50"
                       >
@@ -1843,7 +1843,7 @@ export default function ModalTransaccionUnificado({
                         onClick={() => {
                           agregarMetodoPago();
                           const ultimoIndex = metodosPago.length;
-                          actualizarMetodoPago(ultimoIndex, 'tipo', 'qr');
+                          actualizarMetodoPago(ultimoIndex, 'tipo', 'QR');
                         }}
                         className="border-indigo-300 text-indigo-700 hover:bg-indigo-50"
                       >
