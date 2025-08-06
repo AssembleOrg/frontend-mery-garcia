@@ -335,7 +335,7 @@ export interface MovimientoNew {
   residualARS: number;
 
   residualUSD: number;
-  comentario?: string[];
+  comentario?: string;
   esIngreso?: boolean;
 
   /** Comanda asociada (relación obligatoria) */

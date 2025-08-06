@@ -514,28 +514,92 @@ export const useAuditoriaStore = create<AuditoriaStore>((set, get) => ({
     }
 
     try {
-      // Crear contenido del PDF
-      const pdfContent = {
-        title: 'Reporte de Auditoría',
-        subtitle: `Generado el ${format(new Date(), 'dd/MM/yyyy HH:mm:ss', { locale: es })}`,
-        filters: filtros,
-        data: registrosPaginados.map(registro => ({
-          id: registro.id,
-          fecha: format(new Date(registro.createdAt), 'dd/MM/yyyy HH:mm:ss', { locale: es }),
-          usuario: registro.usuario?.nombre || registro.usuario?.email || registro.usuario?.id || '',
-          tipoAccion: registro.tipoAccion,
-          modulo: registro.modulo,
-          descripcion: registro.descripcion,
-          observaciones: registro.observaciones || '',
-          ipAddress: registro.ipAddress || ''
-        }))
-      };
-
-      // TODO: Implementar generación de PDF
-      // Por ahora solo mostramos un mensaje
-      console.log('Contenido para PDF:', pdfContent);
-      toast.success('Función de exportación PDF en desarrollo');
-      logger.info('✅ Preparando exportación PDF:', registrosPaginados.length, 'registros');
+      // Importar jsPDF dinámicamente
+      import('jspdf').then(({ default: jsPDF }) => {
+        import('jspdf-autotable').then(({ default: autoTable }) => {
+          const doc = new jsPDF();
+          
+          // Título del documento
+          doc.setFontSize(20);
+          doc.text('Reporte de Auditoría del Sistema', 20, 20);
+          
+          // Subtítulo con fecha
+          doc.setFontSize(12);
+          doc.text(`Generado el ${format(new Date(), 'dd/MM/yyyy HH:mm:ss', { locale: es })}`, 20, 30);
+          
+          // Información de filtros aplicados
+          doc.setFontSize(10);
+          let yPosition = 45;
+          
+          const filtrosAplicados = [];
+          if (filtros.fechaInicio) filtrosAplicados.push(`Desde: ${filtros.fechaInicio}`);
+          if (filtros.fechaFin) filtrosAplicados.push(`Hasta: ${filtros.fechaFin}`);
+          if (filtros.modulo) filtrosAplicados.push(`Módulo: ${filtros.modulo}`);
+          if (filtros.tipoAccion) filtrosAplicados.push(`Acción: ${filtros.tipoAccion}`);
+          if (filtros.usuarioId) filtrosAplicados.push(`Usuario: ${filtros.usuarioId}`);
+          
+          if (filtrosAplicados.length > 0) {
+            doc.text('Filtros aplicados:', 20, yPosition);
+            yPosition += 5;
+            filtrosAplicados.forEach(filtro => {
+              doc.text(`• ${filtro}`, 25, yPosition);
+              yPosition += 4;
+            });
+            yPosition += 5;
+          }
+          
+          // Estadísticas
+          doc.setFontSize(12);
+          doc.text(`Total de registros: ${registrosPaginados.length}`, 20, yPosition);
+          yPosition += 10;
+          
+          // Tabla de datos
+          const tableData = registrosPaginados.map(registro => [
+            registro.id,
+            format(new Date(registro.createdAt), 'dd/MM/yyyy HH:mm', { locale: es }),
+            registro.usuario?.nombre || registro.usuario?.email || registro.usuario?.id || '',
+            registro.tipoAccion,
+            registro.modulo,
+            registro.descripcion.substring(0, 50) + (registro.descripcion.length > 50 ? '...' : ''),
+            registro.ipAddress || '-'
+          ]);
+          
+          autoTable(doc, {
+            head: [['ID', 'Fecha', 'Usuario', 'Acción', 'Módulo', 'Descripción', 'IP']],
+            body: tableData,
+            startY: yPosition,
+            styles: {
+              fontSize: 8,
+              cellPadding: 2,
+            },
+            headStyles: {
+              fillColor: [249, 187, 196],
+              textColor: [74, 53, 64],
+              fontStyle: 'bold',
+            },
+            alternateRowStyles: {
+              fillColor: [255, 255, 255],
+            },
+            columnStyles: {
+              0: { cellWidth: 15 }, // ID
+              1: { cellWidth: 25 }, // Fecha
+              2: { cellWidth: 30 }, // Usuario
+              3: { cellWidth: 25 }, // Acción
+              4: { cellWidth: 20 }, // Módulo
+              5: { cellWidth: 50 }, // Descripción
+              6: { cellWidth: 20 }, // IP
+            },
+            margin: { top: 10 },
+          });
+          
+          // Guardar el PDF
+          const fileName = `auditoria_${format(new Date(), 'yyyy-MM-dd_HH-mm-ss')}.pdf`;
+          doc.save(fileName);
+          
+          toast.success('Auditoría exportada a PDF exitosamente');
+          logger.info('✅ Auditoría exportada a PDF:', registrosPaginados.length, 'registros');
+        });
+      });
     } catch (error) {
       logger.error('❌ Error exportando auditoría a PDF:', error);
       toast.error('Error al exportar auditoría a PDF');

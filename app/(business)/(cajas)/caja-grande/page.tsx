@@ -65,6 +65,8 @@ export default function CajaGrandePage() {
   const {
     obtenerMovimientosPaginados,
     movimientosPaginados,
+    exportarMovimientosCSV,
+    exportarMovimientosPDF,
   } = useMovimientosStore()
   const { formatUSD, formatARS, formatARSFromNative } = useCurrencyConverter();
 
@@ -108,16 +110,6 @@ export default function CajaGrandePage() {
   }, [comandas]);
 
   // Hook para transacciones con funcionalidad de exportación
-  const exportToCSV = () => {
-    // Implementar lógica de exportación a CSV
-    console.log('Exportando a CSV...');
-  };
-
-  const exportToPDF = () => {
-    // Implementar lógica de exportación a PDF
-    console.log('Exportando a PDF...');
-  };
-
   const resumenCajaNew: {
     totalArs: number;
     totalUsd: number;
@@ -152,7 +144,6 @@ export default function CajaGrandePage() {
       }
       return acc;
     }, 0);
-
 
     const egresosArs = movimientosPaginados.data.reduce((acc, mov) => {
       if (!mov.esIngreso) {
@@ -470,7 +461,7 @@ export default function CajaGrandePage() {
                               <Button
                                 variant="outline"
                                 size="sm"
-                                onClick={exportToCSV}
+                                onClick={exportarMovimientosCSV}
                                 className="flex items-center gap-2"
                               >
                                 <FileText className="h-4 w-4" />
@@ -479,7 +470,7 @@ export default function CajaGrandePage() {
                               <Button
                                 variant="outline"
                                 size="sm"
-                                onClick={exportToPDF}
+                                onClick={exportarMovimientosPDF}
                                 className="flex items-center gap-2"
                               >
                                 <Download className="h-4 w-4" />
