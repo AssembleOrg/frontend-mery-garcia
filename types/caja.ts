@@ -83,13 +83,11 @@ export interface Seña {
 
 export interface MetodoPago {
   tipo:
-    | 'efectivo'
-    | 'tarjeta'
-    | 'transferencia'
-    | 'giftcard'
-    | 'qr'
-    | 'mixto'
-    | 'precio_lista';
+    | 'EFECTIVO'
+    | 'TARJETA'
+    | 'TRANSFERENCIA'
+    | 'GIFT_CARD'
+    | 'QR'
   monto: number;
   moneda: 'USD' | 'ARS';
   giftcard?: {

@@ -17,13 +17,13 @@ export type EstadoValidacion =
   (typeof ESTADOS_VALIDACION)[keyof typeof ESTADOS_VALIDACION];
 
 export const METODOS_PAGO = {
-  EFECTIVO: 'efectivo',
-  TARJETA: 'tarjeta',
-  TRANSFERENCIA: 'transferencia',
-  GIFTCARD: 'giftcard',
-  QR: 'qr',
-  MIXTO: 'mixto',
-  PRECIO_LISTA: 'precio_lista',
+  EFECTIVO: 'EFECTIVO',
+  TARJETA: 'TARJETA',
+  TRANSFERENCIA: 'TRANSFERENCIA',
+  GIFTCARD: 'GIFT_CARD',
+  QR: 'QR',
+  MIXTO: 'MIXTO',
+  PRECIO_LISTA: 'PRECIO_LISTA',
 } as const;
 
 export type MetodoPago = (typeof METODOS_PAGO)[keyof typeof METODOS_PAGO];

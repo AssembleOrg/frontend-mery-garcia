@@ -46,7 +46,7 @@ export default function ModalMovimientoCaja({
     tipo,
     monto: 0,
     concepto: '',
-    metodoPago: 'efectivo',
+    metodoPago: 'EFECTIVO',
     observaciones: '',
   });
 
@@ -63,7 +63,7 @@ export default function ModalMovimientoCaja({
         tipo,
         monto: 0,
         concepto: '',
-        metodoPago: 'efectivo',
+        metodoPago: 'EFECTIVO',
         observaciones: '',
       });
     }
@@ -154,11 +154,11 @@ export default function ModalMovimientoCaja({
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="efectivo">Efectivo</SelectItem>
-                <SelectItem value="tarjeta">Tarjeta</SelectItem>
-                <SelectItem value="transferencia">Transferencia</SelectItem>
-                <SelectItem value="giftcard">Gift Card</SelectItem>
-                <SelectItem value="qr">QR</SelectItem>
+                <SelectItem value="EFECTIVO">Efectivo</SelectItem>
+                <SelectItem value="TARJETA">Tarjeta</SelectItem>
+                <SelectItem value="TRANSFERENCIA">Transferencia</SelectItem>
+                <SelectItem value="GIFT_CARD">Gift Card</SelectItem>
+                <SelectItem value="QR">QR</SelectItem>
               </SelectContent>
             </Select>
           </div>

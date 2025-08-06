@@ -37,6 +37,7 @@ import { movimientoService } from '@/services/movimiento.service';
 import { useMovimientosStore } from '@/features/movimientos';
 import ModalMovimientosManual from '@/components/cajas/ModalMovimientosManual';
 import { useAuthStore } from '@/features/auth/store/authStore';
+import ModalVerMovimientos from '@/components/cajas/ModalVerMovimientos';
 
 const breadcrumbItems = [
   { label: 'Inicio', href: '/' },
@@ -76,6 +77,8 @@ export default function CajaGrandePage() {
 
   // Estado para modal de movimientos manuales
   const [showModalMovimiento, setShowModalMovimiento] = useState(false);
+  // Estado para modal de ver movimientos
+  const [showModalVerMovimientos, setShowModalVerMovimientos] = useState(false);
 
   // Estado para filtro de fechas
   const [dateRange, setDateRange] = useState<DateRange | undefined>();
@@ -481,15 +484,16 @@ export default function CajaGrandePage() {
 
                           {/* Acciones */}
                           <div className="space-y-3">
-                            <Link href="/caja-grande/comandas">
-                              <Button className="w-full justify-between bg-[#6b4c57] text-white hover:bg-[#5a3f4a]">
-                                <span className="flex items-center gap-2">
-                                  <Eye className="h-4 w-4" />
-                                  Ver Movimientos
-                                </span>
-                                <ArrowRight className="h-4 w-4" />
-                              </Button>
-                            </Link>
+                            <Button 
+                              onClick={() => setShowModalVerMovimientos(true)}
+                              className="w-full justify-between bg-[#6b4c57] text-white hover:bg-[#5a3f4a]"
+                            >
+                              <span className="flex items-center gap-2">
+                                <Eye className="h-4 w-4" />
+                                Ver Movimientos
+                              </span>
+                              <ArrowRight className="h-4 w-4" />
+                            </Button>
                             <Link href="/caja-grande/auditoria">
                               <Button className="mt-2 w-full justify-between bg-[#8b5a6b] text-white hover:bg-[#7a4f5e]">
                                 <span className="flex items-center gap-2">
@@ -515,6 +519,16 @@ export default function CajaGrandePage() {
           abierto={showModalMovimiento}
           onCerrar={() => setShowModalMovimiento(false)}
           onGuardar={manejarGuardarMovimiento}
+        />
+
+        {/* Modal de Ver Movimientos */}
+        <ModalVerMovimientos
+          isOpen={showModalVerMovimientos}
+          onClose={() => setShowModalVerMovimientos(false)}
+          movimientos={movimientosPaginados.data}
+          onExportCSV={exportarMovimientosCSV}
+          onExportPDF={exportarMovimientosPDF}
+          title="Movimientos de la Caja Grande"
         />
       </div>
     </MainLayout>

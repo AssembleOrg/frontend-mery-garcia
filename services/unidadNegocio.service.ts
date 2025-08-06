@@ -150,10 +150,10 @@ export interface PersonalNew {
 }
 
 export enum TipoPagoNew {
-  EFECTIVO = 'efectivo',
-  TARJETA = 'tarjeta',
-  TRANSFERENCIA = 'transferencia',
-  GIFT_CARD = 'gift_card',
+  EFECTIVO = 'EFECTIVO',
+  TARJETA = 'TARJETA',
+  TRANSFERENCIA = 'TRANSFERENCIA',
+  GIFT_CARD = 'GIFT_CARD',
 }
 
 export interface UnidadNegocioNew {
