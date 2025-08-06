@@ -603,8 +603,8 @@ export default function ModalTransaccionUnificado({
       };
     }
     
-    if (tipo === 'egreso' && hayItemsCongelados) {
-      // Para egresos con items ARS fijo: trabajar en ARS nativo
+    if (hayItemsCongelados) {
+      // Para items con precios congelados en ARS: trabajar en ARS nativo
       // Usar directamente los subtotales calculados en actualizarItem
       const subtotalBaseARS = items.reduce((sum, item) => {
         if (!item.subtotal) return sum;
@@ -632,9 +632,21 @@ export default function ModalTransaccionUnificado({
 
       const subtotalConDescuentosARS = subtotalBaseARS;
 
-      // Para egresos ARS fijo: usar directamente totalPagado que ya está en ARS nativo
-      const totalPagadoARS = metodosPago.reduce(
+      // Para items congelados: usar directamente totalPagado que ya está en ARS nativo
+      const totalPagadoMetodosARS = metodosPago.reduce(
         (sum, mp) => sum + mp.montoFinal,
+        0
+      );
+
+      // Para el cálculo de balance: usar monto original (sin descuentos)
+      const totalPagadoOriginalARS = metodosPago.reduce(
+        (sum, mp) => sum + mp.monto,
+        0
+      );
+
+      // Calcular descuentos por método de pago (solo para mostrar)
+      const descuentosPorMetodoARS = metodosPago.reduce(
+        (sum, metodo) => sum + metodo.descuentoAplicado,
         0
       );
 
@@ -646,17 +658,26 @@ export default function ModalTransaccionUnificado({
             ? montoSeñaAplicada * getTipoCambio().valorVenta
             : 0;
 
+      // Para mostrar al usuario: usar el monto con descuentos aplicados
+      const totalPagadoConDescuentos = totalPagadoMetodosARS;
+      
+      // Para validación: usar el monto original que ingresó el usuario
+      const totalPagadoParaValidacion = totalPagadoOriginalARS;
+      
+      // Para items congelados: el totalFinal es el subtotal menos la seña
+      // Los descuentos por método de pago NO deben afectar el total que el cliente debe pagar
       const totalFinalARS = subtotalConDescuentosARS - montoSeñaARS;
-      const diferenciaARS = totalPagadoARS - totalFinalARS;
+      // Para el balance: usar el total pagado original (para validación) vs el total final
+      const diferenciaARS = totalPagadoParaValidacion - totalFinalARS;
 
       return {
         subtotalBase: subtotalBaseARS + totalDescuentosARS, // Subtotal sin descuentos
         totalDescuentos: totalDescuentosARS,
         subtotalConDescuentosItems: subtotalConDescuentosARS,
         totalFinal: totalFinalARS,
-        totalPagadoConDescuentos: totalPagadoARS,
+        totalPagadoConDescuentos: totalPagadoConDescuentos,
         diferencia: diferenciaARS,
-        descuentosPorMetodo: 0, // Los descuentos por método ya están incluidos en totalPagadoARS
+        descuentosPorMetodo: descuentosPorMetodoARS, // Los descuentos por método ya están incluidos en totalPagadoARS
         montoSeñaAplicada,
         totalARSRespetandoCongelados: totalFinalARS,
         esCalculoARS: true, // Flag para identificar que son valores en ARS
@@ -704,11 +725,28 @@ export default function ModalTransaccionUnificado({
     );
     const subtotalConDescuentosItems = subtotalBase - totalDescuentos;
 
-    // El total pagado ya incluye los descuentos aplicados (está en montoFinal)
-    const totalPagadoConDescuentos = metodosPago.reduce(
+    // El total pagado incluye los métodos de pago más la seña aplicada
+    const totalPagadoMetodos = metodosPago.reduce(
       (sum, metodo) => sum + metodo.montoFinal,
       0
     );
+    
+    // Para el cálculo de balance: usar monto original (sin descuentos)
+    const totalPagadoOriginal = metodosPago.reduce(
+      (sum, metodo) => sum + metodo.monto,
+      0
+    );
+    
+    // Convertir seña a USD si es necesario para el cálculo
+    const señaEnUSD = monedaSeñaAplicada === 'ars' 
+      ? arsToUsd(montoSeñaAplicada)
+      : montoSeñaAplicada;
+    
+    // Para mostrar al usuario: usar el monto con descuentos aplicados
+    const totalPagadoConDescuentos = totalPagadoMetodos;
+    
+    // Para validación: usar el monto original que ingresó el usuario
+    const totalPagadoParaValidacion = totalPagadoOriginal;
 
     // Calcular descuentos por método de pago (solo para mostrar)
     const descuentosPorMetodo = metodosPago.reduce(
@@ -716,17 +754,17 @@ export default function ModalTransaccionUnificado({
       0
     );
 
-    // El total final debe ser el subtotal menos la seña menos los descuentos por método de pago
-    // para que coincida con lo que realmente se debe pagar
+    // El total final debe ser el subtotal menos la seña
+    // Los descuentos por método de pago NO deben afectar el total que el cliente debe pagar
     const montoSeñaARestar =
       monedaSeñaAplicada === 'ars'
         ? arsToUsd(montoSeñaAplicada)
         : montoSeñaAplicada;
 
-    const totalFinalConDescuentos =
-      subtotalConDescuentosItems - montoSeñaARestar - descuentosPorMetodo;
+    const totalFinalConDescuentos = subtotalConDescuentosItems - montoSeñaARestar;
 
-    const diferencia = totalPagadoConDescuentos - totalFinalConDescuentos;
+    // Para el balance: usar el total pagado original (para validación) vs el total final
+    const diferencia = totalPagadoParaValidacion - totalFinalConDescuentos;
 
     // Calcular total ARS respetando items congelados
     const totalARSRespetandoCongelados = calcularTotalARS();
@@ -746,6 +784,7 @@ export default function ModalTransaccionUnificado({
 
   // Form validation (actualizada)
   const validarFormulario = (): boolean => {
+    console.log('validando formulario');
     const nuevosErrores: Record<string, string> = {};
 
     if (!clienteProveedor.trim()) {
@@ -753,6 +792,7 @@ export default function ModalTransaccionUnificado({
       toast.error('El cliente es requerido');
       return false;
     }
+    console.log("Pase el cliente", nuevosErrores);
 
     if (
       items.every((item) => item.responsablesIds?.length === 0) &&
@@ -764,7 +804,7 @@ export default function ModalTransaccionUnificado({
       nuevosErrores.responsable = 'Debe seleccionar un responsable por item';
       return false;
     }
-
+    console.log("Pase el responsable", nuevosErrores);
     // if (responsablesIds.length === 0 && tipo === 'ingreso') {
     // nuevosErrores.responsable = 'Debe seleccionar al menos un responsable';
     // }
@@ -779,38 +819,43 @@ export default function ModalTransaccionUnificado({
         nuevosErrores.numeroManual = `El número ${numeroCompleto} ya existe`;
       }
     }
-
+    console.log("Pase el numero manual", nuevosErrores);
     if (items.length === 0) {
       nuevosErrores.items = 'Debe agregar al menos un item';
       toast.error('Debe agregar al menos un item');
       return false;
     }
+    console.log("Pase el items length", nuevosErrores);
 
     // Validar items
     items.forEach((item, index) => {
       if (!item.nombre?.trim()) {
+        console.error("El nombre es requerido", nuevosErrores);
         nuevosErrores[`item-${index}-nombre`] = 'El nombre es requerido';
         return false;
       }
       if (item.precio! <= 0) {
+        console.error("El precio es requerido", nuevosErrores);
         nuevosErrores[`item-${index}-precio`] = 'El precio debe ser mayor a 0';
         return false;
       }
       if (item.cantidad! <= 0) {
+        console.error("La cantidad es requerida", nuevosErrores);
         nuevosErrores[`item-${index}-cantidad`] =
           'La cantidad debe ser mayor a 0';
         return false;
       }
     });
-
+    console.log("Pase el items", nuevosErrores);
     const totales = calcularTotalesARS();
     const validacionMetodos = validarMetodosPago(totales.totalFinal);
     if (!validacionMetodos.esValido && validacionMetodos.error) {
+      console.error("Error en los metodos de pago", nuevosErrores);
+      toast.error(validacionMetodos.error);
       nuevosErrores.pagos = validacionMetodos.error;
       return false;
     }
-
-    console.table(nuevosErrores);
+    console.log("Pase el validacion metodos");
     setErrores(nuevosErrores);
     return Object.keys(nuevosErrores).length === 0;
   };
@@ -821,7 +866,8 @@ export default function ModalTransaccionUnificado({
 
     const totales = calcularTotalesARS();
     const totalFinal = totales.totalFinal;
-    const totalPagado = metodosPago.reduce((sum, mp) => sum + mp.montoFinal, 0);
+    // Usar monto original (sin descuentos) para el cálculo de balance
+    const totalPagado = metodosPago.reduce((sum, mp) => sum + mp.monto, 0);
     const faltante = totalFinal - totalPagado;
 
     // Si hay faltante, mostrar toast informativo
@@ -1862,6 +1908,8 @@ export default function ModalTransaccionUnificado({
                     onActualizarMetodo={actualizarMetodoPago}
                     obtenerResumenDual={obtenerResumenDual}
                     hayItemsCongelados={hayItemsCongelados}
+                    montoSeñaAplicada={montoSeñaAplicada}
+                    monedaSeñaAplicada={monedaSeñaAplicada}
                   />
                 </div>
               )}
@@ -2129,210 +2177,131 @@ export default function ModalTransaccionUnificado({
                             {Math.abs(totales.diferencia) < 0.01
                               ? '✓ Balanceado'
                               : totales.diferencia > 0
-                                ? `+${
-                                    hayItemsCongelados
-                                      ? formatARSFromNative(totales.diferencia)
-                                      : formatAmountForARSFixed(
-                                          totales.diferencia,
-                                          (totales as any).esCalculoARS
-                                        )
-                                  } (exceso)`
-                                : `${
-                                    hayItemsCongelados
-                                      ? formatARSFromNative(totales.diferencia)
-                                      : formatAmountForARSFixed(
-                                          totales.diferencia,
-                                          (totales as any).esCalculoARS
-                                        )
-                                  } (faltante)`}
+                                ? `+${formatAmountForARSFixed(
+                                    totales.diferencia,
+                                    (totales as any).esCalculoARS
+                                  )} (excedente)`
+                                : `${formatAmountForARSFixed(
+                                    Math.abs(totales.diferencia),
+                                    (totales as any).esCalculoARS
+                                  )} (faltante)`}
                           </div>
+                          {isExchangeRateValid &&
+                            Math.abs(totales.diferencia) > 0.01 &&
+                            !hayItemsCongelados && (
+                              <div className="text-xs text-gray-600">
+                                {formatARS(Math.abs(totales.diferencia))}
+                              </div>
+                            )}
                         </div>
                       </div>
                     </div>
                   </CardContent>
                 </Card>
 
-                {/* Actions */}
-                <Card className="border border-gray-300 bg-white shadow-md">
-                  <CardContent className="pt-6">
-                    <div className="space-y-3">
-                      <Button
-                        onClick={handleSave}
-                        disabled={guardando || cargando}
-                        className="w-full bg-gradient-to-r from-[#f9bbc4] to-[#e292a3] font-medium text-white hover:from-[#e292a3] hover:to-[#d4a7ca]"
-                      >
-                        {guardando ? (
-                          <>
-                            <div className="mr-2 h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
-                            Guardando...
-                          </>
-                        ) : (
-                          <>
-                            <Save className="mr-2 h-4 w-4" />
-                            Guardar {tipo === 'ingreso' ? 'Ingreso' : 'Egreso'}
-                          </>
-                        )}
-                      </Button>
-
-                      <Button
-                        variant="outline"
-                        onClick={onClose}
-                        className="w-full border-gray-300 text-gray-700 hover:bg-gray-50"
-                      >
-                        Cancelar
-                      </Button>
-                    </div>
-
-                    {errores.general && (
-                      <p className="mt-3 text-center text-sm text-red-600">
-                        {errores.general}
-                      </p>
+                {/* Action Buttons */}
+                <div className="flex gap-3">
+                  <Button
+                    type="button"
+                    onClick={handleSave}
+                    disabled={guardando}
+                    className="flex-1 bg-gradient-to-r from-[#f9bbc4] to-[#e292a3] font-medium text-white shadow-md hover:from-[#e292a3] hover:to-[#d17a8a] disabled:opacity-50"
+                  >
+                    {guardando ? (
+                      <>
+                        <div className="mr-2 h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent"></div>
+                        Guardando...
+                      </>
+                    ) : (
+                      <>
+                        <Save className="mr-2 h-4 w-4" />
+                        Guardar {tipo === 'ingreso' ? 'Ingreso' : 'Egreso'}
+                      </>
                     )}
-                  </CardContent>
-                </Card>
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={onClose}
+                    className="border-gray-300 text-gray-700 hover:bg-gray-50"
+                  >
+                    Cancelar
+                  </Button>
+                </div>
               </div>
             </div>
           </div>
         </div>
       </div>
 
-      {/* Product Search Modal */}
+      {/* Modal de búsqueda de productos */}
       {mostrarBuscador && (
         <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/50 p-4">
-          <div className="w-full max-w-3xl rounded-lg border border-gray-100 bg-white shadow-2xl">
-            <div className="border-b p-4">
-              <div className="flex items-center justify-between">
-                <h3 className="text-lg font-semibold text-gray-900">
-                  Buscar Productos/Servicios
-                </h3>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => setMostrarBuscador(false)}
-                  className="text-gray-500 hover:text-gray-700"
-                >
-                  <X className="h-5 w-5" />
-                </Button>
-              </div>
-              <div className="mt-4">
+          <div className="relative w-full max-w-2xl rounded-lg bg-white shadow-2xl">
+            <div className="flex items-center justify-between border-b border-gray-200 p-6">
+              <h3 className="text-lg font-semibold text-gray-900">
+                Buscar Productos/Servicios
+              </h3>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setMostrarBuscador(false)}
+                className="text-gray-500 hover:bg-gray-50 hover:text-gray-700"
+              >
+                <X className="h-5 w-5" />
+              </Button>
+            </div>
+            <div className="p-6">
+              <div className="mb-4">
                 <Input
+                  type="text"
+                  placeholder="Buscar productos o servicios..."
                   value={busqueda}
                   onChange={(e) => setBusqueda(e.target.value)}
-                  placeholder="Buscar por nombre..."
-                  className="border-gray-300"
-                  autoFocus
+                  className="w-full"
                 />
               </div>
-            </div>
-            <div className="max-h-96 overflow-y-auto p-4">
-              <div className="space-y-6">
-                {tipo === 'ingreso' ? (
-                  // Vista agrupada para ingresos
-                  <div className="space-y-2">
-                    {productosServicios
-                      .filter(
-                        (producto) =>
-                          producto.nombre
-                            .toLowerCase()
-                            .includes(busqueda.toLowerCase()) && producto.activo
-                      )
-                      .map((producto) => (
-                        <div
-                          key={producto.id}
-                          className="flex cursor-pointer items-center justify-between rounded-lg border border-gray-200 p-3 transition-colors hover:bg-gray-50"
-                          onClick={() => agregarDesdeProducto(producto)}
-                        >
-                          <div className="flex-1">
-                            <div className="flex items-center gap-2 font-medium text-gray-900">
-                              {producto.nombre}
-                              {producto.esPrecioCongelado && (
-                                <Badge variant="outline" className="text-xs">
-                                  🔒 Precio fijo
-                                </Badge>
-                              )}
-                            </div>
-                            <div className="text-sm text-gray-600">
-                              {producto.tipo} -{' '}
-                              {producto.esPrecioCongelado &&
-                              producto.precioFijoARS
-                                ? `${formatARSFromNative(producto.precioFijoARS)} ARS`
-                                : `${producto.precio} USD`}
-                            </div>
-                            {producto.descripcion && (
-                              <div className="mt-1 text-xs text-gray-500">
-                                {producto.descripcion}
-                              </div>
-                            )}
-                          </div>
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            className="border-[#f9bbc4] text-[#8b5a6b] hover:bg-[#f9bbc4] hover:text-white"
-                          >
-                            Agregar
-                          </Button>
-                        </div>
-                      ))}
-                  </div>
-                ) : (
-                  // Vista simple para egresos
-                  <div className="space-y-2">
-                    {productosServicios
-                      .filter(
-                        (producto) =>
-                          producto.nombre
-                            .toLowerCase()
-                            .includes(busqueda.toLowerCase()) && producto.activo
-                      )
-                      .map((producto) => (
-                        <div
-                          key={producto.id}
-                          className="flex cursor-pointer items-center justify-between rounded-lg border border-gray-200 p-3 hover:bg-gray-50"
-                          onClick={() => agregarDesdeProducto(producto)}
-                        >
-                          <div>
-                            <div className="flex items-center gap-2 font-medium text-gray-900">
-                              {producto.nombre}
-                              {producto.esPrecioCongelado && (
-                                <Badge variant="outline" className="text-xs">
-                                  🔒 Precio fijo
-                                </Badge>
-                              )}
-                            </div>
-                            <div className="text-sm text-gray-600">
-                              {producto.tipo} -{' '}
-                              {producto.esPrecioCongelado &&
-                              producto.precioFijoARS
-                                ? `${formatARSFromNative(producto.precioFijoARS)} ARS`
-                                : `${producto.precio} USD`}
-                            </div>
-                          </div>
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            className="border-gray-300"
-                          >
-                            Agregar
-                          </Button>
-                        </div>
-                      ))}
-                  </div>
-                )}
-
-                {productosServicios.filter(
-                  (producto) =>
+              <div className="max-h-96 overflow-y-auto">
+                {productosServicios
+                  .filter((producto) =>
                     producto.nombre
                       .toLowerCase()
-                      .includes(busqueda.toLowerCase()) && producto.activo
-                ).length === 0 && (
-                  <div className="py-8 text-center text-gray-500">
-                    <Package className="mx-auto mb-3 h-12 w-12 text-gray-300" />
-                    <p>No se encontraron productos/servicios</p>
-                    <p className="mt-1 text-sm text-gray-400">
-                      Intenta con otros términos de búsqueda
-                    </p>
-                  </div>
-                )}
+                      .includes(busqueda.toLowerCase())
+                  )
+                  .map((producto) => (
+                    <div
+                      key={producto.id}
+                      onClick={() => agregarDesdeProducto(producto)}
+                      className="flex cursor-pointer items-center justify-between rounded-lg border border-gray-200 p-3 hover:bg-gray-50"
+                    >
+                      <div className="flex items-center gap-3">
+                        <div className="flex h-8 w-8 items-center justify-center rounded-full bg-gradient-to-r from-[#f9bbc4] to-[#e292a3]">
+                          <Package className="h-4 w-4 text-white" />
+                        </div>
+                        <div>
+                          <div className="font-medium text-gray-900">
+                            {producto.nombre}
+                          </div>
+                          <div className="text-sm text-gray-600">
+                            {producto.tipo === 'PRODUCTO' ? 'Producto' : 'Servicio'}
+                            {producto.esPrecioCongelado && ' 🔒 Precio fijo'}
+                          </div>
+                        </div>
+                      </div>
+                      <div className="text-right">
+                        <div className="font-medium text-gray-900">
+                          {producto.esPrecioCongelado && producto.precioFijoARS
+                            ? `🔒 ${formatARSFromNative(producto.precioFijoARS)}`
+                            : formatAmount(producto.precio)}
+                        </div>
+                        <div className="text-xs text-gray-600">
+                          {producto.esPrecioCongelado && producto.precioFijoARS
+                            ? 'ARS fijo'
+                            : 'USD dinámico'}
+                        </div>
+                      </div>
+                    </div>
+                  ))}
               </div>
             </div>
           </div>

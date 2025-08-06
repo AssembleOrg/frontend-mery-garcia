@@ -218,8 +218,9 @@ export function useMetodosPago(
         };
       }
 
+      // Para la validación, usar el monto original que ingresó el usuario (sin descuentos)
       const totalPagado = metodosPago.reduce(
-        (sum, mp) => sum + mp.montoFinal,
+        (sum, mp) => sum + mp.monto,
         0
       );
 

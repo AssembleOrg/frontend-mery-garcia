@@ -44,6 +44,9 @@ interface MetodosPagoSectionProps {
   obtenerResumenDual?: () => ResumenDual;
   isManualMovement?: boolean; // Nueva prop para detectar movimientos manuales
   hayItemsCongelados?: boolean; // Nueva prop para restricción de moneda
+  // Props para seña
+  montoSeñaAplicada?: number;
+  monedaSeñaAplicada?: 'ars' | 'usd' | null;
 }
 
 const MetodosPagoSection = React.memo(function MetodosPagoSection({
@@ -59,6 +62,8 @@ const MetodosPagoSection = React.memo(function MetodosPagoSection({
   obtenerResumenDual,
   isManualMovement = false,
   hayItemsCongelados = false,
+  montoSeñaAplicada = 0,
+  monedaSeñaAplicada = null,
 }: MetodosPagoSectionProps) {
   const {
     formatARS,
@@ -338,6 +343,20 @@ const MetodosPagoSection = React.memo(function MetodosPagoSection({
                 }
               </span>
             </div>
+            
+            {/* Seña aplicada */}
+            {montoSeñaAplicada > 0 && monedaSeñaAplicada && (
+              <div className="flex justify-between text-sm text-purple-600">
+                <span>Seña aplicada ({monedaSeñaAplicada.toUpperCase()}):</span>
+                <span className="font-medium">
+                  -{' '}
+                  {monedaSeñaAplicada === 'ars'
+                    ? formatARSFromNative(montoSeñaAplicada)
+                    : formatUSD(montoSeñaAplicada)}
+                </span>
+              </div>
+            )}
+            
             {totalDescuentos > 0 && (
               <div className="flex justify-between text-sm text-green-600">
                 <span>Descuentos Aplicados:</span>
