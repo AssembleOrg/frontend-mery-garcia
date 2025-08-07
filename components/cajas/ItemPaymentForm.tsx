@@ -220,28 +220,24 @@ export default function ItemPaymentForm({
       const firstAmount = Math.round(discountedTotal / 2); // Split roughly in half
       const secondAmount = calculateSecondPaymentAmount(firstAmount);
       
-      // Calculate discount for each payment method (round to integers)
-      const totalDiscount = calculateTotalDiscount();
-      const discountedTotalForSplit = calculateDiscountedTotal();
-      const firstDiscount = Math.round((firstAmount / discountedTotalForSplit) * totalDiscount);
-      const secondDiscount = Math.round((secondAmount / discountedTotalForSplit) * totalDiscount);
-
+      // For split payment, the discount is already applied to the total
+      // So we don't apply additional discount to individual payments
       const firstMethod = {
         ...currentPaymentMethod,
-        monto: firstAmount, // Amount after discount
-        montoFinal: firstAmount, // Amount after discount
-        descuentoAplicado: firstDiscount,
-        descuentoGlobalPorcentaje: firstDiscount > 0 ? Math.round((firstDiscount / firstAmount) * 100) : 0,
+        monto: firstAmount, // Amount after discount (already discounted)
+        montoFinal: firstAmount, // Amount after discount (already discounted)
+        descuentoAplicado: 0, // No additional discount for split payments
+        descuentoGlobalPorcentaje: 0, // No additional discount percentage
         recargoPorcentaje: 0,
         moneda: MONEDAS.USD as MonedaNew,
       };
 
       const secondMethod = {
         ...currentPaymentMethod,
-        monto: secondAmount, // Amount after discount
-        montoFinal: secondAmount, // Amount after discount
-        descuentoAplicado: secondDiscount,
-        descuentoGlobalPorcentaje: secondDiscount > 0 ? Math.round((secondDiscount / secondAmount) * 100) : 0,
+        monto: secondAmount, // Amount after discount (already discounted)
+        montoFinal: secondAmount, // Amount after discount (already discounted)
+        descuentoAplicado: 0, // No additional discount for split payments
+        descuentoGlobalPorcentaje: 0, // No additional discount percentage
         recargoPorcentaje: 0,
         moneda: MONEDAS.ARS as MonedaNew,
       };
@@ -299,27 +295,23 @@ export default function ItemPaymentForm({
     // Calculate second payment automatically
     const secondAmount = calculateSecondPaymentAmount(cleanAmount);
     
-    // Calculate discount for each payment method (round to integers)
-    const totalDiscount = Math.round(calculateTotalDiscount());
-    const discountedTotalForSplit = calculateDiscountedTotal();
-    const firstDiscount = Math.round((cleanAmount / discountedTotalForSplit) * totalDiscount);
-    const secondDiscount = Math.round((secondAmount / discountedTotalForSplit) * totalDiscount);
-
+    // For split payment, the discount is already applied to the total
+    // So we don't apply additional discount to individual payments
     const firstMethodWithDiscount = {
       ...firstMethod,
-      monto: cleanAmount, // Amount entered by user (after discount)
-      montoFinal: cleanAmount, // Amount after discount
-      descuentoAplicado: firstDiscount,
-      descuentoGlobalPorcentaje: firstDiscount > 0 ? Math.round((firstDiscount / cleanAmount) * 100) : 0,
+      monto: cleanAmount, // Amount entered by user
+      montoFinal: cleanAmount, // Amount after discount (already discounted)
+      descuentoAplicado: 0, // No additional discount for split payments
+      descuentoGlobalPorcentaje: 0, // No additional discount percentage
       recargoPorcentaje: 0,
     };
 
     const secondMethod = {
       ...getFirstPaymentMethod(),
-      monto: secondAmount, // Amount calculated (after discount)
-      montoFinal: secondAmount, // Amount after discount
-      descuentoAplicado: secondDiscount,
-      descuentoGlobalPorcentaje: secondDiscount > 0 ? Math.round((secondDiscount / secondAmount) * 100) : 0,
+      monto: secondAmount, // Amount calculated
+      montoFinal: secondAmount, // Amount after discount (already discounted)
+      descuentoAplicado: 0, // No additional discount for split payments
+      descuentoGlobalPorcentaje: 0, // No additional discount percentage
       recargoPorcentaje: 0,
       moneda: MONEDAS.ARS as MonedaNew,
     };
@@ -343,20 +335,20 @@ export default function ItemPaymentForm({
     let updatedPaymentMethod = null;
     
     if (currentPaymentMethod) {
-      const discountedTotal = calculateDiscountedTotal();
-      let newAmount = discountedTotal;
+      const newSubtotal = (parseFloat(String(item.precio)) || 0) * newQuantity;
+      let newAmount = newSubtotal;
       
       // Convert amount if the payment method is in a different currency
       if (currentPaymentMethod.moneda === MONEDAS.ARS && !isItemFrozen()) {
         // Convert USD to ARS for non-frozen items
-        newAmount = discountedTotal * (1 / arsToUsd(1));
+        newAmount = newSubtotal * (1 / arsToUsd(1));
       } else if (currentPaymentMethod.moneda === MONEDAS.USD && isItemFrozen()) {
         // Convert ARS to USD for frozen items (if needed)
-        newAmount = arsToUsd(discountedTotal);
+        newAmount = arsToUsd(newSubtotal);
       }
       
       // Ensure the amount doesn't exceed the subtotal
-      const subtotal = calculateItemSubtotal();
+      const subtotal = newSubtotal;
       if (newAmount > subtotal) {
         newAmount = subtotal;
       }
@@ -397,7 +389,7 @@ export default function ItemPaymentForm({
     const paymentMethod = getFirstPaymentMethod();
     if (!paymentMethod) {
       // If no payment method set, initialize with EFECTIVO
-      const baseAmount = calculateDiscountedTotal();
+      const baseAmount = calculateItemSubtotal(); // Use subtotal, not discounted total
       const baseCurrency = isItemFrozen() ? MONEDAS.ARS : MONEDAS.USD;
       
       // If item is not frozen and we're displaying in ARS, convert from USD
@@ -409,12 +401,13 @@ export default function ItemPaymentForm({
     }
     
     // Return the final amount after discount
-    return paymentMethod.montoFinal || paymentMethod.monto || calculateDiscountedTotal();
+    return paymentMethod.montoFinal || paymentMethod.monto || calculateItemSubtotal();
   };
 
   // Helper function to initialize payment method with correct currency and amount
   const initializePaymentMethod = (currency: string) => {
-    const baseAmount = calculateDiscountedTotal();
+    // Use subtotal (without discount) as base amount
+    const baseAmount = calculateItemSubtotal();
     let convertedAmount = baseAmount;
     
     // If converting from USD to ARS for non-frozen items, apply exchange rate
@@ -422,17 +415,37 @@ export default function ItemPaymentForm({
       convertedAmount = baseAmount * (1 / arsToUsd(1));
     }
     
-    const { montoFinal, descuentoAplicado } = calculateDiscount(METODOS_PAGO.EFECTIVO, convertedAmount, currency);
+    // Check if split payment is enabled
+    const isSplitEnabled = isSplitPaymentEnabled();
     
-    return {
-      tipo: METODOS_PAGO.EFECTIVO as TipoPagoNew,
-      moneda: currency as MonedaNew,
-      monto: convertedAmount,
-      montoFinal,
-      descuentoAplicado,
-      descuentoGlobalPorcentaje: descuentoAplicado > 0 ? (descuentoAplicado / convertedAmount) * 100 : 0,
-      recargoPorcentaje: 0,
-    };
+    if (isSplitEnabled) {
+      // For split payment, apply discount to the total and split the discounted amount
+      const discountedTotal = calculateDiscountedTotal();
+      const splitAmount = Math.round(discountedTotal / 2); // Split roughly in half
+      
+      return {
+        tipo: METODOS_PAGO.EFECTIVO as TipoPagoNew,
+        moneda: currency as MonedaNew,
+        monto: splitAmount,
+        montoFinal: splitAmount,
+        descuentoAplicado: 0,
+        descuentoGlobalPorcentaje: 0,
+        recargoPorcentaje: 0,
+      };
+    } else {
+      // For single payment, apply discount to the converted amount
+      const { montoFinal, descuentoAplicado } = calculateDiscount(METODOS_PAGO.EFECTIVO, convertedAmount, currency);
+      
+      return {
+        tipo: METODOS_PAGO.EFECTIVO as TipoPagoNew,
+        moneda: currency as MonedaNew,
+        monto: convertedAmount,
+        montoFinal,
+        descuentoAplicado,
+        descuentoGlobalPorcentaje: descuentoAplicado > 0 ? (descuentoAplicado / convertedAmount) * 100 : 0,
+        recargoPorcentaje: 0,
+      };
+    }
   };
 
   // Initialize payment method if it doesn't exist
@@ -449,24 +462,42 @@ export default function ItemPaymentForm({
   useEffect(() => {
     const paymentMethod = getFirstPaymentMethod();
     if (paymentMethod) {
-      const discountedTotal = calculateDiscountedTotal();
+      const itemSubtotal = calculateItemSubtotal(); // Use subtotal, not discounted total
       const currentCurrency = paymentMethod.moneda || (isItemFrozen() ? MONEDAS.ARS : MONEDAS.USD);
+      const isSplitEnabled = isSplitPaymentEnabled();
       
-      // Recalculate the payment method with the new discounted total
-      const { montoFinal, descuentoAplicado } = calculateDiscount(
-        paymentMethod.tipo || METODOS_PAGO.EFECTIVO,
-        discountedTotal,
-        currentCurrency
-      );
+      let updatedPaymentMethod: PaymentMethodWithDiscount;
       
-      const updatedPaymentMethod: PaymentMethodWithDiscount = {
-        ...paymentMethod,
-        monto: discountedTotal,
-        montoFinal,
-        descuentoAplicado,
-        descuentoGlobalPorcentaje: descuentoAplicado > 0 ? (descuentoAplicado / discountedTotal) * 100 : 0,
-        recargoPorcentaje: 0,
-      };
+      if (isSplitEnabled) {
+        // For split payment, apply discount to total and split the discounted amount
+        const discountedTotal = calculateDiscountedTotal();
+        const splitAmount = Math.round(discountedTotal / 2);
+        
+        updatedPaymentMethod = {
+          ...paymentMethod,
+          monto: splitAmount,
+          montoFinal: splitAmount,
+          descuentoAplicado: 0,
+          descuentoGlobalPorcentaje: 0,
+          recargoPorcentaje: 0,
+        };
+      } else {
+        // For single payment, apply discount to the subtotal
+        const { montoFinal, descuentoAplicado } = calculateDiscount(
+          paymentMethod.tipo || METODOS_PAGO.EFECTIVO,
+          itemSubtotal,
+          currentCurrency
+        );
+        
+        updatedPaymentMethod = {
+          ...paymentMethod,
+          monto: itemSubtotal,
+          montoFinal,
+          descuentoAplicado,
+          descuentoGlobalPorcentaje: descuentoAplicado > 0 ? (descuentoAplicado / itemSubtotal) * 100 : 0,
+          recargoPorcentaje: 0,
+        };
+      }
       
       onUpdateItem(item.id!, { metodosPago: [updatedPaymentMethod] });
     }
@@ -487,15 +518,15 @@ export default function ItemPaymentForm({
       return;
     }
 
-    let newAmount = currentPaymentMethod.monto || calculateDiscountedTotal();
+    let newAmount = currentPaymentMethod.monto || calculateItemSubtotal();
     
     // Convert amount if switching between USD and ARS
     if (currentPaymentMethod.moneda === MONEDAS.USD && newCurrency === MONEDAS.ARS) {
       // Convert USD to ARS using exchange rate
-      newAmount = (currentPaymentMethod.monto || calculateDiscountedTotal()) * (1 / arsToUsd(1));
+      newAmount = (currentPaymentMethod.monto || calculateItemSubtotal()) * (1 / arsToUsd(1));
     } else if (currentPaymentMethod.moneda === MONEDAS.ARS && newCurrency === MONEDAS.USD) {
       // Convert ARS to USD
-      newAmount = arsToUsd(currentPaymentMethod.monto || calculateDiscountedTotal());
+      newAmount = arsToUsd(currentPaymentMethod.monto || calculateItemSubtotal());
     }
 
     const updatedPaymentMethod: PaymentMethodWithDiscount = {
@@ -519,7 +550,7 @@ export default function ItemPaymentForm({
   // Helper function to handle payment method type change
   const handlePaymentTypeChange = (newType: string) => {
     const currentPaymentMethod = getFirstPaymentMethod();
-    const currentAmount = currentPaymentMethod?.monto || calculateDiscountedTotal();
+    const currentAmount = currentPaymentMethod?.monto || calculateItemSubtotal(); // Use subtotal
     const currentCurrency = currentPaymentMethod?.moneda || (isItemFrozen() ? MONEDAS.ARS : MONEDAS.USD);
     
     // Calculate discount with the current amount and currency
@@ -560,17 +591,34 @@ export default function ItemPaymentForm({
     const paymentType = currentPaymentMethod?.tipo || METODOS_PAGO.EFECTIVO;
     const currentCurrency = currentPaymentMethod?.moneda || (isItemFrozen() ? MONEDAS.ARS : MONEDAS.USD);
     
-    // Recalculate discount with new amount
-    const { montoFinal, descuentoAplicado } = calculateDiscount(paymentType, cleanAmount, currentCurrency);
+    // Check if split payment is enabled
+    const isSplitEnabled = isSplitPaymentEnabled();
     
-    const updatedPaymentMethod: PaymentMethodWithDiscount = {
-      ...currentPaymentMethod,
-      monto: cleanAmount,
-      montoFinal: Math.round(montoFinal), // Round the final amount
-      descuentoAplicado: Math.round(descuentoAplicado), // Round the discount
-      descuentoGlobalPorcentaje: descuentoAplicado > 0 ? Math.round((descuentoAplicado / cleanAmount) * 100) : 0,
-      recargoPorcentaje: 0,
-    };
+    let updatedPaymentMethod: PaymentMethodWithDiscount;
+    
+    if (isSplitEnabled) {
+      // For split payment, no additional discount is applied
+      updatedPaymentMethod = {
+        ...currentPaymentMethod,
+        monto: cleanAmount,
+        montoFinal: cleanAmount,
+        descuentoAplicado: 0,
+        descuentoGlobalPorcentaje: 0,
+        recargoPorcentaje: 0,
+      };
+    } else {
+      // For single payment, apply discount to the amount
+      const { montoFinal, descuentoAplicado } = calculateDiscount(paymentType, cleanAmount, currentCurrency);
+      
+      updatedPaymentMethod = {
+        ...currentPaymentMethod,
+        monto: cleanAmount,
+        montoFinal: Math.round(montoFinal), // Round the final amount
+        descuentoAplicado: Math.round(descuentoAplicado), // Round the discount
+        descuentoGlobalPorcentaje: descuentoAplicado > 0 ? Math.round((descuentoAplicado / cleanAmount) * 100) : 0,
+        recargoPorcentaje: 0,
+      };
+    }
 
     // Update the specific payment method
     const itemWithPayment = item as ItemWithPaymentMethods;
@@ -793,7 +841,7 @@ export default function ItemPaymentForm({
               type="number"
               min="0"
               step="1"
-              value={isSplitEnabled ? localFirstPaymentAmount : (paymentMethod?.montoFinal || calculateDiscountedTotal())}
+              value={isSplitEnabled ? localFirstPaymentAmount : (paymentMethod?.montoFinal || 0)}
               onChange={(e) => {
                 if (disabled) return;
                 const newValue = e.target.value;
@@ -922,8 +970,8 @@ export default function ItemPaymentForm({
                       disabled
                         ? 'text-gray-400'
                         : item.responsablesIds?.length! > 0
-                          ? 'text-gray-900'
-                          : 'text-gray-500'
+                        ? 'text-gray-900'
+                        : 'text-gray-500'
                     }
                   >
                     {(() => {

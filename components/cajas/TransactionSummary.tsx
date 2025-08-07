@@ -77,26 +77,20 @@ export default function TransactionSummary({
     return items.some(item => isSplitPaymentEnabled(item));
   };
 
-  // Helper function to calculate total discount for an item
-  const calculateTotalDiscount = (item: ItemComandaCreateNew) => {
-    const paymentMethod = getFirstPaymentMethod(item);
-    if (!paymentMethod) return 0;
+  // Helper function to get the actual total amount for an item from its payment methods
+  const getItemTotalFromPaymentMethods = (item: ItemComandaCreateNew) => {
+    const itemWithPayment = item as ItemWithPaymentMethods;
+    const paymentMethods = itemWithPayment.metodosPago || [];
     
-    const porcentajeDescuento = descuentosPorMetodo[paymentMethod.tipo as keyof typeof descuentosPorMetodo] || 0;
-    if (porcentajeDescuento === 0) return 0;
+    if (paymentMethods.length === 0) {
+      // If no payment methods, return subtotal without discount
+      return (item.precio || 0) * (item.cantidad || 1);
+    }
     
-    // Apply discount to the total item amount (subtotal)
-    const totalAmount = (item.precio || 0) * (item.cantidad || 1);
-    const descuento = (totalAmount * porcentajeDescuento) / 100;
-    
-    return descuento;
-  };
-
-  // Helper function to calculate discounted total for an item
-  const calculateDiscountedTotal = (item: ItemComandaCreateNew) => {
-    const totalDiscount = calculateTotalDiscount(item);
-    const subtotal = (item.precio || 0) * (item.cantidad || 1);
-    return subtotal - totalDiscount;
+    // Sum the montoFinal (already discounted amounts) from all payment methods
+    return paymentMethods.reduce((total, pm) => {
+      return total + (pm.montoFinal || pm.monto || 0);
+    }, 0);
   };
 
   // Calculate totals by currency
@@ -112,8 +106,8 @@ export default function TransactionSummary({
         
         // Calculate subtotal as price * quantity
         const itemSubtotal = (item.precio || 0) * (item.cantidad || 1);
-        // Calculate discounted total for this item
-        const itemDiscountedTotal = calculateDiscountedTotal(item);
+        // Get the actual total from payment methods (already discounted)
+        const itemTotal = getItemTotalFromPaymentMethods(item);
         
         if (isSplit && secondPaymentMethod) {
           // Handle split payment - treat as separate currencies
@@ -125,7 +119,7 @@ export default function TransactionSummary({
             totals[firstCurrency] = { subtotal: 0, total: 0, items: 0 };
           }
           totals[firstCurrency].subtotal += itemSubtotal;
-          totals[firstCurrency].total += (paymentMethod.monto || 0);
+          totals[firstCurrency].total += (paymentMethod.montoFinal || paymentMethod.monto || 0);
           totals[firstCurrency].items += 1;
           
           // Second payment (ARS)
@@ -133,7 +127,7 @@ export default function TransactionSummary({
             totals[secondCurrency] = { subtotal: 0, total: 0, items: 0 };
           }
           totals[secondCurrency].subtotal += itemSubtotal;
-          totals[secondCurrency].total += (secondPaymentMethod.monto || 0);
+          totals[secondCurrency].total += (secondPaymentMethod.montoFinal || secondPaymentMethod.monto || 0);
           totals[secondCurrency].items += 1;
         } else {
           // Single payment method
@@ -149,15 +143,15 @@ export default function TransactionSummary({
           }
           
           totals[currency].subtotal += itemSubtotal;
-          // Use the discounted total for the summary
-          totals[currency].total += itemDiscountedTotal;
+          // Use the actual total from payment methods (already discounted)
+          totals[currency].total += itemTotal;
           totals[currency].items += 1;
         }
       }
     });
 
     return totals;
-  }, [items, descuentosPorMetodo]);
+  }, [items]);
 
   // Check if all items use the same currency
   const allSameCurrency = useMemo(() => {
@@ -214,12 +208,12 @@ export default function TransactionSummary({
         
         // Calculate subtotal as price * quantity
         const itemSubtotal = (item.precio || 0) * (item.cantidad || 1);
-        // Calculate discounted total for this item
-        const itemDiscountedTotal = calculateDiscountedTotal(item);
+        // Get the actual total from payment methods (already discounted)
+        const itemTotal = getItemTotalFromPaymentMethods(item);
         
         totalSubtotal += itemSubtotal;
-        // Use the discounted total for the summary
-        totalAmount += itemDiscountedTotal;
+        // Use the actual total from payment methods (already discounted)
+        totalAmount += itemTotal;
         
         // Set primary currency based on frozen items
         if (isItemFrozen(item)) {
@@ -229,7 +223,7 @@ export default function TransactionSummary({
     });
 
     return { totalSubtotal, totalAmount, hasFrozenItems, primaryCurrency };
-  }, [items, descuentosPorMetodo]);
+  }, [items]);
 
   // Get the primary currency for unified display
   const getPrimaryCurrency = () => {

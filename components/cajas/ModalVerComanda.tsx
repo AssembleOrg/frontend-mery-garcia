@@ -56,9 +56,9 @@ export default function ModalVerComanda({ isOpen, onClose, comanda }: ModalVerCo
       const total = hasUsd ? neto : monto;
       
       return {
-        tipo: m.tipo,
+      tipo: m.tipo,
         monto: total,
-        moneda: m.moneda || 'USD',
+      moneda: m.moneda || 'USD',
       };
     }) as MetodoPagoNew[]
   );
