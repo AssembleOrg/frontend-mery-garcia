@@ -140,6 +140,29 @@ export default function ModalTransaccionUnificadoRefactored({
   const [observaciones, setObservaciones] = useState('');
   const [items, setItems] = useState<ItemComandaCreateNew[]>([]);
 
+  // Seña management state
+  const [itemConSeñaActiva, setItemConSeñaActiva] = useState<string | null>(null);
+
+  // Seña management functions
+  const handleSeñaToggle = (itemId: string, enabled: boolean) => {
+    if (enabled) {
+      // Only one item can have seña active at a time
+      setItemConSeñaActiva(itemId);
+    } else {
+      // Remove seña from this item
+      if (itemConSeñaActiva === itemId) {
+        setItemConSeñaActiva(null);
+      }
+    }
+  };
+
+  const isSeñaActiveForItem = (itemId: string) => {
+    return itemConSeñaActiva === itemId;
+  };
+
+  const canUseSeñaForItem = (itemId: string) => {
+    return itemConSeñaActiva === null || itemConSeñaActiva === itemId;
+  };
   // UI state
   const [guardando, setGuardando] = useState(false);
   const [errores, setErrores] = useState<Record<string, string>>({});
@@ -328,6 +351,10 @@ export default function ModalTransaccionUnificadoRefactored({
   };
 
   const eliminarItem = (id: string) => {
+    // Reset seña if the removed item had it active
+    if (itemConSeñaActiva === id) {
+      setItemConSeñaActiva(null);
+    }
     setItems(items.filter((item) => item.id !== id));
   };
 
@@ -462,11 +489,11 @@ export default function ModalTransaccionUnificadoRefactored({
             productoServicioId: item.productoServicioId,
             nombre: item.nombre,
             tipo: item.tipo,
-            precio: item.precio,
+            precio: Number(item.precio),
             cantidad: item.cantidad,
             descuento: item.descuento,
             trabajadorId: item.trabajadorId,
-            subtotal: item.subtotal,
+            subtotal: Number(item.subtotal),
             metodosPago: item.metodosPago
           });
         });
@@ -497,7 +524,13 @@ export default function ModalTransaccionUnificadoRefactored({
           caja: CajaNew.CAJA_1,
           descuentosAplicados: [],
           items: itemsWithPaymentMethods,
+          usuarioConsumePrepago: itemConSeñaActiva !== null, // true if any item has seña active
         };
+
+        console.log('=== SEÑA STATUS ===');
+        console.log('Item con seña activa:', itemConSeñaActiva);
+        console.log('usuarioConsumePrepago será:', itemConSeñaActiva !== null);
+        console.log('===================');
 
         const descuentos = nuevaComandaNew.items?.flatMap(item => {
           const itemWithPayment = item as any;
@@ -618,6 +651,7 @@ export default function ModalTransaccionUnificadoRefactored({
     setErrores({});
     setMostrarBuscador(false);
     setBusqueda('');
+    setItemConSeñaActiva(null); // Reset seña state
   };
 
   useEffect(() => {
@@ -900,6 +934,10 @@ export default function ModalTransaccionUnificadoRefactored({
                         onRemoveItem={eliminarItem}
                         tipo={tipo}
                         personal={personal}
+                        cliente={clienteSeleccionado}
+                        onSeñaToggle={handleSeñaToggle}
+                        isSeñaActive={isSeñaActiveForItem(item.id!)}
+                        canUseSeña={canUseSeñaForItem(item.id!)}
                       />
                     ))
                   )}

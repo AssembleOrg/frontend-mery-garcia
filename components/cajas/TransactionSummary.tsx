@@ -87,9 +87,10 @@ export default function TransactionSummary({
       return (item.precio || 0) * (item.cantidad || 1);
     }
     
-    // Sum the montoFinal (already discounted amounts) from all payment methods
+    // Sum all montoFinal values from payment methods
+    // montoFinal should already contain the amount after discount but before seña
     return paymentMethods.reduce((total, pm) => {
-      return total + (pm.montoFinal || pm.monto || 0);
+      return total + (pm.montoFinal || 0);
     }, 0);
   };
 
@@ -151,7 +152,15 @@ export default function TransactionSummary({
     });
 
     return totals;
-  }, [items]);
+  }, [
+    items.length,
+    items.map(item => item.id).join(','),
+    items.map(item => {
+      const pm = getFirstPaymentMethod(item);
+      const pm2 = getSecondPaymentMethod(item);
+      return `${pm?.tipo || ''}-${pm?.montoFinal || 0}-${pm2?.tipo || ''}-${pm2?.montoFinal || 0}`;
+    }).join(',')
+  ]); // More specific dependencies
 
   // Check if all items use the same currency
   const allSameCurrency = useMemo(() => {
@@ -185,7 +194,13 @@ export default function TransactionSummary({
     });
     
     return currencies.size <= 1;
-  }, [items]);
+  }, [
+    items.length,
+    items.map(item => {
+      const pm = getFirstPaymentMethod(item);
+      return `${pm?.moneda || ''}-${pm?.tipo || ''}`;
+    }).join(',')
+  ]); // Include payment method currencies in dependencies
 
   // Calculate unified totals
   const unifiedTotals = useMemo(() => {
@@ -223,7 +238,14 @@ export default function TransactionSummary({
     });
 
     return { totalSubtotal, totalAmount, hasFrozenItems, primaryCurrency };
-  }, [items]);
+  }, [
+    items.length,
+    items.map(item => {
+      const pm = getFirstPaymentMethod(item);
+      const pm2 = getSecondPaymentMethod(item);
+      return `${pm?.montoFinal || 0}-${pm2?.montoFinal || 0}-${isItemFrozen(item)}`;
+    }).join(',')
+  ]); // Include payment method amounts in dependencies
 
   // Get the primary currency for unified display
   const getPrimaryCurrency = () => {
