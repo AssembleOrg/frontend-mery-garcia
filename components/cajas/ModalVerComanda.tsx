@@ -22,17 +22,26 @@ export default function ModalVerComanda({ isOpen, onClose, comanda }: ModalVerCo
 
   if (!isOpen || !comanda) return null;
 
+  // Extract all payment methods from all items
+  const allPaymentMethods = comanda.items?.flatMap(item => (item as any).metodosPago || []) || [];
+
   // Calcular totales
-  const totalUSD = comanda.metodosPago.reduce((acc, item) => 
+  const totalUSD = allPaymentMethods.reduce((acc: number, item: any) => 
     item.moneda === 'USD' ? acc + (item.montoFinal || 0) : acc, 0
   );
-  const totalARS = comanda.metodosPago.reduce((acc, item) => 
-    item.moneda === 'ARS' ? acc + (item.montoFinal || 0) : acc, 0
-  );
+  const hasUsd = allPaymentMethods.some(item => item.moneda === 'USD');
+    const totalARS = allPaymentMethods
+      .filter(item => item.moneda === 'ARS') // Solo métodos en ARS
+      .reduce((acc: number, item: any) => {
+        const monto = item.monto ?? 0;
+        const neto = item.montoFinal ?? 0;
+        const total = hasUsd ? neto : monto;
+        return acc + total;
+      }, 0)
 
   // Método de pago principal
   const metodoPrincipal = resolverMetodoPagoPrincipalConMoneda(
-    comanda.metodosPago.map(m => ({
+    allPaymentMethods.map((m: any) => ({
       tipo: m.tipo,
       monto: m.monto,
       moneda: m.moneda || 'USD',
@@ -41,11 +50,17 @@ export default function ModalVerComanda({ isOpen, onClose, comanda }: ModalVerCo
 
   // Detalle de métodos de pago
   const detalleMetodos = formatearDetalleMetodosPago(
-    comanda.metodosPago.map(m => ({
-      tipo: m.tipo,
-      monto: m.monto,
-      moneda: m.moneda || 'USD',
-    })) as MetodoPagoNew[]
+    allPaymentMethods.map((m: any) => {
+      const monto = m.monto ?? 0;
+      const neto = m.montoFinal ?? 0;
+      const total = hasUsd ? neto : monto;
+      
+      return {
+        tipo: m.tipo,
+        monto: total,
+        moneda: m.moneda || 'USD',
+      };
+    }) as MetodoPagoNew[]
   );
 
   // Trabajadores únicos
@@ -201,6 +216,25 @@ export default function ModalVerComanda({ isOpen, onClose, comanda }: ModalVerCo
                           <p className="text-sm text-gray-600">
                             Cantidad: {item.cantidad} - Precio: {formatUSD(item.precio!)}
                           </p>
+                          {/* Show payment methods for this item if available */}
+                          {(item as any).metodosPago && (item as any).metodosPago.length > 0 && (
+                            <div className="mt-2">
+                              <p className="text-xs text-gray-500">Métodos de pago:</p>
+                              <div className="flex flex-wrap gap-1 mt-1">
+                                {(item as any).metodosPago.map((mp: any, mpIndex: number) => {
+                                  const monto = mp.monto ?? 0;
+                                  const neto = mp.montoFinal ?? 0;
+                                  const total = hasUsd ? neto : monto;
+                                  
+                                  return (
+                                    <Badge key={mpIndex} variant="outline" className="text-xs">
+                                      {mp.tipo} - {mp.moneda === 'USD' ? formatUSD(total) : formatARSFromNative(total)}
+                                    </Badge>
+                                  );
+                                })}
+                              </div>
+                            </div>
+                          )}
                         </div>
                         <div className="text-right">
                           <p className="font-semibold text-[#4a3540]">

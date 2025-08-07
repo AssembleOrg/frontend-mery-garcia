@@ -305,6 +305,7 @@ export interface ItemComandaNew {
   /* ---------- Relaciones ---------- */
   comanda: ComandaNew;
   trabajador: TrabajadorNew;
+  metodosPago: Partial<MetodoPagoNew>[];
 }
 
 export type ItemComandaCreateNew = Partial<ItemComandaNew> & {
@@ -366,7 +367,6 @@ export interface ComandaNew {
   creadoPor: TrabajadorNew;
   cliente: ClienteNew;
   movimientos: MovimientoNew[];
-  metodosPago: Partial<MetodoPagoNew>[];
   usuarioConsumePrepago: boolean;
   descuentosAplicados: Partial<DescuentoNew>[];
   items: ItemComandaCreateNew[];

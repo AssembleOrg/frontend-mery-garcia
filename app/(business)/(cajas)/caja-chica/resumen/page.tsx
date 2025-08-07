@@ -239,7 +239,7 @@ export default function CajaChicaResumenPage() {
                         </h3>
                         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                           <SummaryCardCount
-                            title="Validadas"
+                            title="Validadas (incluye egresos)"
                             count={resumen.totalCompletados}
                             icon="✅"
                             valueClassName="text-green-700"

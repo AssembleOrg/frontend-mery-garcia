@@ -36,8 +36,8 @@ export default function TablaComandasValidadas({
   const comandasFiltradas = comandas.filter(
     (comanda) =>
       comanda.numero.toLowerCase().includes(filtro.toLowerCase()) ||
-      comanda.cliente.nombre.toLowerCase().includes(filtro.toLowerCase()) ||
-      comanda.mainStaff.nombre.toLowerCase().includes(filtro.toLowerCase())
+      comanda.cliente.nombre.toLowerCase().includes(filtro.toLowerCase())
+      // comanda.personal.nombre.toLowerCase().includes(filtro.toLowerCase())
   );
 
   const getBadgeColor = (tipo: string) => {
@@ -123,7 +123,7 @@ export default function TablaComandasValidadas({
                       </Badge>
                     </TableCell>
                     <TableCell>{comanda.cliente.nombre}</TableCell>
-                    <TableCell>{comanda.mainStaff.nombre}</TableCell>
+                    {/* <TableCell>{comanda.mainStaff.nombre}</TableCell> */}
                     <TableCell className="text-right font-medium">
                       {formatAmount(comanda.totalFinal)}
                     </TableCell>

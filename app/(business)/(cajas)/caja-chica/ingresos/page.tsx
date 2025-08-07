@@ -30,18 +30,40 @@ import ClientOnly from '@/components/common/ClientOnly';
 import Spinner from '@/components/common/Spinner';
 import SummaryCardDual from '@/components/common/SummaryCardDual';
 import SummaryCardCount from '@/components/common/SummaryCardCount';
-import ModalEditarTransaccion from '@/components/cajas/ModalEditarTransaccion';
 import { useCurrencyConverter } from '@/hooks/useCurrencyConverter';
 import { useRecordsStore } from '@/features/records/store/recordsStore';
 import ResidualDisplay from '@/components/cajas/ResidualDisplay';
-import { EstadoDeComandaNew, UnidadNegocioNew, TipoDeComandaNew, ComandaNew } from '@/services/unidadNegocio.service';
+import {
+  EstadoDeComandaNew,
+  UnidadNegocioNew,
+  TipoDeComandaNew,
+  ComandaNew,
+} from '@/services/unidadNegocio.service';
 import useComandaStore from '@/features/comandas/store/comandaStore';
 import ModalExportarComandas from '@/components/cajas/ModalExportarComandas';
 import { Input } from '@/components/ui/input';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { Label } from '@/components/ui/label';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Search, Filter, Calendar, User, Users, FileText, RefreshCw, Download, CheckSquare } from 'lucide-react';
+import {
+  Search,
+  Filter,
+  Calendar,
+  User,
+  Users,
+  FileText,
+  RefreshCw,
+  Download,
+  CheckSquare,
+} from 'lucide-react';
+import ModalTransaccionUnificadoRefactored from '@/components/cajas/ModalTransaccionUnificadoRefactored';
+import ModalEditarTransaccionRefactored from '@/components/cajas/ModalEditarTransaccionRefactored';
 
 export default function IngresosPage() {
   const { isInitialized } = useCurrencyConverter();
@@ -51,11 +73,15 @@ export default function IngresosPage() {
 
   // Filter states
   const [searchTerm, setSearchTerm] = useState('');
-  const [estadoFilter, setEstadoFilter] = useState<EstadoDeComandaNew | 'todos'>('todos');
+  const [estadoFilter, setEstadoFilter] = useState<
+    EstadoDeComandaNew | 'todos'
+  >('todos');
   const [clienteFilter, setClienteFilter] = useState('');
   const [trabajadorFilter, setTrabajadorFilter] = useState('');
   const [creadoPorFilter, setCreadoPorFilter] = useState('');
-  const [orderBy, setOrderBy] = useState<'createdAt' | 'numero' | 'tipoDeComanda' | 'estadoDeComanda' | 'creadoPor'>('createdAt');
+  const [orderBy, setOrderBy] = useState<
+    'createdAt' | 'numero' | 'tipoDeComanda' | 'estadoDeComanda' | 'creadoPor'
+  >('createdAt');
   const [orderDirection, setOrderDirection] = useState<'ASC' | 'DESC'>('DESC');
   const [incluirTraspasadas, setIncluirTraspasadas] = useState(false);
 
@@ -64,27 +90,29 @@ export default function IngresosPage() {
 
   // Find last transfer with residual
   const ultimoResidual = traspasos
-    .filter(t => t.esTraspasoParcial && 
-                ((t.montoResidualUSD || 0) > 0 || (t.montoResidualARS || 0) > 0))
-    .sort((a, b) => new Date(b.fechaTraspaso).getTime() - 
-                   new Date(a.fechaTraspaso).getTime())[0];
+    .filter(
+      (t) =>
+        t.esTraspasoParcial &&
+        ((t.montoResidualUSD || 0) > 0 || (t.montoResidualARS || 0) > 0)
+    )
+    .sort(
+      (a, b) =>
+        new Date(b.fechaTraspaso).getTime() -
+        new Date(a.fechaTraspaso).getTime()
+    )[0];
 
   // Estados de paginación
   const [paginaActual, setPaginaActual] = useState(1);
   const [itemsPorPagina, setItemsPorPagina] = useState(20);
 
   // Store de comandas
-  const {
-    comandasPaginadas,
-    cargando,
-    error,
-    cargarComandasPaginadas,
-  } = useComandaStore();
+  const { comandasPaginadas, cargando, error, cargarComandasPaginadas } =
+    useComandaStore();
 
   // Cargar comandas con filtros
   useEffect(() => {
-    console.log('cargando comandas con filtros'); 
-    
+    console.log('cargando comandas con filtros');
+
     // Preparar fechas para el backend
     let fechaDesde: string | undefined;
     let fechaHasta: string | undefined;
@@ -117,18 +145,18 @@ export default function IngresosPage() {
       ...(fechaHasta && { fechaHasta }),
     });
   }, [
-    paginaActual, 
-    itemsPorPagina, 
-    cargarComandasPaginadas, 
-    searchTerm, 
-    estadoFilter, 
-    clienteFilter, 
-    trabajadorFilter, 
-    creadoPorFilter, 
-    orderBy, 
-    orderDirection, 
+    paginaActual,
+    itemsPorPagina,
+    cargarComandasPaginadas,
+    searchTerm,
+    estadoFilter,
+    clienteFilter,
+    trabajadorFilter,
+    creadoPorFilter,
+    orderBy,
+    orderDirection,
     incluirTraspasadas,
-    dateRange
+    dateRange,
   ]);
 
   // Local UI state
@@ -157,7 +185,7 @@ export default function IngresosPage() {
 
   // Handle delete transaction
   const handleDelete = (id: string) => {
-    const transaction = comandasPaginadas.data.find(t => t.id === id);
+    const transaction = comandasPaginadas.data.find((t) => t.id === id);
     if (transaction) {
       setAlertaEliminar(transaction);
     }
@@ -208,11 +236,68 @@ export default function IngresosPage() {
   };
 
   // Totales y estadísticas simples - usar datos paginados
-  const totalIngresosUSD = comandasPaginadas.data.reduce((sum, comanda) => sum + (comanda.metodosPago.reduce((acc, item) => item.moneda === 'USD' ? acc + item.montoFinal! : acc, 0)), 0);
-  const totalIngresosARS = comandasPaginadas.data.reduce((sum, comanda) => sum + (comanda.metodosPago.reduce((acc, item) => item.moneda === 'ARS' ? acc + item.montoFinal! : acc, 0)), 0);
-  const transactionCountARS = comandasPaginadas.data.reduce((sum, comanda) => sum + (comanda.metodosPago.reduce((acc, item) => item.moneda === 'ARS' ? acc + 1 : acc, 0)), 0);
-  const transactionCountUSD = comandasPaginadas.data.reduce((sum, comanda) => sum + (comanda.metodosPago.reduce((acc, item) => item.moneda === 'USD' ? acc + 1 : acc, 0)), 0);
-  const clientCount = new Set(comandasPaginadas.data.map(c => c.cliente?.id)).size;
+  type Totals = { usd: number; ars: number };
+
+  const totals: Totals = comandasPaginadas.data?.reduce<Totals>(
+    (acc, comanda) => {
+      const comandaHasUSD =
+        comanda.items?.some((item) =>
+          item.metodosPago?.some((mp) => mp.moneda === 'USD')
+        ) ?? false;
+
+      comanda.items?.forEach((item) => {
+        item.metodosPago?.forEach((mp) => {
+          switch (mp.moneda) {
+            case 'USD':
+              acc.usd += mp.montoFinal ?? 0;
+              break;
+
+            case 'ARS':
+              // Si la comanda tiene USD, priorizamos montoFinal; si no, monto.
+              const montoARS = comandaHasUSD
+                ? (mp.montoFinal ?? 0)
+                : (mp.monto ?? 0);
+              acc.ars += montoARS;
+              break;
+          }
+        });
+      });
+
+      return acc;
+    },
+    { usd: 0, ars: 0 }
+  ) ?? { usd: 0, ars: 0 };
+
+  const totalIngresosUSD = totals.usd;
+  const totalIngresosARS = totals.ars;
+  const transactionCountARS = comandasPaginadas.data.reduce(
+    (sum, comanda) =>
+      sum +
+      (comanda.items.reduce(
+        (acc, item) =>
+          item.metodosPago?.reduce(
+            (acc, item) => (item.moneda === 'ARS' ? acc + 1 : acc),
+            0
+          ) || 0,
+        0
+      ) || 0),
+    0
+  );
+  const transactionCountUSD = comandasPaginadas.data.reduce(
+    (sum, comanda) =>
+      sum +
+      (comanda.items.reduce(
+        (acc, item) =>
+          item.metodosPago?.reduce(
+            (acc, item) => (item.moneda === 'USD' ? acc + 1 : acc),
+            0
+          ) || 0,
+        0
+      ) || 0),
+    0
+  );
+  const clientCount = new Set(comandasPaginadas.data.map((c) => c.cliente?.id))
+    .size;
   const transactionCount = comandasPaginadas.data.length;
 
   return (
@@ -239,7 +324,7 @@ export default function IngresosPage() {
                     </h1>
                     <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
                       <SummaryCardDual
-                        title="💰 Total Ingresos"
+                        title="💰 Dinero de Ingresos"
                         totalUSD={totalIngresosUSD}
                         totalARS={totalIngresosARS}
                         valueClassName="text-green-600"
@@ -270,13 +355,13 @@ export default function IngresosPage() {
                   </div>
 
                   <div className="flex flex-col gap-2 sm:flex-row">
-                  <Button
-                    onClick={() => setShowAddModal(true)}
-                    className="rounded-lg bg-gradient-to-r from-[#f9bbc4] to-[#e292a3] px-6 py-2 font-semibold text-white shadow-md transition-all duration-200 hover:scale-105 hover:from-[#e292a3] hover:to-[#d4a7ca] hover:shadow-lg"
-                  >
-                    <Plus className="mr-2 h-4 w-4" />
-                    Nueva Transacción
-                  </Button>
+                    <Button
+                      onClick={() => setShowAddModal(true)}
+                      className="rounded-lg bg-gradient-to-r from-[#f9bbc4] to-[#e292a3] px-6 py-2 font-semibold text-white shadow-md transition-all duration-200 hover:scale-105 hover:from-[#e292a3] hover:to-[#d4a7ca] hover:shadow-lg"
+                    >
+                      <Plus className="mr-2 h-4 w-4" />
+                      Nueva Transacción
+                    </Button>
                     <Button
                       onClick={() => setShowExportModal(true)}
                       variant="outline"
@@ -299,7 +384,9 @@ export default function IngresosPage() {
                         <div className="flex h-8 w-8 items-center justify-center rounded-full bg-gradient-to-r from-[#f9bbc4] to-[#e292a3] text-white">
                           <Filter className="h-4 w-4" />
                         </div>
-                        <h3 className="text-lg font-semibold text-[#4a3540]">Filtros Avanzados</h3>
+                        <h3 className="text-lg font-semibold text-[#4a3540]">
+                          Filtros Avanzados
+                        </h3>
                       </div>
                       <Button
                         variant="outline"
@@ -334,18 +421,35 @@ export default function IngresosPage() {
                           <FileText className="h-4 w-4" />
                           Estado
                         </Label>
-                        <Select value={estadoFilter} onValueChange={(value) => setEstadoFilter(value as EstadoDeComandaNew | 'todos')}>
+                        <Select
+                          value={estadoFilter}
+                          onValueChange={(value) =>
+                            setEstadoFilter(
+                              value as EstadoDeComandaNew | 'todos'
+                            )
+                          }
+                        >
                           <SelectTrigger className="border-[#f9bbc4]/30 focus:border-[#f9bbc4]">
                             <SelectValue placeholder="Todos los estados" />
                           </SelectTrigger>
                           <SelectContent>
-                            <SelectItem value="todos">Todos los estados</SelectItem>
-                            <SelectItem value={EstadoDeComandaNew.PENDIENTE}>Pendiente</SelectItem>
+                            <SelectItem value="todos">
+                              Todos los estados
+                            </SelectItem>
+                            <SelectItem value={EstadoDeComandaNew.PENDIENTE}>
+                              Pendiente
+                            </SelectItem>
                             {/* <SelectItem value={EstadoDeComandaNew.PAGADA}>Pagada</SelectItem> */}
-                            <SelectItem value={EstadoDeComandaNew.CANCELADA}>Cancelada</SelectItem>
+                            <SelectItem value={EstadoDeComandaNew.CANCELADA}>
+                              Cancelada
+                            </SelectItem>
                             {/* <SelectItem value={EstadoDeComandaNew.FINALIZADA}>Finalizada</SelectItem> */}
-                            <SelectItem value={EstadoDeComandaNew.TRASPASADA}>Traspasada</SelectItem>
-                            <SelectItem value={EstadoDeComandaNew.VALIDADO}>Validado</SelectItem>
+                            <SelectItem value={EstadoDeComandaNew.TRASPASADA}>
+                              Traspasada
+                            </SelectItem>
+                            <SelectItem value={EstadoDeComandaNew.VALIDADO}>
+                              Validado
+                            </SelectItem>
                           </SelectContent>
                         </Select>
                       </div>
@@ -398,16 +502,27 @@ export default function IngresosPage() {
                           <FileText className="h-4 w-4" />
                           Ordenar por
                         </Label>
-                        <Select value={orderBy} onValueChange={(value) => setOrderBy(value as any)}>
+                        <Select
+                          value={orderBy}
+                          onValueChange={(value) => setOrderBy(value as any)}
+                        >
                           <SelectTrigger className="border-[#f9bbc4]/30 focus:border-[#f9bbc4]">
                             <SelectValue />
                           </SelectTrigger>
                           <SelectContent>
-                            <SelectItem value="createdAt">Fecha de creación</SelectItem>
+                            <SelectItem value="createdAt">
+                              Fecha de creación
+                            </SelectItem>
                             <SelectItem value="numero">Número</SelectItem>
-                            <SelectItem value="tipoDeComanda">Tipo de comanda</SelectItem>
-                            <SelectItem value="estadoDeComanda">Estado</SelectItem>
-                            <SelectItem value="creadoPor">Creado por</SelectItem>
+                            <SelectItem value="tipoDeComanda">
+                              Tipo de comanda
+                            </SelectItem>
+                            <SelectItem value="estadoDeComanda">
+                              Estado
+                            </SelectItem>
+                            <SelectItem value="creadoPor">
+                              Creado por
+                            </SelectItem>
                           </SelectContent>
                         </Select>
                       </div>
@@ -418,7 +533,12 @@ export default function IngresosPage() {
                           <FileText className="h-4 w-4" />
                           Dirección
                         </Label>
-                        <Select value={orderDirection} onValueChange={(value) => setOrderDirection(value as 'ASC' | 'DESC')}>
+                        <Select
+                          value={orderDirection}
+                          onValueChange={(value) =>
+                            setOrderDirection(value as 'ASC' | 'DESC')
+                          }
+                        >
                           <SelectTrigger className="border-[#f9bbc4]/30 focus:border-[#f9bbc4]">
                             <SelectValue />
                           </SelectTrigger>
@@ -453,7 +573,9 @@ export default function IngresosPage() {
                           <Checkbox
                             id="incluir-traspasadas"
                             checked={incluirTraspasadas}
-                            onCheckedChange={(checked) => setIncluirTraspasadas(checked as boolean)}
+                            onCheckedChange={(checked) =>
+                              setIncluirTraspasadas(checked as boolean)
+                            }
                           />
                           <label
                             htmlFor="incluir-traspasadas"
@@ -466,11 +588,19 @@ export default function IngresosPage() {
                     </div>
 
                     {/* Indicadores de filtros activos */}
-                    {(searchTerm || (estadoFilter && estadoFilter !== 'todos') || clienteFilter || trabajadorFilter || creadoPorFilter || dateRange || incluirTraspasadas) && (
-                      <div className="mt-4 rounded-lg bg-gradient-to-r from-[#f9bbc4]/10 to-[#e292a3]/10 border border-[#f9bbc4]/20 p-3">
-                        <div className="flex items-center gap-2 mb-2">
+                    {(searchTerm ||
+                      (estadoFilter && estadoFilter !== 'todos') ||
+                      clienteFilter ||
+                      trabajadorFilter ||
+                      creadoPorFilter ||
+                      dateRange ||
+                      incluirTraspasadas) && (
+                      <div className="mt-4 rounded-lg border border-[#f9bbc4]/20 bg-gradient-to-r from-[#f9bbc4]/10 to-[#e292a3]/10 p-3">
+                        <div className="mb-2 flex items-center gap-2">
                           <div className="h-2 w-2 rounded-full bg-[#f9bbc4]"></div>
-                          <span className="text-sm font-medium text-[#4a3540]">Filtros activos:</span>
+                          <span className="text-sm font-medium text-[#4a3540]">
+                            Filtros activos:
+                          </span>
                         </div>
                         <div className="flex flex-wrap gap-2 text-xs text-[#6b4c57]">
                           {searchTerm && (
@@ -500,16 +630,18 @@ export default function IngresosPage() {
                           )}
                           {dateRange && (
                             <span className="rounded-full bg-[#f9bbc4]/20 px-2 py-1">
-                              Fechas: {dateRange.from?.toLocaleDateString('es-ES')}
-                              {dateRange.to && ` - ${dateRange.to.toLocaleDateString('es-ES')}`}
+                              Fechas:{' '}
+                              {dateRange.from?.toLocaleDateString('es-ES')}
+                              {dateRange.to &&
+                                ` - ${dateRange.to.toLocaleDateString('es-ES')}`}
                             </span>
                           )}
                           {incluirTraspasadas && (
                             <span className="rounded-full bg-[#f9bbc4]/20 px-2 py-1">
                               Incluir Traspasadas: Sí
                             </span>
-                      )}
-                    </div>
+                          )}
+                        </div>
                       </div>
                     )}
                   </CardContent>
@@ -526,11 +658,11 @@ export default function IngresosPage() {
                         <Spinner />
                       </div>
                     ) : error ? (
-                      <div className="text-center py-8 text-red-600">
+                      <div className="py-8 text-center text-red-600">
                         Error: {error}
                       </div>
                     ) : comandasPaginadas.data.length === 0 ? (
-                      <div className="text-center py-8 text-gray-500">
+                      <div className="py-8 text-center text-gray-500">
                         No hay transacciones de ingreso para mostrar
                       </div>
                     ) : (
@@ -548,15 +680,42 @@ export default function IngresosPage() {
                     <div className="mt-6">
                       <Pagination
                         paginaActual={comandasPaginadas.pagination.page ?? 1}
-                        totalPaginas={comandasPaginadas.pagination.totalPages ?? 1}
+                        totalPaginas={
+                          comandasPaginadas.pagination.totalPages ?? 1
+                        }
                         totalItems={comandasPaginadas.pagination.total ?? 0}
-                        itemsPorPagina={comandasPaginadas.pagination.limit ?? 20}
-                        itemInicio={comandasPaginadas.pagination ? (comandasPaginadas.pagination.page - 1) * comandasPaginadas.pagination.limit + 1 : 0}
-                        itemFin={comandasPaginadas.pagination ? Math.min(comandasPaginadas.pagination.page * comandasPaginadas.pagination.limit, comandasPaginadas.pagination.total) : 0}
+                        itemsPorPagina={
+                          comandasPaginadas.pagination.limit ?? 20
+                        }
+                        itemInicio={
+                          comandasPaginadas.pagination
+                            ? (comandasPaginadas.pagination.page - 1) *
+                                comandasPaginadas.pagination.limit +
+                              1
+                            : 0
+                        }
+                        itemFin={
+                          comandasPaginadas.pagination
+                            ? Math.min(
+                                comandasPaginadas.pagination.page *
+                                  comandasPaginadas.pagination.limit,
+                                comandasPaginadas.pagination.total
+                              )
+                            : 0
+                        }
                         onCambiarPagina={setPaginaActual}
                         onCambiarItemsPorPagina={setItemsPorPagina}
-                        hayPaginaAnterior={comandasPaginadas.pagination ? comandasPaginadas.pagination.page > 1 : false}
-                        hayPaginaSiguiente={comandasPaginadas.pagination ? comandasPaginadas.pagination.page < comandasPaginadas.pagination.totalPages : false}
+                        hayPaginaAnterior={
+                          comandasPaginadas.pagination
+                            ? comandasPaginadas.pagination.page > 1
+                            : false
+                        }
+                        hayPaginaSiguiente={
+                          comandasPaginadas.pagination
+                            ? comandasPaginadas.pagination.page <
+                              comandasPaginadas.pagination.totalPages
+                            : false
+                        }
                       />
                     </div>
                   </CardContent>
@@ -568,7 +727,13 @@ export default function IngresosPage() {
 
         {/* Modals */}
 
-        <ModalTransaccionUnificado
+        {/* <ModalTransaccionUnificado
+          isOpen={showAddModal}
+          onClose={() => setShowAddModal(false)}
+          tipo="ingreso"
+        /> */}
+
+        <ModalTransaccionUnificadoRefactored
           isOpen={showAddModal}
           onClose={() => setShowAddModal(false)}
           tipo="ingreso"
@@ -581,7 +746,9 @@ export default function IngresosPage() {
             setSelectedTransactionId('');
           }}
           comandaId={selectedTransactionId}
-          estadoActual={selectedTransaction?.estadoDeComanda || EstadoDeComandaNew.PENDIENTE}
+          estadoActual={
+            selectedTransaction?.estadoDeComanda || EstadoDeComandaNew.PENDIENTE
+          }
           onSuccess={() => {
             setShowChangeStatusModal(false);
             setSelectedTransactionId('');
@@ -589,7 +756,16 @@ export default function IngresosPage() {
         />
 
         {/* ✅ ModalEditarTransaccion para EDITAR transacciones existentes (NUEVO MODAL MEJORADO) */}
-        <ModalEditarTransaccion
+        {/* <ModalEditarTransaccion
+          isOpen={showEditModal}
+          onClose={() => {
+            setShowEditModal(false);
+            setSelectedTransactionId('');
+          }}
+          comandaId={selectedTransactionId}
+        /> */}
+
+        <ModalEditarTransaccionRefactored
           isOpen={showEditModal}
           onClose={() => {
             setShowEditModal(false);
@@ -597,7 +773,6 @@ export default function IngresosPage() {
           }}
           comandaId={selectedTransactionId}
         />
-
         {/* ✅ ModalVerDetalles para VER detalles de transacciones */}
         <ModalVerDetalles
           isOpen={showViewModal}
@@ -626,8 +801,8 @@ export default function IngresosPage() {
                 ¿Eliminar transacción?
               </AlertDialogTitle>
               <AlertDialogDescription className="text-gray-600">
-                Esta acción eliminará permanentemente la transacción #{alertaEliminar?.numero}.
-                Esta acción no se puede deshacer.
+                Esta acción eliminará permanentemente la transacción #
+                {alertaEliminar?.numero}. Esta acción no se puede deshacer.
               </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>
@@ -706,13 +881,13 @@ const initialColumns: ColumnaCaja[] = [
     sortable: true,
     width: '120px',
   },
-  {
-    key: 'metodosPago',
-    label: 'Método Pago',
-    visible: false, // Oculto por defecto, usuario puede habilitarlo
-    sortable: true,
-    width: '100px',
-  },
+  // {
+  //   key: 'metodosPago',
+  //   label: 'Método Pago',
+  //   visible: false, // Oculto por defecto, usuario puede habilitarlo
+  //   sortable: true,
+  //   width: '100px',
+  // },
   {
     key: 'estadoDeComanda',
     label: 'Estado',

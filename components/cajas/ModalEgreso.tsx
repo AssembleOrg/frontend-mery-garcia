@@ -257,7 +257,6 @@ export default function ModalEgreso({
         estadoDeComanda: EstadoDeComandaNew.VALIDADO ,
         valorDolar: dolar,
         caja: CajaNew.CAJA_1,
-        metodosPago: [], // Egresos no tienen métodos de pago
         descuentosAplicados: [],
         egresos: itemsEgreso.map((item) => ({
           total: item.monto,

@@ -6,7 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Checkbox } from '@/components/ui/checkbox';
-import MetodosPagoSection from './MetodosPagoSection';
+// import MetodosPagoSection from './MetodosPagoSection'; // COMENTADO: Reemplazado por nuevo sistema
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import {
@@ -34,7 +34,7 @@ import {
   useInitializeComandaStore,
   generateUniqueId,
 } from '@/hooks/useInitializeComandaStore';
-import { useMetodosPago } from '@/hooks/useMetodosPago';
+// import { useMetodosPago } from '@/hooks/useMetodosPago'; // COMENTADO: Reemplazado por nuevo sistema
 import { useAuth } from '@/features/auth/hooks/useAuth';
 import useTrabajadoresStore from '@/features/personal/store/trabajadoresStore';
 import {
@@ -173,29 +173,29 @@ export default function ModalTransaccionUnificado({
     }
   }, [items, tipo]);
 
-  // Hook para métodos de pago con descuentos automáticos
-  const {
-    metodosPago,
-    agregarMetodoPago: agregarMetodoPagoBase,
-    eliminarMetodoPago,
-    actualizarMetodoPago,
-    resetMetodosPago,
-    validarMetodosPago,
-    convertirParaPersistencia,
-    obtenerResumenDual,
-  } = useMetodosPago(tipo === 'ingreso', hayItemsCongelados); // Solo aplicar descuentos en ingresos
+  // Hook para métodos de pago con descuentos automáticos - COMENTADO: Reemplazado por nuevo sistema
+  // const {
+  //   metodosPago,
+  //   agregarMetodoPago: agregarMetodoPagoBase,
+  //   eliminarMetodoPago,
+  //   actualizarMetodoPago,
+  //   resetMetodosPago,
+  //   validarMetodosPago,
+  //   convertirParaPersistencia,
+  //   obtenerResumenDual,
+  // } = useMetodosPago(tipo === 'ingreso', hayItemsCongelados); // Solo aplicar descuentos en ingresos
 
-  // Wrapper para forzar ARS cuando hay items congelados
-  const agregarMetodoPago = () => {
-    agregarMetodoPagoBase();
-    if (hayItemsCongelados && metodosPago.length >= 0) {
-      // Forzar moneda ARS en el nuevo método de pago
-      const ultimoIndex = metodosPago.length;
-      setTimeout(() => {
-        actualizarMetodoPago(ultimoIndex, 'moneda', MONEDAS.ARS);
-      }, 0);
-    }
-  };
+  // Wrapper para forzar ARS cuando hay items congelados - COMENTADO: Reemplazado por nuevo sistema
+  // const agregarMetodoPago = () => {
+  //   agregarMetodoPagoBase();
+  //   if (hayItemsCongelados && metodosPago.length >= 0) {
+  //     // Forzar moneda ARS en el nuevo método de pago
+  //     const ultimoIndex = metodosPago.length;
+  //     setTimeout(() => {
+  //       actualizarMetodoPago(ultimoIndex, 'moneda', MONEDAS.ARS);
+  //     }, 0);
+  //   }
+  // };
 
   useEffect(() => {
     cargarComandasPaginadas({
@@ -219,17 +219,17 @@ export default function ModalTransaccionUnificado({
       });
   }, []);
 
-  // Auto-switch payment methods to ARS when frozen items are detected
-  useEffect(() => {
-    if (hayItemsCongelados && metodosPago.length > 0) {
-      // Convert all USD payment methods to ARS
-      metodosPago.forEach((metodo, index) => {
-        if (metodo.moneda === MONEDAS.USD) {
-          actualizarMetodoPago(index, 'moneda', MONEDAS.ARS);
-        }
-      });
-    }
-  }, [hayItemsCongelados]);
+  // Auto-switch payment methods to ARS when frozen items are detected - COMENTADO: Reemplazado por nuevo sistema
+  // useEffect(() => {
+  //   if (hayItemsCongelados && metodosPago.length > 0) {
+  //     // Convert all USD payment methods to ARS
+  //     metodosPago.forEach((metodo, index) => {
+  //       if (metodo.moneda === MONEDAS.USD) {
+  //         actualizarMetodoPago(index, 'moneda', MONEDAS.ARS);
+  //       }
+  //     });
+  //   }
+  // }, [hayItemsCongelados]);
 
   const [numeroManual, setNumeroManual] = useState('');
   const [numeroUltimaComanda, setNumeroUltimaComanda] = useState('');
@@ -632,23 +632,14 @@ export default function ModalTransaccionUnificado({
 
       const subtotalConDescuentosARS = subtotalBaseARS;
 
-      // Para items congelados: usar directamente totalPagado que ya está en ARS nativo
-      const totalPagadoMetodosARS = metodosPago.reduce(
-        (sum, mp) => sum + mp.montoFinal,
-        0
-      );
+      // Para items congelados: usar directamente totalPagado que ya está en ARS nativo - COMENTADO: Reemplazado por nuevo sistema
+      const totalPagadoMetodosARS = 0; // metodosPago.reduce((sum, mp) => sum + mp.montoFinal, 0);
 
-      // Para el cálculo de balance: usar monto original (sin descuentos)
-      const totalPagadoOriginalARS = metodosPago.reduce(
-        (sum, mp) => sum + mp.monto,
-        0
-      );
+      // Para el cálculo de balance: usar monto original (sin descuentos) - COMENTADO: Reemplazado por nuevo sistema
+      const totalPagadoOriginalARS = 0; // metodosPago.reduce((sum, mp) => sum + mp.monto, 0);
 
-      // Calcular descuentos por método de pago (solo para mostrar)
-      const descuentosPorMetodoARS = metodosPago.reduce(
-        (sum, metodo) => sum + metodo.descuentoAplicado,
-        0
-      );
+      // Calcular descuentos por método de pago (solo para mostrar) - COMENTADO: Reemplazado por nuevo sistema
+      const descuentosPorMetodoARS = 0; // metodosPago.reduce((sum, metodo) => sum + metodo.descuentoAplicado, 0);
 
       // Seña en ARS
       const montoSeñaARS =
@@ -725,17 +716,11 @@ export default function ModalTransaccionUnificado({
     );
     const subtotalConDescuentosItems = subtotalBase - totalDescuentos;
 
-    // El total pagado incluye los métodos de pago más la seña aplicada
-    const totalPagadoMetodos = metodosPago.reduce(
-      (sum, metodo) => sum + metodo.montoFinal,
-      0
-    );
+    // El total pagado incluye los métodos de pago más la seña aplicada - COMENTADO: Reemplazado por nuevo sistema
+    const totalPagadoMetodos = 0; // metodosPago.reduce((sum, metodo) => sum + metodo.montoFinal, 0);
     
-    // Para el cálculo de balance: usar monto original (sin descuentos)
-    const totalPagadoOriginal = metodosPago.reduce(
-      (sum, metodo) => sum + metodo.monto,
-      0
-    );
+    // Para el cálculo de balance: usar monto original (sin descuentos) - COMENTADO: Reemplazado por nuevo sistema
+    const totalPagadoOriginal = 0; // metodosPago.reduce((sum, metodo) => sum + metodo.monto, 0);
     
     // Convertir seña a USD si es necesario para el cálculo
     const señaEnUSD = monedaSeñaAplicada === 'ars' 
@@ -748,11 +733,8 @@ export default function ModalTransaccionUnificado({
     // Para validación: usar el monto original que ingresó el usuario
     const totalPagadoParaValidacion = totalPagadoOriginal;
 
-    // Calcular descuentos por método de pago (solo para mostrar)
-    const descuentosPorMetodo = metodosPago.reduce(
-      (sum, metodo) => sum + metodo.descuentoAplicado,
-      0
-    );
+    // Calcular descuentos por método de pago (solo para mostrar) - COMENTADO: Reemplazado por nuevo sistema
+    const descuentosPorMetodo = 0; // metodosPago.reduce((sum, metodo) => sum + metodo.descuentoAplicado, 0);
 
     // El total final debe ser el subtotal menos la seña
     // Los descuentos por método de pago NO deben afectar el total que el cliente debe pagar
@@ -848,51 +830,51 @@ export default function ModalTransaccionUnificado({
     });
     console.log("Pase el items", nuevosErrores);
     const totales = calcularTotalesARS();
-    const validacionMetodos = validarMetodosPago(totales.totalFinal);
-    if (!validacionMetodos.esValido && validacionMetodos.error) {
-      console.error("Error en los metodos de pago", nuevosErrores);
-      toast.error(validacionMetodos.error);
-      nuevosErrores.pagos = validacionMetodos.error;
-      return false;
-    }
+    // const validacionMetodos = validarMetodosPago(totales.totalFinal); // COMENTADO: Reemplazado por nuevo sistema
+    // if (!validacionMetodos.esValido && validacionMetodos.error) {
+    //   console.error("Error en los metodos de pago", nuevosErrores);
+    //   toast.error(validacionMetodos.error);
+    //   nuevosErrores.pagos = validacionMetodos.error;
+    //   return false;
+    // }
     console.log("Pase el validacion metodos");
     setErrores(nuevosErrores);
     return Object.keys(nuevosErrores).length === 0;
   };
 
-  // Calcular faltante cuando se termina de cargar el método de pago
-  const calcularFaltante = () => {
-    if (metodosPago.length === 0) return;
+  // Calcular faltante cuando se termina de cargar el método de pago - COMENTADO: Reemplazado por nuevo sistema
+  // const calcularFaltante = () => {
+  //   if (metodosPago.length === 0) return;
 
-    const totales = calcularTotalesARS();
-    const totalFinal = totales.totalFinal;
-    // Usar monto original (sin descuentos) para el cálculo de balance
-    const totalPagado = metodosPago.reduce((sum, mp) => sum + mp.monto, 0);
-    const faltante = totalFinal - totalPagado;
+  //   const totales = calcularTotalesARS();
+  //   const totalFinal = totales.totalFinal;
+  //   // Usar monto original (sin descuentos) para el cálculo de balance
+  //   const totalPagado = metodosPago.reduce((sum, mp) => sum + mp.monto, 0);
+  //   const faltante = totalFinal - totalPagado;
 
-    // Si hay faltante, mostrar toast informativo
-    if (faltante > 0.01) {
-      setAlreadyNotified(false);
-      // toast.info(`Faltante a pagar: ${formatAmountForARSFixed(faltante, (totales as any).esCalculoARS)}`);
-    } else if (faltante < -0.01) {
-      setAlreadyNotified(false);
-      toast.info(
-        `Excedente: ${formatAmountForARSFixed(Math.abs(faltante), (totales as any).esCalculoARS)}`
-      );
-    } else {
-      // if (!alreadyNotified) {
-      //   setAlreadyNotified(true);
-      //   toast.success('Pago completo');
-      // }
-    }
-  };
+  //   // Si hay faltante, mostrar toast informativo
+  //   if (faltante > 0.01) {
+  //     setAlreadyNotified(false);
+  //     // toast.info(`Faltante a pagar: ${formatAmountForARSFixed(faltante, (totales as any).esCalculoARS)}`);
+  //   } else if (faltante < -0.01) {
+  //     setAlreadyNotified(false);
+  //     toast.info(
+  //       `Excedente: ${formatAmountForARSFixed(Math.abs(faltante), (totales as any).esCalculoARS)}`
+  //     );
+  //   } else {
+  //     // if (!alreadyNotified) {
+  //     //   setAlreadyNotified(true);
+  //     //   toast.success('Pago completo');
+  //     // }
+  //   }
+  // };
 
-  // useEffect para calcular faltante cuando cambian los métodos de pago
-  useEffect(() => {
-    if (metodosPago.length > 0 && metodosPago.some((mp) => mp.monto > 0)) {
-      calcularFaltante();
-    }
-  }, [metodosPago, calcularFaltante]);
+  // useEffect para calcular faltante cuando cambian los métodos de pago - COMENTADO: Reemplazado por nuevo sistema
+  // useEffect(() => {
+  //   if (metodosPago.length > 0 && metodosPago.some((mp) => mp.monto > 0)) {
+  //     calcularFaltante();
+  //   }
+  // }, [metodosPago, calcularFaltante]);
 
   // Save transaction
   const handleSave = async () => {
@@ -917,16 +899,6 @@ export default function ModalTransaccionUnificado({
         estadoDeComanda: EstadoDeComandaNew.PENDIENTE,
         valorDolar: parseFloat(getTipoCambio().valorVenta.toString()),
         caja: CajaNew.CAJA_1,
-        metodosPago: metodosPago.map((m) => {
-          return {
-            tipo: m.tipo as TipoPagoNew,
-            monto: m.monto,
-            montoFinal: m.montoFinal,
-            descuentoGlobalPorcentaje: 100 - (m.montoFinal / m.monto) * 100,
-            moneda: m.moneda as MonedaNew,
-            recargoPorcentaje: 0,
-          };
-        }),
         descuentosAplicados: [],
         items: items.map((item) => {
           return {
@@ -942,14 +914,15 @@ export default function ModalTransaccionUnificado({
         }),
       };
 
-      const descuentos = nuevaComandaNew.metodosPago?.map((mp) => {
-        return {
-          nombre: NombreDescuentoNew.DESCUENTO_POR_METODO_PAGO,
-          descripcion: 'Descuento por método de pago',
-          porcentaje: mp.descuentoGlobalPorcentaje,
-          montoFijo: 0,
-        };
-      });
+      const descuentos: any[] = []; // COMENTADO: Reemplazado por nuevo sistema de pagos por item
+      // const descuentos = nuevaComandaNew.metodosPago?.map((mp) => {
+      //   return {
+      //     nombre: NombreDescuentoNew.DESCUENTO_POR_METODO_PAGO,
+      //     descripcion: 'Descuento por método de pago',
+      //     porcentaje: mp.descuentoGlobalPorcentaje,
+      //     montoFijo: 0,
+      //   };
+      // });
       const seña =
         monedaSeñaAplicada === 'ars'
           ? (clienteSeleccionado?.señasDisponibles?.ars ?? 0)
@@ -960,14 +933,16 @@ export default function ModalTransaccionUnificado({
           : 0;
 
       nuevaComandaNew.descuentosAplicados = descuentos;
-      nuevaComandaNew.precioDolar =
-        (nuevaComandaNew.metodosPago?.reduce((sum, mp) => {
-          return mp.moneda === MonedaNew.USD ? sum + mp.montoFinal! : sum;
-        }, 0) ?? 0) + señaUSD;
-      nuevaComandaNew.precioPesos =
-        (nuevaComandaNew.metodosPago?.reduce((sum, mp) => {
-          return mp.moneda === MonedaNew.ARS ? sum + mp.montoFinal! : sum;
-        }, 0) ?? 0) + seña;
+      nuevaComandaNew.precioDolar = 0; // COMENTADO: Reemplazado por nuevo sistema de pagos por item
+      nuevaComandaNew.precioPesos = 0; // COMENTADO: Reemplazado por nuevo sistema de pagos por item
+      // nuevaComandaNew.precioDolar =
+      //   (nuevaComandaNew.metodosPago?.reduce((sum, mp) => {
+      //     return mp.moneda === MonedaNew.USD ? sum + mp.montoFinal! : sum;
+      //   }, 0) ?? 0) + señaUSD;
+      // nuevaComandaNew.precioPesos =
+      //   (nuevaComandaNew.metodosPago?.reduce((sum, mp) => {
+      //     return mp.moneda === MonedaNew.ARS ? sum + mp.montoFinal! : sum;
+      //   }, 0) ?? 0) + seña;
       nuevaComandaNew.usuarioConsumePrepago = seña > 0 || señaUSD > 0;
 
       if (!comandaId) {
@@ -1032,7 +1007,7 @@ export default function ModalTransaccionUnificado({
       monedaSeñaAplicada: null,
     });
 
-    resetMetodosPago();
+    // resetMetodosPago(); // COMENTADO: Reemplazado por nuevo sistema
   };
 
   useEffect(() => {
@@ -1071,22 +1046,22 @@ export default function ModalTransaccionUnificado({
           console.log('itemsConvertidos', itemsConvertidos);
           setItems(itemsConvertidos);
 
-          // Cargar métodos de pago
-          if (comanda.metodosPago && comanda.metodosPago.length > 0) {
-            resetMetodosPago();
-            console.log('metodosPago', comanda.metodosPago);
-            comanda.metodosPago.forEach((metodo, index) => {
-              if (index > 0) {
-                agregarMetodoPagoBase();
-              }
-              const metodoIndex = index;
-              if (metodo.tipo)
-                actualizarMetodoPago(metodoIndex, 'tipo', metodo.tipo);
-              if (metodo.moneda)
-                actualizarMetodoPago(metodoIndex, 'moneda', metodo.moneda);
-              actualizarMetodoPago(metodoIndex, 'monto', metodo.monto || 0);
-            });
-          }
+          // Cargar métodos de pago - COMENTADO: Reemplazado por nuevo sistema
+          // if (comanda.metodosPago && comanda.metodosPago.length > 0) {
+          //   resetMetodosPago();
+          //   console.log('metodosPago', comanda.metodosPago);
+          //   comanda.metodosPago.forEach((metodo, index) => {
+          //     if (index > 0) {
+          //       agregarMetodoPagoBase();
+          //     }
+          //     const metodoIndex = index;
+          //     if (metodo.tipo)
+          //       actualizarMetodoPago(metodoIndex, 'tipo', metodo.tipo);
+          //     if (metodo.moneda)
+          //       actualizarMetodoPago(metodoIndex, 'moneda', metodo.moneda);
+          //     actualizarMetodoPago(metodoIndex, 'monto', metodo.monto || 0);
+          //   });
+          // }
 
           // Cargar descuentos y señas
           setDescuentoGlobalPorcentaje(
@@ -1816,22 +1791,20 @@ export default function ModalTransaccionUnificado({
                 </div>
               )}
 
-              {/* Métodos de Pago */}
-              {tipo === 'ingreso' && (
+              {/* Métodos de Pago - COMENTADO: Reemplazado por nuevo sistema de pagos por item */}
+              {/* {tipo === 'ingreso' && (
                 <div className="space-y-4">
                   <div className="flex items-center justify-between">
                     <h3 className="text-lg font-semibold text-gray-900">
                       Métodos de Pago
                     </h3>
                     <div className="flex gap-2">
-                      {/* Botones de selección rápida para métodos de pago */}
                       <Button
                         type="button"
                         variant="outline"
                         size="sm"
                         onClick={() => {
                           agregarMetodoPago();
-                          // Actualizar el último método agregado con efectivo
                           const ultimoIndex = metodosPago.length;
                           actualizarMetodoPago(ultimoIndex, 'tipo', 'EFECTIVO');
                         }}
@@ -1898,7 +1871,6 @@ export default function ModalTransaccionUnificado({
                     </div>
                   </div>
 
-                  {/* Sección de métodos de pago - Siempre visible */}
                   <MetodosPagoSection
                     metodosPago={metodosPago}
                     totalPagado={totales.totalPagadoConDescuentos}
@@ -1912,7 +1884,7 @@ export default function ModalTransaccionUnificado({
                     monedaSeñaAplicada={monedaSeñaAplicada}
                   />
                 </div>
-              )}
+              )} */}
 
               {errores.pagos && (
                 <div className="mt-2">

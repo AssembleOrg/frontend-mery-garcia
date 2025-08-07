@@ -239,62 +239,81 @@ export default function TransactionsTableTanStack({
       enableSorting: false,
       enableHiding: serviciosHidden,
     },
-    {
-      id: 'subtotal',
-      enableHiding: true,
-      accessorKey: 'subtotal',
-      header: 'Subtotal',
-      cell: ({ row }) => {
-        const subtotalUSD = row.original.metodosPago.reduce((acc, item) => item.moneda === 'USD' ? acc + item.monto! : acc, 0);
-        const subtotalARS = row.original.metodosPago.reduce((acc, item) => item.moneda === 'ARS' ? acc + item.monto! : acc, 0);
-        const subtotalARSToUSD = subtotalARS / row.original.valorDolar;
-        const subtotal = subtotalUSD + subtotalARSToUSD;
-        const isValidated = row.original.estadoDeComanda === EstadoDeComandaNew.VALIDADO;
-        const isManualMovement = row.original.tipoDeComanda === TipoDeComandaNew.EGRESO  ;
+    // {
+    //   id: 'subtotal',
+    //   enableHiding: true,
+    //   accessorKey: 'subtotal',
+    //   header: 'Subtotal',
+    //   cell: ({ row }) => {
+    //     // Calculate subtotal from items' payment methods
+    //     const subtotalUSD = row.original.items.reduce((acc, item) => {
+    //       const usd = item.productoServicio?.
+    //       return 
+    //     }, 0);
+
+    //     const subtotalARS = row.original.items.reduce((acc, item) => {
+    //       if(item.metodosPago && item.metodosPago.every(mp => mp.moneda === 'ARS')) {
+    //         return acc + (item.subtotal ?? 0);
+    //       }
+    //       return acc;
+    //     }, 0);
+
+    //     const subtotalARSToUSD = subtotalARS / row.original.valorDolar;
+    //     const subtotal = subtotalUSD + subtotalARSToUSD;
+    //     const isValidated = row.original.estadoDeComanda === EstadoDeComandaNew.VALIDADO;
+    //     const isManualMovement = row.original.tipoDeComanda === TipoDeComandaNew.EGRESO;
         
-        // if (isManualMovement) {
-        //   // Para movimientos manuales, mostrar solo el valor simple
-        //   const moneda = row.original.precioDolar || 'USD';
-        //   return (
-        //     <div className="text-right">
-        //       <div
-        //         className={`font-medium ${isValidated ? 'text-gray-500' : 'text-green-600'}`}
-        //       >
-        //         {moneda}: ${subtotal.toFixed(2)}
-        //       </div>
-        //     </div>
-        //   );
-        // }
-        
-        const formatted = formatWithExchangeRate(subtotal, row.original);
-        return (
-          <div className="text-right">
-            <div
-              className={`font-medium ${isValidated ? 'text-gray-500' : 'text-green-600'}`}
-            >
-              {formatted.usd}
-            </div>
-            {formatted.ars && (
-              <div
-                className={`text-xs ${isValidated ? 'text-gray-400' : 'text-muted-foreground'}`}
-              >
-                {formatted.ars}
-              </div>
-            )}
-          </div>
-        );
-      },
-    },
+    //     const formatted = formatWithExchangeRate(subtotal, row.original);
+    //     return (
+    //       <div className="text-right">
+    //         <div
+    //           className={`font-medium ${isValidated ? 'text-gray-500' : 'text-green-600'}`}
+    //         >
+    //           {formatted.usd}
+    //         </div>
+    //         {formatted.ars && (
+    //           <div
+    //             className={`text-xs ${isValidated ? 'text-gray-400' : 'text-muted-foreground'}`}
+    //           >
+    //             {formatted.ars}
+    //           </div>
+    //         )}
+    //       </div>
+    //     );
+    //   },
+    // },
     {
       accessorKey: 'totalFinal',
       header: 'Total',
       cell: ({ row }) => {
-        const totalUSD = row.original.metodosPago.reduce((acc, item) => item.moneda === 'USD' ? acc + item.montoFinal! : acc, 0);
-        const totalARS = row.original.metodosPago.reduce((acc, item) => item.moneda === 'ARS' ? acc + item.montoFinal! : acc, 0);
+        const totalUSD = row.original.items?.reduce((totalUSD, item) => {
+          const itemUSD = item.metodosPago?.reduce((acc, paymentMethod) => {
+            if (paymentMethod.moneda === 'USD') {
+              return acc + (paymentMethod.montoFinal ?? 0);
+            }
+            return acc;
+          }, 0) ?? 0;
+          return totalUSD + itemUSD;
+        }, 0) ?? 0;
+
+        const totalARS = row.original.items?.reduce((totalARS, item) => {
+          const itemARS = item.metodosPago?.reduce((acc, paymentMethod) => {
+            if (paymentMethod.moneda === 'ARS' && row.original.items.some(i => i.metodosPago?.some(mp => mp.moneda === 'USD'))) {
+              return acc + (paymentMethod.montoFinal ?? 0);
+            }
+            if (paymentMethod.moneda === 'ARS') {
+              return acc + (paymentMethod.monto ?? 0);
+            }
+            return acc;
+          }, 0) ?? 0;
+          return totalARS + itemARS;
+        }, 0) ?? 0;
+
+        console.log(totalUSD, totalARS, row.original.items);
+
         const totalARSToUSD = totalARS / row.original.valorDolar;
         const total = totalUSD + totalARSToUSD;
         const isValidated = row.original.estadoDeComanda === EstadoDeComandaNew.VALIDADO;
-        const isManualMovement = row.original.tipoDeComanda === TipoDeComandaNew.EGRESO;
         
         if(row.original.tipoDeComanda === TipoDeComandaNew.EGRESO) {
           const totalUsdEgreso = row.original.egresos?.reduce((acc, item) => {
@@ -321,13 +340,13 @@ export default function TransactionsTableTanStack({
         return (
           <div className="text-right">
             <div
-              className={`font-semibold ${isValidated ? 'text-gray-500' : 'text-green-600'}`}
+              className={`font-semibold ${0 ? 'text-gray-500' : 'text-green-600'}`}
             >
               {formatted.usd}
             </div>
             {formatted.ars && (
               <div
-                className={`text-xs ${isValidated ? 'text-gray-400' : 'text-muted-foreground'}`}
+                className={`text-xs ${0 ? 'text-gray-400' : 'text-muted-foreground'}`}
               >
                 {formatted.ars}
               </div>

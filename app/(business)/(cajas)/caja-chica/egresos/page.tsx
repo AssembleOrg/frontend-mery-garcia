@@ -33,6 +33,7 @@ import ModalCambiarEstado from '@/components/validacion/ModalCambiarEstado';
 import ModalEditarTransaccion from '@/components/cajas/ModalEditarTransaccion';
 import useComandaStore from '@/features/comandas/store/comandaStore';
 import { ComandaNew, EstadoDeComandaNew } from '@/services/unidadNegocio.service';
+import ModalEditarTransaccionRefactored from '@/components/cajas/ModalEditarTransaccionRefactored';
 
 const breadcrumbItems = [
   { label: 'Inicio', href: '/' },
@@ -501,14 +502,23 @@ export default function EgresosPage() {
           }}
         />
 
-        <ModalEditarTransaccion
+        {/* <ModalEditarTransaccionRefactored
           isOpen={showEditModal}
           onClose={() => {
             setShowEditModal(false);
             setSelectedTransactionId('');
           }}
           comandaId={selectedTransactionId}
-        />
+        /> */}
+
+          <ModalEditarTransaccion
+            isOpen={showEditModal}
+            onClose={() => {
+              setShowEditModal(false);
+              setSelectedTransactionId('');
+            }}
+            comandaId={selectedTransactionId}
+          />
 
         {/* ✅ ModalVerDetalles para VER detalles de transacciones */}
         <ModalVerDetalles
