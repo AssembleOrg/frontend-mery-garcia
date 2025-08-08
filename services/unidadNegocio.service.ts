@@ -42,13 +42,19 @@ export interface FiltrarComandasNew {
   estadoDeComanda?: EstadoDeComandaNew;
 
   /** UUID del cliente */
-  clienteId?: string;
+  clienteNombre?: string;
+
+  /** UUID de la unidad de negocio */
+  unidadNegocioId?: string;
+
+  /** UUID del servicio */
+  servicioId?: string;
 
   /** UUID del trabajador asignado */
-  trabajadorId?: string;
+  trabajadorNombre?: string;
 
   /** UUID del personal creador */
-  creadoPorId?: string;
+  creadoPorNombre?: string;
 
   /** ISO-date de inicio (inclusive) */
   fechaDesde?: string;

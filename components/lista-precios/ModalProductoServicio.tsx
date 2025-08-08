@@ -219,7 +219,7 @@ export default function ModalProductoServicio({
         const productoServicio: ProductoServicioUpdateNew = {
           nombre,
           descripcion,
-          precio,
+          precio: Number(precio),
           tipo,
           unidadNegocioId: unidadNegocioC?.id!,
           activo,
@@ -242,7 +242,7 @@ export default function ModalProductoServicio({
         const productoServicio: ProductoServicioCreateNew = {
           nombre,
           descripcion,
-          precio,
+          precio: Number(precio),
           tipo: tipo === TipoProductoServicioNew.SERVICIO ? TipoProductoServicioNew.SERVICIO : TipoProductoServicioNew.PRODUCTO,
           unidadNegocioId: unidadNegocioC?.id!,
           activo,

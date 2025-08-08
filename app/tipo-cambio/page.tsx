@@ -156,6 +156,24 @@ export default function TipoCambioPage() {
     loadApiData(true);
   };
 
+  const handleRefreshApi = () => {
+    getCotizacion().then((cotizacion) => {
+      if(cotizacion) {
+        setApiRate(cotizacion);
+        actualizar({
+          valorCompra: cotizacion.compra,
+          valorVenta: cotizacion.venta,
+          fecha: cotizacion.fechaActualizacion ? new Date(cotizacion.fechaActualizacion) : new Date(),
+          fuente: cotizacion.casa,
+          modoManual: false,
+        });
+        toast.success('Cotización actualizada correctamente');
+      } else {
+        toast.error('Error al cotizar el dólar');
+      }
+    });
+  };
+
   const handleSave = async () => {
     const valueNum = parseFloat(inputValue);
     if (isNaN(valueNum) || valueNum <= 0) {
@@ -218,7 +236,7 @@ export default function TipoCambioPage() {
                 Cotizaciones
               </h2>
               <Button
-                onClick={handleRefresh}
+                onClick={handleRefreshApi}
                 disabled={!canRefresh || refreshing}
                 variant="outline"
                 size="sm"
@@ -343,14 +361,14 @@ export default function TipoCambioPage() {
                         className="flex items-center justify-between border-b pb-2 text-sm last:border-b-0"
                       >
                         <span className="text-gray-600">
-                          {new Date(registro.fechaActualizacion || new Date()).toLocaleString(
-                            'es-ES'
-                          )}
+                          {(() => {
+                            return registro.fechaCreacion?.split(",")[0]
+                          })()}
                         </span>
                         <div className="flex items-center gap-2">
                           <span className="font-medium">
                             Valor operativo: $
-                            {registro.venta.toLocaleString()}
+                            {parseFloat(registro.venta.toString()).toLocaleString()}
                           </span>
                           <span className="text-xs text-gray-500">
                             ({registro.casa})

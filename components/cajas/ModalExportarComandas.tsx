@@ -97,9 +97,11 @@ export default function ModalExportarComandas({
         'Creado por',
       ];
 
-      const csvContent = [
-        headers.join(','),
-        ...comandasParaExportar.map((comanda) => {
+      // Calcular totales generales
+      let totalGeneralUSD = 0;
+      let totalGeneralARS = 0;
+
+      const filasDatos = comandasParaExportar.map((comanda) => {
           const personal = comanda.items
             .filter((item) => item.trabajador)
             .map((item) => item.trabajador?.nombre)
@@ -117,16 +119,38 @@ export default function ModalExportarComandas({
 
           const servicios = comanda.items.map((item) => item.nombre).join('; ');
 
-          const totalUSD = comanda.metodosPago
-            .filter((mp) => mp.moneda === 'USD')
-            .reduce((sum, mp) => sum + (mp.montoFinal || 0), 0);
+          // Calcular totales para esta comanda específica
+          const comandaHasUSD = comanda.items?.some((item) =>
+            item.metodosPago?.some((mp) => mp.moneda === 'USD')
+          ) ?? false;
 
-          const totalARS = comanda.metodosPago
-            .filter((mp) => mp.moneda === 'ARS')
-            .reduce((sum, mp) => sum + (mp.montoFinal || 0), 0);
+          let totalUSD = 0;
+          let totalARS = 0;
 
-                    const total = `USD: $${totalUSD.toFixed(2)} | ARS: $${totalARS.toFixed(2)}`;
-          
+          comanda.items?.forEach((item) => {
+            item.metodosPago?.forEach((mp) => {
+              switch (mp.moneda) {
+                case 'USD':
+                  totalUSD += mp.montoFinal ?? 0;
+                  break;
+
+                case 'ARS':
+                  // Si la comanda tiene USD, priorizamos montoFinal; si no, monto.
+                  const montoARS = comandaHasUSD
+                    ? (mp.montoFinal ?? 0)
+                    : (mp.monto ?? 0);
+                  totalARS += montoARS;
+                  break;
+              }
+            });
+          });
+
+          const total = `USD: $${totalUSD.toFixed(2)} | ARS: $${totalARS.toFixed(2)}`;
+
+          // Sumar a los totales generales
+          totalGeneralUSD += totalUSD;
+          totalGeneralARS += totalARS;
+
           return [
             formatDate(new Date(comanda.createdAt)),
             comanda.numero,
@@ -142,7 +166,27 @@ export default function ModalExportarComandas({
           ]
             .map((field) => `"${field}"`)
             .join(',');
-        }),
+        });
+
+      // Agregar fila de totales
+      const filaTotales = [
+        '', // Fecha vacía
+        '', // Número vacío
+        '', // Cliente vacío
+        '', // Personal vacío
+        '', // Unidades vacías
+        'TOTALES', // Servicios = "TOTALES"
+        `USD: $${totalGeneralUSD.toFixed(2)} | ARS: $${totalGeneralARS.toFixed(2)}`, // Total general
+        '', // Dólar vacío
+        '', // Caja vacía
+        '', // Estado vacío
+        '', // Creado por vacío
+      ].map((field) => `"${field}"`).join(',');
+
+      const csvContent = [
+        headers.join(','),
+        ...filasDatos,
+        filaTotales,
       ].join('\n');
 
       const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
@@ -177,6 +221,10 @@ export default function ModalExportarComandas({
     try {
       const XLSX = await import('xlsx');
 
+      // Calcular totales generales para Excel
+      let totalGeneralUSD = 0;
+      let totalGeneralARS = 0;
+
       const data = comandasParaExportar.map((comanda) => {
         const personal = comanda.items
           .filter((item) => item.trabajador)
@@ -195,28 +243,66 @@ export default function ModalExportarComandas({
 
         const servicios = comanda.items.map((item) => item.nombre).join('; ');
 
-        const totalUSD = comanda.metodosPago
-          .filter((mp) => mp.moneda === 'USD')
-          .reduce((sum, mp) => sum + (mp.montoFinal || 0), 0);
+        // Calcular totales para esta comanda específica
+        const comandaHasUSD = comanda.items?.some((item) =>
+          item.metodosPago?.some((mp) => mp.moneda === 'USD')
+        ) ?? false;
 
-        const totalARS = comanda.metodosPago
-          .filter((mp) => mp.moneda === 'ARS')
-          .reduce((sum, mp) => sum + (mp.montoFinal || 0), 0);
+        let totalUSD = 0;
+        let totalARS = 0;
 
-                  return {
-            Fecha: formatDate(new Date(comanda.createdAt)),
-            Número: comanda.numero,
-            Cliente: comanda.cliente?.nombre || 'Sin cliente',
-            Personal: personal || 'Sin asignar',
-            'Unidades de Negocio': unidadesNegocio || 'Sin unidad',
-            Servicios: servicios || 'Sin servicios',
-            'Total USD': totalUSD.toFixed(2),
-            'Total ARS': totalARS.toFixed(2),
-            'Dólar': comanda.valorDolar?.toString() || '0',
-            'Caja': comanda.caja || 'Sin caja',
-            Estado: comanda.estadoDeComanda,
-            'Creado por': comanda.creadoPor?.nombre || 'Sin creador',
-          };
+        comanda.items?.forEach((item) => {
+          item.metodosPago?.forEach((mp) => {
+            switch (mp.moneda) {
+              case 'USD':
+                totalUSD += mp.montoFinal ?? 0;
+                break;
+
+              case 'ARS':
+                // Si la comanda tiene USD, priorizamos montoFinal; si no, monto.
+                const montoARS = comandaHasUSD
+                  ? (mp.montoFinal ?? 0)
+                  : (mp.monto ?? 0);
+                totalARS += montoARS;
+                break;
+            }
+          });
+        });
+
+        // Sumar a los totales generales
+        totalGeneralUSD += totalUSD;
+        totalGeneralARS += totalARS;
+
+        return {
+          Fecha: formatDate(new Date(comanda.createdAt)),
+          Número: comanda.numero,
+          Cliente: comanda.cliente?.nombre || 'Sin cliente',
+          Personal: personal || 'Sin asignar',
+          'Unidades de Negocio': unidadesNegocio || 'Sin unidad',
+          Servicios: servicios || 'Sin servicios',
+          'Total USD': totalUSD.toFixed(2),
+          'Total ARS': totalARS.toFixed(2),
+          Dólar: comanda.valorDolar?.toString() || '0',
+          Caja: comanda.caja || 'Sin caja',
+          Estado: comanda.estadoDeComanda,
+          'Creado por': comanda.creadoPor?.nombre || 'Sin creador',
+        };
+      });
+
+      // Agregar fila de totales para Excel
+      data.push({
+        Fecha: '',
+        Número: '',
+        Cliente: '',
+        Personal: '',
+        'Unidades de Negocio': '',
+        Servicios: 'TOTALES',
+        'Total USD': totalGeneralUSD.toFixed(2),
+        'Total ARS': totalGeneralARS.toFixed(2),
+        Dólar: '',
+        Caja: '' as any, // Evitar error de tipo
+        Estado: '' as any, // Evitar error de tipo
+        'Creado por': '',
       });
 
       const ws = XLSX.utils.json_to_sheet(data);
@@ -249,14 +335,18 @@ export default function ModalExportarComandas({
       const jsPDF = (await import('jspdf')).default;
       const autoTable = (await import('jspdf-autotable')).default;
 
-            const doc = new jsPDF('landscape'); // Orientación apaisada
-      
+      const doc = new jsPDF('landscape'); // Orientación apaisada
+
       // Título
       doc.setFontSize(18);
       doc.text('Reporte de Comandas', 14, 22);
       doc.setFontSize(12);
       doc.text(`Fecha de exportación: ${formatDate(new Date())}`, 14, 32);
       doc.text(`Total de comandas: ${comandasParaExportar.length}`, 14, 42);
+
+      // Calcular totales generales para PDF
+      let totalGeneralUSD = 0;
+      let totalGeneralARS = 0;
 
       // Datos de la tabla
       const tableData = comandasParaExportar.map((comanda) => {
@@ -277,13 +367,35 @@ export default function ModalExportarComandas({
 
         const servicios = comanda.items.map((item) => item.nombre).join('; ');
 
-        const totalUSD = comanda.metodosPago
-          .filter((mp) => mp.moneda === 'USD')
-          .reduce((sum, mp) => sum + (mp.montoFinal || 0), 0);
+        // Calcular totales para esta comanda específica
+        const comandaHasUSD = comanda.items?.some((item) =>
+          item.metodosPago?.some((mp) => mp.moneda === 'USD')
+        ) ?? false;
 
-        const totalARS = comanda.metodosPago
-          .filter((mp) => mp.moneda === 'ARS')
-          .reduce((sum, mp) => sum + (mp.montoFinal || 0), 0);
+        let totalUSD = 0;
+        let totalARS = 0;
+
+        comanda.items?.forEach((item) => {
+          item.metodosPago?.forEach((mp) => {
+            switch (mp.moneda) {
+              case 'USD':
+                totalUSD += mp.montoFinal ?? 0;
+                break;
+
+              case 'ARS':
+                // Si la comanda tiene USD, priorizamos montoFinal; si no, monto.
+                const montoARS = comandaHasUSD
+                  ? (mp.montoFinal ?? 0)
+                  : (mp.monto ?? 0);
+                totalARS += montoARS;
+                break;
+            }
+          });
+        });
+
+        // Sumar a los totales generales
+        totalGeneralUSD += totalUSD;
+        totalGeneralARS += totalARS;
 
         return [
           formatDate(new Date(comanda.createdAt)),
@@ -300,37 +412,52 @@ export default function ModalExportarComandas({
         ];
       });
 
-              autoTable(doc, {
-          head: [
-            [
-              'Fecha',
-              'Número',
-              'Cliente',
-              'Personal',
-              'Unidades',
-              'Servicios',
-              'Total',
-              'Dólar',
-              'Caja',
-              'Estado',
-              'Creado por',
-            ],
+      // Agregar fila de totales para PDF
+      tableData.push([
+        '', // Fecha vacía
+        '', // Número vacío
+        '', // Cliente vacío
+        '', // Personal vacío
+        '', // Unidades vacías
+        'TOTALES', // Servicios = "TOTALES"
+        `USD: $${totalGeneralUSD.toFixed(2)} | ARS: $${totalGeneralARS.toFixed(2)}`, // Total general
+        '', // Dólar vacío
+        '', // Caja vacía
+        '', // Estado vacío
+        '', // Creado por vacío
+      ]);
+
+      autoTable(doc, {
+        head: [
+          [
+            'Fecha',
+            'Número',
+            'Cliente',
+            'Personal',
+            'Unidades',
+            'Servicios',
+            'Total',
+            'Dólar',
+            'Caja',
+            'Estado',
+            'Creado por',
           ],
-          body: tableData,
-          startY: 50,
-          styles: {
-            fontSize: 8,
-            cellPadding: 2,
-          },
-          headStyles: {
-            fillColor: [255, 255, 255] as [number, number, number], // Fondo blanco para headers
-            textColor: [74, 53, 64] as [number, number, number],
-            fontStyle: 'bold',
-          },
-          bodyStyles: {
-            fillColor: [249, 187, 196] as [number, number, number], // Rosa claro para todas las filas
-          },
-        });
+        ],
+        body: tableData,
+        startY: 50,
+        styles: {
+          fontSize: 8,
+          cellPadding: 2,
+        },
+        headStyles: {
+          fillColor: [255, 255, 255] as [number, number, number], // Fondo blanco para headers
+          textColor: [74, 53, 64] as [number, number, number],
+          fontStyle: 'bold',
+        },
+        bodyStyles: {
+          fillColor: [249, 187, 196] as [number, number, number], // Rosa claro para todas las filas
+        },
+      });
 
       doc.save(`comandas_${new Date().toISOString().split('T')[0]}.pdf`);
 
@@ -481,4 +608,3 @@ export default function ModalExportarComandas({
     </>
   );
 }
- 

@@ -38,9 +38,11 @@ import {
   UnidadNegocioNew,
   TipoDeComandaNew,
   ComandaNew,
+  ProductoServicioNew,
 } from '@/services/unidadNegocio.service';
 import useComandaStore from '@/features/comandas/store/comandaStore';
 import ModalExportarComandas from '@/components/cajas/ModalExportarComandas';
+import { useProductosServicios } from '@/features/productos-servicios/hooks/useProductosServiciosHook';
 import { Input } from '@/components/ui/input';
 import {
   Select,
@@ -61,6 +63,8 @@ import {
   RefreshCw,
   Download,
   CheckSquare,
+  Package,
+  Building2,
 } from 'lucide-react';
 import ModalTransaccionUnificadoRefactored from '@/components/cajas/ModalTransaccionUnificadoRefactored';
 import ModalEditarTransaccionRefactored from '@/components/cajas/ModalEditarTransaccionRefactored';
@@ -79,6 +83,8 @@ export default function IngresosPage() {
   const [clienteFilter, setClienteFilter] = useState('');
   const [trabajadorFilter, setTrabajadorFilter] = useState('');
   const [creadoPorFilter, setCreadoPorFilter] = useState('');
+  const [servicioFilter, setServicioFilter] = useState('todos');
+  const [unidadNegocioFilter, setUnidadNegocioFilter] = useState('todas');
   const [orderBy, setOrderBy] = useState<
     'createdAt' | 'numero' | 'tipoDeComanda' | 'estadoDeComanda' | 'creadoPor'
   >('createdAt');
@@ -87,6 +93,9 @@ export default function IngresosPage() {
 
   // Get traspasos for residual display
   const { traspasos } = useRecordsStore();
+
+  // Get servicios and unidades de negocio for filters
+  const { productosServicios, unidadesNegocio, isLoading: isLoadingFilters } = useProductosServicios();
 
   // Find last transfer with residual
   const ultimoResidual = traspasos
@@ -137,9 +146,11 @@ export default function IngresosPage() {
       order: orderDirection,
       search: searchTerm || undefined,
       estadoDeComanda: estadoFilter === 'todos' ? undefined : estadoFilter,
-      clienteId: clienteFilter || undefined,
-      trabajadorId: trabajadorFilter || undefined,
-      creadoPorId: creadoPorFilter || undefined,
+      clienteNombre: clienteFilter ?? undefined,
+      trabajadorNombre: trabajadorFilter ?? undefined,
+      creadoPorNombre: creadoPorFilter ?? undefined,
+      servicioId: servicioFilter !== 'todos' ? servicioFilter : undefined,
+      unidadNegocioId: unidadNegocioFilter !== 'todas' ? unidadNegocioFilter : undefined,
       incluirTraspasadas,
       ...(fechaDesde && { fechaDesde }),
       ...(fechaHasta && { fechaHasta }),
@@ -153,6 +164,8 @@ export default function IngresosPage() {
     clienteFilter,
     trabajadorFilter,
     creadoPorFilter,
+    servicioFilter,
+    unidadNegocioFilter,
     orderBy,
     orderDirection,
     incluirTraspasadas,
@@ -228,6 +241,8 @@ export default function IngresosPage() {
     setClienteFilter('');
     setTrabajadorFilter('');
     setCreadoPorFilter('');
+    setUnidadNegocioFilter('todas');
+    setServicioFilter('todos');
     setDateRange(undefined);
     setOrderBy('createdAt');
     setOrderDirection('DESC');
@@ -496,6 +511,61 @@ export default function IngresosPage() {
                         />
                       </div>
 
+                      {/* Unidad de Negocio */}
+                      <div className="space-y-2">
+                        <Label className="flex items-center gap-2 text-sm font-medium text-[#4a3540]">
+                          <Building2 className="h-4 w-4" />
+                          Unidad de Negocio
+                        </Label>
+                        <Select
+                          value={unidadNegocioFilter}
+                          onValueChange={(value) => {
+                            setUnidadNegocioFilter(value);
+                            // Reset servicio filter when unidad changes
+                            setServicioFilter('todos');
+                          }}
+                        >
+                          <SelectTrigger className="border-[#f9bbc4]/30 focus:border-[#f9bbc4]">
+                            <SelectValue placeholder="Todas las unidades" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="todas">Todas las unidades</SelectItem>
+                            {unidadesNegocio.map((unidad) => (
+                              <SelectItem key={unidad.id} value={unidad.id}>
+                                {unidad.nombre}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+
+                      {/* Servicio */}
+                      <div className="space-y-2">
+                        <Label className="flex items-center gap-2 text-sm font-medium text-[#4a3540]">
+                          <Package className="h-4 w-4" />
+                          Servicio
+                        </Label>
+                        <Select
+                          value={servicioFilter}
+                          onValueChange={(value) => setServicioFilter(value)}
+                          disabled={unidadNegocioFilter === 'todas'}
+                        >
+                          <SelectTrigger className={`border-[#f9bbc4]/30 focus:border-[#f9bbc4] ${unidadNegocioFilter === 'todas' ? 'bg-gray-100 cursor-not-allowed opacity-50' : ''}`}>
+                            <SelectValue placeholder={unidadNegocioFilter === 'todas' ? "Seleccione una unidad primero" : "Todos los servicios"} />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="todos">Todos los servicios</SelectItem>
+                            {productosServicios
+                              .filter(servicio => unidadNegocioFilter === 'todas' || servicio.unidadNegocio?.id === unidadNegocioFilter)
+                              .map((servicio) => (
+                                <SelectItem key={servicio.id} value={servicio.id}>
+                                  {servicio.nombre}
+                                </SelectItem>
+                              ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+
                       {/* Ordenar por */}
                       <div className="space-y-2">
                         <Label className="flex items-center gap-2 text-sm font-medium text-[#4a3540]">
@@ -593,6 +663,8 @@ export default function IngresosPage() {
                       clienteFilter ||
                       trabajadorFilter ||
                       creadoPorFilter ||
+                      (servicioFilter && servicioFilter !== 'todos') ||
+                      (unidadNegocioFilter && unidadNegocioFilter !== 'todas') ||
                       dateRange ||
                       incluirTraspasadas) && (
                       <div className="mt-4 rounded-lg border border-[#f9bbc4]/20 bg-gradient-to-r from-[#f9bbc4]/10 to-[#e292a3]/10 p-3">
@@ -626,6 +698,16 @@ export default function IngresosPage() {
                           {creadoPorFilter && (
                             <span className="rounded-full bg-[#f9bbc4]/20 px-2 py-1">
                               Creado por: "{creadoPorFilter}"
+                            </span>
+                          )}
+                          {servicioFilter && servicioFilter !== 'todos' && (
+                            <span className="rounded-full bg-[#f9bbc4]/20 px-2 py-1">
+                              Servicio: {productosServicios.find(s => s.id === servicioFilter)?.nombre || servicioFilter}
+                            </span>
+                          )}
+                          {unidadNegocioFilter && unidadNegocioFilter !== 'todas' && (
+                            <span className="rounded-full bg-[#f9bbc4]/20 px-2 py-1">
+                              Unidad: {unidadesNegocio.find(u => u.id === unidadNegocioFilter)?.nombre || unidadNegocioFilter}
                             </span>
                           )}
                           {dateRange && (
@@ -673,6 +755,7 @@ export default function IngresosPage() {
                         onView={onViewTransaction}
                         onChangeStatus={onChangeStatus}
                         hiddenColumns={hiddenColumns}
+                        disableEdit={unidadNegocioFilter !== 'todas'}
                       />
                     )}
 

@@ -21,6 +21,7 @@ import {
   Trash2,
   Lock,
   CheckCircle,
+  TicketCheck,
 } from 'lucide-react';
 import { ESTADO_LABELS, ESTADO_COLORS } from '@/lib/constants';
 import { ColumnDef } from '@tanstack/react-table';
@@ -35,6 +36,7 @@ interface Props {
   onView: (id: string) => void;
   onChangeStatus?: (id: string) => void;
   hiddenColumns?: string[];
+  disableEdit?: boolean;
 }
 
 export default function TransactionsTableTanStack({
@@ -44,6 +46,7 @@ export default function TransactionsTableTanStack({
   onView,
   onChangeStatus,
   hiddenColumns = [],
+  disableEdit = false,
 }: Props) {
   const { formatARS: formatARSCurrent, formatUSD: formatUSDCurrent, formatARSFromNative } =
     useCurrencyConverter();
@@ -470,6 +473,7 @@ export default function TransactionsTableTanStack({
     {
       id: 'acciones',
       header: '',
+      enableHiding: true,
       cell: ({ row }) => {
         const id = row.original.id;
         const isValidated = row.original.estadoDeComanda === EstadoDeComandaNew.VALIDADO;
@@ -495,17 +499,20 @@ export default function TransactionsTableTanStack({
 
               <DropdownMenuItem 
                 onClick={() => onEdit(id)} 
-                disabled = {row.original.estadoDeComanda !== EstadoDeComandaNew.PENDIENTE}
+                disabled={disableEdit || row.original.estadoDeComanda !== EstadoDeComandaNew.PENDIENTE}
                 className="cursor-pointer"
               >
-                <Edit className="mr-2 h-4 w-4" /> Editar 
+                {disableEdit && <Lock className="mr-2 h-4 w-4" /> }
+                {disableEdit && <span className=" text-gray-500"> Editar</span>}
+                {!disableEdit && <Edit className="mr-2 h-4 w-4" />}
+                {!disableEdit && 'Editar'}
               </DropdownMenuItem>
 
               {!isValidated && (
                 <>
                   {onChangeStatus && (
                     <DropdownMenuItem onClick={() => onChangeStatus(id)}>
-                      <Lock className="mr-2 h-4 w-4" /> Cambiar estado
+                      <TicketCheck className="mr-2 h-4 w-4" /> Cambiar estado
                     </DropdownMenuItem>
                   )}
                   <DropdownMenuItem
