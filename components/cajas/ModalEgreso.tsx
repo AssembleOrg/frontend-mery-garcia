@@ -235,7 +235,6 @@ export default function ModalEgreso({
       nuevosErrores.itemsEgreso = 'Debe agregar al menos un item';
       toast.error('Debe agregar al menos un item');
     }
-    console.log(nuevosErrores);
     setErrores(nuevosErrores);
     return Object.keys(nuevosErrores).length === 0;
   };

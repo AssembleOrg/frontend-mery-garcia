@@ -455,7 +455,6 @@ export const useClientesStore = create<ClientesState>()(
         migrate: (persistedState: any, version: number) => {
           // Si la versión es anterior, resetear completamente el store
           if (version < 2) {
-            console.log('🔄 Invalidando cache de clientes por actualización a v2');
             return estadoInicial;
           }
           return persistedState;

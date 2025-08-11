@@ -81,15 +81,6 @@ export default function ClientesTab() {
   const [modalBusquedaAbierto, setModalBusquedaAbierto] = useState(false);
   const [busquedaTemporal, setBusquedaTemporal] = useState('');
 
-
-
-  // Los datos se cargan desde AppInitializer, no necesitamos cargar aquí
-  // useEffect(() => {
-  //   console.log('cargando clientes EFFECT - MONTANDO COMPONENTE');
-  //   cargarClientes();
-  //   cargarEstadisticas();
-  // }, []); // Solo se ejecuta al montar
-
   // Función para construir filtros
   const construirFiltros = useCallback(() => {
     const filtros: any = {

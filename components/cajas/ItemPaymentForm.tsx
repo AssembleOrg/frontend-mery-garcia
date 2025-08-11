@@ -70,6 +70,7 @@ interface ItemPaymentFormProps {
   canUseSeña?: boolean;
   isEditMode?: boolean;
   disabled?: boolean;
+  onDescuentosToggle?: (itemId: string, enabled: boolean) => void; // New prop
 }
 
 // Extended interface to include metodosPago for the new payment system
@@ -95,6 +96,7 @@ export default function ItemPaymentForm({
   canUseSeña = true,
   isEditMode = false,
   disabled = false,
+  onDescuentosToggle, // New prop
 }: ItemPaymentFormProps) {
   const { formatARS, formatUSD, formatARSFromNative, isExchangeRateValid, arsToUsd, usdToArs } = useCurrencyConverter();
   const { descuentosPorMetodo } = useConfiguracion();
@@ -107,6 +109,9 @@ export default function ItemPaymentForm({
   
   // Local state for first payment amount to prevent recalculation loops
   const [localFirstPaymentAmount, setLocalFirstPaymentAmount] = useState<string>('');
+  
+  // Local state for discounts toggle
+  const [descuentosActivos, setDescuentosActivos] = useState(true); // Default to true
   
   // Use global seña state instead of local state
   const usarSeña = isSeñaActive;
@@ -234,9 +239,15 @@ export default function ItemPaymentForm({
     return Math.max(0, discountedTotal - señaToApply);
   };
 
+  // Helper function to get effective discount percentage (0 if descuentosActivos is false)
+  const getEffectiveDiscount = (paymentType: string) => {
+    if (!descuentosActivos) return 0;
+    return descuentosPorMetodo[paymentType as keyof typeof descuentosPorMetodo] || 0;
+  };
+
   // Helper function to calculate discount based on payment method
   const calculateDiscount = (paymentType: string, amount: number, currency: string) => {
-    const porcentajeDescuento = descuentosPorMetodo[paymentType as keyof typeof descuentosPorMetodo] || 0;
+    const porcentajeDescuento = getEffectiveDiscount(paymentType);
     if (porcentajeDescuento === 0) return { montoFinal: amount, descuentoAplicado: 0 };
     
     const descuento = Math.round((amount * porcentajeDescuento) / 100);
@@ -250,7 +261,7 @@ export default function ItemPaymentForm({
     const paymentMethod = getFirstPaymentMethod();
     if (!paymentMethod) return 0;
     
-    const porcentajeDescuento = descuentosPorMetodo[paymentMethod.tipo as keyof typeof descuentosPorMetodo] || 0;
+    const porcentajeDescuento = getEffectiveDiscount(paymentMethod.tipo as keyof typeof descuentosPorMetodo);
     if (porcentajeDescuento === 0) return 0;
     
     // Apply discount to the total item amount (subtotal)
@@ -335,13 +346,11 @@ export default function ItemPaymentForm({
     // Ensure first payment doesn't exceed final amount with seña
     if (cleanAmount > finalAmountWithSeña) {
         toast.error('El monto de pago no puede ser mayor al total con descuento y seña');
-      console.log('Payment amount exceeds final amount with seña:', cleanAmount, '>', finalAmountWithSeña);
       return;
     }
     
     // Ensure first payment doesn't exceed subtotal
     if (cleanAmount > subtotal) {
-      console.log('Payment amount exceeds subtotal:', cleanAmount, '>', subtotal);
       return;
     }
 
@@ -747,6 +756,58 @@ export default function ItemPaymentForm({
     onUpdateItem(item.id!, { metodosPago: updatedMetodosPago });
   };
 
+  // Helper function to handle discounts toggle
+  const handleDescuentosToggle = (enabled: boolean) => {
+    setDescuentosActivos(enabled);
+    
+    // Recalculate payment methods with new discount settings
+    const currentPaymentMethod = getFirstPaymentMethod();
+    if (currentPaymentMethod) {
+      const isSplitEnabled = isSplitPaymentEnabled();
+      
+      if (isSplitEnabled) {
+        // For split payment, recalculate both payments
+        const finalAmountWithSeña = calculateFinalAmountWithSeña();
+        const firstAmount = Math.round(finalAmountWithSeña / 2);
+        const secondAmount = calculateSecondPaymentAmount(firstAmount);
+        
+        const firstMethod = {
+          ...currentPaymentMethod,
+          monto: firstAmount,
+          montoFinal: firstAmount,
+          descuentoGlobalPorcentaje: 0,
+          recargoPorcentaje: 0,
+        };
+
+        const secondMethod = {
+          ...getSecondPaymentMethod(),
+          monto: secondAmount,
+          montoFinal: secondAmount,
+          descuentoGlobalPorcentaje: 0,
+          recargoPorcentaje: 0,
+        };
+
+        onUpdateItem(item.id!, { metodosPago: [firstMethod, secondMethod] });
+      } else {
+        // For single payment, recalculate with new discount settings
+        const discountedTotal = calculateDiscountedTotal();
+        const finalAmountWithSeña = calculateFinalAmountWithSeña();
+        const discountAmount = calculateTotalDiscount();
+        
+        const updatedPaymentMethod = {
+          ...currentPaymentMethod,
+          monto: discountedTotal,
+          montoFinal: finalAmountWithSeña,
+          descuentoAplicado: discountAmount,
+          descuentoGlobalPorcentaje: discountAmount > 0 ? Math.round((discountAmount / calculateItemSubtotal()) * 100) : 0,
+          recargoPorcentaje: 0,
+        };
+
+        onUpdateItem(item.id!, { metodosPago: [updatedPaymentMethod] });
+      }
+    }
+  };
+
   const isFrozen = isItemFrozen();
   const itemSubtotal = calculateItemSubtotal();
   const itemTotal = calculateItemTotal();
@@ -792,6 +853,27 @@ export default function ItemPaymentForm({
             {isFrozen && '🔒 '}
             {tipo === 'ingreso' ? 'Servicio' : 'Concepto'} #{index + 1}
           </Badge>
+          
+          {/* Discounts Toggle */}
+          <div className="flex items-center gap-2">
+            <Checkbox
+              checked={descuentosActivos}
+              onCheckedChange={(checked) => {
+                // Call local function for immediate UI update
+                handleDescuentosToggle(checked as boolean);
+                // Also notify parent component
+                if (onDescuentosToggle) {
+                  onDescuentosToggle(item.id!, checked as boolean);
+                }
+              }}
+              disabled={disabled}
+              className={`h-4 w-4 ${disabled ? 'opacity-50 cursor-not-allowed' : ''}`}
+            />
+            <Label className={`text-xs ${disabled ? 'text-gray-400' : 'text-gray-600'}`}>
+              Descuentos activos
+            </Label>
+          </div>
+          
           {/* Split Payment Checkbox for non-frozen items */}
           {!isFrozen && (
             <div className="flex items-center gap-2">
@@ -866,19 +948,15 @@ export default function ItemPaymentForm({
               if (disabled) return;
               const inputValue = e.target.value;
               const value = parseInt(inputValue);
-              console.log('Quantity input changed to:', value, 'from:', inputValue); // Debug log
               
               // Update local state immediately for responsive UI
               setLocalQuantity(value);
               
               if (!isNaN(value) && value >= 1) {
-                console.log('Calling handleQuantityChange with:', value); // Debug log
                 handleQuantityChange(value);
               } else if (inputValue === '') {
                 // Allow empty input temporarily
-                console.log('Empty quantity input');
               } else {
-                console.log('Invalid quantity value:', value); // Debug log
               }
             }}
             onBlur={(e) => {
@@ -886,7 +964,6 @@ export default function ItemPaymentForm({
               // Ensure minimum value when input loses focus
               const value = parseInt(e.target.value);
               if (isNaN(value) || value < 1) {
-                console.log('Fixing invalid quantity to 1'); // Debug log
                 handleQuantityChange(1);
               }
             }}
@@ -923,35 +1000,60 @@ export default function ItemPaymentForm({
                 <div className="flex items-center gap-2">
                   <Banknote className="h-4 w-4" />
                   Efectivo
+                  {descuentosActivos && (
+                    <span className="text-xs text-green-600 ml-auto">
+                      -{getEffectiveDiscount(METODOS_PAGO.EFECTIVO)}%
+                    </span>
+                  )}
                 </div>
               </SelectItem>
               <SelectItem value={METODOS_PAGO.TARJETA}>
                 <div className="flex items-center gap-2">
                   <CreditCard className="h-4 w-4" />
                   Tarjeta
+                  {descuentosActivos && (
+                    <span className="text-xs text-green-600 ml-auto">
+                      -{getEffectiveDiscount(METODOS_PAGO.TARJETA)}%
+                    </span>
+                  )}
                 </div>
               </SelectItem>
               <SelectItem value={METODOS_PAGO.TRANSFERENCIA}>
                 <div className="flex items-center gap-2">
                   <Smartphone className="h-4 w-4" />
                   Transferencia
+                  {descuentosActivos && (
+                    <span className="text-xs text-green-600 ml-auto">
+                      -{getEffectiveDiscount(METODOS_PAGO.TRANSFERENCIA)}%
+                    </span>
+                  )}
                 </div>
               </SelectItem>
               <SelectItem value={METODOS_PAGO.GIFTCARD}>
                 <div className="flex items-center gap-2">
                   <Gift className="h-4 w-4" />
                   Gift Card
+                  {descuentosActivos && (
+                    <span className="text-xs text-green-600 ml-auto">
+                      -{getEffectiveDiscount(METODOS_PAGO.GIFTCARD)}%
+                    </span>
+                  )}
                 </div>
               </SelectItem>
               <SelectItem value={METODOS_PAGO.QR}>
                 <div className="flex items-center gap-2">
                   <QrCode className="h-4 w-4" />
                   QR
-                </div>
-              </SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
+                  {descuentosActivos && (
+                    <span className="text-xs text-green-600 ml-auto">
+                      -{getEffectiveDiscount(METODOS_PAGO.QR)}%
+                    </span>
+                    )}
+                  </div>
+                </SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
 
         {/* First Payment Method */}
         <div className="space-y-2">
@@ -1048,7 +1150,7 @@ export default function ItemPaymentForm({
         )}
 
         {/* Discount Information Display */}
-        {discountInfo && (
+        {discountInfo && descuentosActivos && (
           <div className="rounded-md bg-green-50 border border-green-200 p-3">
             <div className="flex items-center justify-between text-sm">
               <span className="text-green-700 font-medium">Descuento aplicado:</span>
@@ -1062,6 +1164,15 @@ export default function ItemPaymentForm({
                 {formatAmount(discountInfo.montoFinal, paymentMethod?.moneda || MONEDAS.USD, isFrozen)}
               </span>
             </div>
+          </div>
+        )}
+
+        {/* Discount Status Info */}
+        {!descuentosActivos && (
+          <div className="flex items-center gap-2 rounded-md bg-yellow-100 p-2">
+            <span className="text-xs text-yellow-700">
+              ⚠️ Descuentos desactivados - No se aplicarán descuentos por método de pago
+            </span>
           </div>
         )}
 
@@ -1160,13 +1271,6 @@ export default function ItemPaymentForm({
                             e.preventDefault();
                             e.stopPropagation();
                             
-                            console.log(
-                              'Seleccionando responsable:',
-                              persona.nombre,
-                              'para item:',
-                              item.id
-                            );
-                            
                             // Asegurar que se actualiza el estado correctamente
                             onUpdateItem(item.id!, {
                               responsablesIds: [persona.id]
@@ -1174,10 +1278,6 @@ export default function ItemPaymentForm({
                             
                             setMostrarSelectorResponsables(false);
                             
-                            console.log(
-                              'Responsable seleccionado. Nuevo estado:',
-                              [persona.id]
-                            );
                           }}
                           className="flex cursor-pointer items-center space-x-2 rounded px-2 py-1 hover:bg-gray-100"
                         >

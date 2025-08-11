@@ -99,17 +99,6 @@ export default function AuditoriaPage() {
     limpiarAuditoria,
   } = useAuditoria();
 
-  // Debug logging
-  console.log(
-    '🔍 Componente renderizado. registrosPaginados:',
-    registrosPaginados
-  );
-  console.log(
-    '🔍 registrosPaginados type:',
-    typeof registrosPaginados,
-    'isArray:',
-    Array.isArray(registrosPaginados)
-  );
 
   // Cargar datos iniciales
   useEffect(() => {

@@ -271,7 +271,6 @@ export default function ModalEditarTransaccion({
 
   // Cargar comanda al abrir el modal
   useEffect(() => {
-    console.log('comandaId', comandaId);
     if (isOpen && comandaId) {
       cargarComanda();
     }
@@ -357,16 +356,6 @@ export default function ModalEditarTransaccion({
       calcularFaltante();
     }
   }, [metodosPago, calcularFaltante]);
-
-  // useEffect para mostrar información de descuentos cuando cambian los métodos de pago
-  useEffect(() => {
-    metodosPago.forEach((metodo, index) => {
-      if (metodo.monto > 0 && metodo.descuentoAplicado > 0) {
-        console.log(`Método ${index + 1}: Descuento aplicado: ${metodo.descuentoAplicado}`);
-      }
-    });
-  }, [metodosPago]);
-
 
 
   const cargarComanda = async () => {

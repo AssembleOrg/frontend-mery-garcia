@@ -86,11 +86,6 @@ export const useMovimientosStore = create<MovimientosState>((set, get) => ({
     });
 
     try {
-      console.log('Movimiento: Creando movimiento...', {
-        requestId,
-        movimiento,
-      });
-
       const nuevoMovimiento =
         await movimientoService.crearMovimiento(movimiento);
 

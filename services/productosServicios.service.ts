@@ -81,8 +81,6 @@ class ProductosServiciosService {
       status: string;
     }>(`${this.baseUrl}`);
 
-    console.log(response.data, 'TEST');
-
     return response.data;
   }
 

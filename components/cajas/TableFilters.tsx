@@ -63,7 +63,6 @@ export default function TableFilters({
   accentColor = '#f9bbc4',
 }: TableFiltersProps) {
 
-  console.log('filters', filters);
   const [showAdvancedFilters, setShowAdvancedFilters] = useState(false);
 
   const { personal } = usePersonal();

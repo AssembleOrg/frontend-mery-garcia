@@ -50,6 +50,7 @@ import { useErrorHandler } from '@/hooks/useErrorHandler';
 import ItemPaymentForm from './ItemPaymentForm';
 import TransactionSummary from './TransactionSummary';
 import { MONEDAS, METODOS_PAGO } from '@/lib/constants';
+import { useConfiguracion } from '@/features/configuracion/store/configuracionStore';
 
 /**
  * ModalEditarTransaccionRefactored Component
@@ -124,7 +125,12 @@ export default function ModalEditarTransaccionRefactored({
 
   const { getTipoCambio, cargando } = useExchangeRateStore();
   const { user } = useAuth();
+  const { descuentosPorMetodo } = useConfiguracion();
 
+  // Global state for discounts toggle
+  const [descuentosActivos, setDescuentosActivos] = useState(true);
+
+  // Initialize stores
   useInitializeComandaStore();
 
   // Form state
@@ -225,7 +231,6 @@ export default function ModalEditarTransaccionRefactored({
               metodosPago: itemPaymentMethods, // Include payment methods
             };
           }) || [];
-          console.log(itemsConvertidos, "itemsConvertidos");
           setItems(itemsConvertidos);
         } catch (error) {
           console.error('Error al cargar comanda:', error);
@@ -351,6 +356,62 @@ export default function ModalEditarTransaccionRefactored({
     setItems(newItems);
   };
 
+  // Handle global discounts toggle
+  const handleGlobalDescuentosToggle = (enabled: boolean) => {
+    setDescuentosActivos(enabled);
+    
+    // Update all items to reflect the new discount settings
+    items.forEach(item => {
+      const currentPaymentMethod = item.metodosPago?.[0];
+      if (currentPaymentMethod) {
+        const isSplitEnabled = item.metodosPago && item.metodosPago.length > 1;
+        
+        if (isSplitEnabled) {
+          // For split payment, recalculate both payments
+          const itemTotal = (item.precio || 0) * (item.cantidad || 1);
+          const splitAmount = Math.round(itemTotal / 2);
+          
+          const firstMethod = {
+            ...currentPaymentMethod,
+            monto: splitAmount,
+            montoFinal: splitAmount,
+            moneda: MONEDAS.USD as MonedaNew,
+          };
+
+          const secondMethod = {
+            ...currentPaymentMethod,
+            monto: itemTotal - splitAmount,
+            montoFinal: itemTotal - splitAmount,
+            moneda: MONEDAS.ARS as MonedaNew,
+          };
+
+          actualizarItem(item.id!, { metodosPago: [firstMethod, secondMethod] });
+        } else {
+          // For single payment, recalculate with new discount settings
+          const itemTotal = (item.precio || 0) * (item.cantidad || 1);
+          const discountAmount = enabled ? 
+            Math.round((itemTotal * (descuentosPorMetodo[currentPaymentMethod.tipo as keyof typeof descuentosPorMetodo] || 0)) / 100) : 0;
+          
+          const updatedPaymentMethod = {
+            ...currentPaymentMethod,
+            monto: itemTotal,
+            montoFinal: itemTotal - discountAmount,
+            descuentoAplicado: discountAmount,
+            descuentoGlobalPorcentaje: discountAmount > 0 ? Math.round((discountAmount / itemTotal) * 100) : 0,
+            recargoPorcentaje: 0,
+          };
+
+          actualizarItem(item.id!, { metodosPago: [updatedPaymentMethod] });
+        }
+      }
+    });
+  };
+
+  // Wrapper function to match the expected signature
+  const handleItemDescuentosToggle = (itemId: string, enabled: boolean) => {
+    handleGlobalDescuentosToggle(enabled);
+  };
+
   // Form validation
   const validarFormulario = (): boolean => {
     const nuevosErrores: Record<string, string> = {};
@@ -401,21 +462,14 @@ export default function ModalEditarTransaccionRefactored({
 
   // Save transaction
   const handleSave = async () => {
-    console.log('actualizando COMANDA');
     if (!validarFormulario()) return;
-    console.log('validado');
     setGuardando(true);
 
     try {
-      console.log(items, "itemsActualizados");
        
       // Convert items with payment methods to the format expected by the backend
       const itemsWithPaymentMethods = items.map((item) => {
         const itemPaymentMethods = (item as any).metodosPago || [];
-        
-        console.log('=== CONVERTIENDO ITEM ===');
-        console.log('Item original:', item);
-        console.log('Payment methods encontrados:', itemPaymentMethods);
         
         return {
           productoServicioId: item.productoServicio?.id!,
@@ -430,37 +484,6 @@ export default function ModalEditarTransaccionRefactored({
           metodosPago: itemPaymentMethods
         } as any; // Type assertion to match DTO structure
       });
-        
-        console.log('=== ITEMS CONVERTIDOS ===');
-        console.log('Items originales:', items);
-        console.log('Items convertidos:', itemsWithPaymentMethods);
-        console.log('Estructura de cada item:');
-        itemsWithPaymentMethods.forEach((item, index) => {
-          console.log(`Item ${index}:`, {
-            productoServicioId: item.productoServicioId,
-            nombre: item.nombre,
-            tipo: item.tipo,
-            precio: item.precio,
-            cantidad: item.cantidad,
-            descuento: item.descuento,
-            trabajadorId: item.trabajadorId,
-            subtotal: item.subtotal,
-            metodosPago: item.metodosPago
-          });
-        });
-        
-        console.log('=== VERIFICACIÓN MÉTODOS DE PAGO ===');
-        itemsWithPaymentMethods.forEach((item, index) => {
-          console.log(`Item ${index} - Métodos de pago:`, item.metodosPago);
-          console.log(`Item ${index} - Cantidad de métodos:`, item.metodosPago?.length || 0);
-          
-          // Verificar si es split payment
-          if (item.metodosPago && item.metodosPago.length > 1) {
-            console.log(`Item ${index} - ES SPLIT PAYMENT`);
-            console.log(`Item ${index} - Primer método:`, item.metodosPago[0]);
-            console.log(`Item ${index} - Segundo método:`, item.metodosPago[1]);
-          }
-        });
 
         const descuentos = itemsWithPaymentMethods.flatMap(item => {
           const itemWithPayment = item as any;
@@ -507,8 +530,6 @@ export default function ModalEditarTransaccionRefactored({
           descuentosAplicados: descuentos,
         };
 
-        console.log(comandaUpdate, "comandaUpdate");
-
         await actualizarComanda(comandaId, comandaUpdate);
         toast.success('Comanda actualizada con éxito');
         onClose();
@@ -542,7 +563,6 @@ export default function ModalEditarTransaccionRefactored({
 
   if (!isOpen || !comandaState) return null;
 
-  console.log(comandaState.estadoDeComanda, "comandaState", EstadoDeComandaNew.VALIDADO);
   // Check if comanda is validated (cannot be edited)
   const esComandaValidada = comandaState.estadoDeComanda === EstadoDeComandaNew.VALIDADO;
   // Una comanda PENDIENTE SÍ se puede editar, una VALIDADA NO se puede editar
@@ -726,6 +746,7 @@ export default function ModalEditarTransaccionRefactored({
                         personal={personal}
                         isEditMode={true}
                         disabled={!sePuedeEditar}
+                        onDescuentosToggle={handleItemDescuentosToggle}
                       />
                     ))
                   )}
@@ -743,6 +764,7 @@ export default function ModalEditarTransaccionRefactored({
                 <TransactionSummary
                   items={items}
                   tipo={tipo}
+                  descuentosActivos={descuentosActivos}
                 />
 
                 {/* Action Buttons */}

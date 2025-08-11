@@ -123,7 +123,6 @@ export const useRecordsStore = create<RecordsState>()(
             };
           });
 
-          console.log('📊 [RECORDS] Registro diario guardado:', nuevoRegistro);
         },
 
         obtenerRegistroPorFecha: (fecha: string) => {
@@ -151,7 +150,6 @@ export const useRecordsStore = create<RecordsState>()(
             ),
           }));
 
-          console.log('🚚 [RECORDS] Traspaso registrado:', nuevoTraspaso);
         },
 
         obtenerTraspasos: () => {
@@ -176,7 +174,6 @@ export const useRecordsStore = create<RecordsState>()(
             ),
           }));
 
-          console.log('📝 [RECORDS] Historial agregado:', nuevoCambio);
         },
 
         obtenerHistorialComanda: (comandaId: string) => {
@@ -244,9 +241,6 @@ export const useRecordsStore = create<RecordsState>()(
             ),
           }));
 
-          console.log(
-            `🧹 [RECORDS] Historial anterior a ${fechaLimiteStr} limpiado`
-          );
         },
 
         exportarDatos: (fechaDesde: string, fechaHasta: string) => {
@@ -268,13 +262,11 @@ export const useRecordsStore = create<RecordsState>()(
             fechaExportacion: new Date().toISOString(),
           };
 
-          console.log('📁 [RECORDS] Datos exportados:', exportData);
           return exportData;
         },
 
         reiniciar: () => {
           set(estadoInicial);
-          console.log('🔄 [RECORDS] Store reiniciado');
         },
       }),
       {

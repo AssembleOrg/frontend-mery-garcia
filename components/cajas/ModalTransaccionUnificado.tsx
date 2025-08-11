@@ -114,8 +114,6 @@ export default function ModalTransaccionUnificado({
 
   // Helper function for ARS-native amounts (cuando hay items con monto fijo ARS)
   const formatAmountForARSFixed = (amount: number, esCalculoARS?: boolean) => {
-    console.log('amount', amount);
-    console.log('esCalculoARS', esCalculoARS);
     if (tipo === 'egreso' && hayItemsCongelados && esCalculoARS) {
       // Para egresos con monto fijo ARS: mostrar valor nativo sin conversión
       return `🔒 ${formatARSFromNative(amount)}`;
@@ -306,7 +304,6 @@ export default function ModalTransaccionUnificado({
   useEffect(() => {
     setAlreadyNotified(false);
     const dolar = getTipoCambio().valorVenta;
-    console.log('dolar', dolar);
     if (isOpen) {
       getUltimaComanda().then((comanda) => {
         if (comanda) {
@@ -333,16 +330,6 @@ export default function ModalTransaccionUnificado({
 
     loadData();
   }, [loadTrabajadores, cargarClientes, loadProductosServicios, handleError]);
-
-  // Debug useEffect para el modal de búsqueda
-  useEffect(() => {
-    if (mostrarBuscador) {
-      console.log(
-        'Modal de búsqueda abierto, productosServicios:',
-        productosServicios.length
-      );
-    }
-  }, [mostrarBuscador, productosServicios.length]);
 
   // useEffect para cerrar selectores de responsables al hacer clic fuera
   useEffect(() => {
@@ -766,7 +753,6 @@ export default function ModalTransaccionUnificado({
 
   // Form validation (actualizada)
   const validarFormulario = (): boolean => {
-    console.log('validando formulario');
     const nuevosErrores: Record<string, string> = {};
 
     if (!clienteProveedor.trim()) {
@@ -774,7 +760,6 @@ export default function ModalTransaccionUnificado({
       toast.error('El cliente es requerido');
       return false;
     }
-    console.log("Pase el cliente", nuevosErrores);
 
     if (
       items.every((item) => item.responsablesIds?.length === 0) &&
@@ -786,7 +771,6 @@ export default function ModalTransaccionUnificado({
       nuevosErrores.responsable = 'Debe seleccionar un responsable por item';
       return false;
     }
-    console.log("Pase el responsable", nuevosErrores);
     // if (responsablesIds.length === 0 && tipo === 'ingreso') {
     // nuevosErrores.responsable = 'Debe seleccionar al menos un responsable';
     // }
@@ -801,13 +785,11 @@ export default function ModalTransaccionUnificado({
         nuevosErrores.numeroManual = `El número ${numeroCompleto} ya existe`;
       }
     }
-    console.log("Pase el numero manual", nuevosErrores);
     if (items.length === 0) {
       nuevosErrores.items = 'Debe agregar al menos un item';
-      toast.error('Debe agregar al menos un item');
+      toast.error('Debe agr menos un item');
       return false;
     }
-    console.log("Pase el items length", nuevosErrores);
 
     // Validar items
     items.forEach((item, index) => {
@@ -828,7 +810,6 @@ export default function ModalTransaccionUnificado({
         return false;
       }
     });
-    console.log("Pase el items", nuevosErrores);
     const totales = calcularTotalesARS();
     // const validacionMetodos = validarMetodosPago(totales.totalFinal); // COMENTADO: Reemplazado por nuevo sistema
     // if (!validacionMetodos.esValido && validacionMetodos.error) {
@@ -837,7 +818,6 @@ export default function ModalTransaccionUnificado({
     //   nuevosErrores.pagos = validacionMetodos.error;
     //   return false;
     // }
-    console.log("Pase el validacion metodos");
     setErrores(nuevosErrores);
     return Object.keys(nuevosErrores).length === 0;
   };
@@ -878,16 +858,14 @@ export default function ModalTransaccionUnificado({
 
   // Save transaction
   const handleSave = async () => {
-    console.log('guardando COMANDA');
     if (!validarFormulario()) return;
-    console.log('validado');
     setGuardando(true);
 
     try {
       const numeroTransaccion = numeroManual.trim()
         ? '01-' + numeroManual
         : numeroUltimaComanda;
-      console.warn('numeroTransaccion', numeroTransaccion);
+
       const nuevaComandaNew: ComandaCreateNew = {
         clienteId: clienteSeleccionado?.id,
         creadoPorId: user?.id,
@@ -953,8 +931,6 @@ export default function ModalTransaccionUnificado({
         }
       }
 
-      console.log(nuevaComandaNew, items, nuevaComandaNew.items);
-
       await agregarComanda(nuevaComandaNew);
       resetForm();
       onClose();
@@ -1011,7 +987,6 @@ export default function ModalTransaccionUnificado({
   };
 
   useEffect(() => {
-    console.log('comandaId', comandaId);
     const cargarComanda = async () => {
       if (comandaId && isOpen) {
         try {
@@ -1028,7 +1003,6 @@ export default function ModalTransaccionUnificado({
           // Convertir items al formato correcto
           const itemsConvertidos =
             comanda.items?.map((item) => {
-              console.log('item', item);
               return {
                 id: item.id || `temp-${Date.now()}`,
                 productoServicioId: item.productoServicioId || '',
@@ -1043,25 +1017,7 @@ export default function ModalTransaccionUnificado({
                 productoServicio: item.productoServicio,
               };
             }) || [];
-          console.log('itemsConvertidos', itemsConvertidos);
           setItems(itemsConvertidos);
-
-          // Cargar métodos de pago - COMENTADO: Reemplazado por nuevo sistema
-          // if (comanda.metodosPago && comanda.metodosPago.length > 0) {
-          //   resetMetodosPago();
-          //   console.log('metodosPago', comanda.metodosPago);
-          //   comanda.metodosPago.forEach((metodo, index) => {
-          //     if (index > 0) {
-          //       agregarMetodoPagoBase();
-          //     }
-          //     const metodoIndex = index;
-          //     if (metodo.tipo)
-          //       actualizarMetodoPago(metodoIndex, 'tipo', metodo.tipo);
-          //     if (metodo.moneda)
-          //       actualizarMetodoPago(metodoIndex, 'moneda', metodo.moneda);
-          //     actualizarMetodoPago(metodoIndex, 'monto', metodo.monto || 0);
-          //   });
-          // }
 
           // Cargar descuentos y señas
           setDescuentoGlobalPorcentaje(
@@ -1565,7 +1521,6 @@ export default function ModalTransaccionUnificado({
                                   onCheckedChange={(checked) => {
                                     // Actualizar el estado del checkbox sin usar actualizarItem
                                     // ya que esMontoFijoARS no es parte de ItemComandaCreateNew
-                                    console.log('Checkbox changed:', checked);
                                   }}
                                 />
                                 <Label
@@ -1618,12 +1573,6 @@ export default function ModalTransaccionUnificado({
                                       }
                                     >
                                       {(() => {
-                                        console.log(
-                                          'Renderizando selector para item:',
-                                          item.id,
-                                          'responsablesIds:',
-                                          item.responsablesIds
-                                        );
                                         if (item.responsablesIds?.length! > 0) {
                                           const persona = personal.find(
                                             (p) =>
@@ -1649,14 +1598,7 @@ export default function ModalTransaccionUnificado({
                                             onClick={(e) => {
                                               e.preventDefault();
                                               e.stopPropagation();
-                                              
-                                              console.log(
-                                                'Seleccionando responsable:',
-                                                persona.nombre,
-                                                'para item:',
-                                                item.id
-                                              );
-                                              
+                                           
                                               // Asegurar que se actualiza el estado correctamente
                                               setItems(prevItems => 
                                                 prevItems.map(prevItem => 
@@ -1671,11 +1613,6 @@ export default function ModalTransaccionUnificado({
                                                         mostrarSelectorResponsables: false 
                                                       }
                                                 )
-                                              );
-                                              
-                                              console.log(
-                                                'Responsable seleccionado. Nuevo estado:',
-                                                [persona.id]
                                               );
                                             }}
                                             className="flex cursor-pointer items-center space-x-2 rounded px-2 py-1 hover:bg-gray-100"

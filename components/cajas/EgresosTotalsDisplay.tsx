@@ -15,11 +15,6 @@ interface EgresosTotalsDisplayProps {
 export default function EgresosTotalsDisplay({ data, className }: EgresosTotalsDisplayProps) {
   const { formatUSD, formatARSFromNative } = useCurrencyConverter();
 
-
-  useEffect(() => {
-    console.log('dataEgresosTotalsDisplay', data);
-  }, [data]);
-
   // Calcular totales de egresos
   const calcularTotales = () => {
     let totalUSD = 0;

@@ -28,7 +28,6 @@ export async function getCotizacion(): Promise<DolarResponse | undefined> {
     );
     
     if (response?.data) {
-      console.log('Cotización obtenida del backend:', response.data);
       return response.data;
     }
     
@@ -49,7 +48,6 @@ export const getUltimoTipoCambio = async (): Promise<DolarResponse | undefined> 
     );
     
     if (response?.data) {
-      console.log('Último tipo de cambio operativo:', response.data);
       return response.data;
     }
     
@@ -65,14 +63,12 @@ export const getUltimoTipoCambio = async (): Promise<DolarResponse | undefined> 
  */
 export const getPublicRate = async (): Promise<DolarResponse | undefined> => {
   try {
-    console.log('Obteniendo cotización pública informativa...');
     const response = await apiFetch<{ status: string; data: DolarResponse }>(
       'api/dolar/cotizacion',
       { cache: 'no-store' }
     );
 
     if (response?.data) {
-      console.log('Cotización pública informativa obtenida:', response.data);
       return response.data;
     }
 
@@ -91,7 +87,6 @@ export async function getHistorial(limit: number = 10): Promise<DolarResponse[]>
     const response = await apiFetch<{ status: string; data: DolarResponse[] }>(
       `api/dolar/historial?limit=${limit}`
     );
-    console.log('Historial de tipo de cambio obtenido:', response);
     return response.data || [];
   } catch (error) {
     console.error('Error obteniendo historial:', error);
@@ -122,7 +117,6 @@ export async function setManualRate(rate: {
       }
     );
     
-    console.log('Tipo de cambio manual guardado:', response.data);
     return response;
   } catch (error) {
     console.error('Error guardando tipo de cambio manual:', error);

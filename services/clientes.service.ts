@@ -64,7 +64,6 @@ class ClientesService {
   // GET /clientes - Obtener todos los clientes (sin paginación)
   async obtenerClientes(): Promise<{ data: ClienteNew[] }> {
     try {
-        console.log('obteniendo clientes');
       const response = await apiFetch<{
         data: ClienteNew[];
         status: string;
@@ -111,7 +110,6 @@ class ClientesService {
         },
         status: string;
       }>(url);
-      console.log('response', response);
       return {
         data: response.data.data,
         pagination: {

@@ -26,19 +26,15 @@ export const invalidateStaleCache = () => {
     const storedVersion = localStorage.getItem('app-cache-version');
     
     if (storedVersion !== CURRENT_CACHE_VERSION) {
-      console.log(`🔄 Detectada nueva versión: ${storedVersion} → ${CURRENT_CACHE_VERSION}`);
-      console.log('🧹 Limpiando cache automáticamente...');
       
       // Limpiar todos los stores
       STORES_TO_MANAGE.forEach(storeName => {
         localStorage.removeItem(storeName);
-        console.log(`   ✅ Cache limpiado: ${storeName}`);
       });
       
       // Actualizar la versión almacenada
       localStorage.setItem('app-cache-version', CURRENT_CACHE_VERSION);
       
-      console.log('✅ Cache invalidado exitosamente');
       
       // Mostrar notificación en desarrollo
       if (process.env.NODE_ENV === 'development') {
@@ -57,18 +53,15 @@ export const clearAllCache = () => {
   if (typeof window === 'undefined') return;
 
   try {
-    console.log('🧹 Limpiando cache manualmente...');
     
     STORES_TO_MANAGE.forEach(storeName => {
       localStorage.removeItem(storeName);
-      console.log(`   ✅ Cache limpiado: ${storeName}`);
     });
     
     // Limpiar también la versión para forzar una re-inicialización
     localStorage.removeItem('app-cache-version');
     
     toast.success('🧹 Cache limpiado correctamente');
-    console.log('✅ Cache limpiado manualmente');
     
     // Recargar después de un delay para mostrar el toast
     setTimeout(() => {
@@ -89,7 +82,6 @@ export const clearStoreCache = (storeName: string) => {
 
   try {
     localStorage.removeItem(storeName);
-    console.log(`✅ Cache del store "${storeName}" limpiado`);
     toast.success(`Cache de ${storeName} limpiado`);
   } catch (error) {
     console.error(`❌ Error al limpiar cache del store ${storeName}:`, error);

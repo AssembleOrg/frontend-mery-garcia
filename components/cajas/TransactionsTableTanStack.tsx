@@ -312,8 +312,6 @@ export default function TransactionsTableTanStack({
           return totalARS + itemARS;
         }, 0) ?? 0;
 
-        console.log(totalUSD, totalARS, row.original.items);
-
         const totalARSToUSD = totalARS / row.original.valorDolar;
         const total = totalUSD + totalARSToUSD;
         const isValidated = row.original.estadoDeComanda === EstadoDeComandaNew.VALIDADO;

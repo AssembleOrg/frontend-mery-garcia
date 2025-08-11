@@ -214,7 +214,6 @@ export default function ModalProductoServicio({
 
     try {
       if (esEdicion && producto) {
-        console.log(unidadNegocio, 'unidadNegocio');
         const unidadNegocioC = unidadesNegocio.find(unidad => unidad.nombre === unidadNegocio);
         const productoServicio: ProductoServicioUpdateNew = {
           nombre,
@@ -230,7 +229,6 @@ export default function ModalProductoServicio({
         }
 
         const productoServicioActualizado = await productosServiciosService.actualizarProductoServicio(producto.id, productoServicio);
-        console.log(productoServicioActualizado);
         onClose();
        
       } else {
@@ -252,7 +250,6 @@ export default function ModalProductoServicio({
           precioFijoARS: esPrecioCongelado ? precioARS : 0,
         }
         const productoServicioCreado = await productosServiciosService.crearProductoServicio(productoServicio);
-        console.log(productoServicioCreado);
         onClose();
       }
     } catch (error) {
@@ -282,7 +279,6 @@ export default function ModalProductoServicio({
   };
 
   const changePrecio = (e: React.ChangeEvent<HTMLInputElement>) => {
-    console.log(e.target.value, Number(e.target.value), 'changePrecio');
     const value = e.target.value;
     setPrecio(Number(value));
   };

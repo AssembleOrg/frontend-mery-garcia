@@ -138,7 +138,6 @@ export default function TablaComandasValidadas({
                         size="sm"
                         onClick={() => {
                           // TODO: Implementar modal de detalles
-                          console.log('Ver detalles de comanda:', comanda.id);
                         }}
                       >
                         <Eye className="h-4 w-4" />

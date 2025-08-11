@@ -26,6 +26,7 @@ interface TransactionSummaryProps {
   items: ItemComandaCreateNew[];
   tipo: 'ingreso' | 'egreso';
   className?: string;
+  descuentosActivos?: boolean; // New prop to know if discounts are active
 }
 
 // Extended interface to include metodosPago for the new payment system
@@ -37,9 +38,11 @@ export default function TransactionSummary({
   items,
   tipo,
   className = '',
+  descuentosActivos = true, // Default to true for backward compatibility
 }: TransactionSummaryProps) {
   const { formatARS, formatUSD, formatARSFromNative, isExchangeRateValid } = useCurrencyConverter();
   const { descuentosPorMetodo } = useConfiguracion();
+
 
   // Helper function to format amount based on currency and frozen status
   const formatAmount = (amount: number, moneda: string, isFrozen: boolean) => {
@@ -84,14 +87,17 @@ export default function TransactionSummary({
     
     if (paymentMethods.length === 0) {
       // If no payment methods, return subtotal without discount
-      return (item.precio || 0) * (item.cantidad || 1);
+      const subtotal = (item.precio || 0) * (item.cantidad || 1);
+      return subtotal;
     }
     
     // Sum all montoFinal values from payment methods
     // montoFinal should already contain the amount after discount but before seña
-    return paymentMethods.reduce((total, pm) => {
+    const total = paymentMethods.reduce((total, pm) => {
       return total + (pm.montoFinal || 0);
     }, 0);
+    
+    return total;
   };
 
   // Calculate totals by currency
@@ -154,13 +160,13 @@ export default function TransactionSummary({
     return totals;
   }, [
     items.length,
-    items.map(item => item.id).join(','),
     items.map(item => {
       const pm = getFirstPaymentMethod(item);
       const pm2 = getSecondPaymentMethod(item);
       return `${pm?.tipo || ''}-${pm?.montoFinal || 0}-${pm2?.tipo || ''}-${pm2?.montoFinal || 0}`;
-    }).join(',')
-  ]); // More specific dependencies
+    }).join(','),
+    descuentosActivos // Add descuentosActivos as dependency
+  ]);
 
   // Check if all items use the same currency
   const allSameCurrency = useMemo(() => {
@@ -199,8 +205,9 @@ export default function TransactionSummary({
     items.map(item => {
       const pm = getFirstPaymentMethod(item);
       return `${pm?.moneda || ''}-${pm?.tipo || ''}`;
-    }).join(',')
-  ]); // Include payment method currencies in dependencies
+    }).join(','),
+    descuentosActivos // Add descuentosActivos as dependency
+  ]);
 
   // Calculate unified totals
   const unifiedTotals = useMemo(() => {
@@ -226,6 +233,7 @@ export default function TransactionSummary({
         // Get the actual total from payment methods (already discounted)
         const itemTotal = getItemTotalFromPaymentMethods(item);
         
+        
         totalSubtotal += itemSubtotal;
         // Use the actual total from payment methods (already discounted)
         totalAmount += itemTotal;
@@ -244,8 +252,9 @@ export default function TransactionSummary({
       const pm = getFirstPaymentMethod(item);
       const pm2 = getSecondPaymentMethod(item);
       return `${pm?.montoFinal || 0}-${pm2?.montoFinal || 0}-${isItemFrozen(item)}`;
-    }).join(',')
-  ]); // Include payment method amounts in dependencies
+    }).join(','),
+    descuentosActivos // Add descuentosActivos as dependency
+  ]);
 
   // Get the primary currency for unified display
   const getPrimaryCurrency = () => {
@@ -273,6 +282,25 @@ export default function TransactionSummary({
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
+          {/* Discount Status Indicator */}
+          <div className={`flex items-center gap-2 rounded-md p-2 text-xs ${
+            descuentosActivos 
+              ? 'bg-green-100 text-green-700 border border-green-200' 
+              : 'bg-yellow-100 text-yellow-700 border border-yellow-200'
+          }`}>
+            {descuentosActivos ? (
+              <>
+                <span className="text-green-600">✓</span>
+                Descuentos activos - Aplicando descuentos por método de pago
+              </>
+            ) : (
+              <>
+                <span className="text-yellow-600">⚠️</span>
+                Descuentos desactivados - No se aplicarán descuentos por método de pago
+              </>
+            )}
+          </div>
+
           {/* Multiple Currencies Display */}
           {hasMultipleCurrencies && currencies.length > 0 && (
             <div className="space-y-3">

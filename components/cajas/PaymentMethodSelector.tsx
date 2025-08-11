@@ -28,6 +28,7 @@ import {
 import { METODOS_PAGO, MONEDAS, MONEDA_LABELS } from '@/lib/constants';
 import { useCurrencyConverter } from '@/hooks/useCurrencyConverter';
 import { ItemComandaCreateNew, MetodoPagoNew, ProductoServicioNew, TipoPagoNew, MonedaNew } from '@/services/unidadNegocio.service';
+import { useConfiguracion } from '@/features/configuracion/store/configuracionStore';
 
 /**
  * PaymentMethodSelector Component
@@ -39,6 +40,8 @@ import { ItemComandaCreateNew, MetodoPagoNew, ProductoServicioNew, TipoPagoNew, 
  * NEW FEATURE: Split payment for non-frozen items allows paying part in USD and part in ARS
  * with the same payment type (e.g., both in cash, both in card, etc.)
  * 
+ * NEW FEATURE: "Descuentos activos" checkbox to enable/disable all payment method discounts
+ * 
  * @param items - Array of items (products/services) in the transaction
  * @param onUpdateItem - Callback to update item payment information
  * @param tipo - Transaction type ('ingreso' or 'egreso')
@@ -49,6 +52,7 @@ interface PaymentMethodSelectorProps {
   onUpdateItem: (itemId: string, updates: any) => void;
   tipo: 'ingreso' | 'egreso';
   className?: string;
+  onDescuentosToggle?: (enabled: boolean) => void; // New prop
 }
 
 // Extended interface to include metodosPago for the new payment system
@@ -61,9 +65,12 @@ export default function PaymentMethodSelector({
   onUpdateItem,
   tipo,
   className = '',
+  onDescuentosToggle, // New prop
 }: PaymentMethodSelectorProps) {
   const { formatARS, formatUSD, formatARSFromNative, isExchangeRateValid, arsToUsd } = useCurrencyConverter();
+  const { descuentosPorMetodo } = useConfiguracion();
   const [expandedItems, setExpandedItems] = useState<Set<string>>(new Set());
+  const [descuentosActivos, setDescuentosActivos] = useState(true); // Default to true
 
   // Helper function to get payment method icon
   const getPaymentIcon = (tipo: string) => {
@@ -99,7 +106,6 @@ export default function PaymentMethodSelector({
 
   // Helper function to check if item has frozen pricing
   const isItemFrozen = (item: ItemComandaCreateNew) => {
-    console.log('item234', item);
     return item.productoServicio?.esPrecioCongelado || false;
   };
 
@@ -131,6 +137,12 @@ export default function PaymentMethodSelector({
   const isSplitPaymentEnabled = (item: ItemComandaCreateNew) => {
     const itemWithPayment = item as ItemWithPaymentMethods;
     return itemWithPayment.metodosPago && itemWithPayment.metodosPago.length > 1;
+  };
+
+  // Helper function to get effective discount percentage (0 if descuentosActivos is false)
+  const getEffectiveDiscount = (paymentType: string) => {
+    if (!descuentosActivos) return 0;
+    return descuentosPorMetodo[paymentType as keyof typeof descuentosPorMetodo] || 0;
   };
 
   // Helper function to handle split payment toggle
@@ -174,6 +186,62 @@ export default function PaymentMethodSelector({
 
       onUpdateItem(itemId, { metodosPago: [singleMethod] });
     }
+  };
+
+  // Helper function to handle global discounts toggle
+  const handleGlobalDescuentosToggle = (enabled: boolean) => {
+    setDescuentosActivos(enabled);
+    
+    // Notify parent component about global discount toggle
+    if (onDescuentosToggle) {
+      onDescuentosToggle(enabled);
+    }
+    
+    // Update all items to reflect the new discount settings
+    items.forEach(item => {
+      const currentPaymentMethod = getFirstPaymentMethod(item);
+      if (currentPaymentMethod) {
+        const isSplitEnabled = isSplitPaymentEnabled(item);
+        
+        if (isSplitEnabled) {
+          // For split payment, recalculate both payments
+          const itemTotal = calculateItemTotal(item);
+          const splitAmount = Math.round(itemTotal / 2);
+          
+          const firstMethod = {
+            ...currentPaymentMethod,
+            monto: splitAmount,
+            montoFinal: splitAmount,
+            moneda: MONEDAS.USD as MonedaNew,
+          };
+
+          const secondMethod = {
+            ...currentPaymentMethod,
+            monto: itemTotal - splitAmount,
+            montoFinal: itemTotal - splitAmount,
+            moneda: MONEDAS.ARS as MonedaNew,
+          };
+
+          onUpdateItem(item.id!, { metodosPago: [firstMethod, secondMethod] });
+        } else {
+          // For single payment, recalculate with new discount settings
+          const itemTotal = calculateItemTotal(item);
+          const discountAmount = enabled ? 
+            Math.round((itemTotal * getEffectiveDiscount(currentPaymentMethod.tipo || METODOS_PAGO.EFECTIVO)) / 100) : 0;
+          
+          const updatedPaymentMethod = {
+            ...currentPaymentMethod,
+            monto: itemTotal,
+            montoFinal: itemTotal - discountAmount,
+            descuentoAplicado: discountAmount,
+            descuentoGlobalPorcentaje: discountAmount > 0 ? Math.round((discountAmount / itemTotal) * 100) : 0,
+            recargoPorcentaje: 0,
+          };
+
+          onUpdateItem(item.id!, { metodosPago: [updatedPaymentMethod] });
+        }
+      }
+    });
   };
 
   // Helper function to handle currency conversion when switching
@@ -297,6 +365,21 @@ export default function PaymentMethodSelector({
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
+          {/* Global Discounts Toggle */}
+          <div className="flex items-center gap-2 rounded-md bg-gray-100 p-3">
+            <Checkbox
+              checked={descuentosActivos}
+              onCheckedChange={(checked) => handleGlobalDescuentosToggle(checked as boolean)}
+              className="h-4 w-4"
+            />
+            <Label className="text-sm font-medium text-gray-700">
+              Descuentos activos
+            </Label>
+            <span className="text-xs text-gray-500 ml-2">
+              {descuentosActivos ? 'Aplicando descuentos por método de pago' : 'Sin descuentos'}
+            </span>
+          </div>
+
           {items.map((item, index) => {
             const isFrozen = isItemFrozen(item);
             const itemTotal = calculateItemTotal(item);
@@ -325,6 +408,12 @@ export default function PaymentMethodSelector({
                       <div className="text-xs text-gray-600">
                         {paymentMethod?.tipo ? `${paymentMethod.tipo} - ${paymentMethod.moneda}` : 'Sin método de pago'}
                       </div>
+                      {/* Show discount info if discounts are active */}
+                      {descuentosActivos && paymentMethod?.tipo && (
+                        <div className="text-xs text-green-600">
+                          Descuento: {getEffectiveDiscount(paymentMethod.tipo)}%
+                        </div>
+                      )}
                     </div>
                     {/* Split Payment Checkbox for non-frozen items */}
                     {!isFrozen && (
@@ -359,30 +448,55 @@ export default function PaymentMethodSelector({
                             <div className="flex items-center gap-2">
                               <Banknote className="h-4 w-4" />
                               Efectivo
+                              {descuentosActivos && (
+                                <span className="text-xs text-green-600 ml-auto">
+                                  -{getEffectiveDiscount(METODOS_PAGO.EFECTIVO)}%
+                                </span>
+                              )}
                             </div>
                           </SelectItem>
                           <SelectItem value={METODOS_PAGO.TARJETA}>
                             <div className="flex items-center gap-2">
                               <CreditCard className="h-4 w-4" />
                               Tarjeta
+                              {descuentosActivos && (
+                                <span className="text-xs text-green-600 ml-auto">
+                                  -{getEffectiveDiscount(METODOS_PAGO.TARJETA)}%
+                                </span>
+                              )}
                             </div>
                           </SelectItem>
                           <SelectItem value={METODOS_PAGO.TRANSFERENCIA}>
                             <div className="flex items-center gap-2">
                               <Smartphone className="h-4 w-4" />
                               Transferencia
+                              {descuentosActivos && (
+                                <span className="text-xs text-green-600 ml-auto">
+                                  -{getEffectiveDiscount(METODOS_PAGO.TRANSFERENCIA)}%
+                                </span>
+                              )}
                             </div>
                           </SelectItem>
                           <SelectItem value={METODOS_PAGO.GIFTCARD}>
                             <div className="flex items-center gap-2">
                               <Gift className="h-4 w-4" />
                               Gift Card
+                              {descuentosActivos && (
+                                <span className="text-xs text-green-600 ml-auto">
+                                  -{getEffectiveDiscount(METODOS_PAGO.GIFTCARD)}%
+                                </span>
+                              )}
                             </div>
                           </SelectItem>
                           <SelectItem value={METODOS_PAGO.QR}>
                             <div className="flex items-center gap-2">
                               <QrCode className="h-4 w-4" />
                               QR
+                              {descuentosActivos && (
+                                <span className="text-xs text-green-600 ml-auto">
+                                  -{getEffectiveDiscount(METODOS_PAGO.QR)}%
+                                </span>
+                              )}
                             </div>
                           </SelectItem>
                         </SelectContent>
@@ -470,6 +584,15 @@ export default function PaymentMethodSelector({
                       <Split className="h-4 w-4 text-blue-600" />
                       <span className="text-xs text-blue-700">
                         Pago dividido: {paymentMethod?.moneda} + {secondPaymentMethod?.moneda}
+                      </span>
+                    </div>
+                  )}
+
+                  {/* Discount Status Info */}
+                  {!descuentosActivos && (
+                    <div className="flex items-center gap-2 rounded-md bg-yellow-100 p-2">
+                      <span className="text-xs text-yellow-700">
+                        ⚠️ Descuentos desactivados - No se aplicarán descuentos por método de pago
                       </span>
                     </div>
                   )}

@@ -96,7 +96,6 @@ export async function apiFetch<T = unknown>(
       
       const error = new Error(`API ${response.status}: ${message}`);
       (error as any).status = response.status;
-      console.log('Error:', response, message);
       throw error;
   }
 

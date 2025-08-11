@@ -63,9 +63,7 @@ export default function AdjuntarArchivos({
     setSubiendo(true);
 
     try {
-      // TODO: Implementar cuando esté el backend
-      console.log('Subiendo archivos para comanda:', comandaId);
-      console.log('Archivos seleccionados:', files);
+
 
       // Simulación de subida
       await new Promise((resolve) => setTimeout(resolve, 1000));
@@ -96,7 +94,6 @@ export default function AdjuntarArchivos({
   const eliminarArchivo = async (archivoId: string) => {
     try {
       // TODO: Implementar cuando esté el backend
-      console.log('Eliminando archivo:', archivoId);
 
       const archivosActualizados = archivos.filter(
         (archivo) => archivo.id !== archivoId
@@ -110,7 +107,6 @@ export default function AdjuntarArchivos({
 
   const descargarArchivo = (archivo: ArchivoAdjunto) => {
     // TODO: Implementar descarga real cuando esté el backend
-    console.log('Descargando archivo:', archivo.nombre);
 
     // Simulación de descarga
     const link = document.createElement('a');
@@ -123,7 +119,6 @@ export default function AdjuntarArchivos({
 
   const previsualizarArchivo = (archivo: ArchivoAdjunto) => {
     // TODO: Implementar previsualización cuando esté el backend
-    console.log('Previsualizando archivo:', archivo.nombre);
     window.open(archivo.url, '_blank');
   };
 

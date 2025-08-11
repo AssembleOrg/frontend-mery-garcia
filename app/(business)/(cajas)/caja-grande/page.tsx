@@ -162,7 +162,6 @@ export default function CajaGrandePage() {
       return acc;
     }, 0);
 
-    console.log("totalArs", totalArs, "totalUsd", totalUsd, "residualArs", residualArs, "residualUsd", residualUsd, "egresosArs", egresosArs, "egresosUsd", egresosUsd);
 
     const saldoNetoARS = totalArs - residualArs - egresosArs;
     const saldoNetoUSD = totalUsd - residualUsd - egresosUsd;
@@ -192,7 +191,6 @@ export default function CajaGrandePage() {
       comandasValidadasIds: [''],
       comandas: [],
     };
-    console.log(ultimoTraspaso, movimientosPaginados);
     setUltimoTraspaso(ultimoTraspaso as MovimientoNew);
   }, [movimientosPaginados]);
 

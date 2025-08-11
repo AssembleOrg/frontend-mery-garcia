@@ -120,7 +120,6 @@ export default function IngresosPage() {
 
   // Cargar comandas con filtros
   useEffect(() => {
-    console.log('cargando comandas con filtros');
 
     // Preparar fechas para el backend
     let fechaDesde: string | undefined;
@@ -207,7 +206,6 @@ export default function IngresosPage() {
   const confirmarEliminar = () => {
     if (alertaEliminar) {
       // TODO: Implementar llamada al backend para eliminar
-      console.log('Eliminando transacción:', alertaEliminar.id);
       // eliminarComanda(alertaEliminar.id); // Esta sería la llamada real al backend
       setAlertaEliminar(null);
       // Recargar datos después de eliminar cuando se conecte el backend

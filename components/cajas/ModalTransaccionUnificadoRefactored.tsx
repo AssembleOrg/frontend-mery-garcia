@@ -48,6 +48,7 @@ import { useErrorHandler } from '@/hooks/useErrorHandler';
 import ItemPaymentForm from './ItemPaymentForm';
 import TransactionSummary from './TransactionSummary';
 import { MONEDAS, METODOS_PAGO } from '@/lib/constants';
+import { useConfiguracion } from '@/features/configuracion/store/configuracionStore';
 
 /**
  * ModalTransaccionUnificadoRefactored Component
@@ -127,18 +128,31 @@ export default function ModalTransaccionUnificadoRefactored({
 
   const { getTipoCambio, cargando } = useExchangeRateStore();
   const { user } = useAuth();
+  const { descuentosPorMetodo } = useConfiguracion();
 
   useInitializeComandaStore();
 
+  // Global state for discounts toggle
+  const [descuentosActivos, setDescuentosActivos] = useState(true);
+
+  // Modal state
+  const [isModalBusquedaOpen, setIsModalBusquedaOpen] = useState(false);
+  const [guardando, setGuardando] = useState(false);
+
   // Form state
-  const [clienteSeleccionado, setClienteSeleccionado] =
-    useState<ClienteNew | null>(null);
+  const [observaciones, setObservaciones] = useState('');
+  const [items, setItems] = useState<ItemComandaCreateNew[]>([]);
+  const [errores, setErrores] = useState<{ [key: string]: string }>({});
+
+  // Client state
+  const [clienteSeleccionado, setClienteSeleccionado] = useState<ClienteNew | null>(null);
   const [clienteProveedor, setClienteProveedor] = useState('');
   const [telefono, setTelefono] = useState('');
   const [responsableId, setResponsableId] = useState('');
   const [responsablesIds, setResponsablesIds] = useState<string[]>([]);
-  const [observaciones, setObservaciones] = useState('');
-  const [items, setItems] = useState<ItemComandaCreateNew[]>([]);
+
+  // Seña state
+  const [señaActiva, setSeñaActiva] = useState<{ [key: string]: boolean }>({});
 
   // Seña management state
   const [itemConSeñaActiva, setItemConSeñaActiva] = useState<string | null>(null);
@@ -163,9 +177,8 @@ export default function ModalTransaccionUnificadoRefactored({
   const canUseSeñaForItem = (itemId: string) => {
     return itemConSeñaActiva === null || itemConSeñaActiva === itemId;
   };
+
   // UI state
-  const [guardando, setGuardando] = useState(false);
-  const [errores, setErrores] = useState<Record<string, string>>({});
   const [mostrarBuscador, setMostrarBuscador] = useState(false);
   const [busqueda, setBusqueda] = useState('');
   const [numeroManual, setNumeroManual] = useState('');
@@ -446,9 +459,7 @@ export default function ModalTransaccionUnificadoRefactored({
 
   // Save transaction
   const handleSave = async () => {
-    console.log('guardando COMANDA');
     if (!validarFormulario()) return;
-    console.log('validado');
     setGuardando(true);
 
     try {
@@ -456,15 +467,10 @@ export default function ModalTransaccionUnificadoRefactored({
         ? '01-' + numeroManual
         : numeroUltimaComanda;
 
-        console.log(items, "nuevaComandaNewItems");
        
       // Convert items with payment methods to the format expected by the backend
       const itemsWithPaymentMethods = items.map((item) => {
         const itemPaymentMethods = (item as any).metodosPago || [];
-        
-        console.log('=== CONVERTIENDO ITEM ===');
-        console.log('Item original:', item);
-        console.log('Payment methods encontrados:', itemPaymentMethods);
         
         return {
           productoServicioId: item.productoServicio?.id!,
@@ -480,36 +486,6 @@ export default function ModalTransaccionUnificadoRefactored({
         } as any; // Type assertion to match DTO structure
       });
         
-        console.log('=== ITEMS CONVERTIDOS ===');
-        console.log('Items originales:', items);
-        console.log('Items convertidos:', itemsWithPaymentMethods);
-        console.log('Estructura de cada item:');
-        itemsWithPaymentMethods.forEach((item, index) => {
-          console.log(`Item ${index}:`, {
-            productoServicioId: item.productoServicioId,
-            nombre: item.nombre,
-            tipo: item.tipo,
-            precio: Number(item.precio),
-            cantidad: item.cantidad,
-            descuento: item.descuento,
-            trabajadorId: item.trabajadorId,
-            subtotal: Number(item.subtotal),
-            metodosPago: item.metodosPago
-          });
-        });
-        
-        console.log('=== VERIFICACIÓN MÉTODOS DE PAGO ===');
-        itemsWithPaymentMethods.forEach((item, index) => {
-          console.log(`Item ${index} - Métodos de pago:`, item.metodosPago);
-          console.log(`Item ${index} - Cantidad de métodos:`, item.metodosPago?.length || 0);
-          
-          // Verificar si es split payment
-          if (item.metodosPago && item.metodosPago.length > 1) {
-            console.log(`Item ${index} - ES SPLIT PAYMENT`);
-            console.log(`Item ${index} - Primer método:`, item.metodosPago[0]);
-            console.log(`Item ${index} - Segundo método:`, item.metodosPago[1]);
-          }
-        });
 
         const nuevaComandaNew: ComandaCreateNew = {
           clienteId: clienteSeleccionado?.id,
@@ -527,10 +503,7 @@ export default function ModalTransaccionUnificadoRefactored({
           usuarioConsumePrepago: itemConSeñaActiva !== null, // true if any item has seña active
         };
 
-        console.log('=== SEÑA STATUS ===');
-        console.log('Item con seña activa:', itemConSeñaActiva);
-        console.log('usuarioConsumePrepago será:', itemConSeñaActiva !== null);
-        console.log('===================');
+       
 
         const descuentos = nuevaComandaNew.items?.flatMap(item => {
           const itemWithPayment = item as any;
@@ -585,21 +558,6 @@ export default function ModalTransaccionUnificadoRefactored({
             return itemSum + (mp.moneda === MonedaNew.ARS ? mp.montoFinal || 0 : 0);
           }, 0);
         }, 0) || 0;
-
-        nuevaComandaNew.items?.forEach((item, index) => {
-          console.log(`Item ${index}:`, {
-            productoServicioId: item.productoServicioId,
-            nombre: item.nombre,
-            tipo: item.tipo,
-            precio: item.precio,
-            cantidad: item.cantidad,
-            descuento: item.descuento,
-            trabajadorId: item.trabajadorId,
-            subtotal: item.subtotal,
-            metodosPago: (item as any).metodosPago
-          });
-        });
-
       if (!comandaId) {
         const existe = await existeComanda(numeroTransaccion.toString());
         if (existe) {
@@ -607,8 +565,6 @@ export default function ModalTransaccionUnificadoRefactored({
           return;
         }
       }
-
-      console.log(nuevaComandaNew, "nuevaComandaNew");
 
       await agregarComanda(nuevaComandaNew);
       resetForm();
@@ -703,6 +659,63 @@ export default function ModalTransaccionUnificadoRefactored({
   };
 
   if (!isOpen) return null;
+
+  // Handle global discounts toggle
+  const handleGlobalDescuentosToggle = (enabled: boolean) => {
+    setDescuentosActivos(enabled);
+    
+    // Update all items to reflect the new discount settings
+    items.forEach(item => {
+      const currentPaymentMethod = item.metodosPago?.[0];
+      if (currentPaymentMethod) {
+        const isSplitEnabled = item.metodosPago && item.metodosPago.length > 1;
+        
+        if (isSplitEnabled) {
+          // For split payment, recalculate both payments
+          const itemTotal = (item.precio || 0) * (item.cantidad || 1);
+          const splitAmount = Math.round(itemTotal / 2);
+          
+          const firstMethod = {
+            ...currentPaymentMethod,
+            monto: splitAmount,
+            montoFinal: splitAmount,
+            moneda: MONEDAS.USD as MonedaNew,
+          };
+
+          const secondMethod = {
+            ...currentPaymentMethod,
+            monto: itemTotal - splitAmount,
+            montoFinal: itemTotal - splitAmount,
+            moneda: MONEDAS.ARS as MonedaNew,
+          };
+
+          actualizarItem(item.id!, { metodosPago: [firstMethod, secondMethod] });
+        } else {
+          // For single payment, recalculate with new discount settings
+          const itemTotal = (item.precio || 0) * (item.cantidad || 1);
+          const discountAmount = enabled ? 
+            Math.round((itemTotal * (descuentosPorMetodo[currentPaymentMethod.tipo as keyof typeof descuentosPorMetodo] || 0)) / 100) : 0;
+          
+          const updatedPaymentMethod = {
+            ...currentPaymentMethod,
+            monto: itemTotal,
+            montoFinal: itemTotal - discountAmount,
+            descuentoAplicado: discountAmount,
+            descuentoGlobalPorcentaje: discountAmount > 0 ? Math.round((discountAmount / itemTotal) * 100) : 0,
+            recargoPorcentaje: 0,
+          };
+
+          actualizarItem(item.id!, { metodosPago: [updatedPaymentMethod] });
+        }
+      }
+    });
+    
+  };
+
+  // Wrapper function to match the expected signature
+  const handleItemDescuentosToggle = (itemId: string, enabled: boolean) => {
+    handleGlobalDescuentosToggle(enabled);
+  };
 
   return (
     <div
@@ -938,6 +951,7 @@ export default function ModalTransaccionUnificadoRefactored({
                         onSeñaToggle={handleSeñaToggle}
                         isSeñaActive={isSeñaActiveForItem(item.id!)}
                         canUseSeña={canUseSeñaForItem(item.id!)}
+                        onDescuentosToggle={handleItemDescuentosToggle}
                       />
                     ))
                   )}
@@ -955,6 +969,7 @@ export default function ModalTransaccionUnificadoRefactored({
                 <TransactionSummary
                   items={items}
                   tipo={tipo}
+                  descuentosActivos={descuentosActivos}
                 />
 
                 {/* Action Buttons */}

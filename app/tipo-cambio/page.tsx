@@ -98,7 +98,6 @@ export default function TipoCambioPage() {
             fuente: current.casa,
             modoManual: false,
           });
-          console.log('Valores informativos API cargados:', current);
         }else {
           if(historial.length === 0) {
             const cotizacion = await getCotizacion().catch((error) => {
@@ -140,8 +139,6 @@ export default function TipoCambioPage() {
 
 
   const handleRefresh = () => {
-    console.log('canRefresh', canRefresh);
-    console.log('nextRefreshTime', nextRefreshTime);
     if (!canRefresh) {
       const timeLeft = nextRefreshTime
         ? Math.ceil(
