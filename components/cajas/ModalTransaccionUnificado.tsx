@@ -762,8 +762,7 @@ export default function ModalTransaccionUnificado({
     }
 
     if (
-      items.every((item) => item.responsablesIds?.length === 0) &&
-      tipo === 'ingreso'
+      items.some((item) => item.trabajadorId?.length === 0)
     ) {
       toast.error('Debe seleccionar un responsable por item', {
         position: 'top-center',
@@ -921,7 +920,8 @@ export default function ModalTransaccionUnificado({
       //   (nuevaComandaNew.metodosPago?.reduce((sum, mp) => {
       //     return mp.moneda === MonedaNew.ARS ? sum + mp.montoFinal! : sum;
       //   }, 0) ?? 0) + seña;
-      nuevaComandaNew.usuarioConsumePrepago = seña > 0 || señaUSD > 0;
+      nuevaComandaNew.usuarioConsumePrepagoARS = seña > 0;
+      nuevaComandaNew.usuarioConsumePrepagoUSD = señaUSD > 0;
 
       if (!comandaId) {
         const existe = await existeComanda(numeroTransaccion.toString());

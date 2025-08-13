@@ -33,6 +33,8 @@ export interface Cliente {
     ars: number;
     usd: number;
   };
+  tipoPagoARS?: string; // Tipo de pago para seña en ARS
+  tipoPagoUSD?: string; // Tipo de pago para seña en USD
   fechaRegistro: Date;
 }
 

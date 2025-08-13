@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import {
   X,
   Users,
@@ -13,9 +14,11 @@ import {
   DollarSign,
   Plus,
   IdCard,
+  Gift,
 } from 'lucide-react';
 import { Cliente } from '@/types/caja';
 import { useCurrencyConverter } from '@/hooks/useCurrencyConverter';
+import { TipoPagoNew } from '@/services/unidadNegocio.service';
 
 interface ModalClienteProps {
   isOpen: boolean;
@@ -44,6 +47,8 @@ export default function ModalCliente({
   // Estados para señas
   const [señaArs, setSeñaArs] = useState('0');
   const [señaUsd, setSeñaUsd] = useState('0');
+  const [tipoPagoARS, setTipoPagoARS] = useState<TipoPagoNew>(TipoPagoNew.EFECTIVO);
+  const [tipoPagoUSD, setTipoPagoUSD] = useState<TipoPagoNew>(TipoPagoNew.EFECTIVO);
 
   // Estados de validación
   const [errores, setErrores] = useState<Record<string, string>>({});
@@ -66,6 +71,8 @@ export default function ModalCliente({
         setDni(cliente.dni || '');
         setSeñaArs(String(cliente.señasDisponibles?.ars || 0));
         setSeñaUsd(String(cliente.señasDisponibles?.usd || 0));
+        setTipoPagoARS((cliente.tipoPagoARS as TipoPagoNew) || TipoPagoNew.EFECTIVO);
+        setTipoPagoUSD((cliente.tipoPagoUSD as TipoPagoNew) || TipoPagoNew.EFECTIVO);
       } else {
         // Modo creación
         clearForm();
@@ -82,6 +89,8 @@ export default function ModalCliente({
     setDni('');
     setSeñaArs('0');
     setSeñaUsd('0');
+    setTipoPagoARS(TipoPagoNew.EFECTIVO);
+    setTipoPagoUSD(TipoPagoNew.EFECTIVO);
     setErrores({});
   };
 
@@ -145,6 +154,8 @@ export default function ModalCliente({
         email: email.trim() || undefined,
         cuit: cuit.trim() || undefined,
         dni: dni.trim() || undefined,
+        tipoPagoARS: tipoPagoARS,
+        tipoPagoUSD: tipoPagoUSD,
       };
 
       const señas = {
@@ -376,6 +387,92 @@ export default function ModalCliente({
                       placeholder="0.00"
                       className={`pl-10 ${errores.señaUsd ? 'border-red-300' : 'border-[#f9bbc4]/30 focus:border-[#f9bbc4]'}`}
                     />
+                  </div>
+                </div>
+              </div>
+
+              {/* Tipos de Pago para Señas */}
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label htmlFor="tipo-pago-ars" className="font-medium text-[#4a3540]">
+                    Tipo de Pago (ARS)
+                  </Label>
+                  <div className="relative mt-1">
+                    <Select
+                      value={tipoPagoARS}
+                      onValueChange={(value) => setTipoPagoARS(value as TipoPagoNew)}
+                    >
+                      <SelectTrigger className="border-[#f9bbc4]/30 focus:border-[#f9bbc4]">
+                        <SelectValue placeholder="Seleccionar tipo" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value={TipoPagoNew.EFECTIVO}>
+                          <div className="flex items-center gap-2">
+                            <DollarSign className="h-4 w-4" />
+                            Efectivo
+                          </div>
+                        </SelectItem>
+                        <SelectItem value={TipoPagoNew.TARJETA}>
+                          <div className="flex items-center gap-2">
+                            <CreditCard className="h-4 w-4" />
+                            Tarjeta
+                          </div>
+                        </SelectItem>
+                        <SelectItem value={TipoPagoNew.TRANSFERENCIA}>
+                          <div className="flex items-center gap-2">
+                            <Phone className="h-4 w-4" />
+                            Transferencia
+                          </div>
+                        </SelectItem>
+                        <SelectItem value={TipoPagoNew.GIFT_CARD}>
+                          <div className="flex items-center gap-2">
+                            <Gift className="h-4 w-4" />
+                            Gift Card
+                          </div>
+                        </SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+                <div>
+                  <Label htmlFor="tipo-pago-usd" className="font-medium text-[#4a3540]">
+                    Tipo de Pago (USD)
+                  </Label>
+                  <div className="relative mt-1">
+                    <Select
+                      value={tipoPagoUSD}
+                      onValueChange={(value) => setTipoPagoUSD(value as TipoPagoNew)}
+                    >
+                      <SelectTrigger className="border-[#f9bbc4]/30 focus:border-[#f9bbc4]">
+                        <SelectValue placeholder="Seleccionar tipo" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value={TipoPagoNew.EFECTIVO}>
+                          <div className="flex items-center gap-2">
+                            <DollarSign className="h-4 w-4" />
+                            Efectivo
+                          </div>
+                        </SelectItem>
+                        <SelectItem value={TipoPagoNew.TARJETA}>
+                          <div className="flex items-center gap-2">
+                            <CreditCard className="h-4 w-4" />
+                            Tarjeta
+                          </div>
+                        </SelectItem>
+                        <SelectItem value={TipoPagoNew.TRANSFERENCIA}>
+                          <div className="flex items-center gap-2">
+                            <Phone className="h-4 w-4" />
+                            Transferencia
+                          </div>
+                        </SelectItem>
+                        <SelectItem value={TipoPagoNew.GIFT_CARD}>
+                          <div className="flex items-center gap-2">
+                            <Gift className="h-4 w-4" />
+                            Gift Card
+                          </div>
+                        </SelectItem>
+                      </SelectContent>
+                    </Select>
                   </div>
                 </div>
               </div>

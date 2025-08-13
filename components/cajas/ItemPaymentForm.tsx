@@ -65,9 +65,7 @@ interface ItemPaymentFormProps {
   tipo: 'ingreso' | 'egreso';
   personal?: TrabajadorNew[];
   cliente?: ClienteNew | null;
-  onSeñaToggle?: (itemId: string, enabled: boolean) => void;
-  isSeñaActive?: boolean;
-  canUseSeña?: boolean;
+
   isEditMode?: boolean;
   disabled?: boolean;
   onDescuentosToggle?: (itemId: string, enabled: boolean) => void; // New prop
@@ -91,9 +89,7 @@ export default function ItemPaymentForm({
   tipo,
   personal = [],
   cliente = null,
-  onSeñaToggle,
-  isSeñaActive = false,
-  canUseSeña = true,
+
   isEditMode = false,
   disabled = false,
   onDescuentosToggle, // New prop
@@ -113,11 +109,7 @@ export default function ItemPaymentForm({
   // Local state for discounts toggle
   const [descuentosActivos, setDescuentosActivos] = useState(true); // Default to true
   
-  // Use global seña state instead of local state
-  const usarSeña = isSeñaActive;
-  
-  // Create a key to identify this specific item (for global seña management)
-  const itemKey = `${item.id}-${index}`;
+
 
   // Helper function to get payment method icon
   const getPaymentIcon = (tipo: string) => {
@@ -193,51 +185,9 @@ export default function ItemPaymentForm({
     return itemWithPayment.metodosPago && itemWithPayment.metodosPago.length > 1;
   };
 
-  // Helper function to get available seña for the current payment currency
-  const getAvailableSeña = () => {
-    if (!cliente || !cliente.señasDisponibles) return 0;
-    
-    const paymentMethod = getFirstPaymentMethod();
-    const currency = paymentMethod?.moneda || (isItemFrozen() ? MONEDAS.ARS : MONEDAS.USD);
-    
-    if (currency === MONEDAS.ARS) {
-      return cliente.señasDisponibles.ars || 0;
-    } else {
-      return cliente.señasDisponibles.usd || 0;
-    }
-  };
 
-  // Helper function to check if seña is available for the current currency
-  const hasAvailableSeña = () => {
-    return getAvailableSeña() > 0;
-  };
 
-  // Helper function to get seña currency
-  const getSeñaCurrency = () => {
-    const paymentMethod = getFirstPaymentMethod();
-    return paymentMethod?.moneda || (isItemFrozen() ? MONEDAS.ARS : MONEDAS.USD);
-  };
 
-  // Helper function to calculate seña amount to apply (cannot exceed discounted total)
-  const calculateSeñaToApply = () => {
-    if (!usarSeña) return 0;
-    
-    const availableSeña = getAvailableSeña();
-    const discountedTotal = calculateDiscountedTotal();
-    
-    // Apply seña up to the discounted total amount
-    return Math.min(availableSeña, discountedTotal);
-  };
-
-  // Helper function to calculate final amount after seña
-  const calculateFinalAmountWithSeña = () => {
-    const discountedTotal = calculateDiscountedTotal();
-    if (!usarSeña) {
-      return discountedTotal; // If seña is not being used, return just the discounted total
-    }
-    const señaToApply = calculateSeñaToApply();
-    return Math.max(0, discountedTotal - señaToApply);
-  };
 
   // Helper function to get effective discount percentage (0 if descuentosActivos is false)
   const getEffectiveDiscount = (paymentType: string) => {
@@ -287,7 +237,7 @@ export default function ItemPaymentForm({
 
     if (enabled) {
       // Enable split payment - create second payment method
-      const finalAmountWithSeña = calculateFinalAmountWithSeña();
+      const finalAmountWithSeña = calculateDiscountedTotal();
       const firstAmount = Math.round(finalAmountWithSeña / 2); // Split roughly in half
       const secondAmount = calculateSecondPaymentAmount(firstAmount);
       
@@ -316,7 +266,7 @@ export default function ItemPaymentForm({
       onUpdateItem(item.id!, { metodosPago: [firstMethod, secondMethod] });
     } else {
       // Disable split payment - keep only first method
-      const finalAmountWithSeña = calculateFinalAmountWithSeña();
+      const finalAmountWithSeña = calculateDiscountedTotal();
       const singleMethod = {
         ...currentPaymentMethod,
         monto: Math.round(finalAmountWithSeña),
@@ -330,7 +280,7 @@ export default function ItemPaymentForm({
 
   // Helper function to calculate second payment amount automatically
   const calculateSecondPaymentAmount = (firstPaymentAmount: number) => {
-    const finalAmountWithSeña = calculateFinalAmountWithSeña();
+    const finalAmountWithSeña = calculateDiscountedTotal();
     const remainingAmount = finalAmountWithSeña - firstPaymentAmount;
     // Convert USD remaining amount to ARS using the exchange rate and round to integer
     const secondAmount = Math.round(usdToArs(remainingAmount)); // Convert USD to ARS and round
@@ -338,9 +288,9 @@ export default function ItemPaymentForm({
   };
 
   // Helper function to handle first payment amount change (when split is enabled)
-  const handleFirstPaymentAmountChange = (newAmount: number) => {
+      const handleFirstPaymentAmountChange = (newAmount: number) => {
     const cleanAmount = Math.round(newAmount); // Use Math.round instead of Math.floor
-    const finalAmountWithSeña = calculateFinalAmountWithSeña();
+    const finalAmountWithSeña = calculateDiscountedTotal();
     const subtotal = calculateItemSubtotal();
     
     // Ensure first payment doesn't exceed final amount with seña
@@ -391,14 +341,7 @@ export default function ItemPaymentForm({
     setLocalFirstPaymentAmount(cleanAmount.toString());
   };
 
-  // Helper function to handle seña toggle
-  const handleSeñaToggle = (enabled: boolean) => {
-    // Call the global seña toggle function
-    if (onSeñaToggle) {
-      onSeñaToggle(item.id!, enabled);
-    }
-    // The useEffect above will handle the recalculation when isSeñaActive changes
-  };
+
 
   // Helper function to handle quantity change
   const handleQuantityChange = (newQuantity: number) => {
@@ -497,8 +440,8 @@ export default function ItemPaymentForm({
     const isSplitEnabled = isSplitPaymentEnabled();
     
     if (isSplitEnabled) {
-      // For split payment, apply discount and seña to the total and split the final amount
-      const finalAmountWithSeña = calculateFinalAmountWithSeña();
+      // For split payment, apply discount to the total and split the final amount
+      const finalAmountWithSeña = calculateDiscountedTotal();
       const splitAmount = Math.round(finalAmountWithSeña / 2); // Split roughly in half
       
       return {
@@ -514,8 +457,8 @@ export default function ItemPaymentForm({
       // For single payment, apply discount to the converted amount
       const { montoFinal, descuentoAplicado } = calculateDiscount(METODOS_PAGO.EFECTIVO, convertedAmount, currency);
       
-      // Apply seña after discount
-      const finalAmountWithSeña = Math.max(0, montoFinal - calculateSeñaToApply());
+      // No seña applied at item level anymore
+      const finalAmountWithSeña = montoFinal;
       
       return {
         tipo: METODOS_PAGO.EFECTIVO as TipoPagoNew,
@@ -537,7 +480,7 @@ export default function ItemPaymentForm({
       const newPaymentMethod = initializePaymentMethod(defaultCurrency);
       onUpdateItem(item.id!, { metodosPago: [newPaymentMethod] });
     }
-  }, [item.id]); // Only run when item.id changes
+  }, []); // Only run once when component mounts
 
   // Update payment method when item changes (quantity, price, etc.)
   useEffect(() => {
@@ -582,60 +525,11 @@ export default function ItemPaymentForm({
       
       onUpdateItem(item.id!, { metodosPago: [updatedPaymentMethod] });
     }
-  }, [item.cantidad, item.precio, item.descuento]); // Run when item properties change
+  }, [item.cantidad, item.precio]); // Only run when quantity or price changes, not discount
 
-  // Recalculate payment methods when seña state changes
-  useEffect(() => {
-    const currentPaymentMethod = getFirstPaymentMethod();
-    if (!currentPaymentMethod) return;
 
-    const isSplitEnabled = isSplitPaymentEnabled();
-    
-    if (isSplitEnabled) {
-      // For split payment, recalculate both payments
-      const finalAmountWithSeña = calculateFinalAmountWithSeña();
-      const firstAmount = Math.round(finalAmountWithSeña / 2);
-      const secondAmount = calculateSecondPaymentAmount(firstAmount);
-      
-      const firstMethod = {
-        ...currentPaymentMethod,
-        monto: firstAmount,
-        montoFinal: firstAmount,
-        descuentoGlobalPorcentaje: 0,
-        recargoPorcentaje: 0,
-      };
 
-      const secondMethod = {
-        ...getSecondPaymentMethod(),
-        monto: secondAmount,
-        montoFinal: secondAmount,
-        descuentoGlobalPorcentaje: 0,
-        recargoPorcentaje: 0,
-      };
 
-      onUpdateItem(item.id!, { metodosPago: [firstMethod, secondMethod] });
-    } else {
-      // For single payment, recalculate the payment amount with proper discount info
-      const discountedTotal = calculateDiscountedTotal();
-      const finalAmountWithSeña = calculateFinalAmountWithSeña();
-      const discountAmount = calculateTotalDiscount();
-      
-      const updatedPaymentMethod = {
-        ...currentPaymentMethod,
-        monto: discountedTotal, // The amount before seña
-        montoFinal: finalAmountWithSeña, // The final amount after seña
-        descuentoAplicado: discountAmount,
-        descuentoGlobalPorcentaje: discountAmount > 0 ? Math.round((discountAmount / calculateItemSubtotal()) * 100) : 0,
-        recargoPorcentaje: 0,
-      };
-
-      onUpdateItem(item.id!, { metodosPago: [updatedPaymentMethod] });
-    }
-  }, [isSeñaActive]); // Run when seña state changes
-
-  // Force re-calculation when item changes
-  useEffect(() => {
-  }, [item.cantidad, item.precio, item.subtotal]);
 
   // Helper function to handle currency conversion when switching
   const handleCurrencyChange = (newCurrency: string, paymentIndex: number = 0) => {
@@ -767,7 +661,7 @@ export default function ItemPaymentForm({
       
       if (isSplitEnabled) {
         // For split payment, recalculate both payments
-        const finalAmountWithSeña = calculateFinalAmountWithSeña();
+        const finalAmountWithSeña = calculateDiscountedTotal();
         const firstAmount = Math.round(finalAmountWithSeña / 2);
         const secondAmount = calculateSecondPaymentAmount(firstAmount);
         
@@ -791,7 +685,7 @@ export default function ItemPaymentForm({
       } else {
         // For single payment, recalculate with new discount settings
         const discountedTotal = calculateDiscountedTotal();
-        const finalAmountWithSeña = calculateFinalAmountWithSeña();
+        const finalAmountWithSeña = discountedTotal;
         const discountAmount = calculateTotalDiscount();
         
         const updatedPaymentMethod = {
@@ -888,22 +782,7 @@ export default function ItemPaymentForm({
             </div>
           )}
           
-          {/* Seña Checkbox - shown if client has available seña for this currency */}
-          {hasAvailableSeña() && (
-            <div className="flex items-center gap-2">
-              <DollarSign className="h-4 w-4 text-green-500" />
-              <Checkbox
-                checked={usarSeña}
-                onCheckedChange={(checked) => handleSeñaToggle(checked as boolean)}
-                disabled={disabled || !canUseSeña}
-                className={`h-4 w-4 ${disabled || !canUseSeña ? 'opacity-50 cursor-not-allowed' : ''}`}
-              />
-              <Label className={`text-xs ${disabled || !canUseSeña ? 'text-gray-400' : 'text-green-600'}`}>
-                Usar Seña ({getSeñaCurrency()}) {formatAmount(getAvailableSeña(), getSeñaCurrency(), false)}
-                {!canUseSeña && ' (Ya hay otra seña en uso)'}
-              </Label>
-            </div>
-          )}
+
         </div>
         <Button
           type="button"
@@ -1079,7 +958,7 @@ export default function ItemPaymentForm({
               type="number"
               min="0"
               step="1"
-              value={isSplitEnabled ? localFirstPaymentAmount : calculateFinalAmountWithSeña()}
+              value={isSplitEnabled ? localFirstPaymentAmount : calculateDiscountedTotal()}
               onChange={(e) => {
                 if (disabled) return;
                 const newValue = e.target.value;
@@ -1176,29 +1055,7 @@ export default function ItemPaymentForm({
           </div>
         )}
 
-        {/* Seña Information Display */}
-        {usarSeña && calculateSeñaToApply() > 0 && (
-          <div className="rounded-md bg-blue-50 border border-blue-200 p-3">
-            <div className="flex items-center justify-between text-sm">
-              <span className="text-blue-700 font-medium">Seña aplicada:</span>
-              <span className="text-blue-700 font-semibold">
-                -{formatAmount(calculateSeñaToApply(), getSeñaCurrency(), isFrozen)}
-              </span>
-            </div>
-            <div className="flex items-center justify-between text-xs text-blue-600 mt-1">
-              <span>Total final a pagar:</span>
-              <span className="font-medium">
-                {formatAmount(calculateFinalAmountWithSeña(), paymentMethod?.moneda || MONEDAS.USD, isFrozen)}
-              </span>
-            </div>
-            <div className="flex items-center justify-between text-xs text-blue-500 mt-1">
-              <span>Seña restante:</span>
-              <span>
-                {formatAmount(getAvailableSeña() - calculateSeñaToApply(), getSeñaCurrency(), isFrozen)}
-              </span>
-            </div>
-          </div>
-        )}
+
 
         {/* Frozen Price Warning */}
         {isFrozen && (

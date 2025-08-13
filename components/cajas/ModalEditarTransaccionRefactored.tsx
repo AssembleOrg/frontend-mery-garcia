@@ -414,6 +414,7 @@ export default function ModalEditarTransaccionRefactored({
 
   // Form validation
   const validarFormulario = (): boolean => {
+    console.log('items', items);
     const nuevosErrores: Record<string, string> = {};
 
     if (!clienteProveedor.trim()) {
@@ -423,8 +424,7 @@ export default function ModalEditarTransaccionRefactored({
     }
 
     if (
-      items.every((item) => item.responsablesIds?.length === 0) &&
-      tipo === 'ingreso'
+      items.some((item) => item.trabajadorId?.length === 0)
     ) {
       toast.error('Debe seleccionar un responsable por item', {
         position: 'top-center',
@@ -452,6 +452,10 @@ export default function ModalEditarTransaccionRefactored({
       if (item.cantidad! <= 0) {
         nuevosErrores[`item-${index}-cantidad`] =
           'La cantidad debe ser mayor a 0';
+        return false;
+      }
+      if (item.trabajadorId?.length === 0) {
+        nuevosErrores[`item-${index}-responsable`] = 'Debe seleccionar un responsable por item';
         return false;
       }
     });

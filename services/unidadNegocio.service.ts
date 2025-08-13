@@ -365,7 +365,7 @@ export interface ComandaNew {
   id: string;
   numero: string;
   caja: CajaNew;
-  createdAt: string;
+  createdAt: Date;
   updatedAt: string;
   deletedAt: string;
   estadoDeComanda: EstadoDeComandaNew;
@@ -373,7 +373,8 @@ export interface ComandaNew {
   creadoPor: TrabajadorNew;
   cliente: ClienteNew;
   movimientos: MovimientoNew[];
-  usuarioConsumePrepago: boolean;
+  usuarioConsumePrepagoARS: boolean;
+  usuarioConsumePrepagoUSD: boolean;
   descuentosAplicados: Partial<DescuentoNew>[];
   items: ItemComandaCreateNew[];
   productosServicios: ProductoServicioNew[];

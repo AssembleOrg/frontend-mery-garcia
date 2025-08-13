@@ -103,7 +103,7 @@ export default function TransactionsTableTanStack({
         const isValidated = row.original.estadoDeComanda === EstadoDeComandaNew.VALIDADO;
         return (
           <div className={isValidated ? 'text-gray-500' : ''}>
-            {formatDateEs(getValue() as Date)}
+            {formatDateEs(row.original.createdAt)}
           </div>
         );
       },

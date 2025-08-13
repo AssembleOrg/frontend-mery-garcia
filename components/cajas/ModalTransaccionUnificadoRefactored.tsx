@@ -7,6 +7,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { DatePicker } from '@/components/ui/date-picker';
 import {
   Plus,
   Save,
@@ -143,6 +144,7 @@ export default function ModalTransaccionUnificadoRefactored({
   const [observaciones, setObservaciones] = useState('');
   const [items, setItems] = useState<ItemComandaCreateNew[]>([]);
   const [errores, setErrores] = useState<{ [key: string]: string }>({});
+  const [fechaCreacion, setFechaCreacion] = useState<Date>(new Date()); // Default to today
 
   // Client state
   const [clienteSeleccionado, setClienteSeleccionado] = useState<ClienteNew | null>(null);
@@ -151,32 +153,9 @@ export default function ModalTransaccionUnificadoRefactored({
   const [responsableId, setResponsableId] = useState('');
   const [responsablesIds, setResponsablesIds] = useState<string[]>([]);
 
-  // Seña state
-  const [señaActiva, setSeñaActiva] = useState<{ [key: string]: boolean }>({});
-
-  // Seña management state
-  const [itemConSeñaActiva, setItemConSeñaActiva] = useState<string | null>(null);
-
-  // Seña management functions
-  const handleSeñaToggle = (itemId: string, enabled: boolean) => {
-    if (enabled) {
-      // Only one item can have seña active at a time
-      setItemConSeñaActiva(itemId);
-    } else {
-      // Remove seña from this item
-      if (itemConSeñaActiva === itemId) {
-        setItemConSeñaActiva(null);
-      }
-    }
-  };
-
-  const isSeñaActiveForItem = (itemId: string) => {
-    return itemConSeñaActiva === itemId;
-  };
-
-  const canUseSeñaForItem = (itemId: string) => {
-    return itemConSeñaActiva === null || itemConSeñaActiva === itemId;
-  };
+  // Seña state - now global for entire transaction
+  const [señaActiva, setSeñaActiva] = useState(false);
+  const [señaMonedas, setSeñaMonedas] = useState<string[]>([]); // Array of selected currencies for seña
 
   // UI state
   const [mostrarBuscador, setMostrarBuscador] = useState(false);
@@ -364,10 +343,6 @@ export default function ModalTransaccionUnificadoRefactored({
   };
 
   const eliminarItem = (id: string) => {
-    // Reset seña if the removed item had it active
-    if (itemConSeñaActiva === id) {
-      setItemConSeñaActiva(null);
-    }
     setItems(items.filter((item) => item.id !== id));
   };
 
@@ -400,6 +375,7 @@ export default function ModalTransaccionUnificadoRefactored({
 
   // Form validation
   const validarFormulario = (): boolean => {
+    console.log('items', items);
     const nuevosErrores: Record<string, string> = {};
 
     if (!clienteProveedor.trim()) {
@@ -409,8 +385,7 @@ export default function ModalTransaccionUnificadoRefactored({
     }
 
     if (
-      items.every((item) => item.responsablesIds?.length === 0) &&
-      tipo === 'ingreso'
+      items.some((item) => item.responsablesIds?.length === 0)
     ) {
       toast.error('Debe seleccionar un responsable por item', {
         position: 'top-center',
@@ -500,7 +475,9 @@ export default function ModalTransaccionUnificadoRefactored({
           caja: CajaNew.CAJA_1,
           descuentosAplicados: [],
           items: itemsWithPaymentMethods,
-          usuarioConsumePrepago: itemConSeñaActiva !== null, // true if any item has seña active
+          usuarioConsumePrepagoARS: señaActiva && señaMonedas.includes('ARS'),
+          usuarioConsumePrepagoUSD: señaActiva && señaMonedas.includes('USD'),
+          createdAt: fechaCreacion,
         };
 
        
@@ -558,6 +535,14 @@ export default function ModalTransaccionUnificadoRefactored({
             return itemSum + (mp.moneda === MonedaNew.ARS ? mp.montoFinal || 0 : 0);
           }, 0);
         }, 0) || 0;
+
+        if (señaActiva && señaMonedas.includes('ARS')) {
+          nuevaComandaNew.precioPesos = nuevaComandaNew.precioPesos - clienteSeleccionado?.señasDisponibles.ars! || 0;
+        }
+        if (señaActiva && señaMonedas.includes('USD')) {
+          nuevaComandaNew.precioDolar = nuevaComandaNew.precioDolar - clienteSeleccionado?.señasDisponibles.usd! || 0;
+        }
+
       if (!comandaId) {
         const existe = await existeComanda(numeroTransaccion.toString());
         if (existe) {
@@ -607,7 +592,9 @@ export default function ModalTransaccionUnificadoRefactored({
     setErrores({});
     setMostrarBuscador(false);
     setBusqueda('');
-    setItemConSeñaActiva(null); // Reset seña state
+    setSeñaActiva(false); // Reset seña state
+    setSeñaMonedas([]); // Reset seña currencies
+    setFechaCreacion(new Date()); // Reset to today
   };
 
   useEffect(() => {
@@ -623,6 +610,13 @@ export default function ModalTransaccionUnificadoRefactored({
           setTelefono(comanda.cliente?.telefono || '');
           setObservaciones(comanda.observaciones || '');
           setNumeroManual(comanda.numero?.split('-')[1] || '');
+          
+          // Set creation date if available, otherwise use today
+          if (comanda.createdAt) {
+            setFechaCreacion(new Date(comanda.createdAt));
+          } else {
+            setFechaCreacion(new Date());
+          }
 
           // Convertir items al formato correcto
           const itemsConvertidos =
@@ -858,10 +852,29 @@ export default function ModalTransaccionUnificadoRefactored({
                             if (cliente) {
                               setClienteProveedor(cliente.nombre);
                               setTelefono(cliente.telefono || '');
-                            } else {
-                              setClienteProveedor('');
-                              setTelefono('');
-                            }
+                              
+                              // Verificar si el cliente tiene seña disponible y activarla automáticamente si es apropiado
+                              if (cliente.señasDisponibles) {
+                                const señaARS = cliente.señasDisponibles.ars || 0;
+                                const señaUSD = cliente.señasDisponibles.usd || 0;
+                                
+                                // Si hay seña disponible, activarla automáticamente
+                                if (señaARS > 0 || señaUSD > 0) {
+                                  setSeñaActiva(true);
+                                  
+                                  // Seleccionar automáticamente las monedas disponibles
+                                  const monedasDisponibles: string[] = [];
+                                  if (señaARS > 0) monedasDisponibles.push('ARS');
+                                  if (señaUSD > 0) monedasDisponibles.push('USD');
+                                  setSeñaMonedas(monedasDisponibles);
+                                }
+                              }
+                                                          } else {
+                                setClienteProveedor('');
+                                setTelefono('');
+                                setSeñaActiva(false); // Reset seña cuando se deselecciona cliente
+                                setSeñaMonedas([]); // Reset monedas de seña
+                              }
                           }}
                           required={true}
                         />
@@ -893,6 +906,17 @@ export default function ModalTransaccionUnificadoRefactored({
                         placeholder="Observaciones adicionales"
                         rows={3}
                         className="border-gray-300"
+                      />
+                    </div>
+
+                    <div>
+                      <Label className="text-gray-700">Fecha de Creación</Label>
+                      <DatePicker
+                        date={fechaCreacion}
+                        onDateChange={(date) => setFechaCreacion(date || new Date())}
+                        placeholder="Seleccionar fecha"
+                        className="w-full"
+                        accentColor="#f9bbc4"
                       />
                     </div>
                   </div>
@@ -948,9 +972,7 @@ export default function ModalTransaccionUnificadoRefactored({
                         tipo={tipo}
                         personal={personal}
                         cliente={clienteSeleccionado}
-                        onSeñaToggle={handleSeñaToggle}
-                        isSeñaActive={isSeñaActiveForItem(item.id!)}
-                        canUseSeña={canUseSeñaForItem(item.id!)}
+
                         onDescuentosToggle={handleItemDescuentosToggle}
                       />
                     ))
@@ -970,6 +992,11 @@ export default function ModalTransaccionUnificadoRefactored({
                   items={items}
                   tipo={tipo}
                   descuentosActivos={descuentosActivos}
+                  señaActiva={señaActiva}
+                  onSeñaToggle={setSeñaActiva}
+                  cliente={clienteSeleccionado}
+                  señaMonedas={señaMonedas}
+                  onSeñaMonedasChange={setSeñaMonedas}
                 />
 
                 {/* Action Buttons */}
