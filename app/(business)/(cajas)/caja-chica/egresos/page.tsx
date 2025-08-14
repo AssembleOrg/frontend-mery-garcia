@@ -32,7 +32,7 @@ import EgresosTotalsDisplay from '@/components/cajas/EgresosTotalsDisplay';
 import ModalCambiarEstado from '@/components/validacion/ModalCambiarEstado';
 import ModalEditarTransaccion from '@/components/cajas/ModalEditarTransaccion';
 import useComandaStore from '@/features/comandas/store/comandaStore';
-import { ComandaNew, EstadoDeComandaNew } from '@/services/unidadNegocio.service';
+import { ComandaNew, EstadoDeComandaNew, TipoDeComandaNew } from '@/services/unidadNegocio.service';
 import ModalEditarTransaccionRefactored from '@/components/cajas/ModalEditarTransaccionRefactored';
 
 const breadcrumbItems = [
@@ -123,6 +123,7 @@ export default function EgresosPage() {
         orderBy: 'createdAt',
         order: 'DESC',
         search: '',
+        tipoDeComanda: TipoDeComandaNew.EGRESO,
         estadoDeComanda: EstadoDeComandaNew.VALIDADO,
         // Add date range filters if needed
         ...(fechaDesde && { fechaDesde }),
