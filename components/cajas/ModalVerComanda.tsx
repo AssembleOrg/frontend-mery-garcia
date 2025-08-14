@@ -26,18 +26,19 @@ export default function ModalVerComanda({ isOpen, onClose, comanda }: ModalVerCo
   const allPaymentMethods = comanda.items?.flatMap(item => (item as any).metodosPago || []) || [];
 
   // Calcular totales
-  const totalUSD = allPaymentMethods.reduce((acc: number, item: any) => 
+  const totalUSD = comanda.tipoDeComanda === TipoDeComandaNew.EGRESO ? comanda.precioDolar : allPaymentMethods.reduce((acc: number, item: any) =>
     item.moneda === 'USD' ? acc + (item.montoFinal || 0) : acc, 0
   );
   const hasUsd = allPaymentMethods.some(item => item.moneda === 'USD');
-    const totalARS = allPaymentMethods
-      .filter(item => item.moneda === 'ARS') // Solo métodos en ARS
-      .reduce((acc: number, item: any) => {
-        const monto = item.monto ?? 0;
-        const neto = item.montoFinal ?? 0;
-        const total = hasUsd ? neto : monto;
-        return acc + total;
-      }, 0)
+
+  const totalARS = comanda.tipoDeComanda === TipoDeComandaNew.EGRESO ? comanda.precioPesos : allPaymentMethods
+    .filter(item => item.moneda === 'ARS') // Solo métodos en ARS
+    .reduce((acc: number, item: any) => {
+      const monto = item.monto ?? 0;
+      const neto = item.montoFinal ?? 0;
+      const total = hasUsd ? neto : monto;
+      return acc + total;
+    }, 0) || comanda.precioDolar > 0
 
   // Método de pago principal
   const metodoPrincipal = resolverMetodoPagoPrincipalConMoneda(
@@ -54,11 +55,11 @@ export default function ModalVerComanda({ isOpen, onClose, comanda }: ModalVerCo
       const monto = m.monto ?? 0;
       const neto = m.montoFinal ?? 0;
       const total = hasUsd ? neto : monto;
-      
+
       return {
-      tipo: m.tipo,
+        tipo: m.tipo,
         monto: total,
-      moneda: m.moneda || 'USD',
+        moneda: m.moneda || 'USD',
       };
     }) as MetodoPagoNew[]
   );
@@ -67,7 +68,7 @@ export default function ModalVerComanda({ isOpen, onClose, comanda }: ModalVerCo
   const trabajadores = comanda.items
     .filter(item => item.trabajador)
     .map(item => item.trabajador)
-    .filter((trabajador, index, array) => 
+    .filter((trabajador, index, array) =>
       array.findIndex(t => t?.id === trabajador?.id) === index
     );
 
@@ -121,14 +122,13 @@ export default function ModalVerComanda({ isOpen, onClose, comanda }: ModalVerCo
                     </div>
                     <div>
                       <label className="text-sm font-medium text-gray-600">Estado</label>
-                      <Badge 
-                        className={`mt-1 ${
-                          comanda.estadoDeComanda === EstadoDeComandaNew.VALIDADO 
-                            ? 'bg-green-100 text-green-800' 
+                      <Badge
+                        className={`mt-1 ${comanda.estadoDeComanda === EstadoDeComandaNew.VALIDADO
+                            ? 'bg-green-100 text-green-800'
                             : 'bg-yellow-100 text-yellow-800'
-                        }`}
+                          }`}
                       >
-                        { comanda.estadoDeComanda}
+                        {comanda.estadoDeComanda}
                       </Badge>
                     </div>
                     <div>
@@ -161,9 +161,9 @@ export default function ModalVerComanda({ isOpen, onClose, comanda }: ModalVerCo
                       <p className="text-sm text-gray-600">{comanda.cliente.email}</p>
                     )}
                   </div>
-                  
+
                   <Separator />
-                  
+
                   <div>
                     <label className="text-sm font-medium text-gray-600">Creado por</label>
                     <div className="flex items-center gap-2 mt-1">
@@ -225,7 +225,7 @@ export default function ModalVerComanda({ isOpen, onClose, comanda }: ModalVerCo
                                   const monto = mp.monto ?? 0;
                                   const neto = mp.montoFinal ?? 0;
                                   const total = hasUsd ? neto : monto;
-                                  
+
                                   return (
                                     <Badge key={mpIndex} variant="outline" className="text-xs">
                                       {mp.tipo} - {mp.moneda === 'USD' ? formatUSD(total) : formatARSFromNative(total)}
@@ -262,7 +262,7 @@ export default function ModalVerComanda({ isOpen, onClose, comanda }: ModalVerCo
                       💰 {metodoPrincipal}
                     </Badge>
                   </div>
-                  
+
                   <div>
                     <label className="text-sm font-medium text-gray-600">Detalle de Pagos</label>
                     <p className="mt-1 text-sm text-[#4a3540]">{detalleMetodos}</p>

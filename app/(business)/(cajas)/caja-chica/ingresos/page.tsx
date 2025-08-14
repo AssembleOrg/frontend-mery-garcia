@@ -4,7 +4,6 @@ import { useState, useEffect } from 'react';
 import MainLayout from '@/components/layout/MainLayout';
 import StandardPageBanner from '@/components/common/StandardPageBanner';
 import StandardBreadcrumbs from '@/components/common/StandardBreadcrumbs';
-import TableFilters from '@/components/cajas/TableFilters';
 import TransactionsTable from '@/components/cajas/TransactionsTableTanStack';
 import ModalCambiarEstado from '@/components/validacion/ModalCambiarEstado';
 import ModalVerDetalles from '@/components/validacion/ModalVerDetalles';
@@ -22,7 +21,6 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { ColumnaCaja, FiltrosEncomienda } from '@/types/caja';
-import ModalTransaccionUnificado from '@/components/cajas/ModalTransaccionUnificado';
 import { Pagination } from '@/components/ui/pagination';
 import { DateRangePicker } from '@/components/ui/date-range-picker';
 import { DateRange } from 'react-day-picker';
@@ -35,10 +33,7 @@ import { useRecordsStore } from '@/features/records/store/recordsStore';
 import ResidualDisplay from '@/components/cajas/ResidualDisplay';
 import {
   EstadoDeComandaNew,
-  UnidadNegocioNew,
   TipoDeComandaNew,
-  ComandaNew,
-  ProductoServicioNew,
 } from '@/services/unidadNegocio.service';
 import useComandaStore from '@/features/comandas/store/comandaStore';
 import ModalExportarComandas from '@/components/cajas/ModalExportarComandas';

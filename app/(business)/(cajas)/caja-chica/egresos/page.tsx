@@ -30,10 +30,8 @@ import { useCurrencyConverter } from '@/hooks/useCurrencyConverter';
 import ModalEgreso from '@/components/cajas/ModalEgreso';
 import EgresosTotalsDisplay from '@/components/cajas/EgresosTotalsDisplay';
 import ModalCambiarEstado from '@/components/validacion/ModalCambiarEstado';
-import ModalEditarTransaccion from '@/components/cajas/ModalEditarTransaccion';
 import useComandaStore from '@/features/comandas/store/comandaStore';
 import { ComandaNew, EstadoDeComandaNew, TipoDeComandaNew } from '@/services/unidadNegocio.service';
-import ModalEditarTransaccionRefactored from '@/components/cajas/ModalEditarTransaccionRefactored';
 
 const breadcrumbItems = [
   { label: 'Inicio', href: '/' },
@@ -511,15 +509,6 @@ export default function EgresosPage() {
           }}
           comandaId={selectedTransactionId}
         /> */}
-
-          <ModalEditarTransaccion
-            isOpen={showEditModal}
-            onClose={() => {
-              setShowEditModal(false);
-              setSelectedTransactionId('');
-            }}
-            comandaId={selectedTransactionId}
-          />
 
         {/* ✅ ModalVerDetalles para VER detalles de transacciones */}
         <ModalVerDetalles
