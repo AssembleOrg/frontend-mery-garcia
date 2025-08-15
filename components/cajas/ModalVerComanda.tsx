@@ -5,11 +5,13 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
-import { X, Calendar, User, DollarSign, FileText, Users, Package } from 'lucide-react';
+import { X, Calendar, User, DollarSign, FileText, Users, Package, CheckCircle } from 'lucide-react';
 import { ComandaNew, EstadoDeComandaNew, MetodoPagoNew, TipoDeComandaNew } from '@/services/unidadNegocio.service';
 import { useCurrencyConverter } from '@/hooks/useCurrencyConverter';
 import { formatDate, resolverMetodoPagoPrincipalConMoneda, formatearDetalleMetodosPago } from '@/lib/utils';
 import { ESTADO_LABELS, ESTADO_COLORS } from '@/lib/constants';
+import useComandaStore from '@/features/comandas/store/comandaStore';
+import { toast } from 'sonner';
 
 interface ModalVerComandaProps {
   isOpen: boolean;
@@ -19,8 +21,38 @@ interface ModalVerComandaProps {
 
 export default function ModalVerComanda({ isOpen, onClose, comanda }: ModalVerComandaProps) {
   const { formatUSD, formatARSFromNative } = useCurrencyConverter();
+  const { actualizarComanda } = useComandaStore();
+  const [validando, setValidando] = useState(false);
 
   if (!isOpen || !comanda) return null;
+
+  // Función para validar la comanda
+  const handleValidarComanda = async () => {
+    if (!comanda.id) {
+      toast.error('No se puede validar la comanda: ID no encontrado');
+      return;
+    }
+
+    if (comanda.estadoDeComanda === EstadoDeComandaNew.VALIDADO) {
+      toast.info('La comanda ya está validada');
+      return;
+    }
+
+    setValidando(true);
+    try {
+      await actualizarComanda(comanda.id, {
+        estadoDeComanda: EstadoDeComandaNew.VALIDADO
+      });
+      
+      toast.success('Comanda validada exitosamente');
+      onClose(); // Cerrar el modal después de validar
+    } catch (error) {
+      console.error('Error al validar comanda:', error);
+      toast.error('Error al validar la comanda');
+    } finally {
+      setValidando(false);
+    }
+  };
 
   // Extract all payment methods from all items
   const allPaymentMethods = comanda.items?.flatMap(item => (item as any).metodosPago || []) || [];
@@ -34,9 +66,8 @@ export default function ModalVerComanda({ isOpen, onClose, comanda }: ModalVerCo
   const totalARS = comanda.tipoDeComanda === TipoDeComandaNew.EGRESO ? comanda.precioPesos : allPaymentMethods
     .filter(item => item.moneda === 'ARS') // Solo métodos en ARS
     .reduce((acc: number, item: any) => {
-      const monto = item.monto ?? 0;
-      const neto = item.montoFinal ?? 0;
-      const total = hasUsd ? neto : monto;
+      // Siempre usar montoFinal para incluir descuentos aplicados
+      const total = item.montoFinal ?? item.monto ?? 0;
       console.warn('total', total);
       return acc + total;
     }, 0) || 0
@@ -59,9 +90,8 @@ export default function ModalVerComanda({ isOpen, onClose, comanda }: ModalVerCo
 
   // Calcular totales pagados por moneda (agrupados)
   const totalesPorMoneda = allPaymentMethods.reduce((acc: any, m: any) => {
-    const monto = m.monto ?? 0;
-    const neto = m.montoFinal ?? 0;
-    const total = hasUsd ? neto : monto;
+    // Siempre usar montoFinal para incluir descuentos aplicados
+    const total = m.montoFinal ?? m.monto ?? 0;
     const moneda = m.moneda || 'USD';
     
     if (!acc[moneda]) {
@@ -152,9 +182,33 @@ export default function ModalVerComanda({ isOpen, onClose, comanda }: ModalVerCo
                 </p>
               </div>
             </div>
-            <Button variant="ghost" size="sm" onClick={onClose}>
-              <X className="h-4 w-4" />
-            </Button>
+            <div className="flex items-center gap-3">
+              {/* Botón Validar Comanda - Solo mostrar si no está validada */}
+              {comanda.estadoDeComanda !== EstadoDeComandaNew.VALIDADO && (
+                <Button
+                  onClick={handleValidarComanda}
+                  disabled={validando}
+                  className="bg-green-600 hover:bg-green-700 text-white"
+                >
+                  {validando ? (
+                    <>
+                      <div className="mr-2 h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent"></div>
+                      Validando...
+                    </>
+                  ) : (
+                    <>
+                      <CheckCircle className="mr-2 h-4 w-4" />
+                      Validar Comanda
+                    </>
+                  )}
+                </Button>
+              )}
+              
+              {/* Botón Cerrar */}
+              <Button variant="ghost" size="sm" onClick={onClose}>
+                <X className="h-4 w-4" />
+              </Button>
+            </div>
           </div>
 
           {/* Content */}
@@ -276,9 +330,8 @@ export default function ModalVerComanda({ isOpen, onClose, comanda }: ModalVerCo
                               <p className="text-xs text-gray-500">Métodos de pago:</p>
                               <div className="flex flex-wrap gap-1 mt-1">
                                 {(item as any).metodosPago.map((mp: any, mpIndex: number) => {
-                                  const monto = mp.monto ?? 0;
-                                  const neto = mp.montoFinal ?? 0;
-                                  const total = hasUsd ? neto : monto;
+                                  // Siempre usar montoFinal para incluir descuentos aplicados
+                                  const total = mp.montoFinal ?? mp.monto ?? 0;
                                   const descuentoPorcentaje = calcularPorcentajeDescuento(mp);
 
                                   return (

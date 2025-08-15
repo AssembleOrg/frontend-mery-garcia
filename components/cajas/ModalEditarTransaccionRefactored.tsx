@@ -7,6 +7,8 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { DatePicker } from '@/components/ui/date-picker';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import {
   Plus,
   Save,
@@ -41,16 +43,17 @@ import {
   ComandaNew,
   ItemComandaCreateNew,
   MetodoPagoNew,
+  EstadoPrepagoNew,
 } from '@/services/unidadNegocio.service';
 import useProductosServiciosStore from '@/features/productos-servicios/store/productosServiciosStore';
 import { useClientesStore } from '@/features/clientes/store/clientesStore';
 import ClienteSelector from '@/components/comandas/ClienteSelector';
 import { toast } from 'sonner';
 import { useErrorHandler } from '@/hooks/useErrorHandler';
-import ItemPaymentForm from './ItemPaymentForm';
-import TransactionSummary from './TransactionSummary';
 import { MONEDAS, METODOS_PAGO } from '@/lib/constants';
 import { useConfiguracion } from '@/features/configuracion/store/configuracionStore';
+import TransactionSummaryEdit from './TransactionSummaryEdit';
+import ItemPaymentFormEdit from './ItemPaymentFormEdit';
 
 /**
  * ModalEditarTransaccionRefactored Component
@@ -118,6 +121,8 @@ export default function ModalEditarTransaccionRefactored({
   } = useCurrencyConverter();
 
   const [dolar, setDolar] = useState(0);
+  const [dolarActual, setDolarActual] = useState(0); // Valor actual del dólar
+  const [usarDolarOriginal, setUsarDolarOriginal] = useState(true); // Por defecto usar el original
   const { lastDolar } = useExchangeRateStore();
   const [comandaState, setComandaState] = useState<ComandaNew | undefined>(
     undefined
@@ -143,6 +148,11 @@ export default function ModalEditarTransaccionRefactored({
   const [observaciones, setObservaciones] = useState('');
   const [items, setItems] = useState<ItemComandaCreateNew[]>([]);
   const [tipo, setTipo] = useState<'ingreso' | 'egreso'>('ingreso');
+  const [fechaCreacion, setFechaCreacion] = useState<Date>(new Date());
+
+  // Seña state - now global for entire transaction
+  const [señaActiva, setSeñaActiva] = useState(false);
+  const [señaMonedas, setSeñaMonedas] = useState<string[]>([]); // Array of selected currencies for seña
 
   // UI state
   const [guardando, setGuardando] = useState(false);
@@ -178,17 +188,20 @@ export default function ModalEditarTransaccionRefactored({
     }
   }, [items, tipo]);
 
+  // Cargar el valor actual del dólar al abrir el modal
   useEffect(() => {
-    lastDolar()
-      .then((dolarR) => {
-        if (dolar === 0) {
-          setDolar(dolarR.venta);
-        }
-      })
-      .catch((error) => {
-        toast.error('Error al obtener el último dólar');
-      });
-  }, []);
+    if (isOpen) {
+      lastDolar()
+        .then((dolarR) => {
+          setDolarActual(dolarR.venta);
+          // NO modificar dolar aquí - que se mantenga el valor de la comanda
+          // Solo establecer dolarActual para el selector
+        })
+        .catch((error) => {
+          toast.error('Error al obtener el último dólar');
+        });
+    }
+  }, [isOpen]);
 
   // Load existing comanda data
   useEffect(() => {
@@ -199,6 +212,12 @@ export default function ModalEditarTransaccionRefactored({
           const comanda = await obtenerComandaPorId(comandaId);
           setComandaState(comanda);
           setTipo(comanda.tipoDeComanda === TipoDeComandaNew.INGRESO ? 'ingreso' : 'egreso');
+          
+          // Establecer el valor del dólar original de la comanda
+          if (comanda.valorDolar) {
+            setDolar(comanda.valorDolar);
+            setUsarDolarOriginal(true); // Asegurar que esté en modo "Original"
+          }
 
           // Cargar todos los datos de la comanda
           setClienteSeleccionado(comanda.cliente || null);
@@ -206,10 +225,37 @@ export default function ModalEditarTransaccionRefactored({
           setTelefono(comanda.cliente?.telefono || '');
           setObservaciones(comanda.observaciones || '');
 
+          // Set creation date if available, otherwise use today
+          if (comanda.createdAt) {
+            setFechaCreacion(new Date(comanda.createdAt));
+          } else {
+            setFechaCreacion(new Date());
+          }
+
+          // Cargar estado de señas
+          setSeñaActiva(comanda.usuarioConsumePrepagoARS || comanda.usuarioConsumePrepagoUSD || false);
+          const monedasSeña: string[] = [];
+          if (comanda.usuarioConsumePrepagoARS) monedasSeña.push('ARS');
+          if (comanda.usuarioConsumePrepagoUSD) monedasSeña.push('USD');
+          setSeñaMonedas(monedasSeña);
+
           // Convertir items al formato correcto con payment methods
           const itemsConvertidos = comanda.items?.map((item) => {
             // Extract payment methods from the item
             const itemPaymentMethods = (item as any).metodosPago || [];
+            
+            // CRITICAL FIX: Convert payment method amounts based on currency
+            const fixedPaymentMethods = itemPaymentMethods.map((mp: any) => {
+              // Los montos ya vienen en la moneda correcta desde el backend
+              // Solo necesitamos asegurar que los tipos sean correctos
+              return {
+                ...mp,
+                monto: parseFloat(mp.monto) || 0,
+                montoFinal: parseFloat(mp.montoFinal) || 0,
+                descuentoGlobalPorcentaje: parseFloat(mp.descuentoGlobalPorcentaje) || 0,
+                recargoPorcentaje: parseFloat(mp.recargoPorcentaje) || 0,
+              };
+            });
             
             // Extract trabajador from the item
             const trabajador = (item as any).trabajador;
@@ -228,10 +274,19 @@ export default function ModalEditarTransaccionRefactored({
               mostrarSelectorResponsables: false,
               productoServicio: item.productoServicio,
               trabajador: trabajador, // Include the trabajador object
-              metodosPago: itemPaymentMethods, // Include payment methods
+              metodosPago: fixedPaymentMethods, // Include FIXED payment methods
             };
           }) || [];
           setItems(itemsConvertidos);
+
+          // Detectar si hay descuentos aplicados en los items
+          const hayDescuentosAplicados = itemsConvertidos.some((item) => {
+            const paymentMethods = (item as any).metodosPago || [];
+            return paymentMethods.some((mp: any) => 
+              parseFloat(mp.descuentoGlobalPorcentaje) > 0
+            );
+          });
+          setDescuentosActivos(hayDescuentosAplicados);
         } catch (error) {
           console.error('Error al cargar comanda:', error);
           toast.error('Error al cargar la comanda');
@@ -412,6 +467,59 @@ export default function ModalEditarTransaccionRefactored({
     handleGlobalDescuentosToggle(enabled);
   };
 
+  // Handle exchange rate change
+  const handleExchangeRateChange = (useOriginal: boolean) => {
+    setUsarDolarOriginal(useOriginal);
+    
+    const newDolarValue = useOriginal && comandaState?.valorDolar 
+      ? comandaState.valorDolar 
+      : dolarActual;
+    
+    setDolar(newDolarValue);
+    
+    // Recalcular montos para servicios USD pagados en ARS
+    const updatedItems = items.map(item => {
+      const isUSDService = !item.productoServicio?.esPrecioCongelado;
+      const paymentMethods = (item as any).metodosPago || [];
+      
+      if (isUSDService && paymentMethods.length > 0) {
+        const updatedPaymentMethods = paymentMethods.map((mp: any) => {
+          if (mp.moneda === 'ARS') {
+            // Recalcular el monto ARS basado en el nuevo tipo de cambio
+            const baseUSDAmount = item.precio || 0;
+            const quantity = item.cantidad || 1;
+            const subtotalUSD = baseUSDAmount * quantity;
+            
+            // Aplicar descuento si existe
+            const discountPercentage = parseFloat(mp.descuentoGlobalPorcentaje || 0);
+            const discountAmount = discountPercentage > 0 ? (subtotalUSD * discountPercentage) / 100 : 0;
+            const finalUSDAmount = subtotalUSD - discountAmount;
+            
+            // Convertir a ARS con el nuevo tipo de cambio
+            const newARSAmount = Math.round(finalUSDAmount * newDolarValue);
+            
+            return {
+              ...mp,
+              monto: Math.round(subtotalUSD * newDolarValue),
+              montoFinal: newARSAmount,
+              descuentoAplicado: Math.round(discountAmount * newDolarValue)
+            };
+          }
+          return mp;
+        });
+        
+        return {
+          ...item,
+          metodosPago: updatedPaymentMethods
+        };
+      }
+      
+      return item;
+    });
+    
+    setItems(updatedItems);
+  };
+
   // Form validation
   const validarFormulario = (): boolean => {
     console.log('items', items);
@@ -526,13 +634,43 @@ export default function ModalEditarTransaccionRefactored({
           }
         }) || [];
 
+        // Preparar IDs de prepago si las señas están activas
+        const prepagoARS = señaActiva && señaMonedas.includes('ARS')
+          ? clienteSeleccionado?.prepagosGuardados.find(
+              (prepago) =>
+                prepago.moneda === MonedaNew.ARS &&
+                prepago.estado === EstadoPrepagoNew.ACTIVA
+            )?.id
+          : null;
+        const prepagoUSD = señaActiva && señaMonedas.includes('USD')
+          ? clienteSeleccionado?.prepagosGuardados.find(
+              (prepago) =>
+                prepago.moneda === MonedaNew.USD &&
+                prepago.estado === EstadoPrepagoNew.ACTIVA
+            )?.id
+          : null;
+
         // Update existing comanda
         const comandaUpdate: ComandaUpdateNew = {
           clienteId: clienteSeleccionado?.id,
           observaciones,
           items: itemsWithPaymentMethods,
           descuentosAplicados: descuentos,
+          usuarioConsumePrepagoARS: señaActiva && señaMonedas.includes('ARS'),
+          usuarioConsumePrepagoUSD: señaActiva && señaMonedas.includes('USD'),
+          createdAt: fechaCreacion,
+          valorDolar: dolar, // Incluir el valor del dólar seleccionado
         };
+
+        console.log('comandaUpdate', comandaUpdate, señaActiva, señaMonedas, prepagoARS, prepagoUSD);
+
+        // Agregar IDs de prepago si están activos
+        if (señaActiva && señaMonedas.includes('ARS')) {
+          comandaUpdate.prepagoARSID = prepagoARS ? prepagoARS : comandaState?.prepagoARSID;
+        }
+        if (señaActiva && señaMonedas.includes('USD')) {
+          comandaUpdate.prepagoUSDID = prepagoUSD ? prepagoUSD : comandaState?.prepagoUSDID;
+        }
 
         await actualizarComanda(comandaId, comandaUpdate);
         toast.success('Comanda actualizada con éxito');
@@ -598,9 +736,14 @@ export default function ModalEditarTransaccionRefactored({
               {isExchangeRateValid && (
                 <div className="to-gray-150 flex items-center gap-2 rounded-lg border-2 border-gray-200 bg-gradient-to-r from-gray-100 px-3 py-2 shadow-sm">
                   <TrendingUp className="h-4 w-4 text-gray-600" />
-                  <span className="text-sm font-medium text-gray-800">
-                    USD: {formatDual(dolar, false)}
-                  </span>
+                  <div className="flex flex-col">
+                    <span className="text-sm font-medium text-gray-800">
+                      USD: {formatDual(dolar, false)}
+                    </span>
+                    <span className="text-xs text-gray-600">
+                      {usarDolarOriginal ? '📅 Original' : '🔄 Actual'}
+                    </span>
+                  </div>
                 </div>
               )}
               <Button
@@ -656,9 +799,28 @@ export default function ModalEditarTransaccionRefactored({
                             if (cliente) {
                               setClienteProveedor(cliente.nombre);
                               setTelefono(cliente.telefono || '');
+
+                              // Verificar si el cliente tiene seña disponible y activarla automáticamente si es apropiado
+                              if (cliente.señasDisponibles) {
+                                const señaARS = cliente.señasDisponibles.ars || 0;
+                                const señaUSD = cliente.señasDisponibles.usd || 0;
+
+                                // Si hay seña disponible, activarla automáticamente
+                                if (señaARS > 0 || señaUSD > 0) {
+                                  setSeñaActiva(true);
+
+                                  // Seleccionar automáticamente las monedas disponibles
+                                  const monedasDisponibles: string[] = [];
+                                  if (señaARS > 0) monedasDisponibles.push('ARS');
+                                  if (señaUSD > 0) monedasDisponibles.push('USD');
+                                  setSeñaMonedas(monedasDisponibles);
+                                }
+                              }
                             } else {
                               setClienteProveedor('');
                               setTelefono('');
+                              setSeñaActiva(false); // Reset seña cuando se deselecciona cliente
+                              setSeñaMonedas([]); // Reset monedas de seña
                             }
                           }}
                           required={true}
@@ -695,6 +857,57 @@ export default function ModalEditarTransaccionRefactored({
                         className="border-gray-300"
                         readOnly={!sePuedeEditar}
                       />
+                    </div>
+
+                    <div>
+                      <Label className="text-gray-700">Fecha de Creación</Label>
+                      <DatePicker
+                        date={fechaCreacion}
+                        onDateChange={(date) =>
+                          setFechaCreacion(date || new Date())
+                        }
+                        placeholder="Seleccionar fecha"
+                        className="w-full"
+                        accentColor="#f9bbc4"
+                        disabled={!sePuedeEditar}
+                      />
+                    </div>
+
+                    <div>
+                      <Label className="text-gray-700">Tipo de Cambio USD</Label>
+                      <div className="space-y-2">
+                        <Select
+                          value={usarDolarOriginal ? 'original' : 'actual'}
+                          onValueChange={(value) => handleExchangeRateChange(value === 'original')}
+                          disabled={!sePuedeEditar}
+                        >
+                          <SelectTrigger className="w-full">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="original">
+                              <div className="flex flex-col">
+                                <span>Original ({comandaState?.valorDolar ? formatDual(comandaState.valorDolar, false) : 'N/A'})</span>
+                                <span className="text-xs text-gray-500">Valor al crear la comanda</span>
+                              </div>
+                            </SelectItem>
+                            <SelectItem value="actual">
+                              <div className="flex flex-col">
+                                <span>Actual ({formatDual(dolarActual, false)})</span>
+                                <span className="text-xs text-gray-500">Valor de hoy</span>
+                              </div>
+                            </SelectItem>
+                          </SelectContent>
+                        </Select>
+                                                 <div className="text-xs text-gray-600 bg-blue-50 p-2 rounded">
+                           💡 <strong>Valor seleccionado:</strong> {formatDual(dolar, false)}
+                           {!usarDolarOriginal && (
+                             <div className="text-xs text-orange-600 mt-1">
+                               ⚠️ Los montos USD→ARS se recalcularán automáticamente
+                             </div>
+                           )}
+                         </div>
+                      </div>
                     </div>
                   </div>
                 </CardContent>
@@ -740,7 +953,7 @@ export default function ModalEditarTransaccionRefactored({
                     </div>
                   ) : (
                     items.map((item, index) => (
-                      <ItemPaymentForm
+                      <ItemPaymentFormEdit
                         key={`${item.id}-${item.cantidad}-${item.precio}`}
                         item={item}
                         index={index}
@@ -748,6 +961,7 @@ export default function ModalEditarTransaccionRefactored({
                         onRemoveItem={eliminarItem}
                         tipo={tipo}
                         personal={personal}
+                        cliente={clienteSeleccionado}
                         isEditMode={true}
                         disabled={!sePuedeEditar}
                         onDescuentosToggle={handleItemDescuentosToggle}
@@ -765,10 +979,16 @@ export default function ModalEditarTransaccionRefactored({
             {/* Right Column - Summary */}
             <div className="space-y-6">
               <div className="sticky top-24 space-y-6">
-                <TransactionSummary
+                       <TransactionSummaryEdit
                   items={items}
                   tipo={tipo}
                   descuentosActivos={descuentosActivos}
+                  señaActiva={señaActiva}
+                  onSeñaToggle={setSeñaActiva}
+                  señaMonedas={señaMonedas}
+                  onSeñaMonedasChange={setSeñaMonedas}
+                  comandaOriginal={comandaState}
+                  clienteActual={clienteSeleccionado}
                 />
 
                 {/* Action Buttons */}

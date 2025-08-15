@@ -214,6 +214,8 @@ export interface ClienteNew {
   comentarios: string;
   createdAt: string;
   updatedAt: string;
+  tipoPagoARS?: string;
+  tipoPagoUSD?: string;
   deletedAt: string;
   items: ComandaNew[];
   señasDisponibles: SeñaNew;

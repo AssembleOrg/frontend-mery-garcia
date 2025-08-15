@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -44,12 +44,19 @@ import { TrabajadorNew } from '@/services/unidadNegocio.service';
  * NEW FEATURE: Split payment for non-frozen items allows paying part in USD and part in ARS
  * with the same payment type (e.g., both in cash, both in card, etc.)
  * 
+ * FIXED: Discounts now work correctly with split payments:
+ * - When split payment is enabled, the discount is applied to the TOTAL before splitting
+ * - Individual payments show the discounted amounts without additional discounts
+ * - The "Descuentos activos" checkbox remains active when enabling split payment
+ * - This prevents the discount from being deactivated unexpectedly
+ * 
  * Key Features:
  * - Editable quantity that updates subtotal (price * quantity)
  * - Payment method selection with automatic discount application
  * - Currency restrictions for frozen pricing
  * - Discount display showing original subtotal and discounted amount
  * - Split payment functionality for non-frozen items
+ * - Preserved discount state during split payment operations
  * 
  * @param item - The item to configure payment for
  * @param index - Index of the item in the list
@@ -81,7 +88,7 @@ interface PaymentMethodWithDiscount extends Partial<MetodoPagoNew> {
   descuentoAplicado?: number;
 }
 
-export default function ItemPaymentForm({
+export default function ItemPaymentFormEdit({
   item,
   index,
   onUpdateItem,
@@ -106,15 +113,29 @@ export default function ItemPaymentForm({
   // Local state for first payment amount to prevent recalculation loops
   const [localFirstPaymentAmount, setLocalFirstPaymentAmount] = useState<string>('');
   
-  // Local state for discounts toggle
-  const [descuentosActivos, setDescuentosActivos] = useState(true); // Default to true
-
-  // Initialize discount state based on actual payment method data
+  // Local state for discounts toggle - initialize from backend to avoid initial flicker
+  const [descuentosActivos, setDescuentosActivos] = useState<boolean>(() => {
+    const pm = (item as ItemWithPaymentMethods).metodosPago?.[0];
+    if (!pm) return true;
+    return parseFloat(String(pm.descuentoGlobalPorcentaje || 0)) > 0;
+  });
+  
+  // Keep discounts toggle in sync if backend value changes later
   useEffect(() => {
-    const paymentMethod = getFirstPaymentMethod();
-    if (paymentMethod) {
-      const hasDiscount = parseFloat(String(paymentMethod.descuentoGlobalPorcentaje || 0)) > 0;
-      setDescuentosActivos(hasDiscount);
+    const pm = (item as ItemWithPaymentMethods).metodosPago?.[0];
+    if (pm !== undefined) {
+      // Only update descuentosActivos if we're not in split payment mode
+      // In split payment mode, individual payments have descuentoGlobalPorcentaje: 0
+      // but the overall discount is still active
+      const isSplitEnabled = isSplitPaymentEnabled();
+      
+      if (!isSplitEnabled) {
+        // For single payment, check if there's a discount
+        const hasDiscount = parseFloat(String(pm.descuentoGlobalPorcentaje || 0)) > 0;
+        setDescuentosActivos(hasDiscount);
+      }
+      // If split is enabled, do NOT change descuentosActivos
+      // The discount is applied to the total before splitting
     }
   }, [item.metodosPago]);
   
@@ -223,17 +244,44 @@ export default function ItemPaymentForm({
     const porcentajeDescuento = getEffectiveDiscount(paymentMethod.tipo as keyof typeof descuentosPorMetodo);
     if (porcentajeDescuento === 0) return 0;
     
-    // Apply discount to the total item amount (subtotal)
-    const totalAmount = calculateItemSubtotal();
-    const descuento = Math.round((totalAmount * porcentajeDescuento) / 100);
+    // Get the base amount in the payment currency
+    const subtotalUSD = calculateItemSubtotal();
+    let baseAmount: number;
+    
+    if (isItemFrozen()) {
+      baseAmount = subtotalUSD; // Already in ARS native
+    } else if (paymentMethod.moneda === MONEDAS.ARS) {
+      // Convert USD subtotal to ARS first, then apply discount
+      baseAmount = Math.round(usdToArs(subtotalUSD));
+    } else {
+      baseAmount = subtotalUSD; // Keep in USD
+    }
+    
+    // Apply discount to the base amount in the correct currency
+    const descuento = Math.round((baseAmount * porcentajeDescuento) / 100);
     
     return descuento;
   };
 
   // Helper function to calculate discounted total
   const calculateDiscountedTotal = () => {
+    const paymentMethod = getFirstPaymentMethod();
+    if (!paymentMethod) return calculateItemSubtotal();
+    
+    const subtotalUSD = calculateItemSubtotal();
+    let baseAmount: number;
+    
+    if (isItemFrozen()) {
+      baseAmount = subtotalUSD; // Already in ARS native
+    } else if (paymentMethod.moneda === MONEDAS.ARS) {
+      // Convert USD subtotal to ARS first
+      baseAmount = Math.round(usdToArs(subtotalUSD));
+    } else {
+      baseAmount = subtotalUSD; // Keep in USD
+    }
+    
     const totalDiscount = calculateTotalDiscount();
-    return calculateItemSubtotal() - totalDiscount;
+    return baseAmount - totalDiscount;
   };
 
   // Helper function to handle split payment toggle
@@ -250,18 +298,15 @@ export default function ItemPaymentForm({
       const firstAmount = Math.round(finalAmountWithSeña / 2); // Split roughly in half
       const secondAmount = calculateSecondPaymentAmount(firstAmount);
       
-      // Get the original discount information to preserve it
-      const originalDiscount = currentPaymentMethod.descuentoAplicado || 0;
-      const originalDiscountPercentage = currentPaymentMethod.descuentoGlobalPorcentaje || 0;
-      
-      // For split payment, the discount is already applied to the total
-      // So we preserve the discount information but don't apply additional discount to individual payments
+      // For split payment, the discount and seña are already applied to the total
+      // So we don't apply additional discount to individual payments
+      // BUT we preserve the descuentosActivos state
       const firstMethod = {
         ...currentPaymentMethod,
         monto: firstAmount, // Amount after discount and seña
         montoFinal: firstAmount, // Amount after discount and seña
-        descuentoAplicado: originalDiscount, // Preserve original discount amount
-        descuentoGlobalPorcentaje: originalDiscountPercentage, // Preserve original discount percentage
+        descuentoAplicado: 0, // No additional discount for split payments
+        descuentoGlobalPorcentaje: 0, // No additional discount percentage
         recargoPorcentaje: 0,
         moneda: MONEDAS.USD as MonedaNew,
       };
@@ -270,13 +315,16 @@ export default function ItemPaymentForm({
         ...currentPaymentMethod,
         monto: secondAmount, // Amount after discount (already discounted)
         montoFinal: secondAmount, // Amount after discount (already discounted)
-        descuentoAplicado: originalDiscount, // Preserve original discount amount
-        descuentoGlobalPorcentaje: originalDiscountPercentage, // Preserve original discount percentage
+        descuentoAplicado: 0, // No additional discount for split payments
+        descuentoGlobalPorcentaje: 0, // No additional discount percentage
         recargoPorcentaje: 0,
         moneda: MONEDAS.ARS as MonedaNew,
       };
 
       onUpdateItem(item.id!, { metodosPago: [firstMethod, secondMethod] });
+      
+      // IMPORTANT: Do NOT change descuentosActivos state here
+      // The discount is applied to the total before splitting, so we keep it active
     } else {
       // Disable split payment - keep only first method
       const finalAmountWithSeña = calculateDiscountedTotal();
@@ -288,6 +336,45 @@ export default function ItemPaymentForm({
       };
 
       onUpdateItem(item.id!, { metodosPago: [singleMethod] });
+      
+      // IMPORTANT: Do NOT change descuentosActivos state here
+      // The discount should remain active as it was before
+      
+      // However, we need to restore the discount information in the single method
+      // since the split payment methods had descuentoGlobalPorcentaje: 0
+      if (descuentosActivos) {
+        const itemSubtotalUSD = calculateItemSubtotal();
+        const currentCurrency = singleMethod.moneda || MONEDAS.USD;
+        
+        // Determine base amount in the payment currency
+        let baseAmount: number;
+        if (isItemFrozen()) {
+          baseAmount = itemSubtotalUSD; // Already in ARS native
+        } else if (currentCurrency === MONEDAS.ARS) {
+          // Convert USD subtotal to ARS first
+          baseAmount = Math.round(usdToArs(itemSubtotalUSD));
+        } else {
+          baseAmount = itemSubtotalUSD; // Keep in USD
+        }
+        
+        // Calculate discount with the base amount in the correct currency
+        const { montoFinal, descuentoAplicado } = calculateDiscount(
+          singleMethod.tipo || METODOS_PAGO.EFECTIVO, 
+          baseAmount, 
+          currentCurrency
+        );
+        
+        const updatedSingleMethod = {
+          ...singleMethod,
+          monto: baseAmount, // Use the original subtotal in the correct currency
+          montoFinal: Math.round(montoFinal), // Use the discounted total in the correct currency
+          descuentoAplicado: Math.round(descuentoAplicado),
+          descuentoGlobalPorcentaje: descuentoAplicado > 0 ? Math.round((descuentoAplicado / baseAmount) * 100) : 0,
+          recargoPorcentaje: 0,
+        };
+
+        onUpdateItem(item.id!, { metodosPago: [updatedSingleMethod] });
+      }
     }
   };
 
@@ -301,7 +388,7 @@ export default function ItemPaymentForm({
   };
 
   // Helper function to handle first payment amount change (when split is enabled)
-  const handleFirstPaymentAmountChange = (newAmount: number) => {
+      const handleFirstPaymentAmountChange = (newAmount: number) => {
     const cleanAmount = Math.round(newAmount); // Use Math.round instead of Math.floor
     const finalAmountWithSeña = calculateDiscountedTotal();
     const subtotal = calculateItemSubtotal();
@@ -317,105 +404,54 @@ export default function ItemPaymentForm({
       return;
     }
 
-    const currentPaymentMethod = getFirstPaymentMethod();
-    if (!currentPaymentMethod) return;
-
-    // Get the original discount information to preserve it
-    const originalDiscount = currentPaymentMethod.descuentoAplicado || 0;
-    const originalDiscountPercentage = currentPaymentMethod.descuentoGlobalPorcentaje || 0;
-
     const firstMethod = {
-      ...currentPaymentMethod,
+      ...getFirstPaymentMethod(),
       monto: cleanAmount,
       montoFinal: cleanAmount,
       moneda: MONEDAS.USD as MonedaNew,
-      descuentoAplicado: originalDiscount, // Preserve original discount amount
-      descuentoGlobalPorcentaje: originalDiscountPercentage, // Preserve original discount percentage
     };
 
     // Calculate second payment automatically
     const secondAmount = calculateSecondPaymentAmount(cleanAmount);
     
     // For split payment, the discount is already applied to the total
-    // So we preserve the discount information but don't apply additional discount to individual payments
-    const secondMethod = {
-      ...currentPaymentMethod,
-      monto: secondAmount, // Amount calculated
-      montoFinal: secondAmount, // Amount after discount (already discounted)
-      moneda: MONEDAS.ARS as MonedaNew,
-      descuentoAplicado: originalDiscount, // Preserve original discount amount
-      descuentoGlobalPorcentaje: originalDiscountPercentage, // Preserve original discount percentage
+    // So we don't apply additional discount to individual payments
+    // BUT we preserve the descuentosActivos state
+    const firstMethodWithDiscount = {
+      ...firstMethod,
+      monto: cleanAmount, // Amount entered by user
+      montoFinal: cleanAmount, // Amount after discount (already discounted)
+      descuentoAplicado: 0, // No additional discount for split payments
+      descuentoGlobalPorcentaje: 0, // No additional discount percentage
       recargoPorcentaje: 0,
     };
 
-    onUpdateItem(item.id!, { metodosPago: [firstMethod, secondMethod] });
+    const secondMethod = {
+      ...getFirstPaymentMethod(),
+      monto: secondAmount, // Amount calculated
+      montoFinal: secondAmount, // Amount after discount (already discounted)
+      descuentoAplicado: 0, // No additional discount for split payments
+      descuentoGlobalPorcentaje: 0, // No additional discount percentage
+      recargoPorcentaje: 0,
+      moneda: MONEDAS.ARS as MonedaNew,
+    };
+
+    onUpdateItem(item.id!, { metodosPago: [firstMethodWithDiscount, secondMethod] });
     
     // Update local state to reflect the actual value used
     setLocalFirstPaymentAmount(cleanAmount.toString());
+    
+    // IMPORTANT: Do NOT change descuentosActivos state here
+    // The discount is applied to the total before splitting, so we keep it active
   };
 
 
 
-  // Helper function to handle quantity change
+  // Helper function to handle quantity change (keep recalculation in a dedicated effect)
   const handleQuantityChange = (newQuantity: number) => {
-    if (newQuantity < 1) {
-      return; // Prevent invalid quantities
-    }
-    
+    if (newQuantity < 1) return;
     const updatedSubtotal = (parseFloat(String(item.precio)) || 0) * newQuantity;
-    
-    // Get current payment method to update it as well
-    const currentPaymentMethod = getFirstPaymentMethod();
-    let updatedPaymentMethod = null;
-    
-    if (currentPaymentMethod) {
-      const newSubtotal = (parseFloat(String(item.precio)) || 0) * newQuantity;
-      let newAmount = newSubtotal;
-      
-      // Convert amount if the payment method is in a different currency
-      if (currentPaymentMethod.moneda === MONEDAS.ARS && !isItemFrozen()) {
-        // Convert USD to ARS for non-frozen items
-        newAmount = newSubtotal * (1 / arsToUsd(1));
-      } else if (currentPaymentMethod.moneda === MONEDAS.USD && isItemFrozen()) {
-        // Convert ARS to USD for frozen items (if needed)
-        newAmount = arsToUsd(newSubtotal);
-      }
-      
-      // Ensure the amount doesn't exceed the subtotal
-      const subtotal = newSubtotal;
-      if (newAmount > subtotal) {
-        newAmount = subtotal;
-      }
-      
-      // Recalculate discount with new amount
-      const { montoFinal, descuentoAplicado } = calculateDiscount(
-        currentPaymentMethod.tipo || METODOS_PAGO.EFECTIVO,
-        newAmount,
-        currentPaymentMethod.moneda || MONEDAS.USD
-      );
-      
-      updatedPaymentMethod = {
-        ...currentPaymentMethod,
-        monto: newAmount,
-        montoFinal,
-        descuentoAplicado,
-        descuentoGlobalPorcentaje: descuentoAplicado > 0 ? (descuentoAplicado / newAmount) * 100 : 0,
-        recargoPorcentaje: 0,
-      };
-      
-    }
-    
-    // Combine both updates into a single call
-    const updates: any = { 
-      cantidad: newQuantity,
-      subtotal: updatedSubtotal
-    };
-    
-    if (updatedPaymentMethod) {
-      updates.metodosPago = [updatedPaymentMethod];
-    }
-    
-    onUpdateItem(item.id!, updates);
+    onUpdateItem(item.id!, { cantidad: newQuantity, subtotal: updatedSubtotal });
   };
 
   // Helper function to get the correct amount for payment method
@@ -424,29 +460,31 @@ export default function ItemPaymentForm({
     if (!paymentMethod) {
       // If no payment method set, initialize with EFECTIVO
       const baseAmount = calculateItemSubtotal(); // Use subtotal, not discounted total
-      const baseCurrency = isItemFrozen() ? MONEDAS.ARS : MONEDAS.USD;
-      
-      // If item is not frozen and we're displaying in ARS, convert from USD
-      if (!isItemFrozen() && baseCurrency === MONEDAS.USD) {
-        return baseAmount * (1 / arsToUsd(1)); // Convert USD to ARS
+      // If item is not frozen and needs ARS, convert USD→ARS
+      if (!isItemFrozen()) {
+        return Math.round(usdToArs(baseAmount));
       }
-      
       return baseAmount;
     }
     
-    // Return the final amount after discount
-    return paymentMethod.montoFinal || paymentMethod.monto || calculateItemSubtotal();
+    // Return the final amount after discount in the correct currency
+    return paymentMethod.montoFinal || paymentMethod.monto || calculateDiscountedTotal();
   };
 
   // Helper function to initialize payment method with correct currency and amount
   const initializePaymentMethod = (currency: string) => {
     // Use subtotal (without discount) as base amount
-    const baseAmount = calculateItemSubtotal();
-    let convertedAmount = baseAmount;
+    const baseAmountUSD = calculateItemSubtotal();
+    let baseAmount: number;
     
-    // If converting from USD to ARS for non-frozen items, apply exchange rate
-    if (!isItemFrozen() && currency === MONEDAS.ARS) {
-      convertedAmount = baseAmount * (1 / arsToUsd(1));
+    // Convert to the target currency if needed
+    if (isItemFrozen()) {
+      baseAmount = baseAmountUSD; // Already in ARS native
+    } else if (currency === MONEDAS.ARS) {
+      // Convert USD subtotal to ARS first
+      baseAmount = Math.round(usdToArs(baseAmountUSD));
+    } else {
+      baseAmount = baseAmountUSD; // Keep in USD
     }
     
     // Check if split payment is enabled
@@ -468,18 +506,15 @@ export default function ItemPaymentForm({
       };
     } else {
       // For single payment, apply discount to the converted amount
-      const { montoFinal, descuentoAplicado } = calculateDiscount(METODOS_PAGO.EFECTIVO, convertedAmount, currency);
-      
-      // No seña applied at item level anymore
-      const finalAmountWithSeña = montoFinal;
+      const { montoFinal, descuentoAplicado } = calculateDiscount(METODOS_PAGO.EFECTIVO, baseAmount, currency);
       
       return {
         tipo: METODOS_PAGO.EFECTIVO as TipoPagoNew,
         moneda: currency as MonedaNew,
-        monto: convertedAmount,
-        montoFinal: finalAmountWithSeña,
-        descuentoAplicado,
-        descuentoGlobalPorcentaje: descuentoAplicado > 0 ? (descuentoAplicado / convertedAmount) * 100 : 0,
+        monto: baseAmount,
+        montoFinal: montoFinal,
+        descuentoAplicado: descuentoAplicado,
+        descuentoGlobalPorcentaje: descuentoAplicado > 0 ? (descuentoAplicado / baseAmount) * 100 : 0,
         recargoPorcentaje: 0,
       };
     }
@@ -495,50 +530,100 @@ export default function ItemPaymentForm({
     }
   }, []); // Only run once when component mounts
 
-  // Update payment method when item changes (quantity, price, etc.)
+  // Update payment method when item changes (quantity, price, etc.) but avoid overriding backend on first mount
+  const skipInitialRecalcRef = useRef(true);
   useEffect(() => {
     const paymentMethod = getFirstPaymentMethod();
-    if (paymentMethod) {
-      const itemSubtotal = calculateItemSubtotal(); // Use subtotal, not discounted total
-      const currentCurrency = paymentMethod.moneda || (isItemFrozen() ? MONEDAS.ARS : MONEDAS.USD);
-      const isSplitEnabled = isSplitPaymentEnabled();
-      
-      let updatedPaymentMethod: PaymentMethodWithDiscount;
-      
-      if (isSplitEnabled) {
-        // For split payment, apply discount to total and split the discounted amount
-        const discountedTotal = calculateDiscountedTotal();
-        const splitAmount = Math.round(discountedTotal / 2);
-        
-        updatedPaymentMethod = {
-          ...paymentMethod,
-          monto: splitAmount,
-          montoFinal: splitAmount,
-          descuentoAplicado: 0,
-          descuentoGlobalPorcentaje: 0,
-          recargoPorcentaje: 0,
-        };
-      } else {
-        // For single payment, apply discount to the subtotal
-        const { montoFinal, descuentoAplicado } = calculateDiscount(
-          paymentMethod.tipo || METODOS_PAGO.EFECTIVO,
-          itemSubtotal,
-          currentCurrency
-        );
-        
-        updatedPaymentMethod = {
-          ...paymentMethod,
-          monto: itemSubtotal,
-          montoFinal,
-          descuentoAplicado,
-          descuentoGlobalPorcentaje: descuentoAplicado > 0 ? (descuentoAplicado / itemSubtotal) * 100 : 0,
-          recargoPorcentaje: 0,
-        };
-      }
-      
-      onUpdateItem(item.id!, { metodosPago: [updatedPaymentMethod] });
+    if (!paymentMethod) return;
+
+    // Skip the very first run (hydration) to preserve backend amounts when editing
+    if (skipInitialRecalcRef.current) {
+      skipInitialRecalcRef.current = false;
+      return;
     }
-  }, [item.cantidad, item.precio]); // Only run when quantity or price changes, not discount
+
+    const itemSubtotalUSD = calculateItemSubtotal(); // For non-frozen items, price is USD
+    const currentCurrency = paymentMethod.moneda || (isItemFrozen() ? MONEDAS.ARS : MONEDAS.USD);
+    const splitEnabled = isSplitPaymentEnabled();
+
+    let updatedPaymentMethod: PaymentMethodWithDiscount;
+
+    if (splitEnabled) {
+      const discountedTotalUSD = calculateDiscountedTotal();
+      const splitAmountUSD = Math.round(discountedTotalUSD / 2);
+      updatedPaymentMethod = {
+        ...paymentMethod,
+        monto: splitAmountUSD,
+        montoFinal: splitAmountUSD,
+        descuentoAplicado: 0,
+        descuentoGlobalPorcentaje: 0,
+        recargoPorcentaje: 0,
+      };
+    } else {
+      // Determine base amount in the payment currency
+      const baseAmount = isItemFrozen()
+        ? itemSubtotalUSD // In ARS native already
+        : currentCurrency === MONEDAS.ARS
+          ? Math.round(usdToArs(itemSubtotalUSD))
+          : itemSubtotalUSD;
+
+      const { montoFinal, descuentoAplicado } = calculateDiscount(
+        paymentMethod.tipo || METODOS_PAGO.EFECTIVO,
+        baseAmount,
+        currentCurrency
+      );
+
+      updatedPaymentMethod = {
+        ...paymentMethod,
+        monto: baseAmount,
+        montoFinal: Math.round(montoFinal),
+        descuentoAplicado: Math.round(descuentoAplicado),
+        descuentoGlobalPorcentaje:
+          descuentoAplicado > 0 ? Math.round((descuentoAplicado / baseAmount) * 100) : 0,
+        recargoPorcentaje: 0,
+      };
+    }
+
+    onUpdateItem(item.id!, { metodosPago: [updatedPaymentMethod] });
+  }, [item.cantidad, item.precio]);
+
+  // Recalculate discounts when descuentosActivos changes
+  useEffect(() => {
+    const paymentMethod = getFirstPaymentMethod();
+    if (!paymentMethod || skipInitialRecalcRef.current) return;
+
+    const itemSubtotalUSD = calculateItemSubtotal();
+    const currentCurrency = paymentMethod.moneda || (isItemFrozen() ? MONEDAS.ARS : MONEDAS.USD);
+    
+    // Determine base amount in the payment currency
+    let baseAmount: number;
+    if (isItemFrozen()) {
+      baseAmount = itemSubtotalUSD; // Already in ARS native
+    } else if (currentCurrency === MONEDAS.ARS) {
+      // Convert USD subtotal to ARS first
+      baseAmount = Math.round(usdToArs(itemSubtotalUSD));
+    } else {
+      baseAmount = itemSubtotalUSD; // Keep in USD
+    }
+    
+    // Calculate discount with the base amount in the correct currency
+    const { montoFinal, descuentoAplicado } = calculateDiscount(
+      paymentMethod.tipo || METODOS_PAGO.EFECTIVO, 
+      baseAmount, 
+      currentCurrency
+    );
+    
+    const updatedPaymentMethod: PaymentMethodWithDiscount = {
+      ...paymentMethod,
+      monto: baseAmount, // Use the original subtotal in the correct currency
+      montoFinal: Math.round(montoFinal), // Use the discounted total in the correct currency
+      descuentoAplicado: Math.round(descuentoAplicado),
+      descuentoGlobalPorcentaje: descuentoAplicado > 0 ? Math.round((descuentoAplicado / baseAmount) * 100) : 0,
+      recargoPorcentaje: 0,
+    };
+
+    onUpdateItem(item.id!, { metodosPago: [updatedPaymentMethod] });
+  }, [descuentosActivos]);
 
 
 
@@ -555,24 +640,61 @@ export default function ItemPaymentForm({
       return;
     }
 
-    let newAmount = currentPaymentMethod.monto || calculateItemSubtotal();
+    // Get the original subtotal in USD (before any discounts)
+    const originalSubtotalUSD = calculateItemSubtotal();
+    const currentCurrency = currentPaymentMethod.moneda || MONEDAS.USD;
     
-    // Convert amount if switching between USD and ARS
-    if (currentPaymentMethod.moneda === MONEDAS.USD && newCurrency === MONEDAS.ARS) {
-      // Convert USD to ARS using exchange rate
-      newAmount = (currentPaymentMethod.monto || calculateItemSubtotal()) * (1 / arsToUsd(1));
-    } else if (currentPaymentMethod.moneda === MONEDAS.ARS && newCurrency === MONEDAS.USD) {
-      // Convert ARS to USD
-      newAmount = arsToUsd(currentPaymentMethod.monto || calculateItemSubtotal());
+    let newAmount: number;
+    let newMontoFinal: number;
+    let descuentoAplicado: number = 0;
+    
+    if (currentCurrency === MONEDAS.USD && newCurrency === MONEDAS.ARS) {
+      // Converting from USD to ARS: convert subtotal first, then apply discount
+      const subtotalARS = Math.round(usdToArs(originalSubtotalUSD));
+      
+      if (descuentosActivos) {
+        // Apply discount to the ARS amount
+        const porcentajeDescuento = getEffectiveDiscount(currentPaymentMethod.tipo || METODOS_PAGO.EFECTIVO);
+        descuentoAplicado = Math.round((subtotalARS * porcentajeDescuento) / 100);
+        newMontoFinal = subtotalARS - descuentoAplicado;
+      } else {
+        newMontoFinal = subtotalARS;
+      }
+      
+      newAmount = subtotalARS; // monto should be the original amount in ARS
+    } else if (currentCurrency === MONEDAS.ARS && newCurrency === MONEDAS.USD) {
+      // Converting from ARS to USD: convert ARS amount back to USD, then apply discount
+      const subtotalUSD = originalSubtotalUSD; // Already in USD
+      
+      if (descuentosActivos) {
+        // Apply discount to the USD amount
+        const porcentajeDescuento = getEffectiveDiscount(currentPaymentMethod.tipo || METODOS_PAGO.EFECTIVO);
+        descuentoAplicado = Math.round((subtotalUSD * porcentajeDescuento) / 100);
+        newMontoFinal = subtotalUSD - descuentoAplicado;
+      } else {
+        newMontoFinal = subtotalUSD;
+      }
+      
+      newAmount = subtotalUSD; // monto should be the original amount in USD
+    } else {
+      // Same currency, no conversion needed
+      newAmount = originalSubtotalUSD;
+      if (descuentosActivos) {
+        const porcentajeDescuento = getEffectiveDiscount(currentPaymentMethod.tipo || METODOS_PAGO.EFECTIVO);
+        descuentoAplicado = Math.round((originalSubtotalUSD * porcentajeDescuento) / 100);
+        newMontoFinal = originalSubtotalUSD - descuentoAplicado;
+      } else {
+        newMontoFinal = originalSubtotalUSD;
+      }
     }
 
     const updatedPaymentMethod: PaymentMethodWithDiscount = {
       ...currentPaymentMethod,
       moneda: newCurrency as MonedaNew,
       monto: newAmount,
-      montoFinal: newAmount,
-      descuentoAplicado: 0, // No discount when changing currency
-      descuentoGlobalPorcentaje: 0,
+      montoFinal: newMontoFinal,
+      descuentoAplicado: descuentoAplicado,
+      descuentoGlobalPorcentaje: descuentoAplicado > 0 ? Math.round((descuentoAplicado / newAmount) * 100) : 0,
       recargoPorcentaje: 0,
     };
 
@@ -587,19 +709,30 @@ export default function ItemPaymentForm({
   // Helper function to handle payment method type change
   const handlePaymentTypeChange = (newType: string) => {
     const currentPaymentMethod = getFirstPaymentMethod();
-    const itemSubtotal = calculateItemSubtotal(); // Always use item subtotal as base
+    const itemSubtotalUSD = calculateItemSubtotal(); // Base in USD for non-frozen
     const currentCurrency = currentPaymentMethod?.moneda || (isItemFrozen() ? MONEDAS.ARS : MONEDAS.USD);
     
-    // Calculate discount with the subtotal and currency
-    const { montoFinal, descuentoAplicado } = calculateDiscount(newType, itemSubtotal, currentCurrency);
+    // Determine base amount in the payment currency
+    let baseAmount: number;
+    if (isItemFrozen()) {
+      baseAmount = itemSubtotalUSD; // Already in ARS native
+    } else if (currentCurrency === MONEDAS.ARS) {
+      // Convert USD subtotal to ARS first, then apply discount
+      baseAmount = Math.round(usdToArs(itemSubtotalUSD));
+    } else {
+      baseAmount = itemSubtotalUSD; // Keep in USD
+    }
+    
+    // Calculate discount with the base amount in the correct currency
+    const { montoFinal, descuentoAplicado } = calculateDiscount(newType, baseAmount, currentCurrency);
     
     const updatedPaymentMethod: PaymentMethodWithDiscount = {
       ...currentPaymentMethod,
       tipo: newType as TipoPagoNew,
-      monto: itemSubtotal, // Use subtotal as base amount
-      montoFinal,
-      descuentoAplicado,
-      descuentoGlobalPorcentaje: descuentoAplicado > 0 ? (descuentoAplicado / itemSubtotal) * 100 : 0,
+      monto: baseAmount, // Use subtotal in the correct currency
+      montoFinal: Math.round(montoFinal), // This should be the discounted amount in the correct currency
+      descuentoAplicado: Math.round(descuentoAplicado),
+      descuentoGlobalPorcentaje: descuentoAplicado > 0 ? Math.round((descuentoAplicado / baseAmount) * 100) : 0,
       recargoPorcentaje: 0,
     };
 
@@ -615,16 +748,20 @@ export default function ItemPaymentForm({
   const handleAmountChange = (newAmount: number, paymentIndex: number = 0) => {
     // Round to integer instead of floor
     const cleanAmount = Math.round(newAmount);
-    const subtotal = calculateItemSubtotal();
+    const subtotalUSD = calculateItemSubtotal();
     
     // Validate against subtotal
-    if (cleanAmount > subtotal) {
-      return;
-    }
-    
     const currentPaymentMethod = paymentIndex === 0 ? getFirstPaymentMethod() : getSecondPaymentMethod();
-    const paymentType = currentPaymentMethod?.tipo || METODOS_PAGO.EFECTIVO;
     const currentCurrency = currentPaymentMethod?.moneda || (isItemFrozen() ? MONEDAS.ARS : MONEDAS.USD);
+    const maxAllowed = isItemFrozen()
+      ? subtotalUSD // ARS native
+      : currentCurrency === MONEDAS.ARS
+        ? Math.round(usdToArs(subtotalUSD))
+        : subtotalUSD;
+
+    if (cleanAmount > maxAllowed) return;
+
+    const paymentType = currentPaymentMethod?.tipo || METODOS_PAGO.EFECTIVO;
     
     // Check if split payment is enabled
     const isSplitEnabled = isSplitPaymentEnabled();
@@ -697,16 +834,33 @@ export default function ItemPaymentForm({
         onUpdateItem(item.id!, { metodosPago: [firstMethod, secondMethod] });
       } else {
         // For single payment, recalculate with new discount settings
-        const discountedTotal = calculateDiscountedTotal();
-        const finalAmountWithSeña = discountedTotal;
-        const discountAmount = calculateTotalDiscount();
+        const itemSubtotalUSD = calculateItemSubtotal();
+        const currentCurrency = currentPaymentMethod.moneda || (isItemFrozen() ? MONEDAS.ARS : MONEDAS.USD);
+        
+        // Determine base amount in the payment currency
+        let baseAmount: number;
+        if (isItemFrozen()) {
+          baseAmount = itemSubtotalUSD; // Already in ARS native
+        } else if (currentCurrency === MONEDAS.ARS) {
+          // Convert USD subtotal to ARS first
+          baseAmount = Math.round(usdToArs(itemSubtotalUSD));
+        } else {
+          baseAmount = itemSubtotalUSD; // Keep in USD
+        }
+        
+        // Calculate discount with the base amount in the correct currency
+        const { montoFinal, descuentoAplicado } = calculateDiscount(
+          currentPaymentMethod.tipo || METODOS_PAGO.EFECTIVO, 
+          baseAmount, 
+          currentCurrency
+        );
         
         const updatedPaymentMethod = {
           ...currentPaymentMethod,
-          monto: discountedTotal,
-          montoFinal: finalAmountWithSeña,
-          descuentoAplicado: discountAmount,
-          descuentoGlobalPorcentaje: discountAmount > 0 ? Math.round((discountAmount / calculateItemSubtotal()) * 100) : 0,
+          monto: baseAmount, // Use the original subtotal in the correct currency
+          montoFinal: Math.round(montoFinal), // Use the discounted total in the correct currency
+          descuentoAplicado: Math.round(descuentoAplicado),
+          descuentoGlobalPorcentaje: descuentoAplicado > 0 ? Math.round((descuentoAplicado / baseAmount) * 100) : 0,
           recargoPorcentaje: 0,
         };
 
@@ -731,6 +885,73 @@ export default function ItemPaymentForm({
       setLocalFirstPaymentAmount(firstMethod.monto?.toString() || '');
     }
   }, [item.metodosPago, isSplitEnabled]);
+
+  // Sync discounts when descuentosActivos changes
+  useEffect(() => {
+    // Only recalculate if we have payment methods and descuentosActivos changed
+    const currentPaymentMethod = getFirstPaymentMethod();
+    if (currentPaymentMethod) {
+      const isSplitEnabled = isSplitPaymentEnabled();
+      
+      if (isSplitEnabled) {
+        // For split payment, recalculate both payments
+        const finalAmountWithSeña = calculateDiscountedTotal();
+        const firstAmount = Math.round(finalAmountWithSeña / 2);
+        const secondAmount = calculateSecondPaymentAmount(firstAmount);
+        
+        const firstMethod = {
+          ...currentPaymentMethod,
+          monto: firstAmount,
+          montoFinal: firstAmount,
+          descuentoGlobalPorcentaje: 0,
+          recargoPorcentaje: 0,
+        };
+
+        const secondMethod = {
+          ...getSecondPaymentMethod(),
+          monto: secondAmount,
+          montoFinal: secondAmount,
+          descuentoGlobalPorcentaje: 0,
+          recargoPorcentaje: 0,
+        };
+
+        onUpdateItem(item.id!, { metodosPago: [firstMethod, secondMethod] });
+      } else {
+        // For single payment, recalculate with new discount settings
+        const itemSubtotalUSD = calculateItemSubtotal();
+        const currentCurrency = currentPaymentMethod.moneda || (isItemFrozen() ? MONEDAS.ARS : MONEDAS.USD);
+        
+        // Determine base amount in the payment currency
+        let baseAmount: number;
+        if (isItemFrozen()) {
+          baseAmount = itemSubtotalUSD; // Already in ARS native
+        } else if (currentCurrency === MONEDAS.ARS) {
+          // Convert USD subtotal to ARS first
+          baseAmount = Math.round(usdToArs(itemSubtotalUSD));
+        } else {
+          baseAmount = itemSubtotalUSD; // Keep in USD
+        }
+        
+        // Calculate discount with the base amount in the correct currency
+        const { montoFinal, descuentoAplicado } = calculateDiscount(
+          currentPaymentMethod.tipo || METODOS_PAGO.EFECTIVO, 
+          baseAmount, 
+          currentCurrency
+        );
+        
+        const updatedPaymentMethod = {
+          ...currentPaymentMethod,
+          monto: baseAmount, // Use the original subtotal in the correct currency
+          montoFinal: Math.round(montoFinal), // Use the discounted total in the correct currency
+          descuentoAplicado: Math.round(descuentoAplicado),
+          descuentoGlobalPorcentaje: descuentoAplicado > 0 ? Math.round((descuentoAplicado / baseAmount) * 100) : 0,
+          recargoPorcentaje: 0,
+        };
+
+        onUpdateItem(item.id!, { metodosPago: [updatedPaymentMethod] });
+      }
+    }
+  }, [descuentosActivos]); // Trigger when descuentosActivos changes
 
   // Calculate discount info for display
   const discountInfo = useMemo(() => {
@@ -1083,7 +1304,12 @@ export default function ItemPaymentForm({
         {/* Currency Conversion Info */}
         {!isFrozen && paymentMethod?.moneda === MONEDAS.ARS && !isSplitEnabled && (
           <div className="text-xs text-gray-600">
-            Conversión automática: USD {formatUSD(itemTotal)} → ARS {formatARSFromNative(paymentAmount)}
+            Conversión automática: USD {formatUSD(calculateItemSubtotal())} → ARS {formatARSFromNative(Math.round(usdToArs(calculateItemSubtotal())))}
+            {descuentosActivos && getEffectiveDiscount(paymentMethod.tipo as keyof typeof descuentosPorMetodo) > 0 && (
+              <div className="mt-1 text-xs text-blue-600">
+                Con descuento: ARS {formatARSFromNative(Math.round(usdToArs(calculateItemSubtotal()) - calculateTotalDiscount()))}
+              </div>
+            )}
           </div>
         )}
 

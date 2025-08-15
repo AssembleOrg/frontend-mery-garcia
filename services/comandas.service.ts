@@ -288,6 +288,12 @@ class ComandasService {
     }
   }
 
+  // DELETE /comandas/:id/hard - Delete existing order
+  async eliminarComanda(id: string): Promise<void> {
+    await apiFetch<{ data: ComandaNew }>(`${this.baseUrl}/${id}/hard`, {
+      method: 'DELETE',
+    });
+  }
 }
 
 export const comandasService = new ComandasService();

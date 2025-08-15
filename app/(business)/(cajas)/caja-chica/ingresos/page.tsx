@@ -88,6 +88,7 @@ export default function IngresosPage() {
 
   // Get traspasos for residual display
   const { traspasos } = useRecordsStore();
+  const { eliminarComanda } = useComandaStore();
 
   // Get servicios and unidades de negocio for filters
   const { productosServicios, unidadesNegocio, isLoading: isLoadingFilters } = useProductosServicios();
@@ -198,12 +199,17 @@ export default function IngresosPage() {
     }
   };
 
-  const confirmarEliminar = () => {
+  const confirmarEliminar = async () => {
     if (alertaEliminar) {
-      // TODO: Implementar llamada al backend para eliminar
-      // eliminarComanda(alertaEliminar.id); // Esta sería la llamada real al backend
+      await eliminarComanda(alertaEliminar.id);
       setAlertaEliminar(null);
-      // Recargar datos después de eliminar cuando se conecte el backend
+      await cargarComandasPaginadas({
+        page: paginaActual,
+        limit: itemsPorPagina,
+        tipoDeComanda: TipoDeComandaNew.INGRESO,
+        orderBy,
+        order: orderDirection,
+      });
     }
   };
 

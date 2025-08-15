@@ -318,13 +318,27 @@ export default function ModalTransaccionUnificadoRefactored({
       : MONEDAS.USD;
     const defaultAmount = subtotalBase;
 
-    // Crear método de pago inicial con EFECTIVO
+    // Calcular el descuento inicial si los descuentos están activos
+    const discountAmount = descuentosActivos
+      ? Math.round(
+          (defaultAmount *
+            (descuentosPorMetodo[METODOS_PAGO.EFECTIVO as keyof typeof descuentosPorMetodo] || 0)) /
+            100
+        )
+      : 0;
+    
+    const finalAmount = defaultAmount - discountAmount;
+
+    // Crear método de pago inicial con EFECTIVO y descuento aplicado
     const initialPaymentMethod = {
       tipo: METODOS_PAGO.EFECTIVO as TipoPagoNew,
       moneda: defaultCurrency as MonedaNew,
-      monto: defaultAmount,
-      montoFinal: defaultAmount,
-      descuentoAplicado: 0,
+      monto: defaultAmount, // Subtotal original
+      montoFinal: finalAmount, // Total con descuento aplicado
+      descuentoAplicado: discountAmount,
+      descuentoGlobalPorcentaje: discountAmount > 0 
+        ? Math.round((discountAmount / defaultAmount) * 100) 
+        : 0,
     };
 
     const nuevoItem: ItemComandaCreateNew = {
@@ -714,21 +728,46 @@ export default function ModalTransaccionUnificadoRefactored({
         const isSplitEnabled = item.metodosPago && item.metodosPago.length > 1;
 
         if (isSplitEnabled) {
-          // For split payment, recalculate both payments
-          const itemTotal = (item.precio || 0) * (item.cantidad || 1);
-          const splitAmount = Math.round(itemTotal / 2);
+          // For split payment, recalculate both payments considering the discount
+          const itemSubtotal = (item.precio || 0) * (item.cantidad || 1);
+          
+          // Calculate the discounted total
+          const discountAmount = enabled
+            ? Math.round(
+                (itemSubtotal *
+                  (descuentosPorMetodo[
+                    currentPaymentMethod.tipo as keyof typeof descuentosPorMetodo
+                  ] || 0)) /
+                  100
+              )
+            : 0;
+          
+          const discountedTotal = itemSubtotal - discountAmount;
+          
+          // Split the discounted total
+          const firstAmount = Math.round(discountedTotal / 2);
+          const secondAmount = discountedTotal - firstAmount;
 
+          // Preserve the original discount information
           const firstMethod = {
             ...currentPaymentMethod,
-            monto: splitAmount,
-            montoFinal: splitAmount,
+            monto: firstAmount,
+            montoFinal: firstAmount,
+            descuentoAplicado: discountAmount, // Preserve discount amount
+            descuentoGlobalPorcentaje: discountAmount > 0 
+              ? Math.round((discountAmount / itemSubtotal) * 100) 
+              : 0, // Preserve discount percentage
             moneda: MONEDAS.USD as MonedaNew,
           };
 
           const secondMethod = {
             ...currentPaymentMethod,
-            monto: itemTotal - splitAmount,
-            montoFinal: itemTotal - splitAmount,
+            monto: secondAmount,
+            montoFinal: secondAmount,
+            descuentoAplicado: discountAmount, // Preserve discount amount
+            descuentoGlobalPorcentaje: discountAmount > 0 
+              ? Math.round((discountAmount / itemSubtotal) * 100) 
+              : 0, // Preserve discount percentage
             moneda: MONEDAS.ARS as MonedaNew,
           };
 

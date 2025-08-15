@@ -74,6 +74,7 @@ interface ComandaState {
   }>;
   cambiarEstadoComanda: (comandaId: string, nuevoEstado: EstadoDeComandaNew) => Promise<void>;
   loadResumen: (fechaDesde: string, fechaHasta: string) => Promise<void>;
+  eliminarComanda: (comandaId: string) => Promise<void>;
 }
 
 const useComandaStore = create<ComandaState>((set, get) => ({
@@ -121,6 +122,12 @@ const useComandaStore = create<ComandaState>((set, get) => ({
   getEgresosPaginados: async (filters: FiltrarComandasNew) => {
     const { data, pagination } = await comandasService.obtenerComandasEgresosPaginadas(filters);
     set({ comandasPaginadas: { data, pagination } });
+  },
+  eliminarComanda: async (comandaId: string) => {
+    await comandasService.eliminarComanda(comandaId);
+    set((state) => ({
+      comandas: state.comandas.filter((c) => c.id !== comandaId),
+    }));
   },
 
   getComandasPaginadas: () => {
