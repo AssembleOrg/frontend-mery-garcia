@@ -40,6 +40,7 @@ import {
   ClienteNew,
   ComandaNew,
   ItemComandaCreateNew,
+  EstadoPrepagoNew,
 } from '@/services/unidadNegocio.service';
 import useProductosServiciosStore from '@/features/productos-servicios/store/productosServiciosStore';
 import { useClientesStore } from '@/features/clientes/store/clientesStore';
@@ -53,19 +54,19 @@ import { useConfiguracion } from '@/features/configuracion/store/configuracionSt
 
 /**
  * ModalTransaccionUnificadoRefactored Component
- * 
+ *
  * This is the refactored version of the transaction modal that implements the new
  * payment method system where each product/service is associated with a specific
  * payment method. The component is broken down into smaller, more manageable pieces
  * for better maintainability and readability.
- * 
+ *
  * Key Features:
  * - Each item has its own payment method configuration
  * - Non-editable item inputs (only total amount can be modified)
  * - Currency restrictions based on frozen pricing
  * - Simplified summary showing only subtotal and total
  * - Support for multiple currencies in a single transaction
- * 
+ *
  * @param isOpen - Whether the modal is open
  * @param onClose - Callback to close the modal
  * @param tipo - Transaction type ('ingreso' or 'egreso')
@@ -147,7 +148,8 @@ export default function ModalTransaccionUnificadoRefactored({
   const [fechaCreacion, setFechaCreacion] = useState<Date>(new Date()); // Default to today
 
   // Client state
-  const [clienteSeleccionado, setClienteSeleccionado] = useState<ClienteNew | null>(null);
+  const [clienteSeleccionado, setClienteSeleccionado] =
+    useState<ClienteNew | null>(null);
   const [clienteProveedor, setClienteProveedor] = useState('');
   const [telefono, setTelefono] = useState('');
   const [responsableId, setResponsableId] = useState('');
@@ -294,7 +296,6 @@ export default function ModalTransaccionUnificadoRefactored({
     }
   }, [mostrarBuscador, productosServicios.length]);
 
-
   const agregarDesdeProducto = (producto: ProductoServicioNew) => {
     // Para productos congelados: NO convertir, usar precio ARS como base
     // Para productos normales: mantener lógica USD actual
@@ -312,7 +313,9 @@ export default function ModalTransaccionUnificadoRefactored({
     }
 
     // Determinar la moneda por defecto
-    const defaultCurrency = producto.esPrecioCongelado ? MONEDAS.ARS : MONEDAS.USD;
+    const defaultCurrency = producto.esPrecioCongelado
+      ? MONEDAS.ARS
+      : MONEDAS.USD;
     const defaultAmount = subtotalBase;
 
     // Crear método de pago inicial con EFECTIVO
@@ -336,7 +339,7 @@ export default function ModalTransaccionUnificadoRefactored({
       responsablesIds: [],
       metodosPago: [initialPaymentMethod], // Inicializar con método de pago por defecto
     };
-    
+
     setItems([...items, nuevoItem]);
     setMostrarBuscador(false);
     setBusqueda('');
@@ -347,16 +350,13 @@ export default function ModalTransaccionUnificadoRefactored({
   };
 
   // Update item with payment method
-  const actualizarItem = (
-    id: string,
-    updates: any
-  ) => {
-    const itemToUpdate = items.find(item => item.id === id);
-    
+  const actualizarItem = (id: string, updates: any) => {
+    const itemToUpdate = items.find((item) => item.id === id);
+
     const newItems = items.map((item) => {
       if (item.id === id) {
         const updatedItem = { ...item, ...updates };
-        
+
         // If quantity or price is updated, recalculate subtotal
         if (updates.cantidad !== undefined || updates.precio !== undefined) {
           const precio = parseFloat(updatedItem.precio) || 0;
@@ -364,12 +364,12 @@ export default function ModalTransaccionUnificadoRefactored({
           const newSubtotal = precio * cantidad;
           updatedItem.subtotal = newSubtotal; // Ensure it's a number
         }
-        
+
         return updatedItem;
       }
       return item;
     });
-    
+
     setItems(newItems);
   };
 
@@ -384,9 +384,7 @@ export default function ModalTransaccionUnificadoRefactored({
       return false;
     }
 
-    if (
-      items.some((item) => item.responsablesIds?.length === 0)
-    ) {
+    if (items.some((item) => item.responsablesIds?.length === 0)) {
       toast.error('Debe seleccionar un responsable por item', {
         position: 'top-center',
       });
@@ -442,11 +440,10 @@ export default function ModalTransaccionUnificadoRefactored({
         ? '01-' + numeroManual
         : numeroUltimaComanda;
 
-       
       // Convert items with payment methods to the format expected by the backend
       const itemsWithPaymentMethods = items.map((item) => {
         const itemPaymentMethods = (item as any).metodosPago || [];
-        
+
         return {
           productoServicioId: item.productoServicio?.id!,
           nombre: item.nombre!,
@@ -457,55 +454,83 @@ export default function ModalTransaccionUnificadoRefactored({
           trabajadorId: item.responsablesIds?.[0] || '',
           subtotal: item.subtotal!,
           // Include payment method information if available
-          metodosPago: itemPaymentMethods
+          metodosPago: itemPaymentMethods,
         } as any; // Type assertion to match DTO structure
       });
-        
 
-        const nuevaComandaNew: ComandaCreateNew = {
-          clienteId: clienteSeleccionado?.id,
-          creadoPorId: user?.id,
-          numero: numeroTransaccion.toString(),
-          tipoDeComanda:
-            tipo === 'ingreso'
-              ? TipoDeComandaNew.INGRESO
-              : TipoDeComandaNew.EGRESO,
-          estadoDeComanda: EstadoDeComandaNew.PENDIENTE,
-          valorDolar: parseFloat(getTipoCambio().valorVenta.toString()),
-          caja: CajaNew.CAJA_1,
-          descuentosAplicados: [],
-          items: itemsWithPaymentMethods,
-          usuarioConsumePrepagoARS: señaActiva && señaMonedas.includes('ARS'),
-          usuarioConsumePrepagoUSD: señaActiva && señaMonedas.includes('USD'),
-          createdAt: fechaCreacion,
-        };
+      const prepagoARS =
+        señaActiva && señaMonedas.includes('ARS')
+          ? clienteSeleccionado?.prepagosGuardados.find(
+              (prepago) =>
+                prepago.moneda === MonedaNew.ARS &&
+                prepago.estado === EstadoPrepagoNew.ACTIVA
+            )?.id
+          : null;
+      const prepagoUSD =
+        señaActiva && señaMonedas.includes('USD')
+          ? clienteSeleccionado?.prepagosGuardados.find(
+              (prepago) =>
+                prepago.moneda === MonedaNew.USD &&
+                prepago.estado === EstadoPrepagoNew.ACTIVA
+            )?.id
+          : null;
+      const nuevaComandaNew: ComandaCreateNew = {
+        clienteId: clienteSeleccionado?.id,
+        creadoPorId: user?.id,
+        numero: numeroTransaccion.toString(),
+        tipoDeComanda:
+          tipo === 'ingreso'
+            ? TipoDeComandaNew.INGRESO
+            : TipoDeComandaNew.EGRESO,
+        estadoDeComanda: EstadoDeComandaNew.PENDIENTE,
+        valorDolar: parseFloat(getTipoCambio().valorVenta.toString()),
+        caja: CajaNew.CAJA_1,
+        descuentosAplicados: [],
+        items: itemsWithPaymentMethods,
+        usuarioConsumePrepagoARS: señaActiva && señaMonedas.includes('ARS'),
+        usuarioConsumePrepagoUSD: señaActiva && señaMonedas.includes('USD'),
+        createdAt: fechaCreacion,
+      };
 
-       
+      if (señaActiva && señaMonedas.includes('ARS')) {
+        nuevaComandaNew.prepagoARSID = prepagoARS?.toString() || '';
+      }
+      if (señaActiva && señaMonedas.includes('USD')) {
+        nuevaComandaNew.prepagoUSDID = prepagoUSD?.toString() || '';
+      }
 
-        const descuentos = nuevaComandaNew.items?.flatMap(item => {
+      const descuentos =
+        nuevaComandaNew.items?.flatMap((item) => {
           const itemWithPayment = item as any;
           const paymentMethods = itemWithPayment.metodosPago || [];
-          
+
           // Si hay split payment (más de un método de pago), crear un solo descuento
           if (paymentMethods.length > 1) {
             // Usar el primer método de pago para obtener el tipo y porcentaje de descuento
             const firstPaymentMethod = paymentMethods[0];
             const subtotal = item.subtotal || 0;
             const descuentoAplicado = firstPaymentMethod.descuentoAplicado || 0;
-            const efectivo = item.metodosPago?.some((mp: any) => mp.tipo === METODOS_PAGO.EFECTIVO);
-            const transferencia = item.metodosPago?.some((mp: any) => mp.tipo === METODOS_PAGO.TRANSFERENCIA);
+            const efectivo = item.metodosPago?.some(
+              (mp: any) => mp.tipo === METODOS_PAGO.EFECTIVO
+            );
+            const transferencia = item.metodosPago?.some(
+              (mp: any) => mp.tipo === METODOS_PAGO.TRANSFERENCIA
+            );
             const porcentaje = efectivo ? 10 : transferencia ? 5 : 0;
-            
+
             // Calcular el porcentaje basado en el descuento aplicado
-            const discountPercentage = subtotal > 0 ? (descuentoAplicado / subtotal) * 100 : 0;
+            const discountPercentage =
+              subtotal > 0 ? (descuentoAplicado / subtotal) * 100 : 0;
             const montoFijo = descuentoAplicado; // El monto fijo es el descuento aplicado
-            
-            return [{
-              nombre: NombreDescuentoNew.DESCUENTO_POR_METODO_PAGO,
-              descripcion: 'Descuento por método de pago (split payment)',
-              porcentaje: porcentaje,
-              montoFijo: subtotal * (porcentaje / 100),
-            }];
+
+            return [
+              {
+                nombre: NombreDescuentoNew.DESCUENTO_POR_METODO_PAGO,
+                descripcion: 'Descuento por método de pago (split payment)',
+                porcentaje: porcentaje,
+                montoFijo: subtotal * (porcentaje / 100),
+              },
+            ];
           } else {
             // Para pagos normales (un solo método), mantener la lógica original
             return paymentMethods.map((mp: any) => {
@@ -519,29 +544,53 @@ export default function ModalTransaccionUnificadoRefactored({
           }
         }) || [];
 
-        nuevaComandaNew.descuentosAplicados = descuentos;
-        
-        // Calculate totals from payment methods in items
-        nuevaComandaNew.precioDolar = nuevaComandaNew.items?.reduce((sum, item) => {
+      nuevaComandaNew.descuentosAplicados = descuentos;
+
+      // Calculate totals from payment methods in items
+      nuevaComandaNew.precioDolar =
+        nuevaComandaNew.items?.reduce((sum, item) => {
           const itemWithPayment = item as any;
-          return sum + (itemWithPayment.metodosPago || []).reduce((itemSum: number, mp: any) => {
-            return itemSum + (mp.moneda === MonedaNew.USD ? mp.montoFinal || 0 : 0);
-          }, 0);
-        }, 0) || 0;
-        
-        nuevaComandaNew.precioPesos = nuevaComandaNew.items?.reduce((sum, item) => {
-          const itemWithPayment = item as any;
-          return sum + (itemWithPayment.metodosPago || []).reduce((itemSum: number, mp: any) => {
-            return itemSum + (mp.moneda === MonedaNew.ARS ? mp.montoFinal || 0 : 0);
-          }, 0);
+          return (
+            sum +
+            (itemWithPayment.metodosPago || []).reduce(
+              (itemSum: number, mp: any) => {
+                return (
+                  itemSum +
+                  (mp.moneda === MonedaNew.USD ? mp.montoFinal || 0 : 0)
+                );
+              },
+              0
+            )
+          );
         }, 0) || 0;
 
-        if (señaActiva && señaMonedas.includes('ARS')) {
-          nuevaComandaNew.precioPesos = nuevaComandaNew.precioPesos - clienteSeleccionado?.señasDisponibles.ars! || 0;
-        }
-        if (señaActiva && señaMonedas.includes('USD')) {
-          nuevaComandaNew.precioDolar = nuevaComandaNew.precioDolar - clienteSeleccionado?.señasDisponibles.usd! || 0;
-        }
+      nuevaComandaNew.precioPesos =
+        nuevaComandaNew.items?.reduce((sum, item) => {
+          const itemWithPayment = item as any;
+          return (
+            sum +
+            (itemWithPayment.metodosPago || []).reduce(
+              (itemSum: number, mp: any) => {
+                return (
+                  itemSum +
+                  (mp.moneda === MonedaNew.ARS ? mp.montoFinal || 0 : 0)
+                );
+              },
+              0
+            )
+          );
+        }, 0) || 0;
+
+      if (señaActiva && señaMonedas.includes('ARS')) {
+        nuevaComandaNew.precioPesos =
+          nuevaComandaNew.precioPesos -
+            clienteSeleccionado?.señasDisponibles.ars! || 0;
+      }
+      if (señaActiva && señaMonedas.includes('USD')) {
+        nuevaComandaNew.precioDolar =
+          nuevaComandaNew.precioDolar -
+            clienteSeleccionado?.señasDisponibles.usd! || 0;
+      }
 
       if (!comandaId) {
         const existe = await existeComanda(numeroTransaccion.toString());
@@ -610,7 +659,7 @@ export default function ModalTransaccionUnificadoRefactored({
           setTelefono(comanda.cliente?.telefono || '');
           setObservaciones(comanda.observaciones || '');
           setNumeroManual(comanda.numero?.split('-')[1] || '');
-          
+
           // Set creation date if available, otherwise use today
           if (comanda.createdAt) {
             setFechaCreacion(new Date(comanda.createdAt));
@@ -657,18 +706,18 @@ export default function ModalTransaccionUnificadoRefactored({
   // Handle global discounts toggle
   const handleGlobalDescuentosToggle = (enabled: boolean) => {
     setDescuentosActivos(enabled);
-    
+
     // Update all items to reflect the new discount settings
-    items.forEach(item => {
+    items.forEach((item) => {
       const currentPaymentMethod = item.metodosPago?.[0];
       if (currentPaymentMethod) {
         const isSplitEnabled = item.metodosPago && item.metodosPago.length > 1;
-        
+
         if (isSplitEnabled) {
           // For split payment, recalculate both payments
           const itemTotal = (item.precio || 0) * (item.cantidad || 1);
           const splitAmount = Math.round(itemTotal / 2);
-          
+
           const firstMethod = {
             ...currentPaymentMethod,
             monto: splitAmount,
@@ -683,19 +732,31 @@ export default function ModalTransaccionUnificadoRefactored({
             moneda: MONEDAS.ARS as MonedaNew,
           };
 
-          actualizarItem(item.id!, { metodosPago: [firstMethod, secondMethod] });
+          actualizarItem(item.id!, {
+            metodosPago: [firstMethod, secondMethod],
+          });
         } else {
           // For single payment, recalculate with new discount settings
           const itemTotal = (item.precio || 0) * (item.cantidad || 1);
-          const discountAmount = enabled ? 
-            Math.round((itemTotal * (descuentosPorMetodo[currentPaymentMethod.tipo as keyof typeof descuentosPorMetodo] || 0)) / 100) : 0;
-          
+          const discountAmount = enabled
+            ? Math.round(
+                (itemTotal *
+                  (descuentosPorMetodo[
+                    currentPaymentMethod.tipo as keyof typeof descuentosPorMetodo
+                  ] || 0)) /
+                  100
+              )
+            : 0;
+
           const updatedPaymentMethod = {
             ...currentPaymentMethod,
             monto: itemTotal,
             montoFinal: itemTotal - discountAmount,
             descuentoAplicado: discountAmount,
-            descuentoGlobalPorcentaje: discountAmount > 0 ? Math.round((discountAmount / itemTotal) * 100) : 0,
+            descuentoGlobalPorcentaje:
+              discountAmount > 0
+                ? Math.round((discountAmount / itemTotal) * 100)
+                : 0,
             recargoPorcentaje: 0,
           };
 
@@ -703,7 +764,6 @@ export default function ModalTransaccionUnificadoRefactored({
         }
       }
     });
-    
   };
 
   // Wrapper function to match the expected signature
@@ -852,29 +912,33 @@ export default function ModalTransaccionUnificadoRefactored({
                             if (cliente) {
                               setClienteProveedor(cliente.nombre);
                               setTelefono(cliente.telefono || '');
-                              
+
                               // Verificar si el cliente tiene seña disponible y activarla automáticamente si es apropiado
                               if (cliente.señasDisponibles) {
-                                const señaARS = cliente.señasDisponibles.ars || 0;
-                                const señaUSD = cliente.señasDisponibles.usd || 0;
-                                
+                                const señaARS =
+                                  cliente.señasDisponibles.ars || 0;
+                                const señaUSD =
+                                  cliente.señasDisponibles.usd || 0;
+
                                 // Si hay seña disponible, activarla automáticamente
                                 if (señaARS > 0 || señaUSD > 0) {
                                   setSeñaActiva(true);
-                                  
+
                                   // Seleccionar automáticamente las monedas disponibles
                                   const monedasDisponibles: string[] = [];
-                                  if (señaARS > 0) monedasDisponibles.push('ARS');
-                                  if (señaUSD > 0) monedasDisponibles.push('USD');
+                                  if (señaARS > 0)
+                                    monedasDisponibles.push('ARS');
+                                  if (señaUSD > 0)
+                                    monedasDisponibles.push('USD');
                                   setSeñaMonedas(monedasDisponibles);
                                 }
                               }
-                                                          } else {
-                                setClienteProveedor('');
-                                setTelefono('');
-                                setSeñaActiva(false); // Reset seña cuando se deselecciona cliente
-                                setSeñaMonedas([]); // Reset monedas de seña
-                              }
+                            } else {
+                              setClienteProveedor('');
+                              setTelefono('');
+                              setSeñaActiva(false); // Reset seña cuando se deselecciona cliente
+                              setSeñaMonedas([]); // Reset monedas de seña
+                            }
                           }}
                           required={true}
                         />
@@ -913,7 +977,9 @@ export default function ModalTransaccionUnificadoRefactored({
                       <Label className="text-gray-700">Fecha de Creación</Label>
                       <DatePicker
                         date={fechaCreacion}
-                        onDateChange={(date) => setFechaCreacion(date || new Date())}
+                        onDateChange={(date) =>
+                          setFechaCreacion(date || new Date())
+                        }
                         placeholder="Seleccionar fecha"
                         className="w-full"
                         accentColor="#f9bbc4"
@@ -972,7 +1038,6 @@ export default function ModalTransaccionUnificadoRefactored({
                         tipo={tipo}
                         personal={personal}
                         cliente={clienteSeleccionado}
-
                         onDescuentosToggle={handleItemDescuentosToggle}
                       />
                     ))
@@ -1083,7 +1148,9 @@ export default function ModalTransaccionUnificadoRefactored({
                             {producto.nombre}
                           </div>
                           <div className="text-sm text-gray-600">
-                            {producto.tipo === 'PRODUCTO' ? 'Producto' : 'Servicio'}
+                            {producto.tipo === 'PRODUCTO'
+                              ? 'Producto'
+                              : 'Servicio'}
                             {producto.esPrecioCongelado && ' 🔒 Precio fijo'}
                           </div>
                         </div>
@@ -1109,4 +1176,4 @@ export default function ModalTransaccionUnificadoRefactored({
       )}
     </div>
   );
-} 
+}

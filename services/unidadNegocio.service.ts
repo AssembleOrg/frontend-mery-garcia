@@ -370,6 +370,10 @@ export interface ComandaNew {
   deletedAt: string;
   estadoDeComanda: EstadoDeComandaNew;
   tipoDeComanda: TipoDeComandaNew;
+  prepagoARSID?: string;
+  prepagoARS?: PrepagoGuardadoNew;
+  prepagoUSDID?: string;
+  prepagoUSD?: PrepagoGuardadoNew;
   creadoPor: TrabajadorNew;
   cliente: ClienteNew;
   movimientos: MovimientoNew[];

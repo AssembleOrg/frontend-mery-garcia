@@ -37,8 +37,16 @@ export default function ModalVerComanda({ isOpen, onClose, comanda }: ModalVerCo
       const monto = item.monto ?? 0;
       const neto = item.montoFinal ?? 0;
       const total = hasUsd ? neto : monto;
+      console.warn('total', total);
       return acc + total;
-    }, 0) || comanda.precioDolar > 0
+    }, 0) || 0
+  console.warn('totalARS', totalARS);
+
+  // Obtener información de señas utilizadas
+  const señaInfo = {
+    ars: comanda.usuarioConsumePrepagoARS && comanda.prepagoARS ? comanda.prepagoARS.monto : 0,
+    usd: comanda.usuarioConsumePrepagoUSD && comanda.prepagoUSD ? comanda.prepagoUSD.monto : 0,
+  };
 
   // Método de pago principal
   const metodoPrincipal = resolverMetodoPagoPrincipalConMoneda(
@@ -49,20 +57,39 @@ export default function ModalVerComanda({ isOpen, onClose, comanda }: ModalVerCo
     })) as MetodoPagoNew[]
   );
 
-  // Detalle de métodos de pago
-  const detalleMetodos = formatearDetalleMetodosPago(
-    allPaymentMethods.map((m: any) => {
-      const monto = m.monto ?? 0;
-      const neto = m.montoFinal ?? 0;
-      const total = hasUsd ? neto : monto;
+  // Calcular totales pagados por moneda (agrupados)
+  const totalesPorMoneda = allPaymentMethods.reduce((acc: any, m: any) => {
+    const monto = m.monto ?? 0;
+    const neto = m.montoFinal ?? 0;
+    const total = hasUsd ? neto : monto;
+    const moneda = m.moneda || 'USD';
+    
+    if (!acc[moneda]) {
+      acc[moneda] = { total: 0, tipo: m.tipo };
+    }
+    acc[moneda].total += total;
+    
+    return acc;
+  }, {});
 
-      return {
-        tipo: m.tipo,
-        monto: total,
-        moneda: m.moneda || 'USD',
-      };
-    }) as MetodoPagoNew[]
-  );
+  // Restar señas de los totales
+  if (totalesPorMoneda.USD && señaInfo.usd > 0) {
+    totalesPorMoneda.USD.total = Math.max(0, totalesPorMoneda.USD.total - señaInfo.usd);
+  }
+  if (totalesPorMoneda.ARS && señaInfo.ars > 0) {
+    totalesPorMoneda.ARS.total = Math.max(0, totalesPorMoneda.ARS.total - señaInfo.ars);
+  }
+
+  // Formatear detalle simplificado (máximo 2 líneas)
+  const detalleMetodos = Object.entries(totalesPorMoneda)
+    .filter(([_, data]: [string, any]) => data.total > 0)
+    .map(([moneda, data]: [string, any]) => {
+      const montoFormateado = moneda === 'USD' 
+        ? formatUSD(data.total)
+        : formatARSFromNative(data.total);
+      
+      return `${data.tipo} ${moneda}: ${montoFormateado}`;
+    }).join(', ');
 
   // Trabajadores únicos
   const trabajadores = comanda.items
@@ -71,6 +98,33 @@ export default function ModalVerComanda({ isOpen, onClose, comanda }: ModalVerCo
     .filter((trabajador, index, array) =>
       array.findIndex(t => t?.id === trabajador?.id) === index
     );
+
+  // Función para obtener abreviatura del método de pago
+  const getPaymentMethodAbbreviation = (tipo: string) => {
+    const abbreviations: { [key: string]: string } = {
+      'EFECTIVO': 'EFE',
+      'TRANSFERENCIA': 'TRF',
+      'TARJETA': 'TAR',
+      'QR': 'QR',
+      'GIFT_CARD': 'GC',
+      'PRECIO_LISTA': 'PL',
+      'MIXTO': 'MIX'
+    };
+    return abbreviations[tipo] || tipo;
+  };
+
+  // Función para calcular el porcentaje de descuento por método de pago
+  const calcularPorcentajeDescuento = (metodoPago: any) => {
+    const monto = metodoPago.monto ?? 0;
+    const montoFinal = metodoPago.montoFinal ?? 0;
+    
+    if (monto > 0 && montoFinal < monto) {
+      const descuento = monto - montoFinal;
+      const porcentaje = (descuento / monto) * 100;
+      return Math.round(porcentaje);
+    }
+    return 0;
+  };
 
   return (
     <>
@@ -132,7 +186,7 @@ export default function ModalVerComanda({ isOpen, onClose, comanda }: ModalVerCo
                       </Badge>
                     </div>
                     <div>
-                      <label className="text-sm font-medium text-gray-600">Fecha</label>
+                      <label className="text-sm font-medium text-gray-600">Fecha de Creación</label>
                       <p className="text-sm text-[#4a3540]">{formatDate(new Date(comanda.createdAt))}</p>
                     </div>
                     <div>
@@ -225,11 +279,19 @@ export default function ModalVerComanda({ isOpen, onClose, comanda }: ModalVerCo
                                   const monto = mp.monto ?? 0;
                                   const neto = mp.montoFinal ?? 0;
                                   const total = hasUsd ? neto : monto;
+                                  const descuentoPorcentaje = calcularPorcentajeDescuento(mp);
 
                                   return (
-                                    <Badge key={mpIndex} variant="outline" className="text-xs">
-                                      {mp.tipo} - {mp.moneda === 'USD' ? formatUSD(total) : formatARSFromNative(total)}
-                                    </Badge>
+                                    <div key={mpIndex} className="flex items-center gap-1">
+                                      <Badge variant="outline" className="text-xs">
+                                        {getPaymentMethodAbbreviation(mp.tipo)} - {mp.moneda} - {mp.moneda === 'USD' ? formatUSD(total) : formatARSFromNative(total)}
+                                      </Badge>
+                                      {descuentoPorcentaje > 0 && (
+                                        <Badge className="text-xs bg-green-100 text-green-800 font-bold">
+                                          -{descuentoPorcentaje}% 💰
+                                        </Badge>
+                                      )}
+                                    </div>
                                   );
                                 })}
                               </div>
@@ -265,7 +327,14 @@ export default function ModalVerComanda({ isOpen, onClose, comanda }: ModalVerCo
 
                   <div>
                     <label className="text-sm font-medium text-gray-600">Detalle de Pagos</label>
-                    <p className="mt-1 text-sm text-[#4a3540]">{detalleMetodos}</p>
+                    <div className="mt-2 p-2 bg-green-100 border-l-4 border-green-500 rounded-r-md">
+                      <div className="flex items-center gap-1 mb-1">
+                        <span className="text-sm">💰</span>
+                        <span className="text-xs font-semibold text-green-700">Monto Real Pagado:</span>
+                      </div>
+                      <p className="text-base font-bold text-green-800">{detalleMetodos}</p>
+                      <p className="text-xs text-green-600 mt-1">✅ Incluye descuentos y señas</p>
+                    </div>
                   </div>
 
                   <Separator />
@@ -275,10 +344,25 @@ export default function ModalVerComanda({ isOpen, onClose, comanda }: ModalVerCo
                       <span className="text-sm font-medium text-gray-600">Total USD(caja):</span>
                       <span className="font-semibold text-[#4a3540]">{formatUSD(totalUSD)}</span>
                     </div>
+                    {/* Seña USD utilizada */}
+                    {señaInfo.usd > 0 && (
+                      <div className="flex justify-between items-center text-blue-600 ml-4">
+                        <span className="text-xs">Seña USD utilizada:</span>
+                        <span className="text-xs font-medium">-{formatUSD(señaInfo.usd)}</span>
+                      </div>
+                    )}
+                    
                     <div className="flex justify-between">
                       <span className="text-sm font-medium text-gray-600">Total ARS(caja):</span>
                       <span className="font-semibold text-[#4a3540]">{formatARSFromNative(totalARS)}</span>
                     </div>
+                    {/* Seña ARS utilizada */}
+                    {señaInfo.ars > 0 && (
+                      <div className="flex justify-between items-center text-blue-600 ml-4">
+                        <span className="text-xs">Seña ARS utilizada:</span>
+                        <span className="text-xs font-medium">-{formatARSFromNative(señaInfo.ars)}</span>
+                      </div>
+                    )}
                   </div>
                 </CardContent>
               </Card>
