@@ -151,6 +151,29 @@ class ClientesService {
     }
   }
 
+  //GET /clientes/estadisticas/senas-activas
+  async obtenerEstadisticasSeñas(): Promise<{
+    ars: number;
+    usd: number;
+  }> {
+    try {
+      const response = await apiFetch<{
+        data: {
+          ars: number;
+          usd: number;
+        },
+        status: string;
+      }>(`${this.baseUrl}/estadisticas/senas-activas`);
+      return {
+        ars: response.data.ars,
+        usd: response.data.usd,
+      };
+    } catch (error) {
+      console.error('Error al obtener estadísticas de señas activas:', error);
+      throw error;
+    }
+  }
+
   // PUT /clientes/:id - Actualizar cliente
   async actualizarCliente(id: string, clienteData: ActualizarClienteDto): Promise<{ data: ClienteNew }> {
     try {
@@ -195,10 +218,19 @@ class ClientesService {
   }
 
   // GET /clientes/estadisticas/resumen - Obtener estadísticas de clientes
-  async obtenerEstadisticas(): Promise<{ data: EstadisticasClientesResponse }> {
+  async obtenerEstadisticas(): Promise<{ data: {
+    ars: number;
+    usd: number;
+  } }> {
     try {
-      const response = await apiFetch<EstadisticasClientesResponse>(`${this.baseUrl}/estadisticas/resumen`);
-      return { data: response };
+      const response = await apiFetch<{
+        data: {
+          ars: number;
+          usd: number;
+        },
+        status: string;
+      }>(`${this.baseUrl}/estadisticas/resumen`);
+      return { data: response.data };
     } catch (error) {
       console.error('Error al obtener estadísticas de clientes:', error);
       throw error;

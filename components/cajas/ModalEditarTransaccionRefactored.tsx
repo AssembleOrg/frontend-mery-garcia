@@ -212,7 +212,7 @@ export default function ModalEditarTransaccionRefactored({
           const comanda = await obtenerComandaPorId(comandaId);
           setComandaState(comanda);
           setTipo(comanda.tipoDeComanda === TipoDeComandaNew.INGRESO ? 'ingreso' : 'egreso');
-          
+
           // Establecer el valor del dólar original de la comanda
           if (comanda.valorDolar) {
             setDolar(comanda.valorDolar);
@@ -243,7 +243,7 @@ export default function ModalEditarTransaccionRefactored({
           const itemsConvertidos = comanda.items?.map((item) => {
             // Extract payment methods from the item
             const itemPaymentMethods = (item as any).metodosPago || [];
-            
+
             // CRITICAL FIX: Convert payment method amounts based on currency
             const fixedPaymentMethods = itemPaymentMethods.map((mp: any) => {
               // Los montos ya vienen en la moneda correcta desde el backend
@@ -256,11 +256,11 @@ export default function ModalEditarTransaccionRefactored({
                 recargoPorcentaje: parseFloat(mp.recargoPorcentaje) || 0,
               };
             });
-            
+
             // Extract trabajador from the item
             const trabajador = (item as any).trabajador;
             const responsablesIds = trabajador ? [trabajador.id] : [];
-            
+
             return {
               id: item.id || `temp-${Date.now()}`,
               productoServicioId: item.productoServicioId || '',
@@ -282,7 +282,7 @@ export default function ModalEditarTransaccionRefactored({
           // Detectar si hay descuentos aplicados en los items
           const hayDescuentosAplicados = itemsConvertidos.some((item) => {
             const paymentMethods = (item as any).metodosPago || [];
-            return paymentMethods.some((mp: any) => 
+            return paymentMethods.some((mp: any) =>
               parseFloat(mp.descuentoGlobalPorcentaje) > 0
             );
           });
@@ -374,7 +374,7 @@ export default function ModalEditarTransaccionRefactored({
       responsablesIds: [],
       metodosPago: [initialPaymentMethod], // Inicializar con método de pago por defecto
     };
-    
+
     setItems([...items, nuevoItem]);
     setMostrarBuscador(false);
     setBusqueda('');
@@ -390,11 +390,11 @@ export default function ModalEditarTransaccionRefactored({
     updates: any
   ) => {
     const itemToUpdate = items.find(item => item.id === id);
-    
+
     const newItems = items.map((item) => {
       if (item.id === id) {
         const updatedItem = { ...item, ...updates };
-        
+
         // If quantity or price is updated, recalculate subtotal
         if (updates.cantidad !== undefined || updates.precio !== undefined) {
           const precio = parseFloat(updatedItem.precio) || 0;
@@ -402,30 +402,30 @@ export default function ModalEditarTransaccionRefactored({
           const newSubtotal = precio * cantidad;
           updatedItem.subtotal = newSubtotal; // Ensure it's a number
         }
-        
+
         return updatedItem;
       }
       return item;
     });
-    
+
     setItems(newItems);
   };
 
   // Handle global discounts toggle
   const handleGlobalDescuentosToggle = (enabled: boolean) => {
     setDescuentosActivos(enabled);
-    
+
     // Update all items to reflect the new discount settings
     items.forEach(item => {
       const currentPaymentMethod = item.metodosPago?.[0];
       if (currentPaymentMethod) {
         const isSplitEnabled = item.metodosPago && item.metodosPago.length > 1;
-        
+
         if (isSplitEnabled) {
           // For split payment, recalculate both payments
           const itemTotal = (item.precio || 0) * (item.cantidad || 1);
           const splitAmount = Math.round(itemTotal / 2);
-          
+
           const firstMethod = {
             ...currentPaymentMethod,
             monto: splitAmount,
@@ -444,9 +444,9 @@ export default function ModalEditarTransaccionRefactored({
         } else {
           // For single payment, recalculate with new discount settings
           const itemTotal = (item.precio || 0) * (item.cantidad || 1);
-          const discountAmount = enabled ? 
+          const discountAmount = enabled ?
             Math.round((itemTotal * (descuentosPorMetodo[currentPaymentMethod.tipo as keyof typeof descuentosPorMetodo] || 0)) / 100) : 0;
-          
+
           const updatedPaymentMethod = {
             ...currentPaymentMethod,
             monto: itemTotal,
@@ -470,18 +470,18 @@ export default function ModalEditarTransaccionRefactored({
   // Handle exchange rate change
   const handleExchangeRateChange = (useOriginal: boolean) => {
     setUsarDolarOriginal(useOriginal);
-    
-    const newDolarValue = useOriginal && comandaState?.valorDolar 
-      ? comandaState.valorDolar 
+
+    const newDolarValue = useOriginal && comandaState?.valorDolar
+      ? comandaState.valorDolar
       : dolarActual;
-    
+
     setDolar(newDolarValue);
-    
+
     // Recalcular montos para servicios USD pagados en ARS
     const updatedItems = items.map(item => {
       const isUSDService = !item.productoServicio?.esPrecioCongelado;
       const paymentMethods = (item as any).metodosPago || [];
-      
+
       if (isUSDService && paymentMethods.length > 0) {
         const updatedPaymentMethods = paymentMethods.map((mp: any) => {
           if (mp.moneda === 'ARS') {
@@ -489,15 +489,15 @@ export default function ModalEditarTransaccionRefactored({
             const baseUSDAmount = item.precio || 0;
             const quantity = item.cantidad || 1;
             const subtotalUSD = baseUSDAmount * quantity;
-            
+
             // Aplicar descuento si existe
             const discountPercentage = parseFloat(mp.descuentoGlobalPorcentaje || 0);
             const discountAmount = discountPercentage > 0 ? (subtotalUSD * discountPercentage) / 100 : 0;
             const finalUSDAmount = subtotalUSD - discountAmount;
-            
+
             // Convertir a ARS con el nuevo tipo de cambio
             const newARSAmount = Math.round(finalUSDAmount * newDolarValue);
-            
+
             return {
               ...mp,
               monto: Math.round(subtotalUSD * newDolarValue),
@@ -507,16 +507,16 @@ export default function ModalEditarTransaccionRefactored({
           }
           return mp;
         });
-        
+
         return {
           ...item,
           metodosPago: updatedPaymentMethods
         };
       }
-      
+
       return item;
     });
-    
+
     setItems(updatedItems);
   };
 
@@ -578,11 +578,11 @@ export default function ModalEditarTransaccionRefactored({
     setGuardando(true);
 
     try {
-       
+
       // Convert items with payment methods to the format expected by the backend
       const itemsWithPaymentMethods = items.map((item) => {
         const itemPaymentMethods = (item as any).metodosPago || [];
-        
+
         return {
           productoServicioId: item.productoServicio?.id!,
           nombre: item.nombre!,
@@ -597,105 +597,153 @@ export default function ModalEditarTransaccionRefactored({
         } as any; // Type assertion to match DTO structure
       });
 
-        const descuentos = itemsWithPaymentMethods.flatMap(item => {
-          const itemWithPayment = item as any;
-          const paymentMethods = itemWithPayment.metodosPago || [];
-          
-          // Si hay split payment (más de un método de pago), crear un solo descuento
-          if (paymentMethods.length > 1) {
-            // Usar el primer método de pago para obtener el tipo y porcentaje de descuento
-            const firstPaymentMethod = paymentMethods[0];
-            const subtotal = item.subtotal || 0;
-            const descuentoAplicado = firstPaymentMethod.descuentoAplicado || 0;
-            const efectivo = item.metodosPago?.some((mp: any) => mp.tipo === METODOS_PAGO.EFECTIVO);
-            const transferencia = item.metodosPago?.some((mp: any) => mp.tipo === METODOS_PAGO.TRANSFERENCIA);
-            const porcentaje = efectivo ? 10 : transferencia ? 5 : 0;
-            
-            // Calcular el porcentaje basado en el descuento aplicado
-            const discountPercentage = subtotal > 0 ? (descuentoAplicado / subtotal) * 100 : 0;
-            const montoFijo = descuentoAplicado; // El monto fijo es el descuento aplicado
-            
-            return [{
+      const descuentos = itemsWithPaymentMethods.flatMap(item => {
+        const itemWithPayment = item as any;
+        const paymentMethods = itemWithPayment.metodosPago || [];
+
+        // Si hay split payment (más de un método de pago), crear un solo descuento
+        if (paymentMethods.length > 1) {
+          // Usar el primer método de pago para obtener el tipo y porcentaje de descuento
+          const firstPaymentMethod = paymentMethods[0];
+          const subtotal = item.subtotal || 0;
+          const descuentoAplicado = firstPaymentMethod.descuentoAplicado || 0;
+          const efectivo = item.metodosPago?.some((mp: any) => mp.tipo === METODOS_PAGO.EFECTIVO);
+          const transferencia = item.metodosPago?.some((mp: any) => mp.tipo === METODOS_PAGO.TRANSFERENCIA);
+          const porcentaje = efectivo ? 10 : transferencia ? 5 : 0;
+
+          // Calcular el porcentaje basado en el descuento aplicado
+          const discountPercentage = subtotal > 0 ? (descuentoAplicado / subtotal) * 100 : 0;
+          const montoFijo = descuentoAplicado; // El monto fijo es el descuento aplicado
+
+          return [{
+            nombre: NombreDescuentoNew.DESCUENTO_POR_METODO_PAGO,
+            descripcion: 'Descuento por método de pago (split payment)',
+            porcentaje: porcentaje,
+            montoFijo: subtotal * (porcentaje / 100),
+          }];
+        } else {
+          // Para pagos normales (un solo método), mantener la lógica original
+          return paymentMethods.map((mp: any) => {
+            return {
               nombre: NombreDescuentoNew.DESCUENTO_POR_METODO_PAGO,
-              descripcion: 'Descuento por método de pago (split payment)',
-              porcentaje: porcentaje,
-              montoFijo: subtotal * (porcentaje / 100),
-            }];
-          } else {
-            // Para pagos normales (un solo método), mantener la lógica original
-            return paymentMethods.map((mp: any) => {
-              return {
-                nombre: NombreDescuentoNew.DESCUENTO_POR_METODO_PAGO,
-                descripcion: 'Descuento por método de pago',
-                porcentaje: mp.descuentoGlobalPorcentaje || 0,
-                montoFijo: 0,
-              };
-            });
-          }
-        }) || [];
-
-        // Preparar IDs de prepago si las señas están activas
-        const prepagoARS = señaActiva && señaMonedas.includes('ARS')
-          ? clienteSeleccionado?.prepagosGuardados.find(
-              (prepago) =>
-                prepago.moneda === MonedaNew.ARS &&
-                prepago.estado === EstadoPrepagoNew.ACTIVA
-            )?.id
-          : null;
-        const prepagoUSD = señaActiva && señaMonedas.includes('USD')
-          ? clienteSeleccionado?.prepagosGuardados.find(
-              (prepago) =>
-                prepago.moneda === MonedaNew.USD &&
-                prepago.estado === EstadoPrepagoNew.ACTIVA
-            )?.id
-          : null;
-
-        // Update existing comanda
-        const comandaUpdate: ComandaUpdateNew = {
-          clienteId: clienteSeleccionado?.id,
-          observaciones,
-          items: itemsWithPaymentMethods,
-          descuentosAplicados: descuentos,
-          usuarioConsumePrepagoARS: señaActiva && señaMonedas.includes('ARS'),
-          usuarioConsumePrepagoUSD: señaActiva && señaMonedas.includes('USD'),
-          createdAt: fechaCreacion,
-          valorDolar: dolar, // Incluir el valor del dólar seleccionado
-        };
-
-        console.log('comandaUpdate', comandaUpdate, señaActiva, señaMonedas, prepagoARS, prepagoUSD);
-
-        // Agregar IDs de prepago si están activos
-        if (señaActiva && señaMonedas.includes('ARS')) {
-          comandaUpdate.prepagoARSID = prepagoARS ? prepagoARS : comandaState?.prepagoARSID;
+              descripcion: 'Descuento por método de pago',
+              porcentaje: mp.descuentoGlobalPorcentaje || 0,
+              montoFijo: 0,
+            };
+          });
         }
-        if (señaActiva && señaMonedas.includes('USD')) {
-          comandaUpdate.prepagoUSDID = prepagoUSD ? prepagoUSD : comandaState?.prepagoUSDID;
-        }
+      }) || [];
 
-        await actualizarComanda(comandaId, comandaUpdate);
-        toast.success('Comanda actualizada con éxito');
-        onClose();
-        await cargarComandasPaginadas({
-          page: 1,
-          limit: 20,
-          orderBy: 'numero',
-          order: 'DESC',
-          search: '',
-          tipoDeComanda:
-            tipo === 'ingreso'
-              ? TipoDeComandaNew.INGRESO
-              : TipoDeComandaNew.EGRESO,
-        });
-      } catch (error) {
-        logger.error(`Error al actualizar comanda:`, error);
-        toast.error('Hubo un error al actualizar la comanda');
-        setErrores({
-          general: 'Error al actualizar la transacción. Intente nuevamente.',
-        });
-      } finally {
-        setGuardando(false);
+      // Preparar IDs de prepago si las señas están activas
+      const prepagoARS = señaActiva && señaMonedas.includes('ARS')
+        ? clienteSeleccionado?.prepagosGuardados.find(
+          (prepago) =>
+            prepago.moneda === MonedaNew.ARS &&
+            prepago.estado === EstadoPrepagoNew.ACTIVA
+        )?.id
+        : null;
+      const prepagoUSD = señaActiva && señaMonedas.includes('USD')
+        ? clienteSeleccionado?.prepagosGuardados.find(
+          (prepago) =>
+            prepago.moneda === MonedaNew.USD &&
+            prepago.estado === EstadoPrepagoNew.ACTIVA
+        )?.id
+        : null;
+
+      // Update existing comanda
+      const comandaUpdate: ComandaUpdateNew = {
+        clienteId: clienteSeleccionado?.id,
+        observaciones,
+        items: itemsWithPaymentMethods,
+        descuentosAplicados: descuentos,
+        usuarioConsumePrepagoARS: señaActiva && señaMonedas.includes('ARS'),
+        usuarioConsumePrepagoUSD: señaActiva && señaMonedas.includes('USD'),
+        createdAt: fechaCreacion,
+        valorDolar: dolar, // Incluir el valor del dólar seleccionado
+      };
+
+      console.log('comandaUpdate', comandaUpdate, señaActiva, señaMonedas, prepagoARS, prepagoUSD);
+
+      // Calculate totals from payment methods in items
+      comandaUpdate.precioDolar =
+        comandaUpdate.items?.reduce((sum, item) => {
+          const itemWithPayment = item as any;
+          return (
+            sum +
+            (itemWithPayment.metodosPago || []).reduce(
+              (itemSum: number, mp: any) => {
+                return (
+                  itemSum +
+                  (mp.moneda === MonedaNew.USD ? mp.montoFinal || 0 : 0)
+                );
+              },
+              0
+            )
+          );
+        }, 0) || 0;
+
+      comandaUpdate.precioPesos =
+        comandaUpdate.items?.reduce((sum, item) => {
+          const itemWithPayment = item as any;
+          return (
+            sum +
+            (itemWithPayment.metodosPago || []).reduce(
+              (itemSum: number, mp: any) => {
+                return (
+                  itemSum +
+                  (mp.moneda === MonedaNew.ARS ? mp.montoFinal || 0 : 0)
+                );
+              },
+              0
+            )
+          );
+        }, 0) || 0;
+
+      // Restar señas activas del precio correspondiente según la moneda
+      // if (señaActiva && clienteSeleccionado?.señasDisponibles) {
+      //   if (señaMonedas.includes('USD') && clienteSeleccionado.señasDisponibles.usd) {
+      //     const señaUSD = clienteSeleccionado.señasDisponibles.usd;
+      //     comandaUpdate.precioDolar = Math.max(0, comandaUpdate.precioDolar - señaUSD);
+      //   }
+        
+      //   if (señaMonedas.includes('ARS') && clienteSeleccionado.señasDisponibles.ars) {
+      //     const señaARS = clienteSeleccionado.señasDisponibles.ars;
+      //     comandaUpdate.precioPesos = Math.max(0, comandaUpdate.precioPesos - señaARS);
+      //   }
+      // }
+
+      // Agregar IDs de prepago si están activos
+      if (señaActiva && señaMonedas.includes('ARS')) {
+        comandaUpdate.prepagoARSID = prepagoARS ? prepagoARS : comandaState?.prepagoARSID;
       }
-    };
+      if (señaActiva && señaMonedas.includes('USD')) {
+        comandaUpdate.prepagoUSDID = prepagoUSD ? prepagoUSD : comandaState?.prepagoUSDID;
+      }
+
+      await actualizarComanda(comandaId, comandaUpdate);
+      toast.success('Comanda actualizada con éxito');
+      onClose();
+      await cargarComandasPaginadas({
+        page: 1,
+        limit: 20,
+        orderBy: 'numero',
+        order: 'DESC',
+        search: '',
+        tipoDeComanda:
+          tipo === 'ingreso'
+            ? TipoDeComandaNew.INGRESO
+            : TipoDeComandaNew.EGRESO,
+      });
+    } catch (error) {
+      logger.error(`Error al actualizar comanda:`, error);
+      toast.error('Hubo un error al actualizar la comanda');
+      setErrores({
+        general: 'Error al actualizar la transacción. Intente nuevamente.',
+      });
+    } finally {
+      setGuardando(false);
+    }
+  };
 
   const handleOverlayClick = (e: React.MouseEvent) => {
     if (e.target === e.currentTarget) {
@@ -899,14 +947,14 @@ export default function ModalEditarTransaccionRefactored({
                             </SelectItem>
                           </SelectContent>
                         </Select>
-                                                 <div className="text-xs text-gray-600 bg-blue-50 p-2 rounded">
-                           💡 <strong>Valor seleccionado:</strong> {formatDual(dolar, false)}
-                           {!usarDolarOriginal && (
-                             <div className="text-xs text-orange-600 mt-1">
-                               ⚠️ Los montos USD→ARS se recalcularán automáticamente
-                             </div>
-                           )}
-                         </div>
+                        <div className="text-xs text-gray-600 bg-blue-50 p-2 rounded">
+                          💡 <strong>Valor seleccionado:</strong> {formatDual(dolar, false)}
+                          {!usarDolarOriginal && (
+                            <div className="text-xs text-orange-600 mt-1">
+                              ⚠️ Los montos USD→ARS se recalcularán automáticamente
+                            </div>
+                          )}
+                        </div>
                       </div>
                     </div>
                   </div>
@@ -979,7 +1027,7 @@ export default function ModalEditarTransaccionRefactored({
             {/* Right Column - Summary */}
             <div className="space-y-6">
               <div className="sticky top-24 space-y-6">
-                       <TransactionSummaryEdit
+                <TransactionSummaryEdit
                   items={items}
                   tipo={tipo}
                   descuentosActivos={descuentosActivos}

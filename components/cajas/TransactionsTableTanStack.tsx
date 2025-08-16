@@ -72,11 +72,11 @@ export default function TransactionsTableTanStack({
   };
 
   // Función para formatear con tipo de cambio específico o actual
-  const formatWithExchangeRate = (amountUSD: number, comanda: ComandaNew) => {
+  const formatWithExchangeRate = (amount: { usd: number, ars: number }, comanda: ComandaNew) => {
     // Para egresos con monto fijo ARS: NO convertir, mostrar valor nativo
     if (esEgresoConMontoFijoARS(comanda)) {
       return {
-        usd: `🔒 ${formatARSFromNative(amountUSD)}`, // amountUSD es en realidad ARS
+        usd: `🔒 ${formatARSFromNative(amount.usd)}`, // amountUSD es en realidad ARS
         ars: null, // No mostrar conversión
       };
     }
@@ -84,14 +84,14 @@ export default function TransactionsTableTanStack({
     // Si la comanda tiene tipo de cambio almacenado, usarlo
     if (comanda.valorDolar) {
       return {
-        usd: formatUSDCurrent(amountUSD),
-        ars: formatARS(amountUSD, comanda.valorDolar),
+        usd: formatUSDCurrent(amount.usd),
+        ars: formatUSDCurrent(amount.ars), //pesos
       };
     }
     // Fallback al tipo de cambio actual
     return {
-      usd: formatUSDCurrent(amountUSD),
-      ars: formatARSCurrent(amountUSD),
+      usd: formatUSDCurrent(amount.usd),
+      ars: formatUSDCurrent(amount.ars),//pesos
     };
   };
 
@@ -289,31 +289,14 @@ export default function TransactionsTableTanStack({
       accessorKey: 'totalFinal',
       header: 'Total',
       cell: ({ row }) => {
-        const totalUSD = row.original.items?.reduce((totalUSD, item) => {
-          const itemUSD = item.metodosPago?.reduce((acc, paymentMethod) => {
-            if (paymentMethod.moneda === 'USD') {
-              return acc + (paymentMethod.montoFinal ?? 0);
-            }
-            return acc;
-          }, 0) ?? 0;
-          return totalUSD + itemUSD;
-        }, 0) ?? 0;
+        const totalUSD = row.original.precioDolar ?? 0;
 
-        const totalARS = row.original.items?.reduce((totalARS, item) => {
-          const itemARS = item.metodosPago?.reduce((acc, paymentMethod) => {
-            if (paymentMethod.moneda === 'ARS' && row.original.items.some(i => i.metodosPago?.some(mp => mp.moneda === 'USD'))) {
-              return acc + (paymentMethod.montoFinal ?? 0);
-            }
-            if (paymentMethod.moneda === 'ARS') {
-              return acc + (paymentMethod.monto ?? 0);
-            }
-            return acc;
-          }, 0) ?? 0;
-          return totalARS + itemARS;
-        }, 0) ?? 0;
+        const totalARS = row.original.precioPesos ?? 0;
 
-        const totalARSToUSD = totalARS / row.original.valorDolar;
-        const total = totalUSD + totalARSToUSD;
+        const total = {
+          usd: totalUSD,
+          ars: totalARS,
+        }
         const isValidated = row.original.estadoDeComanda === EstadoDeComandaNew.VALIDADO;
         
         if(row.original.tipoDeComanda === TipoDeComandaNew.EGRESO) {

@@ -28,6 +28,7 @@ import ClientOnly from '@/components/common/ClientOnly';
 import Spinner from '@/components/common/Spinner';
 import SummaryCardDual from '@/components/common/SummaryCardDual';
 import SummaryCardCount from '@/components/common/SummaryCardCount';
+import SummaryCardSeñasYTotal from '@/components/common/SummaryCardSeñasYTotal';
 import { useCurrencyConverter } from '@/hooks/useCurrencyConverter';
 import { useRecordsStore } from '@/features/records/store/recordsStore';
 import ResidualDisplay from '@/components/cajas/ResidualDisplay';
@@ -63,6 +64,7 @@ import {
 } from 'lucide-react';
 import ModalTransaccionUnificadoRefactored from '@/components/cajas/ModalTransaccionUnificadoRefactored';
 import ModalEditarTransaccionRefactored from '@/components/cajas/ModalEditarTransaccionRefactored';
+import { useClientesStore } from '@/features/clientes/store/clientesStore';
 
 export default function IngresosPage() {
   const { isInitialized } = useCurrencyConverter();
@@ -85,6 +87,7 @@ export default function IngresosPage() {
   >('createdAt');
   const [orderDirection, setOrderDirection] = useState<'ASC' | 'DESC'>('DESC');
   const [incluirTraspasadas, setIncluirTraspasadas] = useState(false);
+  const { estadisticasSeñas, obtenerEstadisticasSeñas } = useClientesStore();
 
   // Get traspasos for residual display
   const { traspasos } = useRecordsStore();
@@ -93,6 +96,9 @@ export default function IngresosPage() {
   // Get servicios and unidades de negocio for filters
   const { productosServicios, unidadesNegocio, isLoading: isLoadingFilters } = useProductosServicios();
 
+  useEffect(() => {
+    obtenerEstadisticasSeñas();
+  }, []);
   // Find last transfer with residual
   const ultimoResidual = traspasos
     .filter(
@@ -254,28 +260,8 @@ export default function IngresosPage() {
 
   const totals: Totals = comandasPaginadas.data?.reduce<Totals>(
     (acc, comanda) => {
-      const comandaHasUSD =
-        comanda.items?.some((item) =>
-          item.metodosPago?.some((mp) => mp.moneda === 'USD')
-        ) ?? false;
-
-      comanda.items?.forEach((item) => {
-        item.metodosPago?.forEach((mp) => {
-          switch (mp.moneda) {
-            case 'USD':
-              acc.usd += mp.montoFinal ?? 0;
-              break;
-
-            case 'ARS':
-              // Si la comanda tiene USD, priorizamos montoFinal; si no, monto.
-              const montoARS = comandaHasUSD
-                ? (mp.montoFinal ?? 0)
-                : (mp.monto ?? 0);
-              acc.ars += montoARS;
-              break;
-          }
-        });
-      });
+      acc.usd += comanda.precioDolar ?? 0;
+      acc.ars += comanda.precioPesos ?? 0;
 
       return acc;
     },
@@ -313,6 +299,8 @@ export default function IngresosPage() {
   const clientCount = new Set(comandasPaginadas.data.map((c) => c.cliente?.id))
     .size;
   const transactionCount = comandasPaginadas.data.length;
+
+
 
   return (
     <MainLayout>
@@ -357,6 +345,15 @@ export default function IngresosPage() {
                         count={clientCount}
                         subtitle="clientes únicos"
                         valueClassName="text-purple-600"
+                      />
+                      <SummaryCardSeñasYTotal
+                        title="💰 Señas y Total en Caja"
+                        señasUSD={estadisticasSeñas.usd}
+                        señasARS={estadisticasSeñas.ars}
+                        ingresosUSD={totalIngresosUSD}
+                        ingresosARS={totalIngresosARS}
+                        señaClassName="text-orange-600"
+                        totalClassName="text-green-700"
                       />
                       {ultimoResidual && (
                         <ResidualDisplay

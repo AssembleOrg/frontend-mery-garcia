@@ -49,6 +49,10 @@ interface ClientesState {
     clientesActivos: number;
     clientesEliminados: number;
   } | null;
+  estadisticasSeñas: {
+    ars: number;
+    usd: number;
+  };
 
   // Acciones de carga
   cargarClientes: () => Promise<void>;
@@ -76,6 +80,7 @@ interface ClientesState {
   buscarClientes: (query?: string) => Cliente[];
   obtenerClientesActivos: () => Cliente[];
   obtenerClientesConSeñas: () => Cliente[];
+  obtenerEstadisticasSeñas: () => Promise<{ ars: number; usd: number }>;
 
   // Sistema
   reiniciar: () => void;
@@ -88,6 +93,10 @@ const estadoInicial = {
   error: null,
   pagination: null,
   estadisticas: null,
+  estadisticasSeñas: {
+    ars: 0,
+    usd: 0,
+  },
 };
 
 export const useClientesStore = create<ClientesState>()(
@@ -217,6 +226,35 @@ export const useClientesStore = create<ClientesState>()(
             
             toast.error(`Error al cargar estadísticas: ${errorMessage}`);
             logger.error('❌ Error cargando estadísticas:', error);
+          }
+        },
+
+        obtenerEstadisticasSeñas: async () => {
+          set({ cargando: true, error: null });
+          try {
+            const response = await clientesService.obtenerEstadisticasSeñas();
+            if (!response) {
+              throw new Error('Respuesta inválida del servidor');
+            }
+            set({ 
+              estadisticasSeñas: response,
+              cargando: false 
+            });
+            return {
+              ars: response.ars,
+              usd: response.usd,
+            };
+          } catch (error) {
+            const errorMessage = error instanceof Error 
+              ? error.message 
+              : 'Error desconocido al cargar estadísticas de señas';
+            toast.error(`Error al cargar estadísticas de señas: ${errorMessage}`);
+            return {
+              ars: 0,
+              usd: 0,
+            };
+          } finally {
+            set({ cargando: false });
           }
         },
 

@@ -35,6 +35,7 @@ export const useClientes = () => {
 
     // Búsqueda y filtros
     buscarClientes: store.buscarClientes,
+    estadisticasSeñas: store.estadisticasSeñas,
     obtenerClientesActivos: store.obtenerClientesActivos,
     obtenerClientesConSeñas: store.obtenerClientesConSeñas,
 
