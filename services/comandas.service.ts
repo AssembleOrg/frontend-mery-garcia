@@ -1,6 +1,6 @@
 import { apiFetch } from '@/lib/apiClient';
 import { logger } from '@/lib/utils';
-import { ComandaCreateNew, ComandaNew, ComandaUpdateNew, EstadoDeComandaNew, FiltrarComandasNew, TipoDeComandaNew } from './unidadNegocio.service';
+import { ComandaCreateNew, ComandaNew, ComandaUpdateNew, EstadoDeComandaNew, FiltrarComandasNew, Movimiento, TipoDeComandaNew } from './unidadNegocio.service';
 
 class ComandasService {
   private readonly baseUrl = '/api/comandas';
@@ -293,6 +293,28 @@ class ComandasService {
     await apiFetch<{ data: ComandaNew }>(`${this.baseUrl}/${id}/hard`, {
       method: 'DELETE',
     });
+  }
+
+  // GET /comandas/maximo-ars-usd-egreso
+  async obtenerMaximoARSUSD(): Promise<{
+    ars: number;
+    usd: number;
+  }> {
+    const response = await apiFetch<{ data: { ars: number; usd: number } }>(`${this.baseUrl}/maximo-ars-usd-egreso`);
+    return response.data;
+  }
+
+  // GET /comandas/ultimo-residual
+  async obtenerUltimoResidual(): Promise<{
+    ars: number;
+    usd: number;
+  }> {
+    const response = await apiFetch<{ data: Movimiento }>(`${this.baseUrl}/ultimo-residual`);
+    const { residualARS, residualUSD } = response.data;
+    return {
+      ars: Number(residualARS),
+      usd: Number(residualUSD),
+    }
   }
 }
 

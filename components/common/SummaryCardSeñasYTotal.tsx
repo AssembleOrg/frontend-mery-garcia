@@ -10,6 +10,8 @@ interface SummaryCardSeñasYTotalProps {
   señasARS: number;
   ingresosUSD: number;
   ingresosARS: number;
+  residualUSD: number;
+  residualARS: number;
   className?: string;
   titleClassName?: string;
   señaClassName?: string;
@@ -22,6 +24,8 @@ export default function SummaryCardSeñasYTotal({
   señasARS,
   ingresosUSD,
   ingresosARS,
+  residualUSD,
+  residualARS,
   className,
   titleClassName,
   señaClassName = "text-orange-600",
@@ -30,8 +34,8 @@ export default function SummaryCardSeñasYTotal({
   const { formatUSD, formatARSFromNative } = useCurrencyConverter();
 
   // Calcular totales en caja (ingresos + señas)
-  const totalEnCajaUSD = ingresosUSD + señasUSD;
-  const totalEnCajaARS = ingresosARS + señasARS;
+  const totalEnCajaUSD = ingresosUSD + señasUSD + residualUSD;
+  const totalEnCajaARS = ingresosARS + señasARS + residualARS;
 
   return (
     <Card
@@ -74,7 +78,7 @@ export default function SummaryCardSeñasYTotal({
           {/* Total en Caja */}
           <div className="space-y-2">
             <div className="text-xs font-medium text-gray-600 border-b border-gray-100 pb-1">
-              🏦 Total en Caja (Ingresos + Señas)
+              🏦 Total en Caja (Ingresos + Señas + Residual)
             </div>
             
             <div className="space-y-1">

@@ -60,6 +60,7 @@ export default function ModalEgreso({
     agregarComandaEgreso,
     existeComanda,
     getUltimaComandaEgreso,
+    obtenerMaximoARSUSD,
   } = useComandaStore();
 
   const { productosServicios, loadProductosServicios } =
@@ -75,6 +76,11 @@ export default function ModalEgreso({
 
   const {lastDolar, cotizarDolar } = useExchangeRateStore();
   const { user } = useAuth();
+
+  const [maximoARSUSD, setMaximoARSUSD] = useState<{
+    ars: number;
+    usd: number;
+  }>({ ars: 0, usd: 0 });
 
   // Form state
   const [observaciones, setObservaciones] = useState('');
@@ -128,6 +134,10 @@ export default function ModalEgreso({
 
     if (isOpen) {
       document.addEventListener('keydown', handleEsc);
+      obtenerMaximoARSUSD().then((maximo) => {
+        console.log(maximo);
+        setMaximoARSUSD(maximo);
+      });
       return () => document.removeEventListener('keydown', handleEsc);
     }
   }, [isOpen, onClose, mostrarBuscador]);
@@ -348,6 +358,16 @@ export default function ModalEgreso({
                   </span>
                 </div>
               )}
+              <div className="flex items-center gap-2 rounded-lg border-2 border-gray-200 bg-gradient-to-r from-gray-100 to-gray-150 px-3 py-2 shadow-sm">
+                <span className="text-sm font-medium text-gray-800">
+                  Maximo Retirable Pesos: {formatUSD(maximoARSUSD.ars)}
+                </span>
+              </div>
+              <div className="flex items-center gap-2 rounded-lg border-2 border-gray-200 bg-gradient-to-r from-gray-100 to-gray-150 px-3 py-2 shadow-sm">
+                <span className="text-sm font-medium text-gray-800">
+                  Maximo Retirable USD: {formatUSD(maximoARSUSD.usd)}
+                </span>
+              </div>
               <Button
                 variant="ghost"
                 size="sm"

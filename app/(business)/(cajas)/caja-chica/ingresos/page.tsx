@@ -20,7 +20,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import { ColumnaCaja, FiltrosEncomienda } from '@/types/caja';
+import { ColumnaCaja } from '@/types/caja';
 import { Pagination } from '@/components/ui/pagination';
 import { DateRangePicker } from '@/components/ui/date-range-picker';
 import { DateRange } from 'react-day-picker';
@@ -31,7 +31,7 @@ import SummaryCardCount from '@/components/common/SummaryCardCount';
 import SummaryCardSeñasYTotal from '@/components/common/SummaryCardSeñasYTotal';
 import { useCurrencyConverter } from '@/hooks/useCurrencyConverter';
 import { useRecordsStore } from '@/features/records/store/recordsStore';
-import ResidualDisplay from '@/components/cajas/ResidualDisplay';
+// import ResidualDisplay from '@/components/cajas/ResidualDisplay';
 import {
   EstadoDeComandaNew,
   TipoDeComandaNew,
@@ -88,6 +88,11 @@ export default function IngresosPage() {
   const [orderDirection, setOrderDirection] = useState<'ASC' | 'DESC'>('DESC');
   const [incluirTraspasadas, setIncluirTraspasadas] = useState(false);
   const { estadisticasSeñas, obtenerEstadisticasSeñas } = useClientesStore();
+  const { obtenerUltimoResidual } = useComandaStore();
+  const [ultimoResidual, setUltimoResidual] = useState<{
+    ars: number;
+    usd: number;
+  }>({ ars: 0, usd: 0 });
 
   // Get traspasos for residual display
   const { traspasos } = useRecordsStore();
@@ -98,19 +103,12 @@ export default function IngresosPage() {
 
   useEffect(() => {
     obtenerEstadisticasSeñas();
+    obtenerUltimoResidual().then((residual) => {
+      setUltimoResidual(residual);
+    });
   }, []);
   // Find last transfer with residual
-  const ultimoResidual = traspasos
-    .filter(
-      (t) =>
-        t.esTraspasoParcial &&
-        ((t.montoResidualUSD || 0) > 0 || (t.montoResidualARS || 0) > 0)
-    )
-    .sort(
-      (a, b) =>
-        new Date(b.fechaTraspaso).getTime() -
-        new Date(a.fechaTraspaso).getTime()
-    )[0];
+  
 
   // Estados de paginación
   const [paginaActual, setPaginaActual] = useState(1);
@@ -260,9 +258,14 @@ export default function IngresosPage() {
 
   const totals: Totals = comandasPaginadas.data?.reduce<Totals>(
     (acc, comanda) => {
-      acc.usd += comanda.precioDolar ?? 0;
-      acc.ars += comanda.precioPesos ?? 0;
+      acc.usd += Number(comanda.precioDolar ?? 0) + Number(comanda.prepagoUSD?.monto ?? 0);
+      acc.ars += Number(comanda.precioPesos ?? 0) + Number(comanda.prepagoARS?.monto ?? 0);
+      
 
+      // acc.usd += Number(comanda.prepagoUSD?.monto ?? 0);
+      // acc.ars += Number(comanda.prepagoARS?.monto ?? 0);
+
+      console.log(acc, comanda)
       return acc;
     },
     { usd: 0, ars: 0 }
@@ -352,16 +355,18 @@ export default function IngresosPage() {
                         señasARS={estadisticasSeñas.ars}
                         ingresosUSD={totalIngresosUSD}
                         ingresosARS={totalIngresosARS}
+                        residualUSD={ultimoResidual?.usd || 0}
+                        residualARS={ultimoResidual?.ars || 0}
                         señaClassName="text-orange-600"
                         totalClassName="text-green-700"
                       />
-                      {ultimoResidual && (
+                      {/* {ultimoResidual && (
                         <ResidualDisplay
-                          residualUSD={ultimoResidual.montoResidualUSD || 0}
-                          residualARS={ultimoResidual.montoResidualARS || 0}
+                          residualUSD={ultimoResidual.usd || 0}
+                          residualARS={ultimoResidual.ars || 0}
                           fecha={ultimoResidual.fechaTraspaso}
                         />
-                      )}
+                      )} */}
                     </div>
                   </div>
 

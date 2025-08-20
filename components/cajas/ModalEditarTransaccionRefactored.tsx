@@ -109,7 +109,7 @@ export default function ModalEditarTransaccionRefactored({
     useProductosServiciosStore();
   const { trabajadores, loadTrabajadores } = useTrabajadoresStore();
   const personal = trabajadores;
-  const { cargarClientes } = useClientesStore();
+  const { cargarClientes, obtenerEstadisticasSeñas } = useClientesStore();
   const { handleError } = useErrorHandler();
 
   const {
@@ -721,6 +721,7 @@ export default function ModalEditarTransaccionRefactored({
       }
 
       await actualizarComanda(comandaId, comandaUpdate);
+      await obtenerEstadisticasSeñas();
       toast.success('Comanda actualizada con éxito');
       onClose();
       await cargarComandasPaginadas({

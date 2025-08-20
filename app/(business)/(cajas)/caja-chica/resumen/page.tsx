@@ -264,7 +264,7 @@ export default function CajaChicaResumenPage() {
                         </h3>
                         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
                           <SummaryCardDual
-                            title="Total Ingresos (Sin Descuentos)"
+                            title="Total Ingresos (Incluye Señas y Residual)"
                             totalUSD={resumen.totalIngresosUSD || 0}
                             totalARS={resumen.totalIngresosARS || 0}
                             showTransactionCount={false}
@@ -278,7 +278,7 @@ export default function CajaChicaResumenPage() {
                             valueClassName="text-red-700"
                           />
                           <SummaryCardDual
-                            title="Balance Neto (Con Descuentos)"
+                            title="Balance Neto (Incluye Señas y Residual)"
                             totalUSD={resumen.montoNetoUSD || 0}
                             totalARS={resumen.montoNetoARS || 0}
                             showTransactionCount={false}

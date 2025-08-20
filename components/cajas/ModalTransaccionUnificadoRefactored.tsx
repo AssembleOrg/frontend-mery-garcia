@@ -111,7 +111,7 @@ export default function ModalTransaccionUnificadoRefactored({
     useProductosServiciosStore();
   const { trabajadores, loadTrabajadores } = useTrabajadoresStore();
   const personal = trabajadores;
-  const { cargarClientes } = useClientesStore();
+  const { cargarClientes, obtenerEstadisticasSeñas } = useClientesStore();
   const { handleError } = useErrorHandler();
 
   const {
@@ -628,6 +628,7 @@ export default function ModalTransaccionUnificadoRefactored({
             ? TipoDeComandaNew.INGRESO
             : TipoDeComandaNew.EGRESO,
       });
+      await obtenerEstadisticasSeñas();
       toast.success('Comanda creada/actualizada con éxito');
     } catch (error) {
       logger.error(`Error al guardar ${tipo}:`, error);

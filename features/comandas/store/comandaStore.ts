@@ -75,6 +75,14 @@ interface ComandaState {
   cambiarEstadoComanda: (comandaId: string, nuevoEstado: EstadoDeComandaNew) => Promise<void>;
   loadResumen: (fechaDesde: string, fechaHasta: string) => Promise<void>;
   eliminarComanda: (comandaId: string) => Promise<void>;
+  obtenerMaximoARSUSD: () => Promise<{
+    ars: number;
+    usd: number;
+  }>;
+  obtenerUltimoResidual: () => Promise<{
+    ars: number;
+    usd: number;
+  }>;
 }
 
 const useComandaStore = create<ComandaState>((set, get) => ({
@@ -252,6 +260,14 @@ const useComandaStore = create<ComandaState>((set, get) => ({
   getResumen: async (fechaDesde: string, fechaHasta: string) => {
     const resumen = await comandasService.obtenerResumen(fechaDesde, fechaHasta);
     return resumen;
+  },
+  obtenerMaximoARSUSD: async () => {
+    const maximo = await comandasService.obtenerMaximoARSUSD();
+    return maximo;
+  },
+  obtenerUltimoResidual: async () => {
+    const residual = await comandasService.obtenerUltimoResidual();
+    return residual;
   },
 }));
 
