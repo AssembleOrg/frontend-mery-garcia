@@ -358,3 +358,62 @@ export interface MetodoPagoForm extends MetodoPago {
   descuentoOriginalARS?: number;
   montoFinalOriginalARS?: number;
 }
+
+// === Resumen de Caja Diario por Método de Pago ===
+
+/**
+ * Enum de tipos de pago disponibles
+ */
+export enum TipoPago {
+  EFECTIVO = 'EFECTIVO',
+  TARJETA = 'TARJETA',
+  TRANSFERENCIA = 'TRANSFERENCIA',
+  CHEQUE = 'CHEQUE',
+  QR = 'QR',
+  GIFT_CARD = 'GIFT_CARD',
+}
+
+/**
+ * Montos por moneda (ARS y USD)
+ */
+export interface MontosPorMoneda {
+  ARS: number;
+  USD: number;
+}
+
+/**
+ * Desglose de montos por método de pago
+ */
+export interface PorMetodoPago {
+  [TipoPago.EFECTIVO]: MontosPorMoneda;
+  [TipoPago.TARJETA]: MontosPorMoneda;
+  [TipoPago.TRANSFERENCIA]: MontosPorMoneda;
+  [TipoPago.CHEQUE]: MontosPorMoneda;
+  [TipoPago.QR]: MontosPorMoneda;
+  [TipoPago.GIFT_CARD]: MontosPorMoneda;
+}
+
+/**
+ * Response completo del endpoint de resumen de caja diario
+ */
+export interface ResumenCajaDiarioResponse {
+  totalCompletados: number;
+  totalPendientes: number;
+  montoNetoUSD: number;
+  montoNetoARS: number;
+  montoDisponibleTrasladoUSD: number;
+  montoDisponibleTrasladoARS: number;
+  totalIngresosUSD: number;
+  totalIngresosARS: number;
+  totalEgresosUSD: number;
+  totalEgresosARS: number;
+  comandasValidadasIds: string[];
+  porMetodoPago: PorMetodoPago;
+}
+
+/**
+ * Parámetros de query para el endpoint
+ */
+export interface ResumenCajaQueryParams {
+  fecha?: string; // Formato: YYYY-MM-DD o ISO 8601
+}

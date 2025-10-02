@@ -183,8 +183,9 @@ export default function ModalVerComanda({ isOpen, onClose, comanda }: ModalVerCo
               </div>
             </div>
             <div className="flex items-center gap-3">
-              {/* Botón Validar Comanda - Solo mostrar si no está validada */}
-              {comanda.estadoDeComanda !== EstadoDeComandaNew.VALIDADO && (
+              {/* Botón Validar Comanda - Solo mostrar si no está validada ni traspasada */}
+              {comanda.estadoDeComanda !== EstadoDeComandaNew.VALIDADO && 
+               comanda.estadoDeComanda !== EstadoDeComandaNew.TRASPASADA && (
                 <Button
                   onClick={handleValidarComanda}
                   disabled={validando}

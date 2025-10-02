@@ -142,18 +142,16 @@ export function resolverMetodoPagoPrincipal(
     return metodosPago[0].tipo;
   }
 
-  const metodoPrincipal = metodosPago.reduce((prev, current) =>
-    current.monto > prev.monto ? current : prev
-  );
-
-  const totalMonto = metodosPago.reduce((sum, m) => sum + m.monto, 0);
-  const porcentajePrincipal = (metodoPrincipal.monto / totalMonto) * 100;
-
-  if (porcentajePrincipal < 80) {
+  // Verificar si todos los métodos de pago son del mismo tipo
+  const tiposUnicos = [...new Set(metodosPago.map(m => m.tipo.toLowerCase()))];
+  
+  // Si hay más de un tipo diferente, es mixto
+  if (tiposUnicos.length > 1) {
     return 'mixto';
   }
 
-  return metodoPrincipal.tipo;
+  // Si todos son del mismo tipo, devolver ese tipo
+  return metodosPago[0].tipo;
 }
 
 export function formatearDetalleMetodosPago(

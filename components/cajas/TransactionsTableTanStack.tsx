@@ -9,7 +9,7 @@ import { Button } from '@/components/ui/button';
 import { DataTable } from '@/components/ui/data-table';
 import {
   formatDate as formatDateEs,
-  resolverMetodoPagoPrincipalConMoneda,
+  resolverMetodoPagoPrincipal,
   formatearDetalleMetodosPago,
   formatARS,
 } from '@/lib/utils';
@@ -341,25 +341,24 @@ export default function TransactionsTableTanStack({
     },
     {
       id: 'metodosPago',
-      accessorKey: 'metodosPago',
+      accessorKey: 'items',
       header: 'Método',
-      cell: ({ getValue, row }) => {
-        const metodosPago = getValue() as Array<{
-          tipo: string;
-          monto: number;
-        }>;
+      cell: ({ row }) => {
+        // Extraer métodos de pago de todos los items
+        const items = row.original.items || [];
+        const metodosPago = items.flatMap((item: any) => item.metodosPago || []);
+        
         const isValidated = row.original.estadoDeComanda === EstadoDeComandaNew.VALIDADO;
 
-        // Resolver método principal
+        // Resolver método principal (sin moneda, formato simple)
         const metodoPrincipal =
           metodosPago && metodosPago.length > 0
-            ? resolverMetodoPagoPrincipalConMoneda(
-                metodosPago.map((m) => ({
+            ? resolverMetodoPagoPrincipal(
+                metodosPago.map((m: any) => ({
                   tipo: m.tipo,
                   monto: m.monto,
-                  moneda: (m as { moneda?: string }).moneda || 'USD',
                 }))
-              )
+              ).toUpperCase()
             : 'EFECTIVO';
 
         const style = (method: string): string => {
@@ -389,10 +388,10 @@ export default function TransactionsTableTanStack({
         const detalleTooltip =
           metodosPago && metodosPago.length > 0
             ? formatearDetalleMetodosPago(
-                metodosPago.map((m) => ({
+                metodosPago.map((m: any) => ({
                   tipo: m.tipo,
                   monto: m.monto,
-                  moneda: (m as { moneda?: string }).moneda || 'USD',
+                  moneda: m.moneda || 'USD',
                 }))
               )
             : metodoPrincipal;

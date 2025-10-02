@@ -5,7 +5,7 @@ import StandardPageBanner from '@/components/common/StandardPageBanner';
 import StandardBreadcrumbs from '@/components/common/StandardBreadcrumbs';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import Link from 'next/link';
-import { TrendingUp, TrendingDown, BarChart3, ArrowRight } from 'lucide-react';
+import { TrendingUp, TrendingDown, BarChart3, ArrowRight, CreditCard } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useCurrencyConverter } from '@/hooks/useCurrencyConverter';
 import ClientOnly from '@/components/common/ClientOnly';
@@ -72,6 +72,15 @@ export default function CajaChicaMenuPage() {
       accentColor: '#d4a7ca',
       isBalance: true,
     },
+    {
+      title: 'Resumen por Métodos de Pago',
+      description: 'Desglose diario por método de pago',
+      href: '/caja-chica/resumen-metodos-pago',
+      icon: <CreditCard size={40} strokeWidth={1.5} />,
+      gradientFrom: 'from-[#c9a7d4]',
+      gradientTo: 'to-[#a589b8]',
+      accentColor: '#c9a7d4',
+    },
   ];
 
   return (
@@ -100,7 +109,7 @@ export default function CajaChicaMenuPage() {
               </div>
 
              <ClientOnly>
-                <div className="grid grid-cols-1 gap-8 md:grid-cols-3">
+                <div className="grid grid-cols-1 gap-8 md:grid-cols-2 lg:grid-cols-4">
                   {menuOptions.map((option) => (
                     <Link key={option.title} href={option.href}>
                       <Card
