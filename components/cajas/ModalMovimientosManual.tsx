@@ -287,7 +287,7 @@ export default function ModalMovimientosManual({
           {/* Comentario */}
           <div className="space-y-2">
             <Label htmlFor="comentario" className="text-sm font-medium text-gray-700">
-              Comentario <span className="text-red-500">*</span>
+              Concepto / Comentario <span className="text-red-500">*</span>
             </Label>
             <Textarea
               id="comentario"

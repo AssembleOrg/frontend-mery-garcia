@@ -265,7 +265,6 @@ export default function IngresosPage() {
       // acc.usd += Number(comanda.prepagoUSD?.monto ?? 0);
       // acc.ars += Number(comanda.prepagoARS?.monto ?? 0);
 
-      console.log(acc, comanda)
       return acc;
     },
     { usd: 0, ars: 0 }
@@ -274,29 +273,19 @@ export default function IngresosPage() {
   const totalIngresosUSD = totals.usd;
   const totalIngresosARS = totals.ars;
   const transactionCountARS = comandasPaginadas.data.reduce(
-    (sum, comanda) =>
-      sum +
-      (comanda.items.reduce(
-        (acc, item) =>
-          item.metodosPago?.reduce(
-            (acc, item) => (item.moneda === 'ARS' ? acc + 1 : acc),
-            0
-          ) || 0,
-        0
-      ) || 0),
+    (sum, comanda) => {
+      const metodosPagoComanda = (comanda as any).metodosPago || [];
+      const countARS = metodosPagoComanda.filter((mp: any) => mp.moneda === 'ARS').length;
+      return sum + countARS;
+    },
     0
   );
   const transactionCountUSD = comandasPaginadas.data.reduce(
-    (sum, comanda) =>
-      sum +
-      (comanda.items.reduce(
-        (acc, item) =>
-          item.metodosPago?.reduce(
-            (acc, item) => (item.moneda === 'USD' ? acc + 1 : acc),
-            0
-          ) || 0,
-        0
-      ) || 0),
+    (sum, comanda) => {
+      const metodosPagoComanda = (comanda as any).metodosPago || [];
+      const countUSD = metodosPagoComanda.filter((mp: any) => mp.moneda === 'USD').length;
+      return sum + countUSD;
+    },
     0
   );
   const clientCount = new Set(comandasPaginadas.data.map((c) => c.cliente?.id))

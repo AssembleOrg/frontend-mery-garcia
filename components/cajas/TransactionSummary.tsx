@@ -52,7 +52,7 @@ export default function TransactionSummary({
   señaMonedas = [], // Default to empty array
   onSeñaMonedasChange, // Optional handler for seña currency selection
 }: TransactionSummaryProps) {
-  const { formatARS, formatUSD, formatARSFromNative, isExchangeRateValid } = useCurrencyConverter();
+  const { formatARS, formatUSD, formatARSFromNative, isExchangeRateValid, usdToArs } = useCurrencyConverter();
   const { descuentosPorMetodo } = useConfiguracion();
 
 
@@ -69,107 +69,79 @@ export default function TransactionSummary({
     return item.productoServicio?.esPrecioCongelado || false;
   };
 
-  // Helper function to get the first payment method from an item
-  const getFirstPaymentMethod = (item: ItemComandaCreateNew): Partial<MetodoPagoNew> | null => {
-    const itemWithPayment = item as ItemWithPaymentMethods;
-    return itemWithPayment.metodosPago?.[0] || null;
-  };
-
-  // Helper function to get the second payment method from an item (for split payments)
-  const getSecondPaymentMethod = (item: ItemComandaCreateNew): Partial<MetodoPagoNew> | null => {
-    const itemWithPayment = item as ItemWithPaymentMethods;
-    return itemWithPayment.metodosPago?.[1] || null;
-  };
-
-  // Helper function to check if item has split payment enabled
-  const isSplitPaymentEnabled = (item: ItemComandaCreateNew) => {
-    const itemWithPayment = item as ItemWithPaymentMethods;
-    return itemWithPayment.metodosPago && itemWithPayment.metodosPago.length > 1;
-  };
-
-  // Helper function to check if any item has split payment
-  const hasAnySplitPayment = () => {
-    return items.some(item => isSplitPaymentEnabled(item));
-  };
-
-  // Helper function to get the actual total amount for an item from its payment methods
-  const getItemTotalFromPaymentMethods = (item: ItemComandaCreateNew) => {
-    const itemWithPayment = item as ItemWithPaymentMethods;
-    const paymentMethods = itemWithPayment.metodosPago || [];
+  // Helper function to get item's currency based on frozen status and pagarEnPesos flag
+  const getItemCurrency = (item: ItemComandaCreateNew): 'ARS' | 'USD' => {
+    const isFrozen = isItemFrozen(item);
+    const pagarEnPesos = (item as any).pagarEnPesos || false;
     
-    if (paymentMethods.length === 0) {
-      // If no payment methods, return subtotal without discount
-      const subtotal = (item.precio || 0) * (item.cantidad || 1);
-      return subtotal;
+    // If frozen or paying in pesos, it's ARS
+    if (isFrozen || pagarEnPesos) {
+      return 'ARS';
     }
     
-    // Sum all montoFinal values from payment methods
-    // montoFinal should already contain the amount after discount but before seña
-    const total = paymentMethods.reduce((total, pm) => {
-      return total + (pm.montoFinal || 0);
-    }, 0);
+    return 'USD';
+  };
+
+  // Helper function to calculate item subtotal
+  const getItemSubtotal = (item: ItemComandaCreateNew): number => {
+    const isFrozen = isItemFrozen(item);
+    const pagarEnPesos = (item as any).pagarEnPesos || false;
     
-    return total;
+    // Get base price based on frozen status
+    const precioBase = isFrozen 
+      ? (item.productoServicio?.precioFijoARS || 0)
+      : (item.precio || 0);
+    
+    const subtotal = precioBase * (item.cantidad || 1);
+    
+    // If paying in pesos and not frozen, convert USD to ARS
+    if (pagarEnPesos && !isFrozen) {
+      return usdToArs(subtotal);
+    }
+    
+    return subtotal;
+  };
+
+  // Helper function to get item discount
+  const getItemDiscount = (item: ItemComandaCreateNew): number => {
+    const isFrozen = isItemFrozen(item);
+    const pagarEnPesos = (item as any).pagarEnPesos || false;
+    const discount = item.descuento || 0;
+    
+    // If paying in pesos and not frozen, convert USD to ARS
+    if (pagarEnPesos && !isFrozen) {
+      return usdToArs(discount);
+    }
+    
+    return discount;
+  };
+
+  // Helper function to calculate item total (subtotal - discount)
+  const getItemTotal = (item: ItemComandaCreateNew): number => {
+    const subtotal = getItemSubtotal(item);
+    const discount = getItemDiscount(item);
+    return subtotal - discount;
   };
 
   // Calculate totals by currency
   const totalsByCurrency = useMemo(() => {
-    const totals: Record<string, { subtotal: number; total: number; totalConSeña: number; items: number }> = {};
+    const totals: Record<string, { subtotal: number; total: number; totalConSeña: number; descuento: number; items: number }> = {};
     
     items.forEach(item => {
-      const paymentMethod = getFirstPaymentMethod(item);
-      if (paymentMethod) {
-        // Check if this item has split payment
-        const isSplit = isSplitPaymentEnabled(item);
-        const secondPaymentMethod = getSecondPaymentMethod(item);
-        
-        // Calculate subtotal as price * quantity
-        const itemSubtotal = (item.precio || 0) * (item.cantidad || 1);
-        // Get the actual total from payment methods (already discounted)
-        const itemTotal = getItemTotalFromPaymentMethods(item);
-        
-        if (isSplit && secondPaymentMethod) {
-          // Handle split payment - treat as separate currencies
-          const firstCurrency = paymentMethod.moneda || MONEDAS.USD;
-          const secondCurrency = secondPaymentMethod.moneda || MONEDAS.ARS;
-          
-          // First payment (USD)
-          if (!totals[firstCurrency]) {
-            totals[firstCurrency] = { subtotal: 0, total: 0, totalConSeña: 0, items: 0 };
-          }
-          totals[firstCurrency].subtotal += itemSubtotal;
-          totals[firstCurrency].total += (paymentMethod.montoFinal || paymentMethod.monto || 0);
-          totals[firstCurrency].totalConSeña = totals[firstCurrency].total; // Will be updated below
-          totals[firstCurrency].items += 1;
-          
-          // Second payment (ARS)
-          if (!totals[secondCurrency]) {
-            totals[secondCurrency] = { subtotal: 0, total: 0, totalConSeña: 0, items: 0 };
-          }
-          totals[secondCurrency].subtotal += itemSubtotal;
-          totals[secondCurrency].total += (secondPaymentMethod.montoFinal || secondPaymentMethod.monto || 0);
-          totals[secondCurrency].totalConSeña = totals[secondCurrency].total; // Will be updated below
-          totals[secondCurrency].items += 1;
-        } else {
-          // Single payment method
-          let currency = paymentMethod.moneda || MONEDAS.USD;
-          
-          // If item is frozen, it should always be ARS
-          if (isItemFrozen(item)) {
-            currency = MONEDAS.ARS as MonedaNew;
-          }
-          
-          if (!totals[currency]) {
-            totals[currency] = { subtotal: 0, total: 0, totalConSeña: 0, items: 0 };
-          }
-          
-          totals[currency].subtotal += itemSubtotal;
-          // Use the actual total from payment methods (already discounted)
-          totals[currency].total += itemTotal;
-          totals[currency].totalConSeña = totals[currency].total; // Will be updated below
-          totals[currency].items += 1;
-        }
+      const currency = getItemCurrency(item);
+      const itemSubtotal = getItemSubtotal(item);
+      const itemDiscount = getItemDiscount(item);
+      const itemTotal = getItemTotal(item);
+      
+      if (!totals[currency]) {
+        totals[currency] = { subtotal: 0, total: 0, totalConSeña: 0, descuento: 0, items: 0 };
       }
+      
+      totals[currency].subtotal += itemSubtotal;
+      totals[currency].descuento += itemDiscount;
+      totals[currency].total += itemTotal;
+      totals[currency].totalConSeña = totals[currency].total;
+      totals[currency].items += 1;
     });
 
     // Apply seña by currency if active
@@ -193,14 +165,13 @@ export default function TransactionSummary({
   }, [
     items.length,
     items.map(item => {
-      const pm = getFirstPaymentMethod(item);
-      const pm2 = getSecondPaymentMethod(item);
-      return `${pm?.tipo || ''}-${pm?.montoFinal || 0}-${pm2?.tipo || ''}-${pm2?.montoFinal || 0}`;
+      const pagarEnPesos = (item as any).pagarEnPesos || false;
+      return `${item.precio}-${item.cantidad}-${item.descuento}-${pagarEnPesos}`;
     }).join(','),
-    descuentosActivos, // Add descuentosActivos as dependency
-    señaActiva, // Add señaActiva as dependency
-    señaMonedas, // Add señaMonedas as dependency
-    cliente?.señasDisponibles // Add cliente seña as dependency
+    señaActiva,
+    señaMonedas.join(','),
+    cliente?.señasDisponibles,
+    usdToArs
   ]);
 
   // Check if all items use the same currency
@@ -208,76 +179,42 @@ export default function TransactionSummary({
     const currencies = new Set();
     
     items.forEach(item => {
-      const paymentMethod = getFirstPaymentMethod(item);
-      if (paymentMethod) {
-        // Check if this item has split payment
-        const isSplit = isSplitPaymentEnabled(item);
-        const secondPaymentMethod = getSecondPaymentMethod(item);
-        
-        if (isSplit && secondPaymentMethod) {
-          // Add both currencies for split payments
-          const firstCurrency = paymentMethod.moneda || MONEDAS.USD;
-          const secondCurrency = secondPaymentMethod.moneda || MONEDAS.ARS;
-          currencies.add(firstCurrency);
-          currencies.add(secondCurrency);
-        } else {
-          // Single payment method
-          let currency = paymentMethod.moneda || MONEDAS.USD;
-          
-          // If item is frozen, it should always be ARS
-          if (isItemFrozen(item)) {
-            currency = MONEDAS.ARS as MonedaNew;
-          }
-          
-          currencies.add(currency);
-        }
-      }
+      const currency = getItemCurrency(item);
+      currencies.add(currency);
     });
     
     return currencies.size <= 1;
   }, [
     items.length,
     items.map(item => {
-      const pm = getFirstPaymentMethod(item);
-      return `${pm?.moneda || ''}-${pm?.tipo || ''}`;
-    }).join(','),
-    descuentosActivos // Add descuentosActivos as dependency
+      const pagarEnPesos = (item as any).pagarEnPesos || false;
+      return `${getItemCurrency(item)}-${pagarEnPesos}`;
+    }).join(',')
   ]);
 
   // Calculate unified totals
   const unifiedTotals = useMemo(() => {
     let totalSubtotal = 0;
     let totalAmount = 0;
+    let totalDescuento = 0;
     let hasFrozenItems = false;
     let primaryCurrency: MonedaNew = MONEDAS.USD as MonedaNew;
 
     items.forEach(item => {
-      const paymentMethod = getFirstPaymentMethod(item);
-      if (paymentMethod) {
-        // Determine the correct currency for this item
-        let currency = paymentMethod.moneda || MONEDAS.USD;
-        
-        // If item is frozen, it should always be ARS
-        if (isItemFrozen(item)) {
-          currency = MONEDAS.ARS as MonedaNew;
-          hasFrozenItems = true;
-        }
-        
-        // Calculate subtotal as price * quantity
-        const itemSubtotal = (item.precio || 0) * (item.cantidad || 1);
-        // Get the actual total from payment methods (already discounted)
-        const itemTotal = getItemTotalFromPaymentMethods(item);
-        
-        
-        totalSubtotal += itemSubtotal;
-        // Use the actual total from payment methods (already discounted)
-        totalAmount += itemTotal;
-        
-        // Set primary currency based on frozen items
-        if (isItemFrozen(item)) {
-          primaryCurrency = MONEDAS.ARS as MonedaNew;
-        }
+      const currency = getItemCurrency(item);
+      const itemSubtotal = getItemSubtotal(item);
+      const itemDiscount = getItemDiscount(item);
+      const itemTotal = getItemTotal(item);
+      
+      // Check if item is frozen or paying in pesos
+      if (isItemFrozen(item) || (item as any).pagarEnPesos) {
+        hasFrozenItems = true;
+        primaryCurrency = MONEDAS.ARS as MonedaNew;
       }
+      
+      totalSubtotal += itemSubtotal;
+      totalDescuento += itemDiscount;
+      totalAmount += itemTotal;
     });
 
     // Apply seña if active and currencies selected
@@ -308,18 +245,17 @@ export default function TransactionSummary({
       totalConSeña = Math.max(0, totalAmount - señaAplicada);
     }
 
-    return { totalSubtotal, totalAmount, totalConSeña, hasFrozenItems, primaryCurrency };
+    return { totalSubtotal, totalAmount, totalConSeña, totalDescuento, hasFrozenItems, primaryCurrency };
   }, [
     items.length,
     items.map(item => {
-      const pm = getFirstPaymentMethod(item);
-      const pm2 = getSecondPaymentMethod(item);
-      return `${pm?.montoFinal || 0}-${pm2?.montoFinal || 0}-${isItemFrozen(item)}`;
+      const pagarEnPesos = (item as any).pagarEnPesos || false;
+      return `${item.precio}-${item.cantidad}-${item.descuento}-${pagarEnPesos}-${isItemFrozen(item)}`;
     }).join(','),
-    descuentosActivos, // Add descuentosActivos as dependency
-    señaActiva, // Add señaActiva as dependency
-    señaMonedas, // Add señaMonedas as dependency
-    cliente?.señasDisponibles // Add cliente seña as dependency
+    señaActiva,
+    señaMonedas.join(','),
+    cliente?.señasDisponibles,
+    usdToArs
   ]);
 
   // Get the primary currency for unified display
@@ -348,25 +284,6 @@ export default function TransactionSummary({
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
-          {/* Discount Status Indicator */}
-          <div className={`flex items-center gap-2 rounded-md p-2 text-xs ${
-            descuentosActivos 
-              ? 'bg-green-100 text-green-700 border border-green-200' 
-              : 'bg-yellow-100 text-yellow-700 border border-yellow-200'
-          }`}>
-            {descuentosActivos ? (
-              <>
-                <span className="text-green-600">✓</span>
-                Descuentos activos - Aplicando descuentos por método de pago
-              </>
-            ) : (
-              <>
-                <span className="text-yellow-600">⚠️</span>
-                Descuentos desactivados - No se aplicarán descuentos por método de pago
-              </>
-            )}
-          </div>
-
           {/* Seña Control */}
           <div className="rounded-md border border-gray-200 bg-gray-50 p-3">
             <div className="flex items-center justify-between mb-2">
@@ -518,20 +435,8 @@ export default function TransactionSummary({
               {currencies.map((currency) => {
                 const totals = totalsByCurrency[currency];
                 const isFrozen = items.some(item => 
-                  isItemFrozen(item) && getFirstPaymentMethod(item)?.moneda === currency
+                  isItemFrozen(item) && getItemCurrency(item) === currency
                 );
-                
-                // Check if this currency has split payments
-                const hasSplitInThisCurrency = items.some(item => {
-                  const isSplit = isSplitPaymentEnabled(item);
-                  const firstPayment = getFirstPaymentMethod(item);
-                  const secondPayment = getSecondPaymentMethod(item);
-                  
-                  return isSplit && (
-                    firstPayment?.moneda === currency || 
-                    secondPayment?.moneda === currency
-                  );
-                });
                 
                 return (
                   <div key={currency} className="rounded-lg border border-gray-200 bg-gray-50 p-3">
@@ -543,9 +448,6 @@ export default function TransactionSummary({
                         <span className="text-sm font-medium">
                           {totals.items} {tipo === 'ingreso' ? 'servicio' : 'concepto'}{totals.items > 1 ? 's' : ''}
                         </span>
-                        {hasSplitInThisCurrency && (
-                          <Split className="h-4 w-4 text-blue-600" />
-                        )}
                       </div>
                       {isFrozen && <Lock className="h-4 w-4 text-orange-600" />}
                     </div>
@@ -557,7 +459,15 @@ export default function TransactionSummary({
                           {formatAmount(totals.subtotal, currency, isFrozen)}
                         </span>
                       </div>
-                      <div className="flex justify-between text-sm">
+                      {totals.descuento > 0 && (
+                        <div className="flex justify-between text-sm text-green-600">
+                          <span>Descuento:</span>
+                          <span className="font-medium">
+                            -{formatAmount(totals.descuento, currency, isFrozen)}
+                          </span>
+                        </div>
+                      )}
+                      <div className="flex justify-between text-sm border-t pt-1">
                         <span>Total:</span>
                         <span className="font-semibold">
                           {formatAmount(totals.total, currency, isFrozen)}
@@ -588,6 +498,15 @@ export default function TransactionSummary({
                   {formatAmount(unifiedTotals.totalSubtotal, unifiedTotals.primaryCurrency, unifiedTotals.hasFrozenItems)}
                 </span>
               </div>
+              
+              {unifiedTotals.totalDescuento > 0 && (
+                <div className="flex items-center justify-between text-green-600">
+                  <span className="text-sm font-medium">Descuento:</span>
+                  <span className="font-medium">
+                    -{formatAmount(unifiedTotals.totalDescuento, unifiedTotals.primaryCurrency, unifiedTotals.hasFrozenItems)}
+                  </span>
+                </div>
+              )}
               
               <div className="flex items-center justify-between border-t pt-2">
                 <span className="text-sm font-bold text-gray-900">Total:</span>

@@ -430,6 +430,12 @@ export default function ModalCliente({
                             Gift Card
                           </div>
                         </SelectItem>
+                        <SelectItem value={TipoPagoNew.MERCADO_PAGO}>
+                          <div className="flex items-center gap-2">
+                            <DollarSign className="h-4 w-4" />
+                            Mercado Pago
+                          </div>
+                        </SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
@@ -469,6 +475,12 @@ export default function ModalCliente({
                           <div className="flex items-center gap-2">
                             <Gift className="h-4 w-4" />
                             Gift Card
+                          </div>
+                        </SelectItem>
+                        <SelectItem value={TipoPagoNew.MERCADO_PAGO}>
+                          <div className="flex items-center gap-2">
+                            <DollarSign className="h-4 w-4" />
+                            Mercado Pago
                           </div>
                         </SelectItem>
                       </SelectContent>

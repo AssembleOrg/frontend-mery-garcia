@@ -371,6 +371,7 @@ export enum TipoPago {
   CHEQUE = 'CHEQUE',
   QR = 'QR',
   GIFT_CARD = 'GIFT_CARD',
+  MERCADO_PAGO = 'MERCADO_PAGO', // Para señas/prepagos guardados (no se muestra en desglose)
 }
 
 /**
@@ -391,6 +392,7 @@ export interface PorMetodoPago {
   [TipoPago.CHEQUE]: MontosPorMoneda;
   [TipoPago.QR]: MontosPorMoneda;
   [TipoPago.GIFT_CARD]: MontosPorMoneda;
+  [TipoPago.MERCADO_PAGO]: MontosPorMoneda;
 }
 
 /**

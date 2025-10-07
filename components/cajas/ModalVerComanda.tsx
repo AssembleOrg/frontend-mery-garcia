@@ -54,8 +54,8 @@ export default function ModalVerComanda({ isOpen, onClose, comanda }: ModalVerCo
     }
   };
 
-  // Extract all payment methods from all items
-  const allPaymentMethods = comanda.items?.flatMap(item => (item as any).metodosPago || []) || [];
+  // Extract all payment methods from comanda (not from items)
+  const allPaymentMethods = (comanda as any).metodosPago || [];
 
   // Calcular totales
   const totalUSD = comanda.tipoDeComanda === TipoDeComandaNew.EGRESO ? comanda.precioDolar : allPaymentMethods.reduce((acc: number, item: any) =>
@@ -88,38 +88,60 @@ export default function ModalVerComanda({ isOpen, onClose, comanda }: ModalVerCo
     })) as MetodoPagoNew[]
   );
 
-  // Calcular totales pagados por moneda (agrupados)
-  const totalesPorMoneda = allPaymentMethods.reduce((acc: any, m: any) => {
-    // Siempre usar montoFinal para incluir descuentos aplicados
+  // Agrupar métodos de pago por tipo y moneda (sin mezclar)
+  const metodosPagoAgrupados = allPaymentMethods.reduce((acc: any, m: any) => {
     const total = m.montoFinal ?? m.monto ?? 0;
     const moneda = m.moneda || 'USD';
+    const tipo = m.tipo;
+    const clave = `${tipo}-${moneda}`;
     
-    if (!acc[moneda]) {
-      acc[moneda] = { total: 0, tipo: m.tipo };
+    if (!acc[clave]) {
+      acc[clave] = { tipo, moneda, total: 0 };
     }
-    acc[moneda].total += total;
+    acc[clave].total += total;
     
     return acc;
   }, {});
 
-  // Restar señas de los totales
-  if (totalesPorMoneda.USD && señaInfo.usd > 0) {
-    totalesPorMoneda.USD.total = Math.max(0, totalesPorMoneda.USD.total - señaInfo.usd);
-  }
-  if (totalesPorMoneda.ARS && señaInfo.ars > 0) {
-    totalesPorMoneda.ARS.total = Math.max(0, totalesPorMoneda.ARS.total - señaInfo.ars);
-  }
-
-  // Formatear detalle simplificado (máximo 2 líneas)
-  const detalleMetodos = Object.entries(totalesPorMoneda)
-    .filter(([_, data]: [string, any]) => data.total > 0)
-    .map(([moneda, data]: [string, any]) => {
-      const montoFormateado = moneda === 'USD' 
-        ? formatUSD(data.total)
-        : formatARSFromNative(data.total);
+  // Restar señas de los totales USD
+  Object.keys(metodosPagoAgrupados).forEach(clave => {
+    const metodo = metodosPagoAgrupados[clave];
+    if (metodo.moneda === 'USD' && señaInfo.usd > 0) {
+      // Distribuir la seña proporcionalmente entre los métodos USD
+      const totalUSDOriginal = allPaymentMethods
+        .filter(m => (m.moneda || 'USD') === 'USD')
+        .reduce((sum, m) => sum + (m.montoFinal ?? m.monto ?? 0), 0);
       
-      return `${data.tipo} ${moneda}: ${montoFormateado}`;
-    }).join(', ');
+      if (totalUSDOriginal > 0) {
+        const proporcion = metodo.total / totalUSDOriginal;
+        const descuentoSeña = señaInfo.usd * proporcion;
+        metodo.total = Math.max(0, metodo.total - descuentoSeña);
+      }
+    }
+    if (metodo.moneda === 'ARS' && señaInfo.ars > 0) {
+      // Distribuir la seña proporcionalmente entre los métodos ARS
+      const totalARSOriginal = allPaymentMethods
+        .filter(m => (m.moneda || 'USD') === 'ARS')
+        .reduce((sum, m) => sum + (m.montoFinal ?? m.monto ?? 0), 0);
+      
+      if (totalARSOriginal > 0) {
+        const proporcion = metodo.total / totalARSOriginal;
+        const descuentoSeña = señaInfo.ars * proporcion;
+        metodo.total = Math.max(0, metodo.total - descuentoSeña);
+      }
+    }
+  });
+
+  // Formatear detalle de cada método de pago
+  const detalleMetodos = Object.values(metodosPagoAgrupados)
+    .filter((metodo: any) => metodo.total > 0)
+    .map((metodo: any) => {
+      const montoFormateado = metodo.moneda === 'USD' 
+        ? formatUSD(metodo.total)
+        : formatARSFromNative(metodo.total);
+      
+      return `${metodo.tipo} ${metodo.moneda}: ${montoFormateado}`;
+    }).join(' + ');
 
   // Trabajadores únicos
   const trabajadores = comanda.items

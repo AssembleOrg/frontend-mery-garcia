@@ -53,7 +53,8 @@ import { useErrorHandler } from '@/hooks/useErrorHandler';
 import { MONEDAS, METODOS_PAGO } from '@/lib/constants';
 import { useConfiguracion } from '@/features/configuracion/store/configuracionStore';
 import TransactionSummaryEdit from './TransactionSummaryEdit';
-import ItemPaymentFormEdit from './ItemPaymentFormEdit';
+import ItemFormSimple from './ItemFormSimple';
+import MetodosPagoComanda from './MetodosPagoComanda';
 
 /**
  * ModalEditarTransaccionRefactored Component
@@ -118,6 +119,7 @@ export default function ModalEditarTransaccionRefactored({
     formatUSD,
     formatDual,
     formatARSFromNative,
+    usdToArs,
   } = useCurrencyConverter();
 
   const [dolar, setDolar] = useState(0);
@@ -147,12 +149,59 @@ export default function ModalEditarTransaccionRefactored({
   const [responsablesIds, setResponsablesIds] = useState<string[]>([]);
   const [observaciones, setObservaciones] = useState('');
   const [items, setItems] = useState<ItemComandaCreateNew[]>([]);
+  
+  // Calculate total amount and detect currency based on items
+  const totalTransaccion = useMemo(() => {
+    let totalUSD = 0;
+    let totalARS = 0;
+    let hasUSD = false;
+    let hasARS = false;
+    
+    items.forEach(item => {
+      const isFrozen = item.productoServicio?.esPrecioCongelado || false;
+      const pagarEnPesos = (item as any).pagarEnPesos || false;
+      
+      // Get base price based on frozen status
+      const precioBase = isFrozen 
+        ? (item.productoServicio?.precioFijoARS || 0)
+        : (item.precio || 0);
+      
+      // Calculate subtotal
+      const itemSubtotal = precioBase * (item.cantidad || 1);
+      
+      // Apply discount
+      const itemTotal = itemSubtotal - (item.descuento || 0);
+      
+      // If frozen or paying in pesos, it's ARS
+      if (isFrozen) {
+        // Frozen prices are already in ARS
+        totalARS += itemTotal;
+        hasARS = true;
+      } else if (pagarEnPesos) {
+        // Convert USD to ARS
+        const totalEnARS = usdToArs(itemTotal);
+        totalARS += totalEnARS;
+        hasARS = true;
+      } else {
+        // Keep in USD
+        totalUSD += itemTotal;
+        hasUSD = true;
+      }
+    });
+    
+    return { totalUSD, totalARS, hasUSD, hasARS };
+  }, [items, usdToArs]);
   const [tipo, setTipo] = useState<'ingreso' | 'egreso'>('ingreso');
   const [fechaCreacion, setFechaCreacion] = useState<Date>(new Date());
 
   // Seña state - now global for entire transaction
   const [señaActiva, setSeñaActiva] = useState(false);
   const [señaMonedas, setSeñaMonedas] = useState<string[]>([]); // Array of selected currencies for seña
+
+  // Payment methods state - at comanda level
+  const [metodosPago, setMetodosPago] = useState<Partial<MetodoPagoNew>[]>([
+    { tipo: TipoPagoNew.EFECTIVO, monto: 0, moneda: MonedaNew.ARS }
+  ]);
 
   // UI state
   const [guardando, setGuardando] = useState(false);
@@ -239,24 +288,16 @@ export default function ModalEditarTransaccionRefactored({
           if (comanda.usuarioConsumePrepagoUSD) monedasSeña.push('USD');
           setSeñaMonedas(monedasSeña);
 
-          // Convertir items al formato correcto con payment methods
+          // Cargar métodos de pago de la comanda
+          if (comanda.metodosPago && comanda.metodosPago.length > 0) {
+            setMetodosPago(comanda.metodosPago);
+          } else {
+            // Si no hay métodos de pago, usar el default
+            setMetodosPago([{ tipo: TipoPagoNew.EFECTIVO, monto: 0, moneda: MonedaNew.ARS }]);
+          }
+
+          // Convertir items al formato correcto (sin payment methods)
           const itemsConvertidos = comanda.items?.map((item) => {
-            // Extract payment methods from the item
-            const itemPaymentMethods = (item as any).metodosPago || [];
-
-            // CRITICAL FIX: Convert payment method amounts based on currency
-            const fixedPaymentMethods = itemPaymentMethods.map((mp: any) => {
-              // Los montos ya vienen en la moneda correcta desde el backend
-              // Solo necesitamos asegurar que los tipos sean correctos
-              return {
-                ...mp,
-                monto: parseFloat(mp.monto) || 0,
-                montoFinal: parseFloat(mp.montoFinal) || 0,
-                descuentoGlobalPorcentaje: parseFloat(mp.descuentoGlobalPorcentaje) || 0,
-                recargoPorcentaje: parseFloat(mp.recargoPorcentaje) || 0,
-              };
-            });
-
             // Extract trabajador from the item
             const trabajador = (item as any).trabajador;
             const responsablesIds = trabajador ? [trabajador.id] : [];
@@ -267,26 +308,20 @@ export default function ModalEditarTransaccionRefactored({
               nombre: item.nombre || '',
               precio: item.precio || 0,
               cantidad: item.cantidad || 1,
-              descuentoPorcentaje: 0,
               descuento: item.descuento || 0,
               subtotal: item.subtotal || 0,
               responsablesIds: responsablesIds,
               mostrarSelectorResponsables: false,
               productoServicio: item.productoServicio,
-              trabajador: trabajador, // Include the trabajador object
-              metodosPago: fixedPaymentMethods, // Include FIXED payment methods
+              trabajador: trabajador,
+              trabajadorId: trabajador?.id || '',
+              pagarEnPesos: false, // Frontend-only field
             };
           }) || [];
           setItems(itemsConvertidos);
 
-          // Detectar si hay descuentos aplicados en los items
-          const hayDescuentosAplicados = itemsConvertidos.some((item) => {
-            const paymentMethods = (item as any).metodosPago || [];
-            return paymentMethods.some((mp: any) =>
-              parseFloat(mp.descuentoGlobalPorcentaje) > 0
-            );
-          });
-          setDescuentosActivos(hayDescuentosAplicados);
+          // Los descuentos ya no se activan globalmente, se aplican por item
+          setDescuentosActivos(false);
         } catch (error) {
           console.error('Error al cargar comanda:', error);
           toast.error('Error al cargar la comanda');
@@ -372,7 +407,7 @@ export default function ModalEditarTransaccionRefactored({
       descuento: 0,
       subtotal: subtotalBase, // precio * cantidad
       responsablesIds: [],
-      metodosPago: [initialPaymentMethod], // Inicializar con método de pago por defecto
+      trabajadorId: '', // Se debe seleccionar un responsable antes de guardar
     };
 
     setItems([...items, nuevoItem]);
@@ -414,12 +449,19 @@ export default function ModalEditarTransaccionRefactored({
   // Handle global discounts toggle
   const handleGlobalDescuentosToggle = (enabled: boolean) => {
     setDescuentosActivos(enabled);
+    // Note: Discounts are now managed at item level via descuento field
+    // No need to update payment methods as they are at comanda level
+  };
+
+  // DEPRECATED: Old implementation that used payment methods per item
+  const handleGlobalDescuentosToggle_OLD = (enabled: boolean) => {
+    setDescuentosActivos(enabled);
 
     // Update all items to reflect the new discount settings
     items.forEach(item => {
-      const currentPaymentMethod = item.metodosPago?.[0];
+      const currentPaymentMethod = (item as any).metodosPago?.[0];
       if (currentPaymentMethod) {
-        const isSplitEnabled = item.metodosPago && item.metodosPago.length > 1;
+        const isSplitEnabled = (item as any).metodosPago && (item as any).metodosPago.length > 1;
 
         if (isSplitEnabled) {
           // For split payment, recalculate both payments
@@ -522,7 +564,6 @@ export default function ModalEditarTransaccionRefactored({
 
   // Form validation
   const validarFormulario = (): boolean => {
-    console.log('items', items);
     const nuevosErrores: Record<string, string> = {};
 
     if (!clienteProveedor.trim()) {
@@ -531,14 +572,16 @@ export default function ModalEditarTransaccionRefactored({
       return false;
     }
 
-    if (
-      items.some((item) => item.trabajadorId?.length === 0)
-    ) {
-      toast.error('Debe seleccionar un responsable por item', {
-        position: 'top-center',
-      });
-      nuevosErrores.responsable = 'Debe seleccionar un responsable por item';
-      return false;
+    // Validar que todos los items de ingreso tengan responsable
+    if (tipo === 'ingreso') {
+      const itemsSinResponsable = items.filter((item) => !item.trabajadorId || item.trabajadorId === '');
+      if (itemsSinResponsable.length > 0) {
+        toast.error('Debe seleccionar un responsable para todos los servicios', {
+          position: 'top-center',
+        });
+        nuevosErrores.responsable = 'Debe seleccionar un responsable por item';
+        return false;
+      }
     }
 
     if (items.length === 0) {
@@ -568,6 +611,16 @@ export default function ModalEditarTransaccionRefactored({
       }
     });
 
+    // Validar métodos de pago
+    const metodosPagoValidos = metodosPago.filter(mp => mp.monto && mp.monto > 0);
+    if (metodosPagoValidos.length === 0) {
+      nuevosErrores.metodosPago = 'Debe ingresar al menos un monto de pago mayor a 0';
+      toast.error('Debe ingresar al menos un monto de pago mayor a 0', {
+        position: 'top-center',
+      });
+      return false;
+    }
+
     setErrores(nuevosErrores);
     return Object.keys(nuevosErrores).length === 0;
   };
@@ -579,10 +632,8 @@ export default function ModalEditarTransaccionRefactored({
 
     try {
 
-      // Convert items with payment methods to the format expected by the backend
-      const itemsWithPaymentMethods = items.map((item) => {
-        const itemPaymentMethods = (item as any).metodosPago || [];
-
+      // Convert items without payment methods (payment methods now at comanda level)
+      const itemsForBackend = items.map((item) => {
         return {
           productoServicioId: item.productoServicio?.id!,
           nombre: item.nombre!,
@@ -590,49 +641,25 @@ export default function ModalEditarTransaccionRefactored({
           precio: item.precio!,
           cantidad: item.cantidad!,
           descuento: item.descuento!,
-          trabajadorId: item.responsablesIds?.[0] || '',
+          trabajadorId: item.trabajadorId || item.responsablesIds?.[0] || '',
           subtotal: item.subtotal!,
-          // Include payment method information if available
-          metodosPago: itemPaymentMethods
-        } as any; // Type assertion to match DTO structure
+        } as any;
       });
 
-      const descuentos = itemsWithPaymentMethods.flatMap(item => {
-        const itemWithPayment = item as any;
-        const paymentMethods = itemWithPayment.metodosPago || [];
+      // Filter out payment methods with 0 amount and add required fields
+      const metodosPagoValidos = metodosPago
+        .filter(mp => mp.monto && mp.monto > 0)
+        .map(mp => ({
+          tipo: mp.tipo!,
+          monto: mp.monto!,
+          moneda: mp.moneda!,
+          montoFinal: mp.monto!, // Same as monto (no discount at payment level)
+          descuentoGlobalPorcentaje: 0, // No global discount
+          recargoPorcentaje: 0, // No surcharge
+        })) as any[];
 
-        // Si hay split payment (más de un método de pago), crear un solo descuento
-        if (paymentMethods.length > 1) {
-          // Usar el primer método de pago para obtener el tipo y porcentaje de descuento
-          const firstPaymentMethod = paymentMethods[0];
-          const subtotal = item.subtotal || 0;
-          const descuentoAplicado = firstPaymentMethod.descuentoAplicado || 0;
-          const efectivo = item.metodosPago?.some((mp: any) => mp.tipo === METODOS_PAGO.EFECTIVO);
-          const transferencia = item.metodosPago?.some((mp: any) => mp.tipo === METODOS_PAGO.TRANSFERENCIA);
-          const porcentaje = efectivo ? 10 : transferencia ? 5 : 0;
-
-          // Calcular el porcentaje basado en el descuento aplicado
-          const discountPercentage = subtotal > 0 ? (descuentoAplicado / subtotal) * 100 : 0;
-          const montoFijo = descuentoAplicado; // El monto fijo es el descuento aplicado
-
-          return [{
-            nombre: NombreDescuentoNew.DESCUENTO_POR_METODO_PAGO,
-            descripcion: 'Descuento por método de pago (split payment)',
-            porcentaje: porcentaje,
-            montoFijo: subtotal * (porcentaje / 100),
-          }];
-        } else {
-          // Para pagos normales (un solo método), mantener la lógica original
-          return paymentMethods.map((mp: any) => {
-            return {
-              nombre: NombreDescuentoNew.DESCUENTO_POR_METODO_PAGO,
-              descripcion: 'Descuento por método de pago',
-              porcentaje: mp.descuentoGlobalPorcentaje || 0,
-              montoFijo: 0,
-            };
-          });
-        }
-      }) || [];
+      // Descuentos ya están aplicados a nivel de item como campo descuento
+      const descuentos: any[] = [];
 
       // Preparar IDs de prepago si las señas están activas
       const prepagoARS = señaActiva && señaMonedas.includes('ARS')
@@ -654,7 +681,8 @@ export default function ModalEditarTransaccionRefactored({
       const comandaUpdate: ComandaUpdateNew = {
         clienteId: clienteSeleccionado?.id,
         observaciones,
-        items: itemsWithPaymentMethods,
+        items: itemsForBackend,
+        metodosPago: metodosPagoValidos,
         descuentosAplicados: descuentos,
         usuarioConsumePrepagoARS: señaActiva && señaMonedas.includes('ARS'),
         usuarioConsumePrepagoUSD: señaActiva && señaMonedas.includes('USD'),
@@ -662,42 +690,15 @@ export default function ModalEditarTransaccionRefactored({
         valorDolar: dolar, // Incluir el valor del dólar seleccionado
       };
 
-      console.log('comandaUpdate', comandaUpdate, señaActiva, señaMonedas, prepagoARS, prepagoUSD);
 
-      // Calculate totals from payment methods in items
-      comandaUpdate.precioDolar =
-        comandaUpdate.items?.reduce((sum, item) => {
-          const itemWithPayment = item as any;
-          return (
-            sum +
-            (itemWithPayment.metodosPago || []).reduce(
-              (itemSum: number, mp: any) => {
-                return (
-                  itemSum +
-                  (mp.moneda === MonedaNew.USD ? mp.montoFinal || 0 : 0)
-                );
-              },
-              0
-            )
-          );
-        }, 0) || 0;
+      // Calculate totals from payment methods at comanda level
+      comandaUpdate.precioDolar = metodosPagoValidos
+        .filter(mp => mp.moneda === 'USD')
+        .reduce((sum, mp) => sum + mp.monto, 0);
 
-      comandaUpdate.precioPesos =
-        comandaUpdate.items?.reduce((sum, item) => {
-          const itemWithPayment = item as any;
-          return (
-            sum +
-            (itemWithPayment.metodosPago || []).reduce(
-              (itemSum: number, mp: any) => {
-                return (
-                  itemSum +
-                  (mp.moneda === MonedaNew.ARS ? mp.montoFinal || 0 : 0)
-                );
-              },
-              0
-            )
-          );
-        }, 0) || 0;
+      comandaUpdate.precioPesos = metodosPagoValidos
+        .filter(mp => mp.moneda === 'ARS')
+        .reduce((sum, mp) => sum + mp.monto, 0);
 
       // Restar señas activas del precio correspondiente según la moneda
       // if (señaActiva && clienteSeleccionado?.señasDisponibles) {
@@ -1002,7 +1003,7 @@ export default function ModalEditarTransaccionRefactored({
                     </div>
                   ) : (
                     items.map((item, index) => (
-                      <ItemPaymentFormEdit
+                      <ItemFormSimple
                         key={`${item.id}-${item.cantidad}-${item.precio}`}
                         item={item}
                         index={index}
@@ -1010,10 +1011,7 @@ export default function ModalEditarTransaccionRefactored({
                         onRemoveItem={eliminarItem}
                         tipo={tipo}
                         personal={personal}
-                        cliente={clienteSeleccionado}
-                        isEditMode={true}
                         disabled={!sePuedeEditar}
-                        onDescuentosToggle={handleItemDescuentosToggle}
                       />
                     ))
                   )}
@@ -1023,6 +1021,27 @@ export default function ModalEditarTransaccionRefactored({
                   )}
                 </CardContent>
               </Card>
+
+              {/* Payment Methods Section */}
+              {items.length > 0 && (
+                <Card className="border border-gray-300 bg-white shadow-md">
+                  <CardHeader className="bg-gradient-to-r from-[#f9bbc4]/10 to-[#e8b4c6]/10">
+                    <CardTitle className="text-lg text-[#4a3540]">
+                      Métodos de Pago
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="pt-6">
+                    <MetodosPagoComanda
+                      metodosPago={metodosPago}
+                      onChange={setMetodosPago}
+                      disabled={!sePuedeEditar}
+                    />
+                    {errores.metodosPago && (
+                      <p className="mt-2 text-sm text-red-600">{errores.metodosPago}</p>
+                    )}
+                  </CardContent>
+                </Card>
+              )}
             </div>
 
             {/* Right Column - Summary */}
@@ -1031,7 +1050,6 @@ export default function ModalEditarTransaccionRefactored({
                 <TransactionSummaryEdit
                   items={items}
                   tipo={tipo}
-                  descuentosActivos={descuentosActivos}
                   señaActiva={señaActiva}
                   onSeñaToggle={setSeñaActiva}
                   señaMonedas={señaMonedas}

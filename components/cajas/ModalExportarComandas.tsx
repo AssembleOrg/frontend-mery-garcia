@@ -119,30 +119,27 @@ export default function ModalExportarComandas({
 
           const servicios = comanda.items.map((item) => item.nombre).join('; ');
 
-          // Calcular totales para esta comanda específica
-          const comandaHasUSD = comanda.items?.some((item) =>
-            item.metodosPago?.some((mp) => mp.moneda === 'USD')
-          ) ?? false;
+          // Calcular totales para esta comanda específica (desde metodosPago de comanda)
+          const metodosPagoComanda = (comanda as any).metodosPago || [];
+          const comandaHasUSD = metodosPagoComanda.some((mp: any) => mp.moneda === 'USD');
 
           let totalUSD = 0;
           let totalARS = 0;
 
-          comanda.items?.forEach((item) => {
-            item.metodosPago?.forEach((mp) => {
-              switch (mp.moneda) {
-                case 'USD':
-                  totalUSD += mp.montoFinal ?? 0;
-                  break;
+          metodosPagoComanda.forEach((mp: any) => {
+            switch (mp.moneda) {
+              case 'USD':
+                totalUSD += mp.montoFinal ?? mp.monto ?? 0;
+                break;
 
-                case 'ARS':
-                  // Si la comanda tiene USD, priorizamos montoFinal; si no, monto.
-                  const montoARS = comandaHasUSD
-                    ? (mp.montoFinal ?? 0)
-                    : (mp.monto ?? 0);
-                  totalARS += montoARS;
-                  break;
-              }
-            });
+              case 'ARS':
+                // Si la comanda tiene USD, priorizamos montoFinal; si no, monto.
+                const montoARS = comandaHasUSD
+                  ? (mp.montoFinal ?? mp.monto ?? 0)
+                  : (mp.monto ?? 0);
+                totalARS += montoARS;
+                break;
+            }
           });
 
           const total = `USD: $${totalUSD.toFixed(2)} | ARS: $${totalARS.toFixed(2)}`;
@@ -244,29 +241,26 @@ export default function ModalExportarComandas({
         const servicios = comanda.items.map((item) => item.nombre).join('; ');
 
         // Calcular totales para esta comanda específica
-        const comandaHasUSD = comanda.items?.some((item) =>
-          item.metodosPago?.some((mp) => mp.moneda === 'USD')
-        ) ?? false;
+        const metodosPagoComanda = (comanda as any).metodosPago || [];
+        const comandaHasUSD = metodosPagoComanda.some((mp: any) => mp.moneda === 'USD');
 
         let totalUSD = 0;
         let totalARS = 0;
 
-        comanda.items?.forEach((item) => {
-          item.metodosPago?.forEach((mp) => {
-            switch (mp.moneda) {
-              case 'USD':
-                totalUSD += mp.montoFinal ?? 0;
-                break;
+        metodosPagoComanda.forEach((mp: any) => {
+          switch (mp.moneda) {
+            case 'USD':
+              totalUSD += mp.montoFinal ?? mp.monto ?? 0;
+              break;
 
-              case 'ARS':
-                // Si la comanda tiene USD, priorizamos montoFinal; si no, monto.
-                const montoARS = comandaHasUSD
-                  ? (mp.montoFinal ?? 0)
-                  : (mp.monto ?? 0);
-                totalARS += montoARS;
-                break;
-            }
-          });
+            case 'ARS':
+              // Si la comanda tiene USD, priorizamos montoFinal; si no, monto.
+              const montoARS = comandaHasUSD
+                ? (mp.montoFinal ?? mp.monto ?? 0)
+                : (mp.monto ?? 0);
+              totalARS += montoARS;
+              break;
+          }
         });
 
         // Sumar a los totales generales
@@ -368,29 +362,26 @@ export default function ModalExportarComandas({
         const servicios = comanda.items.map((item) => item.nombre).join('; ');
 
         // Calcular totales para esta comanda específica
-        const comandaHasUSD = comanda.items?.some((item) =>
-          item.metodosPago?.some((mp) => mp.moneda === 'USD')
-        ) ?? false;
+        const metodosPagoComanda = (comanda as any).metodosPago || [];
+        const comandaHasUSD = metodosPagoComanda.some((mp: any) => mp.moneda === 'USD');
 
         let totalUSD = 0;
         let totalARS = 0;
 
-        comanda.items?.forEach((item) => {
-          item.metodosPago?.forEach((mp) => {
-            switch (mp.moneda) {
-              case 'USD':
-                totalUSD += mp.montoFinal ?? 0;
-                break;
+        metodosPagoComanda.forEach((mp: any) => {
+          switch (mp.moneda) {
+            case 'USD':
+              totalUSD += mp.montoFinal ?? mp.monto ?? 0;
+              break;
 
-              case 'ARS':
-                // Si la comanda tiene USD, priorizamos montoFinal; si no, monto.
-                const montoARS = comandaHasUSD
-                  ? (mp.montoFinal ?? 0)
-                  : (mp.monto ?? 0);
-                totalARS += montoARS;
-                break;
-            }
-          });
+            case 'ARS':
+              // Si la comanda tiene USD, priorizamos montoFinal; si no, monto.
+              const montoARS = comandaHasUSD
+                ? (mp.montoFinal ?? mp.monto ?? 0)
+                : (mp.monto ?? 0);
+              totalARS += montoARS;
+              break;
+          }
         });
 
         // Sumar a los totales generales

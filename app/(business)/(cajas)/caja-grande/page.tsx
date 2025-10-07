@@ -135,18 +135,8 @@ export default function CajaGrandePage() {
       }
       return acc;
     }, 0);
-    const residualArs = movimientosPaginados.data.reduce((acc, mov) => {
-      if (mov.esIngreso) {
-        return acc + (Number(mov.residualARS) || 0);
-      }
-      return acc;
-    }, 0);
-    const residualUsd = movimientosPaginados.data.reduce((acc, mov) => {
-      if (mov.esIngreso) {
-        return acc + (Number(mov.residualUSD) || 0);
-      }
-      return acc;
-    }, 0);
+    const residualArs = movimientosPaginados.data.filter(m => m.comandas.length > 0).length > 0 ? movimientosPaginados.data.filter(m => m.comandas.length > 0)[0].esIngreso ? movimientosPaginados.data[0].residualARS : 0 : 0;
+    const residualUsd = movimientosPaginados.data.filter(m => m.comandas.length > 0).length > 0 ? movimientosPaginados.data.filter(m => m.comandas.length > 0)[0].esIngreso ? movimientosPaginados.data[0].residualUSD : 0 : 0;
 
     const egresosArs = movimientosPaginados.data.reduce((acc, mov) => {
       if (!mov.esIngreso) {
@@ -223,7 +213,6 @@ export default function CajaGrandePage() {
         fechaHasta: dateRange?.to?.toISOString() || '',
       });
 
-      console.log('Movimiento registrado exitosamente');
     } catch (error) {
       console.error('Error al registrar movimiento:', error);
       throw error; // Re-lanzar el error para que el modal lo maneje

@@ -344,9 +344,8 @@ export default function TransactionsTableTanStack({
       accessorKey: 'items',
       header: 'Método',
       cell: ({ row }) => {
-        // Extraer métodos de pago de todos los items
-        const items = row.original.items || [];
-        const metodosPago = items.flatMap((item: any) => item.metodosPago || []);
+        // Extraer métodos de pago de la comanda (no de items)
+        const metodosPago = (row.original as any).metodosPago || [];
         
         const isValidated = row.original.estadoDeComanda === EstadoDeComandaNew.VALIDADO;
 

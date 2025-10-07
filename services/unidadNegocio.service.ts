@@ -160,6 +160,7 @@ export enum TipoPagoNew {
   TARJETA = 'TARJETA',
   TRANSFERENCIA = 'TRANSFERENCIA',
   GIFT_CARD = 'GIFT_CARD',
+  MERCADO_PAGO = 'MERCADO_PAGO',
 }
 
 export interface UnidadNegocioNew {
@@ -299,8 +300,11 @@ export interface ItemComandaNew {
   /** Cantidad vendida */
   cantidad: number;
 
-  /** Descuento unitario aplicado (en AR$) */
+  /** Descuento aplicado (puede ser monto o porcentaje según lógica frontend) */
   descuento: number;
+
+  /** Indica si un item en USD se pagará en pesos - Solo para lógica frontend */
+  pagarEnPesos?: boolean;
 
   /** Subtotal = (precio − descuento) × cantidad */
   subtotal: number;
@@ -313,7 +317,7 @@ export interface ItemComandaNew {
   /* ---------- Relaciones ---------- */
   comanda: ComandaNew;
   trabajador: TrabajadorNew;
-  metodosPago: Partial<MetodoPagoNew>[];
+  // metodosPago: Partial<MetodoPagoNew>[];
 }
 
 export type ItemComandaCreateNew = Partial<ItemComandaNew> & {
@@ -376,6 +380,7 @@ export interface ComandaNew {
   prepagoARS?: PrepagoGuardadoNew;
   prepagoUSDID?: string;
   prepagoUSD?: PrepagoGuardadoNew;
+  metodosPago?: MetodoPagoNew[];
   creadoPor: TrabajadorNew;
   cliente: ClienteNew;
   movimientos: MovimientoNew[];

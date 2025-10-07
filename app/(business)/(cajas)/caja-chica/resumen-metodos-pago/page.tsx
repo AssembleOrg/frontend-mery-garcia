@@ -36,7 +36,12 @@ const breadcrumbItems = [
 ];
 
 // Iconos y colores por método de pago
-const metodoPagoConfig = {
+const metodoPagoConfig: Record<TipoPago, {
+  icon: React.ComponentType<any>;
+  color: string;
+  bgColor: string;
+  label: string;
+}> = {
   [TipoPago.EFECTIVO]: {
     icon: Banknote,
     color: '#10b981',
@@ -73,6 +78,12 @@ const metodoPagoConfig = {
     bgColor: 'from-rose-500/10 to-rose-600/5',
     label: 'Gift Card',
   },
+  [TipoPago.MERCADO_PAGO]: {
+    icon: DollarSign,
+    color: '#06b6d4',
+    bgColor: 'from-cyan-500/10 to-cyan-600/5',
+    label: 'Mercado Pago',
+  },
 };
 
 export default function ResumenMetodosPagoPage() {
@@ -94,7 +105,6 @@ export default function ResumenMetodosPagoPage() {
       const result = await CajaResumenService.getResumenCajaDiario(
         fechaString ? { fecha: fechaString } : undefined
       );
-      console.log('result', result);
       setData(result);
       toast.success('Resumen cargado correctamente');
     } catch (err) {
@@ -311,7 +321,8 @@ export default function ResumenMetodosPagoPage() {
                           Desglose por Método de Pago
                         </h2>
                         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                          {Object.entries(TipoPago).map(([key, tipoPago]) => {
+                          {Object.entries(TipoPago)
+                            .map(([key, tipoPago]) => {
                             const config = metodoPagoConfig[tipoPago];
                             const montos = data.porMetodoPago[tipoPago];
                             const IconComponent = config.icon;
@@ -386,7 +397,7 @@ export default function ResumenMetodosPagoPage() {
                               <thead className="bg-gradient-to-r from-[#f9bbc4]/20 to-[#e8b4c6]/20">
                                 <tr>
                                   <th className="px-6 py-3 text-left text-sm font-semibold text-[#4a3540]">
-                                    Método de Pago
+                                    Método de Pago (Incluyen Ingresos y Señas)
                                   </th>
                                   <th className="px-6 py-3 text-right text-sm font-semibold text-[#4a3540]">
                                     ARS
@@ -397,7 +408,8 @@ export default function ResumenMetodosPagoPage() {
                                 </tr>
                               </thead>
                               <tbody className="divide-y divide-gray-200 bg-white">
-                                {Object.entries(TipoPago).map(([key, tipoPago], index) => {
+                                {Object.entries(TipoPago)
+                                  .map(([key, tipoPago], index) => {
                                   const config = metodoPagoConfig[tipoPago];
                                   const montos = data.porMetodoPago[tipoPago];
                                   const IconComponent = config.icon;
