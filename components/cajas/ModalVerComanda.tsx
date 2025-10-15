@@ -99,38 +99,38 @@ export default function ModalVerComanda({ isOpen, onClose, comanda }: ModalVerCo
       acc[clave] = { tipo, moneda, total: 0 };
     }
     acc[clave].total += total;
-    
+    console.table(acc);
     return acc;
   }, {});
 
   // Restar señas de los totales USD
-  Object.keys(metodosPagoAgrupados).forEach(clave => {
-    const metodo = metodosPagoAgrupados[clave];
-    if (metodo.moneda === 'USD' && señaInfo.usd > 0) {
-      // Distribuir la seña proporcionalmente entre los métodos USD
-      const totalUSDOriginal = allPaymentMethods
-        .filter(m => (m.moneda || 'USD') === 'USD')
-        .reduce((sum, m) => sum + (m.montoFinal ?? m.monto ?? 0), 0);
+  // Object.keys(metodosPagoAgrupados).forEach(clave => {
+  //   const metodo = metodosPagoAgrupados[clave];
+  //   if (metodo.moneda === 'USD' && señaInfo.usd > 0) {
+  //     // Distribuir la seña proporcionalmente entre los métodos USD
+  //     const totalUSDOriginal = allPaymentMethods
+  //       .filter(m => (m.moneda || 'USD') === 'USD')
+  //       .reduce((sum, m) => sum + (m.montoFinal ?? m.monto ?? 0), 0);
       
-      if (totalUSDOriginal > 0) {
-        const proporcion = metodo.total / totalUSDOriginal;
-        const descuentoSeña = señaInfo.usd * proporcion;
-        metodo.total = Math.max(0, metodo.total - descuentoSeña);
-      }
-    }
-    if (metodo.moneda === 'ARS' && señaInfo.ars > 0) {
-      // Distribuir la seña proporcionalmente entre los métodos ARS
-      const totalARSOriginal = allPaymentMethods
-        .filter(m => (m.moneda || 'USD') === 'ARS')
-        .reduce((sum, m) => sum + (m.montoFinal ?? m.monto ?? 0), 0);
+  //     if (totalUSDOriginal > 0) {
+  //       const proporcion = metodo.total / totalUSDOriginal;
+  //       const descuentoSeña = señaInfo.usd * proporcion;
+  //       metodo.total = Math.max(0, metodo.total - descuentoSeña);
+  //     }
+  //   }
+  //   if (metodo.moneda === 'ARS' && señaInfo.ars > 0) {
+  //     // Distribuir la seña proporcionalmente entre los métodos ARS
+  //     const totalARSOriginal = allPaymentMethods
+  //       .filter(m => (m.moneda || 'USD') === 'ARS')
+  //       .reduce((sum, m) => sum + (m.montoFinal ?? m.monto ?? 0), 0);
       
-      if (totalARSOriginal > 0) {
-        const proporcion = metodo.total / totalARSOriginal;
-        const descuentoSeña = señaInfo.ars * proporcion;
-        metodo.total = Math.max(0, metodo.total - descuentoSeña);
-      }
-    }
-  });
+  //     if (totalARSOriginal > 0) {
+  //       const proporcion = metodo.total / totalARSOriginal;
+  //       const descuentoSeña = señaInfo.ars * proporcion;
+  //       metodo.total = Math.max(0, metodo.total - descuentoSeña);
+  //     }
+  //   }
+  // });
 
   // Formatear detalle de cada método de pago
   const detalleMetodos = Object.values(metodosPagoAgrupados)
@@ -140,6 +140,7 @@ export default function ModalVerComanda({ isOpen, onClose, comanda }: ModalVerCo
         ? formatUSD(metodo.total)
         : formatARSFromNative(metodo.total);
       
+        console.warn('metodo', metodo, montoFormateado);
       return `${metodo.tipo} ${metodo.moneda}: ${montoFormateado}`;
     }).join(' + ');
 

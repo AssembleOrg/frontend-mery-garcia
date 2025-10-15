@@ -869,6 +869,7 @@ export default function ModalTransaccionUnificado({
         clienteId: clienteSeleccionado?.id,
         creadoPorId: user?.id,
         numero: numeroTransaccion.toString(),
+        observaciones: observaciones,
         tipoDeComanda:
           tipo === 'ingreso'
             ? TipoDeComandaNew.INGRESO

@@ -161,6 +161,7 @@ export enum TipoPagoNew {
   TRANSFERENCIA = 'TRANSFERENCIA',
   GIFT_CARD = 'GIFT_CARD',
   MERCADO_PAGO = 'MERCADO_PAGO',
+  QR = 'QR',
 }
 
 export interface UnidadNegocioNew {

@@ -19,7 +19,8 @@ import {
   Banknote, 
   Smartphone,
   Gift,
-  DollarSign 
+  DollarSign, 
+  QrCode
 } from 'lucide-react';
 import { MetodoPagoNew, TipoPagoNew, MonedaNew } from '@/services/unidadNegocio.service';
 
@@ -49,6 +50,12 @@ const METODOS_PAGO_CONFIG = {
     label: 'Gift Card',
     icon: Gift,
     color: 'text-pink-600',
+  },
+
+  [TipoPagoNew.QR]: {
+    label: 'QR',
+    icon: QrCode,
+    color: 'text-green-600',
   },
   [TipoPagoNew.MERCADO_PAGO]: {
     label: 'Mercado Pago',

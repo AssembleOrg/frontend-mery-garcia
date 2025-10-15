@@ -225,16 +225,17 @@ export default function TransactionSummary({
       señaMonedas.forEach(moneda => {
         if (moneda === 'ARS' && cliente.señasDisponibles.ars > 0) {
           // Convert ARS seña to USD for calculation if needed
-          if (primaryCurrency === MONEDAS.USD) {
-            // Convert ARS to USD using exchange rate
-            señaAplicada += cliente.señasDisponibles.ars / 1330; // Assuming 1 USD = 1330 ARS
+          if (primaryCurrency === MONEDAS.USD && isExchangeRateValid) {
+            // Convert ARS to USD using real exchange rate
+            const exchangeRate = usdToArs(1); // Get the current USD to ARS rate
+            señaAplicada += cliente.señasDisponibles.ars / exchangeRate;
           } else {
             señaAplicada += cliente.señasDisponibles.ars;
           }
         } else if (moneda === 'USD' && cliente.señasDisponibles.usd > 0) {
-          if (primaryCurrency === MONEDAS.ARS) {
-            // Convert USD to ARS
-            señaAplicada += cliente.señasDisponibles.usd * 1330; // Assuming 1 USD = 1330 ARS
+          if (primaryCurrency === MONEDAS.ARS && isExchangeRateValid) {
+            // Convert USD to ARS using real exchange rate
+            señaAplicada += usdToArs(cliente.señasDisponibles.usd);
           } else {
             señaAplicada += cliente.señasDisponibles.usd;
           }
@@ -255,7 +256,8 @@ export default function TransactionSummary({
     señaActiva,
     señaMonedas.join(','),
     cliente?.señasDisponibles,
-    usdToArs
+    usdToArs,
+    isExchangeRateValid
   ]);
 
   // Get the primary currency for unified display

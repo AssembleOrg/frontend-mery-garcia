@@ -15,6 +15,7 @@ import {
   Plus,
   IdCard,
   Gift,
+  QrCode,
 } from 'lucide-react';
 import { Cliente } from '@/types/caja';
 import { useCurrencyConverter } from '@/hooks/useCurrencyConverter';
@@ -436,6 +437,12 @@ export default function ModalCliente({
                             Mercado Pago
                           </div>
                         </SelectItem>
+                        <SelectItem value={TipoPagoNew.QR}>
+                          <div className="flex items-center gap-2">
+                            <QrCode className="h-4 w-4" />
+                            QR
+                          </div>
+                        </SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
@@ -481,6 +488,12 @@ export default function ModalCliente({
                           <div className="flex items-center gap-2">
                             <DollarSign className="h-4 w-4" />
                             Mercado Pago
+                          </div>
+                        </SelectItem>
+                        <SelectItem value={TipoPagoNew.QR}>
+                          <div className="flex items-center gap-2">
+                            <QrCode className="h-4 w-4" />
+                            QR
                           </div>
                         </SelectItem>
                       </SelectContent>
