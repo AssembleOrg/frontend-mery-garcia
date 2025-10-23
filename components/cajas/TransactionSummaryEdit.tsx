@@ -35,6 +35,7 @@ interface TransactionSummaryEditProps {
   onSeñaMonedasChange?: (monedas: string[]) => void;
   comandaOriginal?: ComandaNew;
   clienteActual?: ClienteNew | null;
+  customExchangeRate?: number; // Optional: Use original comanda exchange rate instead of current
 }
 
 export default function TransactionSummaryEdit({
@@ -47,9 +48,25 @@ export default function TransactionSummaryEdit({
   onSeñaMonedasChange,
   comandaOriginal,
   clienteActual,
+  customExchangeRate,
 }: TransactionSummaryEditProps) {
-  const { formatARS, formatUSD, formatARSFromNative, isExchangeRateValid, exchangeRate } = useCurrencyConverter();
+  const { formatARS, formatUSD, formatARSFromNative, isExchangeRateValid, exchangeRate: systemExchangeRate, arsToUsd, usdToArs } = useCurrencyConverter();
   const { descuentosPorMetodo } = useConfiguracion();
+  
+  // Use custom exchange rate if provided (for editing comandas with original rate), otherwise use system rate
+  const exchangeRate = customExchangeRate || systemExchangeRate;
+  const effectiveIsExchangeRateValid = customExchangeRate ? customExchangeRate > 0 : isExchangeRateValid;
+  
+  // Create custom conversion functions using the effective exchange rate
+  const effectiveArsToUsd = (amountARS: number): number => {
+    if (exchangeRate <= 0) return amountARS / 1000;
+    return amountARS / exchangeRate;
+  };
+  
+  const effectiveUsdToArs = (amountUSD: number): number => {
+    if (exchangeRate <= 0) return amountUSD * 1000;
+    return amountUSD * exchangeRate;
+  };
 
   // Extract seña information from original comanda or current client
   const señaInfo = useMemo(() => {
@@ -141,7 +158,7 @@ export default function TransactionSummaryEdit({
     const pagarEnPesos = (item as any).pagarEnPesos || false;
     
     // If paying in pesos (but not frozen), convert from USD to ARS
-    if (!isFrozen && pagarEnPesos && isExchangeRateValid) {
+    if (!isFrozen && pagarEnPesos && effectiveIsExchangeRateValid) {
       return Math.round(baseSubtotal * exchangeRate);
     }
     
@@ -155,7 +172,7 @@ export default function TransactionSummaryEdit({
     const pagarEnPesos = (item as any).pagarEnPesos || false;
     
     // If paying in pesos (but not frozen), convert from USD to ARS
-    if (!isFrozen && pagarEnPesos && isExchangeRateValid) {
+    if (!isFrozen && pagarEnPesos && effectiveIsExchangeRateValid) {
       return Math.round(discount * exchangeRate);
     }
     
@@ -269,23 +286,38 @@ export default function TransactionSummaryEdit({
     if (señaActiva && señaMonedas.length > 0) {
       let señaAplicada = 0;
       
+      // Debug: Log exchange rate being used
+      console.log('🔍 [TransactionSummaryEdit] Aplicando seña:', {
+        exchangeRate,
+        isExchangeRateValid,
+        primaryCurrency,
+        señaInfo,
+        señaMonedas
+      });
+      
       señaMonedas.forEach(moneda => {
         if (moneda === 'ARS' && señaInfo.ars > 0) {
-          if (primaryCurrency === MONEDAS.USD && isExchangeRateValid) {
-            // Convert ARS to USD using exchange rate
-            señaAplicada += señaInfo.ars / exchangeRate;
+          if (primaryCurrency === MONEDAS.USD && effectiveIsExchangeRateValid) {
+            // Convert ARS to USD using effective exchange rate function
+            const señaEnUSD = effectiveArsToUsd(señaInfo.ars);
+            console.log(`   💵 Convirtiendo seña ARS ${señaInfo.ars} a USD: ${señaEnUSD} (rate: ${exchangeRate})`);
+            señaAplicada += señaEnUSD;
           } else {
             señaAplicada += señaInfo.ars;
           }
         } else if (moneda === 'USD' && señaInfo.usd > 0) {
-          if (primaryCurrency === MONEDAS.ARS && isExchangeRateValid) {
-            // Convert USD to ARS
-            señaAplicada += señaInfo.usd * exchangeRate;
+          if (primaryCurrency === MONEDAS.ARS && effectiveIsExchangeRateValid) {
+            // Convert USD to ARS using effective exchange rate function
+            const señaEnARS = effectiveUsdToArs(señaInfo.usd);
+            console.log(`   💵 Convirtiendo seña USD ${señaInfo.usd} a ARS: ${señaEnARS} (rate: ${exchangeRate})`);
+            señaAplicada += señaEnARS;
           } else {
             señaAplicada += señaInfo.usd;
           }
         }
       });
+      
+      console.log(`   ✅ Total seña aplicada: ${señaAplicada}`);
       
       totalConSeña = Math.max(0, totalAmount - señaAplicada);
     }
@@ -301,7 +333,9 @@ export default function TransactionSummaryEdit({
     señaMonedas.join(','),
     señaInfo.ars,
     señaInfo.usd,
-    exchangeRate
+    exchangeRate,
+    customExchangeRate,
+    effectiveIsExchangeRateValid
   ]);
 
   const hasPrepagosGuardados = señaInfo.ars > 0 || señaInfo.usd > 0;

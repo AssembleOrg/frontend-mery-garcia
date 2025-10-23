@@ -1056,6 +1056,7 @@ export default function ModalEditarTransaccionRefactored({
                   onSeñaMonedasChange={setSeñaMonedas}
                   comandaOriginal={comandaState}
                   clienteActual={clienteSeleccionado}
+                  customExchangeRate={usarDolarOriginal ? dolar : undefined}
                 />
 
                 {/* Action Buttons */}

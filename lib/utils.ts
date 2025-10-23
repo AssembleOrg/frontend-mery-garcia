@@ -268,3 +268,31 @@ export const obtenerNumeroComandaManual = (): string => {
   
   return `MAN-${año}${mes}${dia}-${timestamp}`;
 };
+
+/**
+ * Extrae el tipo de pago de los prepagos activos de un cliente
+ * @param prepagos - Lista de prepagos guardados del cliente
+ * @param moneda - Moneda a buscar ('ARS' o 'USD')
+ * @returns Tipo de pago del prepago activo o undefined si no existe
+ */
+export function extractarTipoPagoDePrepagos(
+  prepagos: Array<{
+    estado: string;
+    moneda: string;
+    tipoPago?: string;
+  }> | undefined,
+  moneda: 'ARS' | 'USD'
+): string | undefined {
+  if (!prepagos || prepagos.length === 0) {
+    return undefined;
+  }
+
+  // Buscar el prepago ACTIVO de la moneda solicitada
+  const prepagoActivo = prepagos.find(
+    (p) =>
+      (p.estado === 'ACTIVO' || p.estado === 'ACTIVA') &&
+      p.moneda === moneda
+  );
+
+  return prepagoActivo?.tipoPago;
+}

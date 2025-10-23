@@ -19,12 +19,13 @@ import {
 } from 'lucide-react';
 import { Cliente } from '@/types/caja';
 import { useCurrencyConverter } from '@/hooks/useCurrencyConverter';
-import { TipoPagoNew } from '@/services/unidadNegocio.service';
+import { TipoPagoNew, ClienteNew } from '@/services/unidadNegocio.service';
+import { extractarTipoPagoDePrepagos } from '@/lib/utils';
 
 interface ModalClienteProps {
   isOpen: boolean;
   onClose: () => void;
-  cliente?: Cliente | null;
+  cliente?: (Cliente | ClienteNew) | null;
   onSave: (
     cliente: Omit<Cliente, 'id' | 'fechaRegistro' | 'señasDisponibles'>,
     señaInicial?: { ars: number; usd: number },
@@ -72,8 +73,30 @@ export default function ModalCliente({
         setDni(cliente.dni || '');
         setSeñaArs(String(cliente.señasDisponibles?.ars || 0));
         setSeñaUsd(String(cliente.señasDisponibles?.usd || 0));
-        setTipoPagoARS((cliente.tipoPagoARS as TipoPagoNew) || TipoPagoNew.EFECTIVO);
-        setTipoPagoUSD((cliente.tipoPagoUSD as TipoPagoNew) || TipoPagoNew.EFECTIVO);
+        
+        // Intentar obtener tipoPago desde el campo directo o desde prepagosGuardados
+        let tipoPagoARSValue = cliente.tipoPagoARS;
+        let tipoPagoUSDValue = cliente.tipoPagoUSD;
+        
+        // Si no existe en el root, intentar extraerlo de prepagosGuardados
+        if (!tipoPagoARSValue && 'prepagosGuardados' in cliente) {
+          const clienteNew = cliente as ClienteNew;
+          tipoPagoARSValue = extractarTipoPagoDePrepagos(
+            clienteNew.prepagosGuardados,
+            'ARS'
+          );
+        }
+        
+        if (!tipoPagoUSDValue && 'prepagosGuardados' in cliente) {
+          const clienteNew = cliente as ClienteNew;
+          tipoPagoUSDValue = extractarTipoPagoDePrepagos(
+            clienteNew.prepagosGuardados,
+            'USD'
+          );
+        }
+        
+        setTipoPagoARS((tipoPagoARSValue as TipoPagoNew) || TipoPagoNew.EFECTIVO);
+        setTipoPagoUSD((tipoPagoUSDValue as TipoPagoNew) || TipoPagoNew.EFECTIVO);
       } else {
         // Modo creación
         clearForm();

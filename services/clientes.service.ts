@@ -10,6 +10,8 @@ export interface CrearClienteDto {
   dni?: string;
   señaUsd?: number;
   señaArs?: number;
+  tipoPagoARS?: string;
+  tipoPagoUSD?: string;
 }
 
 export interface ActualizarClienteDto {
@@ -20,6 +22,8 @@ export interface ActualizarClienteDto {
   dni?: string;
   señaUsd?: number;
   señaArs?: number;
+  tipoPagoARS?: string;
+  tipoPagoUSD?: string;
 }
 
 export interface FiltrarClientesDto {
