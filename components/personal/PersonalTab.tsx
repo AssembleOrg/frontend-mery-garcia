@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { Input } from '@/components/ui/input';
 import {
   Table,
   TableBody,
@@ -45,7 +46,7 @@ export default function PersonalTab() {
 
   const [modalAbierto, setModalAbierto] = useState(false);
   const [alertaEliminar, setAlertaEliminar] = useState<Trabajador | null>(null);
-
+  const [confirmacionTexto, setConfirmacionTexto] = useState('');
 
   const handleNuevoPersonal = () => {
     setModalAbierto(true);
@@ -62,10 +63,16 @@ export default function PersonalTab() {
   const confirmarEliminar = async () => {
     if (alertaEliminar) {
       const exito = await eliminarTrabajador(alertaEliminar.id);
-        // if () {
-        //   setAlertaEliminar(null);
-        // }
+      if (exito) {
+        setAlertaEliminar(null);
+        setConfirmacionTexto('');
+      }
     }
+  };
+
+  const handleCerrarModal = () => {
+    setAlertaEliminar(null);
+    setConfirmacionTexto('');
   };
 
   const handleRefresh = async () => {
@@ -253,7 +260,7 @@ export default function PersonalTab() {
       {/* Alert Dialog para eliminar */}
       <AlertDialog
         open={!!alertaEliminar}
-        onOpenChange={() => setAlertaEliminar(null)}
+        onOpenChange={handleCerrarModal}
       >
         <AlertDialogContent>
           <AlertDialogHeader>
@@ -263,12 +270,28 @@ export default function PersonalTab() {
               {alertaEliminar?.nombre}&quot;. Esta acción no se puede deshacer.
             </AlertDialogDescription>
           </AlertDialogHeader>
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <p className="text-sm font-medium text-[#4a3540]">
+                Para confirmar, escribe <span className="font-bold text-red-600">eliminar</span> en el campo de abajo:
+              </p>
+              <Input
+                value={confirmacionTexto}
+                onChange={(e) => setConfirmacionTexto(e.target.value)}
+                placeholder="Escribe 'eliminar' para confirmar"
+                className="border-[#f9bbc4]/30 focus:border-[#f9bbc4]"
+                autoComplete="off"
+              />
+            </div>
+          </div>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogCancel onClick={handleCerrarModal}>
+              Cancelar
+            </AlertDialogCancel>
             <AlertDialogAction
               onClick={confirmarEliminar}
               className="bg-red-600 hover:bg-red-700"
-              disabled={isLoading}
+              disabled={isLoading || confirmacionTexto.toLowerCase() !== 'eliminar'}
             >
               {isLoading ? 'Eliminando...' : 'Eliminar'}
             </AlertDialogAction>

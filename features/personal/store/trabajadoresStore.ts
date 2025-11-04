@@ -163,14 +163,17 @@ const useTrabajadoresStore = create<TrabajadoresState>((set, get) => ({
     
     set({ isLoading: true, error: null });
     try {
-      // TODO: Implementar eliminarTrabajador en trabajadoresService
-      // await trabajadoresService.eliminarTrabajador(id);
+      await trabajadoresService.eliminarTrabajador(id);
       
-      // Por ahora, solo mostrar un toast informativo
-      toast.info('Función de eliminación no implementada en el servicio');
+      // Actualizar el estado eliminando el trabajador
+      set(state => ({
+        trabajadores: state.trabajadores.filter(t => t.id !== id),
+        isLoading: false
+      }));
       
-      set({ isLoading: false });
-      return false;
+      toast.success('✅ Trabajador eliminado exitosamente');
+      logger.info('✅ Trabajador eliminado:', id);
+      return true;
     } catch (error) {
       const errorMessage = error instanceof Error 
         ? error.message 

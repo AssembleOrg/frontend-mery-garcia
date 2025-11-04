@@ -46,9 +46,11 @@ class TrabajadoresService {
     return response.data;
   }
 
-  // async actualizarTrabajador(id: string, trabajador: TrabajadorUpdateNew): Promise<TrabajadorNew> {
-  //   const response = await apiFetch<{
-  //     data: TrabajadorNew;
+  async eliminarTrabajador(id: string): Promise<void> {
+    await apiFetch<void>(`${this.baseUrl}/${id}`, {
+      method: 'DELETE',
+    });
+  }
 }
 
 export const trabajadoresService = new TrabajadoresService();
