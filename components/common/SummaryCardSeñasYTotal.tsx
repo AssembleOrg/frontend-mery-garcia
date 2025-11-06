@@ -78,7 +78,7 @@ export default function SummaryCardSeñasYTotal({
           {/* Total en Caja */}
           <div className="space-y-2">
             <div className="text-xs font-medium text-gray-600 border-b border-gray-100 pb-1">
-              🏦 Total en Caja (Ingresos + Señas + Residual)
+              🏦 Total en Caja (Ingresos + Señas activas + Residual)
             </div>
             
             <div className="space-y-1">

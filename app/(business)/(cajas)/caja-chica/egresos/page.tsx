@@ -31,7 +31,7 @@ import ModalEgreso from '@/components/cajas/ModalEgreso';
 import EgresosTotalsDisplay from '@/components/cajas/EgresosTotalsDisplay';
 import ModalCambiarEstado from '@/components/validacion/ModalCambiarEstado';
 import useComandaStore from '@/features/comandas/store/comandaStore';
-import { ComandaNew, EstadoDeComandaNew, TipoDeComandaNew } from '@/services/unidadNegocio.service';
+import { ComandaNew, EstadoDeComandaNew, TipoDeComandaNew, CajaNew } from '@/services/unidadNegocio.service';
 
 const breadcrumbItems = [
   { label: 'Inicio', href: '/' },
@@ -71,6 +71,9 @@ export default function EgresosPage() {
 
   // Date range filter state
   const [dateRange, setDateRange] = useState<DateRange | undefined>();
+  
+  // Caja filter state
+  const [cajaSeleccionada, setCajaSeleccionada] = useState<CajaNew>(CajaNew.CAJA_1);
 
   // Pagination state
   const [currentPage, setCurrentPage] = useState(1);
@@ -85,6 +88,7 @@ export default function EgresosPage() {
   const [showViewModal, setShowViewModal] = useState(false);
   const [selectedTransactionId, setSelectedTransactionId] =
     useState<string>('');
+  const [selectedEgresoForEdit, setSelectedEgresoForEdit] = useState<ComandaNew | null>(null);
   const [alertaEliminar, setAlertaEliminar] = useState<ComandaNew | null>(null);
 
     useEffect(() => {
@@ -115,6 +119,11 @@ export default function EgresosPage() {
         fechaHasta = toDate.toISOString();
       }
 
+      // Estado dinámico según la caja seleccionada
+      const estadoDeComanda = cajaSeleccionada === CajaNew.CAJA_1 
+        ? EstadoDeComandaNew.VALIDADO 
+        : EstadoDeComandaNew.TRASPASADA;
+
       await getEgresosPaginados({
         page: currentPage,
         limit: itemsPerPage,
@@ -122,7 +131,8 @@ export default function EgresosPage() {
         order: 'DESC',
         search: '',
         tipoDeComanda: TipoDeComandaNew.EGRESO,
-        estadoDeComanda: EstadoDeComandaNew.VALIDADO,
+        estadoDeComanda: estadoDeComanda,
+        caja: cajaSeleccionada,
         // Add date range filters if needed
         ...(fechaDesde && { fechaDesde }),
         ...(fechaHasta && { fechaHasta }),
@@ -137,7 +147,7 @@ export default function EgresosPage() {
   // Load data on mount and when filters change
   useEffect(() => {
     loadEgresos();
-  }, [currentPage, itemsPerPage, dateRange]);
+  }, [currentPage, itemsPerPage, dateRange, cajaSeleccionada]);
 
   if (!isInitialized) {
     return (
@@ -171,8 +181,11 @@ export default function EgresosPage() {
   };
 
   const onEditTransaction = (id: string) => {
-    setSelectedTransactionId(id);
-    setShowEditModal(true);
+    const egreso = comandasPaginadas?.data?.find(t => t.id === id);
+    if (egreso) {
+      setSelectedEgresoForEdit(egreso);
+      setShowAddModal(true); // Usar el mismo modal de agregar pero en modo edición
+    }
   };
 
   const onViewTransaction = (id: string) => {
@@ -353,6 +366,38 @@ export default function EgresosPage() {
                           accentColor="#f9bbc4"
                         />
                       </div>
+
+                      {/* Caja filter toggle */}
+                      <div className="flex justify-center gap-2">
+                        <Button
+                          onClick={() => setCajaSeleccionada(CajaNew.CAJA_1)}
+                          variant={cajaSeleccionada === CajaNew.CAJA_1 ? 'default' : 'outline'}
+                          size="sm"
+                          className={`
+                            transition-all duration-200
+                            ${cajaSeleccionada === CajaNew.CAJA_1 
+                              ? 'bg-gradient-to-r from-[#f9bbc4] to-[#e8b4c6] text-white hover:from-[#e8b4c6] hover:to-[#d4a7ca] shadow-md' 
+                              : 'border-[#f9bbc4]/30 text-[#6b4c57] hover:bg-[#f9bbc4]/10'
+                            }
+                          `}
+                        >
+                          Caja 1 - Caja Chica
+                        </Button>
+                        <Button
+                          onClick={() => setCajaSeleccionada(CajaNew.CAJA_2)}
+                          variant={cajaSeleccionada === CajaNew.CAJA_2 ? 'default' : 'outline'}
+                          size="sm"
+                          className={`
+                            transition-all duration-200
+                            ${cajaSeleccionada === CajaNew.CAJA_2 
+                              ? 'bg-gradient-to-r from-[#f9bbc4] to-[#e8b4c6] text-white hover:from-[#e8b4c6] hover:to-[#d4a7ca] shadow-md' 
+                              : 'border-[#f9bbc4]/30 text-[#6b4c57] hover:bg-[#f9bbc4]/10'
+                            }
+                          `}
+                        >
+                          Caja 2 - Caja Grande
+                        </Button>
+                      </div>
                     </div>
 
                     {/* Date shortcuts */}
@@ -373,50 +418,73 @@ export default function EgresosPage() {
                       </div>
                     )}
 
-                    {/* Active filter indicator */}
-                    {dateRange && (
-                      <div className="mt-3 flex items-center justify-between rounded-lg bg-gradient-to-r from-[#f9bbc4]/20 to-[#e292a3]/20 border border-[#f9bbc4]/30 p-3">
+                    {/* Active filter indicators */}
+                    <div className="mt-3 space-y-2">
+                      {/* Date filter indicator */}
+                      {dateRange && (
+                        <div className="flex items-center justify-between rounded-lg bg-gradient-to-r from-[#f9bbc4]/20 to-[#e292a3]/20 border border-[#f9bbc4]/30 p-3">
+                          <div className="flex items-center gap-2">
+                            <div className="flex h-6 w-6 items-center justify-center rounded-full bg-[#f9bbc4] text-white">
+                              <svg className="h-3 w-3" fill="currentColor" viewBox="0 0 20 20">
+                                <path fillRule="evenodd" d="M3 3a1 1 0 011-1h12a1 1 0 011 1v3a1 1 0 01-.293.707L12 11.414V15a1 1 0 01-.293.707l-2 2A1 1 0 018 17v-5.586L3.293 6.707A1 1 0 013 6V3z" clipRule="evenodd" />
+                              </svg>
+                            </div>
+                            <div className="flex flex-col">
+                              <span className="text-sm font-medium text-[#4a3540]">
+                                Filtro de fechas activo
+                              </span>
+                              <span className="text-xs text-[#6b4c57]">
+                                {dateRange.from?.toLocaleDateString('es-ES', {
+                                  year: 'numeric',
+                                  month: 'long',
+                                  day: 'numeric'
+                                })}
+                                {dateRange.to && dateRange.to.getTime() !== dateRange.from?.getTime() && (
+                                  <>
+                                    {' → '}
+                                    {dateRange.to.toLocaleDateString('es-ES', {
+                                      year: 'numeric',
+                                      month: 'long',
+                                      day: 'numeric'
+                                    })}
+                                  </>
+                                )}
+                              </span>
+                            </div>
+                          </div>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => setDateRange(undefined)}
+                            className="h-6 w-6 p-0 text-[#6b4c57] hover:bg-[#f9bbc4]/20"
+                          >
+                            <svg className="h-3 w-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                            </svg>
+                          </Button>
+                        </div>
+                      )}
+
+                      {/* Caja filter indicator */}
+                      <div className="flex items-center justify-between rounded-lg bg-gradient-to-r from-[#e8b4c6]/20 to-[#d4a7ca]/20 border border-[#e8b4c6]/30 p-3">
                         <div className="flex items-center gap-2">
-                          <div className="flex h-6 w-6 items-center justify-center rounded-full bg-[#f9bbc4] text-white">
+                          <div className="flex h-6 w-6 items-center justify-center rounded-full bg-[#e8b4c6] text-white">
                             <svg className="h-3 w-3" fill="currentColor" viewBox="0 0 20 20">
-                              <path fillRule="evenodd" d="M3 3a1 1 0 011-1h12a1 1 0 011 1v3a1 1 0 01-.293.707L12 11.414V15a1 1 0 01-.293.707l-2 2A1 1 0 018 17v-5.586L3.293 6.707A1 1 0 013 6V3z" clipRule="evenodd" />
+                              <path d="M4 4a2 2 0 00-2 2v1h16V6a2 2 0 00-2-2H4z" />
+                              <path fillRule="evenodd" d="M18 9H2v5a2 2 0 002 2h12a2 2 0 002-2V9zM4 13a1 1 0 011-1h1a1 1 0 110 2H5a1 1 0 01-1-1zm5-1a1 1 0 100 2h1a1 1 0 100-2H9z" clipRule="evenodd" />
                             </svg>
                           </div>
                           <div className="flex flex-col">
                             <span className="text-sm font-medium text-[#4a3540]">
-                              Filtro de fechas activo
+                              Mostrando egresos de
                             </span>
-                            <span className="text-xs text-[#6b4c57]">
-                              {dateRange.from?.toLocaleDateString('es-ES', {
-                                year: 'numeric',
-                                month: 'long',
-                                day: 'numeric'
-                              })}
-                              {dateRange.to && dateRange.to.getTime() !== dateRange.from?.getTime() && (
-                                <>
-                                  {' → '}
-                                  {dateRange.to.toLocaleDateString('es-ES', {
-                                    year: 'numeric',
-                                    month: 'long',
-                                    day: 'numeric'
-                                  })}
-                                </>
-                              )}
+                            <span className="text-xs text-[#6b4c57] font-semibold">
+                              {cajaSeleccionada === CajaNew.CAJA_1 ? 'Caja 1 - Caja Chica' : 'Caja 2 - Caja Grande'}
                             </span>
                           </div>
                         </div>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => setDateRange(undefined)}
-                          className="h-6 w-6 p-0 text-[#6b4c57] hover:bg-[#f9bbc4]/20"
-                        >
-                          <svg className="h-3 w-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                          </svg>
-                        </Button>
                       </div>
-                    )}
+                    </div>
                   </CardContent>
                 </Card>
               </div>
@@ -480,9 +548,11 @@ export default function EgresosPage() {
           isOpen={showAddModal}
           onClose={() => {
             setShowAddModal(false);
-            // Reload data after adding new egreso
+            setSelectedEgresoForEdit(null);
+            // Reload data after adding/editing egreso
             loadEgresos();
           }}
+          egresoParaEditar={selectedEgresoForEdit}
         />
 
         <ModalCambiarEstado

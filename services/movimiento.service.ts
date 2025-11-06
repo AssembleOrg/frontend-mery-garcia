@@ -57,7 +57,11 @@ class MovimientoService {
 
   async obtenerMovimientosPaginados(
     filtros: FiltrarMovimientosDto
-  ): Promise<{ data: MovimientoNew[]; meta: { total: number; page: number; limit: number; totalPages: number; } }> {
+  ): Promise<{ 
+    data: MovimientoNew[]; 
+    meta: { total: number; page: number; limit: number; totalPages: number; };
+    netoEfectivo?: { ARS: number; USD: number; };
+  }> {
     const params = new URLSearchParams();
 
     const defaultFiltros: FiltrarMovimientosDto = {
@@ -92,6 +96,10 @@ class MovimientoService {
           limit: number;
           totalPages: number;
         };
+        netoEfectivo?: {
+          ARS: number;
+          USD: number;
+        };
       }
     }>(`${this.baseUrl}?${params.toString()}`);
     return {
@@ -101,7 +109,8 @@ class MovimientoService {
         page: response.data.meta.page,
         limit: response.data.meta.limit,
         totalPages: response.data.meta.totalPages,
-      }
+      },
+      netoEfectivo: response.data.netoEfectivo,
     };
   }
 }

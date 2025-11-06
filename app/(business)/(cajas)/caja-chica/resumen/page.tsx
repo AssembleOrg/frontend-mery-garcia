@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo, useEffect, useRef } from 'react';
 import MainLayout from '@/components/layout/MainLayout';
 import StandardPageBanner from '@/components/common/StandardPageBanner';
 import StandardBreadcrumbs from '@/components/common/StandardBreadcrumbs';
@@ -52,7 +52,15 @@ export default function CajaChicaResumenPage() {
   const { user } = useAuth();
   const { crearMovimiento } = useMovimientosStore();
   const { cargarComandasPaginadas } = useComandaStore();
-  const [dateRange, setDateRange] = useState<DateRange | undefined>();
+  // Initialize dateRange with current month dates
+  const getCurrentMonthRange = (): DateRange => {
+    const now = new Date();
+    const firstDay = new Date(now.getFullYear(), now.getMonth(), 1);
+    const lastDay = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+    return { from: firstDay, to: lastDay };
+  };
+
+  const [dateRange, setDateRange] = useState<DateRange | undefined>(getCurrentMonthRange());
   const [loading, setLoading] = useState(false);
   const [showConfirmModal, setShowConfirmModal] = useState(false);
   const [montoParcialUSD, setMontoParcialUSD] = useState<string>('');
@@ -75,6 +83,8 @@ export default function CajaChicaResumenPage() {
     totalIngresosARS: number;
     totalEgresosUSD: number;
     totalEgresosARS: number;
+    arsEfectivo: number;
+    usdEfectivo: number;
     comandasValidadasIds: string[];
   } | null>(null);
 
@@ -82,16 +92,16 @@ export default function CajaChicaResumenPage() {
 
   useEffect(() => {
     if (showConfirmModal) {
-      if (resumen?.montoDisponibleTrasladoUSD! < Number(montoParcialUSD)) {
+      if (resumen?.montoDisponibleTrasladoUSD! < parseInputToNumber(montoParcialUSD)) {
         toast.error(
-          'El monto parcial en USD no puede ser mayor al monto disponible para traslado'
+          'El monto Residual en USD no puede ser mayor al efectivo disponible para traslado'
         );
         setShowConfirmModal(false);
       } else if (
-        resumen?.montoDisponibleTrasladoARS! < Number(montoParcialARS)
+        resumen?.montoDisponibleTrasladoARS! < parseInputToNumber(montoParcialARS)
       ) {
         toast.error(
-          'El monto parcial en ARS no puede ser mayor al monto disponible para traslado'
+          'El monto Residual en ARS no puede ser mayor al efectivo disponible para traslado'
         );
         setShowConfirmModal(false);
       } else {
@@ -100,16 +110,6 @@ export default function CajaChicaResumenPage() {
     }
   }, [showConfirmModal]);
 
-  useEffect(() => {
-    const fetchResumen = async () => {
-      const resumen = await getResumen(
-        dateRange?.from?.toISOString() || '',
-        dateRange?.to?.toISOString() || ''
-      );
-      setResumen(resumen);
-    };
-    fetchResumen();
-  }, [getResumen]);
 
   useEffect(() => {
     setLoadingResumen(true);
@@ -133,19 +133,128 @@ export default function CajaChicaResumenPage() {
   }, [dateRange]);
 
   const handleMontoParcialUSDChange = (value: string) => {
-    // Solo permitir números y punto decimal
-    const regex = /^\d*\.?\d*$/;
-    if (regex.test(value) || value === '') {
+    // Permitir dígitos, separadores de miles (.) y decimal (',')
+    const regex = /^[0-9.,]*$/;
+    // Evitar más de una coma decimal
+    const commaCount = (value.match(/,/g) || []).length;
+    if ((regex.test(value) || value === '') && commaCount <= 1) {
       setMontoParcialUSD(value);
     }
   };
 
   const handleMontoParcialARSChange = (value: string) => {
-    // Solo permitir números y punto decimal
-    const regex = /^\d*\.?\d*$/;
-    if (regex.test(value) || value === '') {
+    // Permitir dígitos, separadores de miles (.) y decimal (',')
+    const regex = /^[0-9.,]*$/;
+    const commaCount = (value.match(/,/g) || []).length;
+    if ((regex.test(value) || value === '') && commaCount <= 1) {
       setMontoParcialARS(value);
     }
+  };
+
+  // Refs para manejar caret al formatear en vivo
+  const usdInputRef = useRef<HTMLInputElement | null>(null);
+  const arsInputRef = useRef<HTMLInputElement | null>(null);
+
+  // Live formatter: mantiene caret por cantidad de dígitos a la izquierda
+  const stripDots = (s: string) => s.replace(/\./g, '');
+  const keepOnlyDigitsAndComma = (s: string) => s.replace(/[^0-9,]/g, '');
+  const countDigitsBeforePos = (s: string, pos: number) => {
+    let count = 0;
+    for (let i = 0; i < Math.min(pos, s.length); i++) {
+      if (/[0-9]/.test(s[i])) count++;
+    }
+    return count;
+  };
+
+  const findPosFromDigitsCount = (formatted: string, digitsCount: number) => {
+    let count = 0;
+    for (let i = 0; i < formatted.length; i++) {
+      if (/[0-9]/.test(formatted[i])) count++;
+      if (count === digitsCount) return i + 1;
+    }
+    return formatted.length;
+  };
+
+  const liveFormatNumericString = (raw: string) => {
+    if (!raw) return '';
+    // eliminar todo menos dígitos y coma
+    const cleaned = keepOnlyDigitsAndComma(raw);
+    const parts = cleaned.split(',');
+    const intPart = parts[0] || '';
+    const fracPart = parts[1] || '';
+    // formatear miles en la parte entera
+    const reversed = intPart.split('').reverse().join('');
+    const chunks: string[] = [];
+    for (let i = 0; i < reversed.length; i += 3) {
+      chunks.push(reversed.slice(i, i + 3));
+    }
+    const intWithDots = chunks
+      .map((c) => c.split('').reverse().join(''))
+      .reverse()
+      .join('.');
+    return fracPart !== '' ? `${intWithDots},${fracPart}` : intWithDots;
+  };
+
+  const handleMontoParcialUSDLiveChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const raw = e.target.value;
+    // caret antes de formatear
+    const caret = e.target.selectionStart || 0;
+    // contar dígitos a la izquierda en la versión sin dots
+    const digitsBefore = countDigitsBeforePos(stripDots(raw), caret);
+    const formatted = liveFormatNumericString(raw);
+    setMontoParcialUSD(formatted);
+    // set caret después de render
+    requestAnimationFrame(() => {
+      const pos = findPosFromDigitsCount(formatted, digitsBefore);
+      usdInputRef.current?.setSelectionRange(pos, pos);
+    });
+  };
+
+  const handleMontoParcialARSLiveChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const raw = e.target.value;
+    const caret = e.target.selectionStart || 0;
+    const digitsBefore = countDigitsBeforePos(stripDots(raw), caret);
+    const formatted = liveFormatNumericString(raw);
+    setMontoParcialARS(formatted);
+    requestAnimationFrame(() => {
+      const pos = findPosFromDigitsCount(formatted, digitsBefore);
+      arsInputRef.current?.setSelectionRange(pos, pos);
+    });
+  };
+
+  // Helper: convierta el string de input (puede tener '.' miles y ',' decimal)
+  // a Number. Ej: "1.234.567,89" -> 1234567.89
+  const parseInputToNumber = (val?: string | null) => {
+    if (!val) return 0;
+    const normalized = val.replace(/\./g, '').replace(/,/g, '.');
+    const n = Number(normalized);
+    return Number.isFinite(n) ? n : 0;
+  };
+
+  // Helper: formatea para mostrar en input usando separador de miles '.' y decimal ','
+  const formatForDisplay = (val?: string | number) => {
+    if (val === undefined || val === null || val === '') return '';
+    const num = typeof val === 'number' ? val : parseInputToNumber(String(val));
+    // Determinar cantidad de decimales presentes en el string original si viene como string
+    let fractionDigits = 0;
+    if (typeof val === 'string' && val.includes(',')) {
+      const parts = val.split(',');
+      fractionDigits = parts[1]?.length || 0;
+    } else {
+      // por defecto mostrar 2 decimales cuando sea número con decimales
+      const hasDecimal = Math.abs(num % 1) > 0;
+      fractionDigits = hasDecimal ? 2 : 0;
+    }
+    return new Intl.NumberFormat('es-AR', {
+      minimumFractionDigits: fractionDigits,
+      maximumFractionDigits: Math.max(2, fractionDigits),
+    }).format(num);
+  };
+
+  const unformatForEdit = (val?: string) => {
+    if (!val) return '';
+    // quitar separadores de miles para edición, conservar comma decimal
+    return val.replace(/\./g, '');
   };
 
   const handleTrasladar = async () => {
@@ -153,10 +262,12 @@ export default function CajaChicaResumenPage() {
     try {
       console.table(resumen);
       const movimiento: MovimientoCreateNew = {
-        montoARS: montoParcialARS ? resumen?.montoDisponibleTrasladoARS! - Number(montoParcialARS) : resumen?.montoDisponibleTrasladoARS!,
-        montoUSD: montoParcialUSD ? resumen?.montoDisponibleTrasladoUSD! - Number(montoParcialUSD) : resumen?.montoDisponibleTrasladoUSD!,
-        residualARS: montoParcialARS ? Number(montoParcialARS) : 0,
-        residualUSD: montoParcialUSD ? Number(montoParcialUSD) : 0,
+        montoARS: montoParcialARS ? resumen?.montoDisponibleTrasladoARS! - parseInputToNumber(montoParcialARS) : resumen?.montoDisponibleTrasladoARS!,
+        montoUSD: montoParcialUSD ? resumen?.montoDisponibleTrasladoUSD! - parseInputToNumber(montoParcialUSD) : resumen?.montoDisponibleTrasladoUSD!,
+        residualARS: montoParcialARS ? parseInputToNumber(montoParcialARS) : 0,
+        residualUSD: montoParcialUSD ? parseInputToNumber(montoParcialUSD) : 0,
+        efectivoARS: resumen?.arsEfectivo! - (montoParcialARS ? parseInputToNumber(montoParcialARS) : 0),
+        efectivoUSD: resumen?.usdEfectivo! - (montoParcialUSD ? parseInputToNumber(montoParcialUSD) : 0),
         comandasValidadasIds: resumen?.comandasValidadasIds,
         personalId: user?.id,
       };
@@ -317,24 +428,25 @@ export default function CajaChicaResumenPage() {
                                   htmlFor="montoParcialUSD"
                                   className="text-sm font-medium"
                                 >
-                                  Monto Parcial USD (opcional)
+                                  Monto Residual USD (opcional)
                                 </Label>
                                 <Input
                                   id="montoParcialUSD"
                                   type="text"
                                   placeholder="Ingrese monto USD"
                                   value={montoParcialUSD}
-                                  onChange={(e) =>
-                                    handleMontoParcialUSDChange(e.target.value)
+                                  ref={usdInputRef}
+                                  onChange={handleMontoParcialUSDLiveChange}
+                                  onBlur={() =>
+                                    setMontoParcialUSD(formatForDisplay(montoParcialUSD))
+                                  }
+                                  onFocus={() =>
+                                    setMontoParcialUSD(unformatForEdit(montoParcialUSD))
                                   }
                                   className="border-[#f9bbc4]/30 focus:border-[#f9bbc4] focus:ring-[#f9bbc4]/20"
                                 />
                                 <p className="text-xs text-gray-500">
-                                  Máximo: $
-                                  {(
-                                    resumen.montoDisponibleTrasladoUSD || 0
-                                  ).toFixed(2)}{' '}
-                                  USD
+                                  Máximo: {formatUSD(resumen.usdEfectivo || 0)} USD
                                 </p>
                               </div>
 
@@ -343,24 +455,25 @@ export default function CajaChicaResumenPage() {
                                   htmlFor="montoParcialARS"
                                   className="text-sm font-medium"
                                 >
-                                  Monto Parcial ARS (opcional)
+                                  Monto Residual ARS (opcional)
                                 </Label>
                                 <Input
                                   id="montoParcialARS"
                                   type="text"
                                   placeholder="Ingrese monto ARS"
                                   value={montoParcialARS}
-                                  onChange={(e) =>
-                                    handleMontoParcialARSChange(e.target.value)
+                                  ref={arsInputRef}
+                                  onChange={handleMontoParcialARSLiveChange}
+                                  onBlur={() =>
+                                    setMontoParcialARS(formatForDisplay(montoParcialARS))
+                                  }
+                                  onFocus={() =>
+                                    setMontoParcialARS(unformatForEdit(montoParcialARS))
                                   }
                                   className="border-[#f9bbc4]/30 focus:border-[#f9bbc4] focus:ring-[#f9bbc4]/20"
                                 />
                                 <p className="text-xs text-gray-500">
-                                  Máximo: $
-                                  {(
-                                    resumen.montoDisponibleTrasladoARS || 0
-                                  ).toFixed(2)}{' '}
-                                  ARS
+                                  Máximo: {formatARSFromNative(resumen.arsEfectivo || 0)} ARS
                                 </p>
                               </div>
                             </div>
@@ -453,7 +566,7 @@ export default function CajaChicaResumenPage() {
                   <span className="text-sm font-semibold text-blue-700">
                     {formatUSD(
                       (montoParcialUSD
-                        ? resumen.montoDisponibleTrasladoUSD - Number(montoParcialUSD)
+                        ? resumen.montoDisponibleTrasladoUSD - parseInputToNumber(montoParcialUSD)
                         : resumen.montoDisponibleTrasladoUSD) ?? 0
                     )}
                   </span>
@@ -465,7 +578,7 @@ export default function CajaChicaResumenPage() {
                   <span className="text-sm font-semibold text-blue-700">
                     {formatARSFromNative(
                       (montoParcialARS
-                        ? resumen.montoDisponibleTrasladoARS - Number(montoParcialARS)
+                        ? resumen.montoDisponibleTrasladoARS - parseInputToNumber(montoParcialARS)
                         : resumen.montoDisponibleTrasladoARS) ?? 0
                     )}
                   </span>
@@ -487,7 +600,7 @@ export default function CajaChicaResumenPage() {
                     </span>
                     <span className="text-sm font-semibold text-orange-700">
                       {formatUSD(
-                        montoParcialUSD ? Number(montoParcialUSD) : 0
+                        montoParcialUSD ? parseInputToNumber(montoParcialUSD) : 0
                       )}
                     </span>
                   </div>
@@ -497,7 +610,7 @@ export default function CajaChicaResumenPage() {
                     </span>
                     <span className="text-sm font-semibold text-orange-700">
                       {formatARSFromNative(
-                        montoParcialARS ? Number(montoParcialARS) : 0
+                        montoParcialARS ? parseInputToNumber(montoParcialARS) : 0
                       )}
                     </span>
                   </div>

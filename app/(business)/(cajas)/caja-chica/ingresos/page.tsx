@@ -258,8 +258,8 @@ export default function IngresosPage() {
 
   const totals: Totals = comandasPaginadas.data?.reduce<Totals>(
     (acc, comanda) => {
-      acc.usd += Number(comanda.precioDolar ?? 0) + Number(comanda.prepagoUSD?.monto ?? 0);
-      acc.ars += Number(comanda.precioPesos ?? 0) + Number(comanda.prepagoARS?.monto ?? 0);
+      acc.usd += Number(comanda.precioDolar ?? 0)
+      acc.ars += Number(comanda.precioPesos ?? 0)
       
 
       // acc.usd += Number(comanda.prepagoUSD?.monto ?? 0);

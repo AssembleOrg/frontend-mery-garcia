@@ -70,6 +70,8 @@ interface ComandaState {
     totalIngresosARS: number;
     totalEgresosUSD: number;
     totalEgresosARS: number;
+    arsEfectivo: number;
+    usdEfectivo: number;
     comandasValidadasIds: string[];
   }>;
   cambiarEstadoComanda: (comandaId: string, nuevoEstado: EstadoDeComandaNew) => Promise<void>;

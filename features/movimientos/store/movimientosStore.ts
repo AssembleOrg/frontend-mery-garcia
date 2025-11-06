@@ -23,6 +23,10 @@ interface MovimientosState {
       limit: number;
       totalPages: number;
     };
+    netoEfectivo?: {
+      ARS: number;
+      USD: number;
+    };
   };
   loading: boolean;
   error: string | null;
@@ -41,6 +45,10 @@ interface MovimientosState {
       page: number;
       limit: number;
       totalPages: number;
+    };
+    netoEfectivo?: {
+      ARS: number;
+      USD: number;
     };
   }>;
   exportarMovimientosCSV: () => void;
@@ -62,6 +70,7 @@ export const useMovimientosStore = create<MovimientosState>((set, get) => ({
       limit: 0,
       totalPages: 0,
     },
+    netoEfectivo: undefined,
   },
   loading: false,
   error: null,

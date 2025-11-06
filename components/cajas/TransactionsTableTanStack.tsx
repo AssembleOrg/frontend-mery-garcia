@@ -478,7 +478,7 @@ export default function TransactionsTableTanStack({
 
               <DropdownMenuItem 
                 onClick={() => onEdit(id)} 
-                disabled={disableEdit || row.original.estadoDeComanda !== EstadoDeComandaNew.PENDIENTE}
+                disabled={disableEdit}
                 className="cursor-pointer"
               >
                 {disableEdit && <Lock className="mr-2 h-4 w-4" /> }

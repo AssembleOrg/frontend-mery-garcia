@@ -30,7 +30,7 @@ import {
   ComandaNew,
   EstadoDeComandaNew,
   TipoDeComandaNew,
-  MovimientoNew
+  MovimientoNew,
 } from '@/services/unidadNegocio.service';
 import useComandaStore from '@/features/comandas/store/comandaStore';
 import { movimientoService } from '@/services/movimiento.service';
@@ -45,22 +45,6 @@ const breadcrumbItems = [
   { label: 'Caja Grande' },
 ];
 
-// Interfaz para el resumen de métodos de pago
-interface ResumenMetodosPago {
-  [key: string]: number;
-}
-
-// Interfaz para el resumen de caja
-interface ResumenCaja {
-  totalIngresosUSD: number;
-  totalIngresosARS: number;
-  totalEgresosUSD: number;
-  totalEgresosARS: number;
-  cantidadComandas: number;
-  saldoNetoUSD: number;
-  saldoNetoARS: number;
-}
-
 
 export default function CajaGrandePage() {
   const {
@@ -68,21 +52,26 @@ export default function CajaGrandePage() {
     movimientosPaginados,
     exportarMovimientosCSV,
     exportarMovimientosPDF,
-  } = useMovimientosStore()
-  const { formatUSD, formatARS, formatARSFromNative } = useCurrencyConverter();
+  } = useMovimientosStore();
+  const { formatUSD, formatARSFromNative } = useCurrencyConverter();
 
-  const {
-    user
-  } = useAuthStore();
+  const { user } = useAuthStore();
 
   // Estado para modal de movimientos manuales
   const [showModalMovimiento, setShowModalMovimiento] = useState(false);
   // Estado para modal de ver movimientos
   const [showModalVerMovimientos, setShowModalVerMovimientos] = useState(false);
 
-  // Estado para filtro de fechas
-  const [dateRange, setDateRange] = useState<DateRange | undefined>();
-  const [ultimoTraspaso, setUltimoTraspaso] = useState<MovimientoNew | undefined>();
+  // Estado para filtro de fechas - default: desde noviembre 2025 hasta el día actual
+  const [dateRange, setDateRange] = useState<DateRange | undefined>(() => {
+    const now = new Date();
+    const firstDay = new Date(2025, 10, 1); // Noviembre 2025 (mes 10 porque es 0-indexed)
+    const lastDay = now; // Día actual
+    return { from: firstDay, to: lastDay };
+  });
+  const [ultimoTraspaso, setUltimoTraspaso] = useState<
+    MovimientoNew | undefined
+  >();
 
   // Cargar comandas traspasadas al montar el componente
   useEffect(() => {
@@ -135,26 +124,57 @@ export default function CajaGrandePage() {
       }
       return acc;
     }, 0);
-    const residualArs = movimientosPaginados.data.filter(m => m.comandas.length > 0).length > 0 ? movimientosPaginados.data.filter(m => m.comandas.length > 0)[0].esIngreso ? movimientosPaginados.data[0].residualARS : 0 : 0;
-    const residualUsd = movimientosPaginados.data.filter(m => m.comandas.length > 0).length > 0 ? movimientosPaginados.data.filter(m => m.comandas.length > 0)[0].esIngreso ? movimientosPaginados.data[0].residualUSD : 0 : 0;
+
+    const movimientosConComandas = movimientosPaginados.data.filter(m => m.comandas.length > 0);
+    console.log(movimientosConComandas);
+    const firstWithResidualARS = movimientosConComandas.find(m => m.residualARS > 0);
+    const firstWithResidualUSD = movimientosConComandas.find(m => m.residualUSD > 0);
+
+    const residualArs = firstWithResidualARS ? Number(firstWithResidualARS.residualARS) : 0;
+    const residualUsd = firstWithResidualUSD ? Number(firstWithResidualUSD.residualUSD) : 0;
 
     const egresosArs = movimientosPaginados.data.reduce((acc, mov) => {
-      if (!mov.esIngreso) {
+      if (
+        !mov.esIngreso &&
+        !(
+          mov.comentario?.includes('Traspaso automático de egreso') ||
+          mov.comentario?.includes('Egreso generado desde')
+        )
+      ) {
         return acc + (Number(mov.montoARS) || 0);
       }
+
       return acc;
     }, 0);
 
     const egresosUsd = movimientosPaginados.data.reduce((acc, mov) => {
-      if (!mov.esIngreso) {
+      if (
+        !mov.esIngreso &&
+        !(
+          mov.comentario?.includes('Traspaso automático de egreso') ||
+          mov.comentario?.includes('Egreso generado desde')
+        )
+      ) {
         return acc + (Number(mov.montoUSD) || 0);
       }
       return acc;
     }, 0);
 
+    const efectivoARS = movimientosPaginados.data.reduce((acc, mov) => {
+      if (mov.esIngreso) {
+        return acc + (Number(mov.efectivoARS) || 0);
+      }
+      return acc;
+    }, 0);
+    const efectivoUSD = movimientosPaginados.data.reduce((acc, mov) => {
+      if (mov.esIngreso) {
+        return acc + (Number(mov.efectivoUSD) || 0);
+      }
+      return acc;
+    }, 0);  
 
-    const saldoNetoARS = totalArs - residualArs - egresosArs;
-    const saldoNetoUSD = totalUsd - residualUsd - egresosUsd;
+    const saldoNetoARS = totalArs - residualArs - egresosArs + efectivoARS;
+    const saldoNetoUSD = totalUsd - residualUsd - egresosUsd + efectivoUSD;
 
     return {
       totalArs,
@@ -164,23 +184,26 @@ export default function CajaGrandePage() {
       saldoNetoARS,
       saldoNetoUSD,
       egresosArs,
-      egresosUsd
+      egresosUsd,
     };
   }, [movimientosPaginados]);
 
   useEffect(() => {
-    const ultimoTraspaso = movimientosPaginados.data.length > 0 ? movimientosPaginados.data[0] : {
-      id: '',
-      montoARS: 0,
-      montoUSD: 0,
-      residualARS: 0,
-      residualUSD: 0,
-      comentario: '',
-      esIngreso: false,
-      personalId: '',
-      comandasValidadasIds: [''],
-      comandas: [],
-    };
+    const ultimoTraspaso =
+      movimientosPaginados.data.length > 0
+        ? movimientosPaginados.data[0]
+        : {
+            id: '',
+            montoARS: 0,
+            montoUSD: 0,
+            residualARS: 0,
+            residualUSD: 0,
+            comentario: '',
+            esIngreso: false,
+            personalId: '',
+            comandasValidadasIds: [''],
+            comandas: [],
+          };
     setUltimoTraspaso(ultimoTraspaso as MovimientoNew);
   }, [movimientosPaginados]);
 
@@ -212,7 +235,6 @@ export default function CajaGrandePage() {
         fechaDesde: dateRange?.from?.toISOString() || '',
         fechaHasta: dateRange?.to?.toISOString() || '',
       });
-
     } catch (error) {
       console.error('Error al registrar movimiento:', error);
       throw error; // Re-lanzar el error para que el modal lo maneje
@@ -233,7 +255,6 @@ export default function CajaGrandePage() {
             <div className="bg-gradient-to-b from-[#f9bbc4]/5 via-[#e8b4c6]/3 to-[#d4a7ca]/5">
               <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
                 <div className="container mx-auto py-6">
-
                   {/* Resumen de Caja */}
                   <div className="mb-8 grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4">
                     <SummaryCardDual
@@ -272,6 +293,17 @@ export default function CajaGrandePage() {
                       title="Cantidad de Movimientos"
                       count={movimientosPaginados.data.length}
                     />
+
+                    {/* Neto de Efectivo - Solo se muestra si está disponible */}
+                    {movimientosPaginados.netoEfectivo && (
+                      <SummaryCardDual
+                        title="Neto de Efectivo(Considera Egresos)"
+                        totalUSD={movimientosPaginados.netoEfectivo.USD}
+                        totalARS={movimientosPaginados.netoEfectivo.ARS}
+                        showTransactionCount={false}
+                        valueClassName="text-blue-700"
+                      />
+                    )}
                   </div>
 
                   {/* Gestión de Caja Grande */}
@@ -281,7 +313,7 @@ export default function CajaGrandePage() {
                       <CardHeader>
                         <CardTitle className="flex items-center gap-2 text-[#6b4c57]">
                           <Calendar className="h-5 w-5" />
-                          Último Movimiento
+                          Último Movimiento2
                         </CardTitle>
                       </CardHeader>
                       <CardContent>
@@ -297,19 +329,25 @@ export default function CajaGrandePage() {
                               </div>
                               <div>
                                 <p className="text-sm text-gray-600">Tipo</p>
-                                <p className={`font-medium ${
-                                  ultimoTraspaso.esIngreso 
-                                    ? 'text-green-600' 
-                                    : 'text-red-600'
-                                }`}>
-                                  {ultimoTraspaso.esIngreso ? '💰 Ingreso' : '💸 Egreso'}
+                                <p
+                                  className={`font-medium ${
+                                    ultimoTraspaso.esIngreso
+                                      ? 'text-green-600'
+                                      : 'text-red-600'
+                                  }`}
+                                >
+                                  {ultimoTraspaso.esIngreso
+                                    ? '💰 Ingreso'
+                                    : '💸 Egreso'}
                                 </p>
                               </div>
                             </div>
 
                             <div className="grid grid-cols-2 gap-4">
                               <div>
-                                <p className="text-sm text-gray-600">Comandas</p>
+                                <p className="text-sm text-gray-600">
+                                  Comandas
+                                </p>
                                 <p className="font-medium">
                                   {ultimoTraspaso?.comandas?.length || 0}
                                 </p>
@@ -324,48 +362,63 @@ export default function CajaGrandePage() {
                               <div className="space-y-1">
                                 <div className="flex justify-between text-sm">
                                   <span>USD:</span>
-                                  <span className={`font-medium ${
-                                    ultimoTraspaso.esIngreso 
-                                      ? 'text-green-600' 
-                                      : 'text-red-600'
-                                  }`}>
+                                  <span
+                                    className={`font-medium ${
+                                      ultimoTraspaso.esIngreso
+                                        ? 'text-green-600'
+                                        : 'text-red-600'
+                                    }`}
+                                  >
                                     {formatUSD(ultimoTraspaso.montoUSD)}
                                   </span>
                                 </div>
                                 <div className="flex justify-between text-sm">
                                   <span>ARS:</span>
-                                  <span className={`font-medium ${
-                                    ultimoTraspaso.esIngreso 
-                                      ? 'text-green-600' 
-                                      : 'text-red-600'
-                                  }`}>
-                                    {formatARSFromNative(ultimoTraspaso.montoARS)}
+                                  <span
+                                    className={`font-medium ${
+                                      ultimoTraspaso.esIngreso
+                                        ? 'text-green-600'
+                                        : 'text-red-600'
+                                    }`}
+                                  >
+                                    {formatARSFromNative(
+                                      ultimoTraspaso.montoARS
+                                    )}
                                   </span>
                                 </div>
                               </div>
                             </div>
 
                             {/* Residual (solo si es traspaso parcial) */}
-                            {(ultimoTraspaso?.residualARS || ultimoTraspaso?.residualUSD) &&
-                              ((ultimoTraspaso?.residualUSD || 0) > 0 || (ultimoTraspaso?.residualARS || 0) > 0) && (
+                            {(ultimoTraspaso?.residualARS ||
+                              ultimoTraspaso?.residualUSD) &&
+                              ((ultimoTraspaso?.residualUSD || 0) > 0 ||
+                                (ultimoTraspaso?.residualARS || 0) > 0) && (
                                 <div>
-                                  <p className="mb-2 text-sm text-gray-600">Residual en Caja Chica</p>
+                                  <p className="mb-2 text-sm text-gray-600">
+                                    Residual en Caja Chica
+                                  </p>
                                   <div className="space-y-1">
                                     <div className="flex justify-between text-sm">
                                       <span>USD:</span>
                                       <span className="font-medium text-orange-600">
-                                        {formatUSD(ultimoTraspaso?.residualUSD || 0)}
+                                        {formatUSD(
+                                          ultimoTraspaso?.residualUSD || 0
+                                        )}
                                       </span>
                                     </div>
                                     <div className="flex justify-between text-sm">
                                       <span>ARS:</span>
                                       <span className="font-medium text-orange-600">
-                                        {formatARSFromNative(ultimoTraspaso?.residualARS || 0)}
+                                        {formatARSFromNative(
+                                          ultimoTraspaso?.residualARS || 0
+                                        )}
                                       </span>
                                     </div>
                                   </div>
                                   <p className="mt-1 text-xs text-gray-500">
-                                    ⚠️ Monto que quedó en Caja Chica del traspaso parcial
+                                    ⚠️ Monto que quedó en Caja Chica del
+                                    traspaso parcial
                                   </p>
                                 </div>
                               )}
@@ -471,7 +524,7 @@ export default function CajaGrandePage() {
 
                           {/* Acciones */}
                           <div className="space-y-3">
-                            <Button 
+                            <Button
                               onClick={() => setShowModalVerMovimientos(true)}
                               className="w-full justify-between bg-[#6b4c57] text-white hover:bg-[#5a3f4a]"
                             >

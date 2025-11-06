@@ -206,6 +206,8 @@ class ComandasService {
     totalIngresosARS: number;
     totalEgresosUSD: number;
     totalEgresosARS: number;
+    arsEfectivo: number;
+    usdEfectivo: number;
     comandasValidadasIds: string[];
   }> {
     if(!fechaDesde || !fechaHasta) {
@@ -220,6 +222,8 @@ class ComandasService {
         totalIngresosARS: number;
         totalEgresosUSD: number;
         totalEgresosARS: number;
+        arsEfectivo: number;
+        usdEfectivo: number;
         comandasValidadasIds: string[];
       } }>(`${this.baseUrl}/resumen-caja-chica`);
       return response.data;
@@ -249,6 +253,8 @@ class ComandasService {
       totalIngresosARS: number;
       totalEgresosUSD: number;
       totalEgresosARS: number;
+      arsEfectivo: number;
+      usdEfectivo: number;
       comandasValidadasIds: string[];
     } }>(url);
     return response.data;
@@ -273,6 +279,20 @@ class ComandasService {
       return response.data;
     } catch (error) {
       console.error('Error al actualizar la comanda:', error);
+      throw error;
+    }
+  }
+
+  // PUT /comandas/egresos/:id - Update existing egreso
+  async actualizarEgreso(id: string, egreso: { total: number; totalDolar: number; totalPesos: number; valorDolar: number; moneda: string; observaciones?: string }): Promise<any> {
+    try {
+      const response = await apiFetch<{ data: any }>(`${this.baseUrl}/egresos/${id}`, {
+        method: 'PUT',
+        json: egreso
+      });
+      return response.data;
+    } catch (error) {
+      console.error('Error al actualizar el egreso:', error);
       throw error;
     }
   }

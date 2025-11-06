@@ -4,6 +4,8 @@ export interface Movimiento {
   id: string;
   montoARS: number;
   montoUSD: number;
+  efectivoARS: number;
+  efectivoUSD: number;
   comandas?: Partial<ComandaCreateNew>[];
   esIngreso: boolean;
   residualARS: number;
@@ -70,6 +72,9 @@ export interface FiltrarComandasNew {
 
   /** Incluir comandas traspasadas */
   incluirTraspasadas?: boolean;
+
+  /** Filtrar por caja */
+  caja?: CajaNew;
 }
 
 export enum TipoDeComandaNew {
@@ -93,6 +98,7 @@ export interface Egreso {
   totalPesos: number;
   valorDolar: number;
   moneda: string;
+  caja?: CajaNew;
 }
 
 export interface EgresoFromPaginacion {
@@ -347,7 +353,8 @@ export interface MovimientoNew {
   montoUSD: number;
 
   residualARS: number;
-
+  efectivoARS: number;
+  efectivoUSD: number;
   residualUSD: number;
   comentario?: string;
   esIngreso?: boolean;
