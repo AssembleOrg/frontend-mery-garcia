@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { Users, UserCheck } from 'lucide-react';
+import { Users, UserCheck, Clock } from 'lucide-react';
 import MainLayout from '@/components/layout/MainLayout';
 import StandardPageBanner from '@/components/common/StandardPageBanner';
 import StandardBreadcrumbs from '@/components/common/StandardBreadcrumbs';
@@ -9,6 +9,7 @@ import ManagerOrAdminOnly from '@/components/auth/ManagerOrAdminOnly';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import PersonalTab from '@/components/personal/PersonalTab';
 import ClientesTab from '@/components/clientes/ClientesTab';
+import AsistenciaTab from '@/components/asistencia/AsistenciaTab';
 
 const breadcrumbItems = [
   { label: 'Inicio', href: '/' },
@@ -37,7 +38,7 @@ export default function PersonalPage() {
                   Gestión de Personal y Clientes
                 </h1>
                 <p className="text-[#6b4c57]">
-                  Administra tu equipo de trabajo y base de clientes
+                  Administra tu equipo de trabajo, clientes y asistencia
                 </p>
               </div>
 
@@ -48,7 +49,8 @@ export default function PersonalPage() {
                 className="w-full"
               >
                 <div className="mb-6 flex justify-center">
-                  <TabsList className="grid w-fit grid-cols-2 border border-[#f9bbc4]/30 bg-white/80">
+                  {/*grid-cols-3 para que quepan los tres botones */}
+                  <TabsList className="grid w-fit grid-cols-3 border border-[#f9bbc4]/30 bg-white/80">
                     <TabsTrigger
                       value="personal"
                       className="flex items-center gap-2 data-[state=active]:bg-[#f9bbc4] data-[state=active]:text-white"
@@ -63,6 +65,14 @@ export default function PersonalPage() {
                       <UserCheck className="h-4 w-4" />
                       Clientes
                     </TabsTrigger>
+                    {/* Botón Asistencia con icono de reloj */}
+                    <TabsTrigger
+                      value="asistencia"
+                      className="flex items-center gap-2 data-[state=active]:bg-[#f9bbc4] data-[state=active]:text-white"
+                    >
+                      <Clock className="h-4 w-4" />
+                      Asistencia
+                    </TabsTrigger>
                   </TabsList>
                 </div>
 
@@ -73,6 +83,11 @@ export default function PersonalPage() {
                 <TabsContent value="clientes" className="mt-0">
                   <ClientesTab />
                 </TabsContent>
+
+                {/* AsistenciaTab en lugar de PersonalTab */}
+                <TabsContent value="asistencia" className="mt-0">
+                  <AsistenciaTab />
+                </TabsContent>
               </Tabs>
             </div>
           </div>
@@ -81,3 +96,4 @@ export default function PersonalPage() {
     </ManagerOrAdminOnly>
   );
 }
+
