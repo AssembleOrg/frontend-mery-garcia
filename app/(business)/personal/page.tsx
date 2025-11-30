@@ -49,7 +49,7 @@ export default function PersonalPage() {
                 className="w-full"
               >
                 <div className="mb-6 flex justify-center">
-                  {/*grid-cols-3 para que quepan los tres botones */}
+                  {/*grid-cols-3 para que entren los tres botones */}
                   <TabsList className="grid w-fit grid-cols-3 border border-[#f9bbc4]/30 bg-white/80">
                     <TabsTrigger
                       value="personal"
@@ -65,7 +65,7 @@ export default function PersonalPage() {
                       <UserCheck className="h-4 w-4" />
                       Clientes
                     </TabsTrigger>
-                    {/* Botón Asistencia con icono de reloj */}
+                    {/* Boton Asistencia con el icono de reloj */}
                     <TabsTrigger
                       value="asistencia"
                       className="flex items-center gap-2 data-[state=active]:bg-[#f9bbc4] data-[state=active]:text-white"
@@ -84,7 +84,6 @@ export default function PersonalPage() {
                   <ClientesTab />
                 </TabsContent>
 
-                {/* AsistenciaTab en lugar de PersonalTab */}
                 <TabsContent value="asistencia" className="mt-0">
                   <AsistenciaTab />
                 </TabsContent>
