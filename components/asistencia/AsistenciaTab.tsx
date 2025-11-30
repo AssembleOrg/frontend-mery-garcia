@@ -10,7 +10,7 @@ import {
   endOfWeek 
 } from 'date-fns';
 import { es } from 'date-fns/locale'; 
-import { Search, Eye, CalendarDays, AlertCircle } from 'lucide-react';
+import { Search, Eye, CalendarDays, AlertCircle, FileDown } from 'lucide-react';
 import { DateRange } from 'react-day-picker';
 
 import { Button } from '@/components/ui/button';
@@ -25,7 +25,6 @@ import { DateRangePicker } from '@/components/ui/date-range-picker';
 
 import { PDFDownloadLink } from '@react-pdf/renderer'; 
 import { AttendanceDocument } from './AttendancePdf';  
-import { FileDown } from 'lucide-react'; //icono de descarga
 
 interface ExtendedDetail extends Partial<AttendanceDetail> {
   dateObj: Date;
@@ -185,15 +184,15 @@ export default function AsistenciaTab() {
                     const fullDays = processEmployeeDays(emp.details);
                     const totalPeriodo = fullDays.reduce((acc, curr) => acc + (curr.hours || 0), 0);
                     const weeklyStats = calculateWeeklyBreakdown(fullDays);
-
-                    const weeklyAvg = (totalPeriodo / (weeklyStats.length || 1)).toFixed(2);
+                    
+                    const weeklyAvgRaw = totalPeriodo / (weeklyStats.length || 1);
 
                     return (
                       <TableRow key={emp.id} className="hover:bg-[#f9bbc4]/5 transition-colors">
                         <TableCell className="font-medium text-gray-700">{emp.name}</TableCell>
                         <TableCell className="text-center">
                           <span className="text-base font-bold text-[#e91e63]">
-                            {totalPeriodo.toFixed(2)} hs
+                            {Math.round(totalPeriodo)} hs
                           </span>
                         </TableCell>
                         <TableCell className="text-right">
@@ -207,8 +206,6 @@ export default function AsistenciaTab() {
                               </Button>
                             </DialogTrigger>
                             <DialogContent className="!max-w-[95vw] w-full max-h-[90vh] overflow-y-auto">
-                              
-                              {/* header */}
                               <DialogHeader className="flex flex-row items-center justify-between pb-4 border-b border-gray-100">
                                 <DialogTitle className="flex items-center gap-2 text-xl text-[#6b4c57]">
                                   <CalendarDays className="h-5 w-5" />
@@ -222,8 +219,8 @@ export default function AsistenciaTab() {
                                       employeeName={emp.name}
                                       startDate={format(date?.from || new Date(), 'dd/MM/yyyy')}
                                       endDate={format(date?.to || new Date(), 'dd/MM/yyyy')}
-                                      totalHours={totalPeriodo.toFixed(2)}
-                                      weeklyAvg={weeklyAvg}
+                                      totalHours={Math.round(totalPeriodo).toString()}
+                                      weeklyAvg={Math.round(weeklyAvgRaw).toString()}
                                       weeklyStats={weeklyStats}
                                       days={fullDays}
                                     />
@@ -243,28 +240,25 @@ export default function AsistenciaTab() {
                                   )}
                                 </PDFDownloadLink>
                               </DialogHeader>
-                              {/* fin de header */}
-
 
                               <div className="flex flex-col lg:flex-row gap-6 mt-4">
+                                
                                 <div className="lg:w-72 space-y-4 flex-shrink-0">
-                                    {/* tarjeta del Total */}
                                     <div className="p-4 rounded-lg bg-pink-50 border border-pink-100 flex flex-col items-center">
                                         <span className="text-sm text-pink-600 font-medium">Horas totales del periodo</span>
-                                        <span className="text-3xl font-bold text-pink-800">{totalPeriodo.toFixed(2)} hs</span>
+                                        <span className="text-3xl font-bold text-pink-800">{Math.round(totalPeriodo)} hs</span>
                                     </div>
 
-                                    {/* lista de Semanas */}
                                     <div className="rounded-md border bg-white p-4">
                                         <h4 className="font-semibold text-gray-700 mb-3 text-sm">Resumen Semanal</h4>
-                                        <div className="space-y-2">
+                                        <div className="space-y-2 max-h-[400px] overflow-y-auto pr-1">
                                             {weeklyStats.map((week, idx) => (
-                                                <div key={idx} className="flex justify-between items-center text-sm p-2 bg-gray-50 rounded">
+                                                <div key={idx} className="flex justify-between items-center text-sm p-2 bg-gray-50 rounded border border-gray-100">
                                                     <span className="text-gray-500 text-xs">
                                                         {format(week.start, 'dd MMM', { locale: es })} - {format(week.end, 'dd MMM', { locale: es })}
                                                     </span>
                                                     <span className="font-bold text-gray-800 text-xs">
-                                                        {week.total.toFixed(2)} hs
+                                                        {Math.round(week.total)} hs
                                                     </span>
                                                 </div>
                                             ))}
@@ -279,7 +273,7 @@ export default function AsistenciaTab() {
                                         <Table>
                                           <TableHeader className="sticky top-0 bg-gray-100 z-10">
                                             <TableRow>
-                                              <TableHead className="font-bold text-gray-700 w-[120px]">Fecha</TableHead>
+                                              <TableHead className="font-bold text-gray-700 w-[100px]">Fecha</TableHead>
                                               <TableHead className="font-bold text-gray-700">Día</TableHead>
                                               <TableHead className="font-bold text-gray-700">Entrada</TableHead>
                                               <TableHead className="font-bold text-gray-700">Salida</TableHead>
@@ -308,7 +302,7 @@ export default function AsistenciaTab() {
                                                     ) : '-'}
                                                 </TableCell>
                                                 <TableCell className="text-right font-mono text-gray-600">
-                                                    {dia.hours ? dia.hours.toFixed(2) : '0.00'}
+                                                    {dia.hours ? Math.round(dia.hours) : '0'}
                                                 </TableCell>
                                                 <TableCell className="text-center">
                                                     {dia.status === 'presente' && <Badge className="bg-green-100 text-green-700 border-green-200 hover:bg-green-100 shadow-none">Presente</Badge>}

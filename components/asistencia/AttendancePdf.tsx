@@ -158,7 +158,7 @@ export const AttendanceDocument = ({
               {format(new Date(week.start), 'dd MMM', { locale: es })} - {format(new Date(week.end), 'dd MMM', { locale: es })}
             </Text>
             <Text style={[styles.tableCell, { width: '30%', textAlign: 'right', paddingRight: 8, fontWeight: 'bold' }]}>
-              {week.total.toFixed(2)} hs
+              {Math.round(week.total)} hs
             </Text>
           </View>
         ))}
@@ -196,7 +196,7 @@ export const AttendanceDocument = ({
         </Text>
             
             <Text style={[styles.tableCell, styles.colHours]}>
-              {day.hours ? day.hours.toFixed(2) : '0.00'}
+              {day.hours ? Math.round(day.hours) : '0'}
             </Text>
 
             <View style={[styles.tableCell, styles.colStatus]}>
