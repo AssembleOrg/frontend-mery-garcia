@@ -209,30 +209,64 @@ export default function ItemFormSimple({
         )}
 
         {/* Selector de Responsables */}
-        {tipo === 'ingreso' && (
-          <div>
-            <Label className="text-sm mb-2">Responsable</Label>
-            <Select
-              value={item.trabajadorId || ''}
-              onValueChange={handleResponsableChange}
-              disabled={disabled}
-            >
-              <SelectTrigger className="border-[#f9bbc4]/30">
-                <SelectValue placeholder="Seleccionar responsable" />
-              </SelectTrigger>
-              <SelectContent>
-                {personal.map((trabajador) => (
-                  <SelectItem key={trabajador.id} value={trabajador.id}>
-                    <div className="flex items-center gap-2">
-                      <User className="h-4 w-4" />
-                      {trabajador.nombre}
-                    </div>
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-        )}
+        {tipo === 'ingreso' && (() => {
+          // Filtrar personal basado en la unidad de negocio del servicio
+          const unidadNegocioNombre = item.productoServicio?.unidadNegocio?.nombre?.toLowerCase().trim() || '';
+          // Verificar si es tattoo o cosmetic tattoo (más flexible para detectar variaciones)
+          const esTattooOCosmeticTattoo = unidadNegocioNombre.includes('tattoo') || 
+                                         unidadNegocioNombre.includes('cosmetic');
+          
+          // Debug temporal - remover después de verificar
+          if (item.productoServicio) {
+            console.log('🔍 Debug filtro responsable:', {
+              nombreServicio: item.productoServicio.nombre,
+              unidadNegocio: item.productoServicio.unidadNegocio,
+              unidadNegocioNombre,
+              esTattooOCosmeticTattoo,
+              personalTotal: personal.length
+            });
+          }
+          
+          // Si el servicio es de tattoo o cosmetic tattoo, solo mostrar "mery garcía"
+          const personalFiltrado = esTattooOCosmeticTattoo
+            ? personal.filter((p) => {
+                const nombreLower = p.nombre.toLowerCase().trim();
+                // Buscar "mery" en el nombre (puede ser "Mery García", "Mery Garcia", etc.)
+                return nombreLower.includes('mery');
+              })
+            : personal;
+          
+          return (
+            <div>
+              <Label className="text-sm mb-2">Responsable</Label>
+              <Select
+                value={item.trabajadorId || ''}
+                onValueChange={handleResponsableChange}
+                disabled={disabled}
+              >
+                <SelectTrigger className="border-[#f9bbc4]/30">
+                  <SelectValue placeholder="Seleccionar responsable" />
+                </SelectTrigger>
+                <SelectContent>
+                  {personalFiltrado.length > 0 ? (
+                    personalFiltrado.map((trabajador) => (
+                      <SelectItem key={trabajador.id} value={trabajador.id}>
+                        <div className="flex items-center gap-2">
+                          <User className="h-4 w-4" />
+                          {trabajador.nombre}
+                        </div>
+                      </SelectItem>
+                    ))
+                  ) : (
+                    <SelectItem value="" disabled>
+                      No hay responsables disponibles
+                    </SelectItem>
+                  )}
+                </SelectContent>
+              </Select>
+            </div>
+          );
+        })()}
 
         {/* Resumen de montos */}
         <div className="space-y-1 rounded-lg border border-[#f9bbc4]/20 bg-gradient-to-r from-[#f9bbc4]/5 to-[#e8b4c6]/5 p-3">

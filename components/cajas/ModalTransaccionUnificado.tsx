@@ -1590,42 +1590,65 @@ export default function ModalTransaccionUnificado({
                                     <ChevronDown className="h-4 w-4 text-gray-500" />
                                   </div>
 
-                                  {item.mostrarSelectorResponsables && (
-                                    <div className="absolute z-50 mt-1 w-full rounded-md border border-gray-200 bg-white shadow-lg">
-                                      <div className="max-h-48 overflow-y-auto p-2">
-                                        {personal.map((persona) => (
-                                          <div
-                                            key={persona.id}
-                                            onClick={(e) => {
-                                              e.preventDefault();
-                                              e.stopPropagation();
-                                           
-                                              // Asegurar que se actualiza el estado correctamente
-                                              setItems(prevItems => 
-                                                prevItems.map(prevItem => 
-                                                  prevItem.id === item.id 
-                                                    ? { 
-                                                        ...prevItem, 
-                                                        responsablesIds: [persona.id],
-                                                        mostrarSelectorResponsables: false 
-                                                      }
-                                                    : { 
-                                                        ...prevItem, 
-                                                        mostrarSelectorResponsables: false 
-                                                      }
-                                                )
-                                              );
-                                            }}
-                                            className="flex cursor-pointer items-center space-x-2 rounded px-2 py-1 hover:bg-gray-100"
-                                          >
-                                            <span className="text-sm">
-                                              {persona.nombre}
-                                            </span>
-                                          </div>
-                                        ))}
+                                  {item.mostrarSelectorResponsables && (() => {
+                                    // Filtrar personal basado en la unidad de negocio del servicio
+                                    const unidadNegocioNombre = item.productoServicio?.unidadNegocio?.nombre?.toLowerCase().trim() || '';
+                                    // Verificar si es tattoo o cosmetic tattoo (más flexible para detectar variaciones)
+                                    const esTattooOCosmeticTattoo = unidadNegocioNombre.includes('tattoo') || 
+                                                                     unidadNegocioNombre.includes('cosmetic');
+                                    
+                                    // Si el servicio es de tattoo o cosmetic tattoo, solo mostrar "mery garcía"
+                                    const personalFiltrado = esTattooOCosmeticTattoo
+                                      ? personal.filter((p) => {
+                                          const nombreLower = p.nombre.toLowerCase().trim();
+                                          // Buscar "mery" en el nombre (puede ser "Mery García", "Mery Garcia", etc.)
+                                          return nombreLower.includes('mery');
+                                        })
+                                      : personal;
+                                    
+                                    return (
+                                      <div className="absolute z-50 mt-1 w-full rounded-md border border-gray-200 bg-white shadow-lg">
+                                        <div className="max-h-48 overflow-y-auto p-2">
+                                          {personalFiltrado.length > 0 ? (
+                                            personalFiltrado.map((persona) => (
+                                              <div
+                                                key={persona.id}
+                                                onClick={(e) => {
+                                                  e.preventDefault();
+                                                  e.stopPropagation();
+                                               
+                                                  // Asegurar que se actualiza el estado correctamente
+                                                  setItems(prevItems => 
+                                                    prevItems.map(prevItem => 
+                                                      prevItem.id === item.id 
+                                                        ? { 
+                                                            ...prevItem, 
+                                                            responsablesIds: [persona.id],
+                                                            mostrarSelectorResponsables: false 
+                                                          }
+                                                        : { 
+                                                            ...prevItem, 
+                                                            mostrarSelectorResponsables: false 
+                                                          }
+                                                    )
+                                                  );
+                                                }}
+                                                className="flex cursor-pointer items-center space-x-2 rounded px-2 py-1 hover:bg-gray-100"
+                                              >
+                                                <span className="text-sm">
+                                                  {persona.nombre}
+                                                </span>
+                                              </div>
+                                            ))
+                                          ) : (
+                                            <div className="px-2 py-1 text-sm text-gray-500">
+                                              No hay responsables disponibles
+                                            </div>
+                                          )}
+                                        </div>
                                       </div>
-                                    </div>
-                                  )}
+                                    );
+                                  })()}
                                 </div>
 
                                 {item.responsablesIds?.length! > 0 && (
