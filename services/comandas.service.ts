@@ -2,6 +2,31 @@ import { apiFetch } from '@/lib/apiClient';
 import { logger } from '@/lib/utils';
 import { ComandaCreateNew, ComandaNew, ComandaUpdateNew, EstadoDeComandaNew, FiltrarComandasNew, Movimiento, TipoDeComandaNew } from './unidadNegocio.service';
 
+// === Ajuste Efectivo Caja 2 ===
+
+export interface AjusteEfectivoCaja2Create {
+  montoARS: number;
+  montoUSD: number;
+  observaciones?: string;
+}
+
+export interface AjusteEfectivoCaja2 {
+  id: string;
+  montoARS: number;
+  montoUSD: number;
+  observaciones: string;
+  personal: { id: string; nombre: string };
+  createdAt: string;
+  updatedAt: string;
+  deletedAt: string | null;
+}
+
+export interface SaldoEfectivoCaja2 {
+  totalARS: number;
+  totalUSD: number;
+  ajustes: AjusteEfectivoCaja2[];
+}
+
 class ComandasService {
   private readonly baseUrl = '/api/comandas';
 
@@ -335,6 +360,30 @@ class ComandasService {
       ars: Number(residualARS),
       usd: Number(residualUSD),
     }
+  }
+
+  // === Ajuste Efectivo Caja 2 ===
+
+  // POST /comandas/ajuste-efectivo-caja2
+  async crearAjusteEfectivoCaja2(data: AjusteEfectivoCaja2Create): Promise<AjusteEfectivoCaja2> {
+    const response = await apiFetch<{ data: AjusteEfectivoCaja2 }>(`${this.baseUrl}/ajuste-efectivo-caja2`, {
+      method: 'POST',
+      json: data,
+    });
+    return response.data;
+  }
+
+  // GET /comandas/saldo-efectivo-caja2
+  async obtenerSaldoEfectivoCaja2(): Promise<SaldoEfectivoCaja2> {
+    const response = await apiFetch<{ data: SaldoEfectivoCaja2 }>(`${this.baseUrl}/saldo-efectivo-caja2`);
+    return response.data;
+  }
+
+  // DELETE /comandas/ajuste-efectivo-caja2/:id
+  async eliminarAjusteEfectivoCaja2(id: string): Promise<void> {
+    await apiFetch(`${this.baseUrl}/ajuste-efectivo-caja2/${id}`, {
+      method: 'DELETE',
+    });
   }
 }
 
