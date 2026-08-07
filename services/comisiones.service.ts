@@ -10,26 +10,32 @@ export interface ProductoServicioItem {
 export interface ComisionTrabajadorDto {
   trabajadorId: string;
   nombre: string;
-  totalServicios: number;
-  totalProductos: number;
+  // Montos separados por moneda. Estilismo/Productos = ARS; Cosmetic Tatto/Tattoo = USD.
+  serviciosARS: number;
+  serviciosUSD: number;
+  productosARS: number;
+  productosUSD: number;
   cantidadConsultas: number;
   totalConsultas: number;
   unidadesNegocio: Record<string, number>;
   productosServicios: ProductoServicioItem[];
   comisiones: {
-    servicios: number;
-    productos: number;
-    total: number;
+    serviciosARS: number;
+    serviciosUSD: number;
+    productosARS: number;
+    productosUSD: number;
+    totalARS: number;
+    totalUSD: number;
   };
 }
 
 export interface TotalesComisionesDto {
-  serviciosSinDescuento: number;
-  serviciosConDescuento: number;
-  productosSinDescuento: number;
-  productosConDescuento: number;
-  totalSinDescuento: number;
-  totalConDescuento: number;
+  serviciosARS: number;
+  serviciosUSD: number;
+  productosARS: number;
+  productosUSD: number;
+  totalARS: number;
+  totalUSD: number;
 }
 
 export interface ResumenComisionesDto {
@@ -37,7 +43,8 @@ export interface ResumenComisionesDto {
   fechaHasta: string;
   trabajadores: ComisionTrabajadorDto[];
   totales: TotalesComisionesDto;
-  totalComisiones: number;
+  totalComisionesARS: number;
+  totalComisionesUSD: number;
 }
 
 export interface ComisionesQueryParams {

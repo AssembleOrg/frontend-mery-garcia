@@ -57,10 +57,22 @@ export default function ComisionesPage() {
   
   // Estado para modal de recepción
   const [modalRecepcionAbierto, setModalRecepcionAbierto] = useState(false);
-  const [comisionMeryGarcia, setComisionMeryGarcia] = useState(0);
+  const [comisionMeryGarciaARS, setComisionMeryGarciaARS] = useState(0);
+  const [comisionMeryGarciaUSD, setComisionMeryGarciaUSD] = useState(0);
   const [porcentajeRecepcion, setPorcentajeRecepcion] = useState<string>('');
 
-  const { formatARSFromNative } = useCurrencyConverter();
+  const { formatARSFromNative, formatUSD } = useCurrencyConverter();
+
+  // Formatea un par de montos (ARS y USD) mostrando solo las monedas con valor.
+  const fmtMonto = useCallback(
+    (ars: number, usd: number): string => {
+      const partes: string[] = [];
+      if (ars) partes.push(formatARSFromNative(ars));
+      if (usd) partes.push(formatUSD(usd));
+      return partes.length ? partes.join('  +  ') : formatARSFromNative(0);
+    },
+    [formatARSFromNative, formatUSD],
+  );
 
   const formatDateToString = useCallback((date: Date): string => {
     const year = date.getFullYear();
@@ -130,8 +142,9 @@ export default function ComisionesPage() {
     return `${fromStr} - ${toStr}`;
   }, [dateRange]);
 
-  const handleAbrirModalRecepcion = useCallback((comisionTotal: number) => {
-    setComisionMeryGarcia(comisionTotal);
+  const handleAbrirModalRecepcion = useCallback((comisionARS: number, comisionUSD: number) => {
+    setComisionMeryGarciaARS(comisionARS);
+    setComisionMeryGarciaUSD(comisionUSD);
     setPorcentajeRecepcion('');
     setModalRecepcionAbierto(true);
   }, []);
@@ -141,13 +154,16 @@ export default function ComisionesPage() {
     setPorcentajeRecepcion('');
   }, []);
 
-  const calcularComisionRecepcion = useCallback(() => {
+  const calcularComisionRecepcion = useCallback((): { ars: number; usd: number } => {
     const porcentaje = parseFloat(porcentajeRecepcion);
     if (isNaN(porcentaje) || porcentaje < 0 || porcentaje > 100) {
-      return 0;
+      return { ars: 0, usd: 0 };
     }
-    return (comisionMeryGarcia * porcentaje) / 100;
-  }, [comisionMeryGarcia, porcentajeRecepcion]);
+    return {
+      ars: (comisionMeryGarciaARS * porcentaje) / 100,
+      usd: (comisionMeryGarciaUSD * porcentaje) / 100,
+    };
+  }, [comisionMeryGarciaARS, comisionMeryGarciaUSD, porcentajeRecepcion]);
 
   return (
     <ManagerOrAdminOnly>
@@ -232,12 +248,17 @@ export default function ComisionesPage() {
                         </CardHeader>
                         <CardContent>
                           <div className="text-3xl font-bold text-[#4a3540]">
-                            {formatARSFromNative(data.totalComisiones)}
+                            {formatARSFromNative(data.totalComisionesARS)}
                           </div>
+                          {data.totalComisionesUSD > 0 && (
+                            <div className="text-2xl font-bold text-[#6b4c57]">
+                              {formatUSD(data.totalComisionesUSD)}
+                            </div>
+                          )}
                         </CardContent>
                       </Card>
 
-                      {/* Saldo de Caja */}
+                      {/* Bruto Cobrado */}
                       <Card className="border border-[#d4a7ca]/30 bg-white shadow-md">
                         <CardHeader className="pb-2">
                           <CardTitle className="flex items-center gap-2 text-xs font-medium text-[#6b4c57]">
@@ -247,8 +268,13 @@ export default function ComisionesPage() {
                         </CardHeader>
                         <CardContent>
                           <div className="text-xl font-bold text-[#4a3540]">
-                            {formatARSFromNative(data.totales.totalConDescuento)}
+                            {formatARSFromNative(data.totales.totalARS)}
                           </div>
+                          {data.totales.totalUSD > 0 && (
+                            <div className="text-lg font-bold text-[#6b4c57]">
+                              {formatUSD(data.totales.totalUSD)}
+                            </div>
+                          )}
                         </CardContent>
                       </Card>
 
@@ -277,51 +303,47 @@ export default function ComisionesPage() {
                       </CardHeader>
                       <CardContent>
                         <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-                          {/* Servicios */}
+                          {/* Servicios ARS */}
                           <div className="space-y-1">
                             <div className="flex items-center gap-1 text-xs text-[#6b4c57]">
                               <Briefcase className="h-3 w-3" />
-                              <span>Servicios</span>
+                              <span>Servicios ARS</span>
                             </div>
                             <div className="text-sm font-semibold text-[#4a3540]">
-                              {formatARSFromNative(data.totales.serviciosConDescuento)}
-                            </div>
-                            <div className="text-xs text-[#8b5a6b]">
-                              -{formatARSFromNative(data.totales.serviciosSinDescuento - data.totales.serviciosConDescuento)}
+                              {formatARSFromNative(data.totales.serviciosARS)}
                             </div>
                           </div>
 
-                          {/* Productos */}
+                          {/* Servicios USD */}
+                          <div className="space-y-1">
+                            <div className="flex items-center gap-1 text-xs text-[#6b4c57]">
+                              <Briefcase className="h-3 w-3" />
+                              <span>Servicios USD</span>
+                            </div>
+                            <div className="text-sm font-semibold text-[#4a3540]">
+                              {formatUSD(data.totales.serviciosUSD)}
+                            </div>
+                          </div>
+
+                          {/* Productos ARS */}
                           <div className="space-y-1">
                             <div className="flex items-center gap-1 text-xs text-[#6b4c57]">
                               <Package className="h-3 w-3" />
-                              <span>Productos</span>
+                              <span>Productos ARS</span>
                             </div>
                             <div className="text-sm font-semibold text-[#4a3540]">
-                              {formatARSFromNative(data.totales.productosConDescuento)}
-                            </div>
-                            <div className="text-xs text-[#8b5a6b]">
-                              -{formatARSFromNative(data.totales.productosSinDescuento - data.totales.productosConDescuento)}
+                              {formatARSFromNative(data.totales.productosARS)}
                             </div>
                           </div>
 
-                          {/* Total sin descuento */}
+                          {/* Productos USD */}
                           <div className="space-y-1">
-                            <div className="text-xs text-[#6b4c57]">
-                              Total Original
+                            <div className="flex items-center gap-1 text-xs text-[#6b4c57]">
+                              <Package className="h-3 w-3" />
+                              <span>Productos USD</span>
                             </div>
                             <div className="text-sm font-semibold text-[#4a3540]">
-                              {formatARSFromNative(data.totales.totalSinDescuento)}
-                            </div>
-                          </div>
-
-                          {/* Descuento aplicado */}
-                          <div className="space-y-1">
-                            <div className="text-xs text-[#6b4c57]">
-                              Descuento 10%
-                            </div>
-                            <div className="text-sm font-semibold text-red-600">
-                              -{formatARSFromNative(data.totales.totalSinDescuento - data.totales.totalConDescuento)}
+                              {formatUSD(data.totales.productosUSD)}
                             </div>
                           </div>
                         </div>
@@ -350,13 +372,13 @@ export default function ComisionesPage() {
                                     {trabajador.nombre}
                                   </h3>
                                   <div className="rounded-full bg-gradient-to-r from-[#f9bbc4] to-[#e8b4c6] px-4 py-1.5 text-base font-bold text-white shadow-md">
-                                    {formatARSFromNative(trabajador.comisiones.total)}
+                                    {fmtMonto(trabajador.comisiones.totalARS, trabajador.comisiones.totalUSD)}
                                   </div>
                                 </div>
                                 {/* Botón de recepción solo para Mery García */}
                                 {trabajador.nombre.toLowerCase().includes('mery') && (
                                   <Button
-                                    onClick={() => handleAbrirModalRecepcion(trabajador.comisiones.total)}
+                                    onClick={() => handleAbrirModalRecepcion(trabajador.comisiones.totalARS, trabajador.comisiones.totalUSD)}
                                     variant="outline"
                                     size="sm"
                                     className="w-full border-[#d4a7ca]/50 text-[#6b4c57] hover:bg-[#d4a7ca]/10 hover:border-[#d4a7ca]"
@@ -379,10 +401,10 @@ export default function ComisionesPage() {
                                         <span>Servicios (30%)</span>
                                       </div>
                                       <div className="font-semibold text-[#4a3540]">
-                                        {formatARSFromNative(trabajador.totalServicios)}
+                                        {fmtMonto(trabajador.serviciosARS, trabajador.serviciosUSD)}
                                       </div>
                                       <div className="text-xs text-[#6b4c57] mt-1">
-                                        Com: {formatARSFromNative(trabajador.comisiones.servicios)}
+                                        Com: {fmtMonto(trabajador.comisiones.serviciosARS, trabajador.comisiones.serviciosUSD)}
                                       </div>
                                     </div>
 
@@ -393,10 +415,10 @@ export default function ComisionesPage() {
                                         <span>Productos (10%)</span>
                                       </div>
                                       <div className="font-semibold text-[#4a3540]">
-                                        {formatARSFromNative(trabajador.totalProductos)}
+                                        {fmtMonto(trabajador.productosARS, trabajador.productosUSD)}
                                       </div>
                                       <div className="text-xs text-[#6b4c57] mt-1">
-                                        Com: {formatARSFromNative(trabajador.comisiones.productos)}
+                                        Com: {fmtMonto(trabajador.comisiones.productosARS, trabajador.comisiones.productosUSD)}
                                       </div>
                                     </div>
                                   </div>
@@ -518,7 +540,7 @@ export default function ComisionesPage() {
                           Comisión Total Mery García
                         </div>
                         <div className="text-2xl font-bold text-[#4a3540]">
-                          {formatARSFromNative(comisionMeryGarcia)}
+                          {fmtMonto(comisionMeryGarciaARS, comisionMeryGarciaUSD)}
                         </div>
                       </div>
 
@@ -552,20 +574,23 @@ export default function ComisionesPage() {
                                 Comisión Recepción ({porcentajeRecepcion}%)
                               </div>
                               <div className="text-3xl font-bold text-[#4a3540]">
-                                {formatARSFromNative(calcularComisionRecepcion())}
+                                {fmtMonto(calcularComisionRecepcion().ars, calcularComisionRecepcion().usd)}
                               </div>
                             </div>
                             <div className="rounded-full bg-gradient-to-r from-[#d4a7ca] to-[#e8b4c6] p-3">
                               <Users className="h-6 w-6 text-white" />
                             </div>
                           </div>
-                          
+
                           {/* Desglose adicional */}
                           <div className="mt-3 pt-3 border-t border-[#d4a7ca]/30">
                             <div className="flex justify-between text-sm">
                               <span className="text-[#8b5a6b]">Queda para Mery García:</span>
                               <span className="font-semibold text-[#6b4c57]">
-                                {formatARSFromNative(comisionMeryGarcia - calcularComisionRecepcion())}
+                                {fmtMonto(
+                                  comisionMeryGarciaARS - calcularComisionRecepcion().ars,
+                                  comisionMeryGarciaUSD - calcularComisionRecepcion().usd,
+                                )}
                               </span>
                             </div>
                           </div>
