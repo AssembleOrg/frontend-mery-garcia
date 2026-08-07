@@ -61,17 +61,28 @@ export default function ComisionesPage() {
   const [comisionMeryGarciaUSD, setComisionMeryGarciaUSD] = useState(0);
   const [porcentajeRecepcion, setPorcentajeRecepcion] = useState<string>('');
 
-  const { formatARSFromNative, formatUSD } = useCurrencyConverter();
+  const { formatARSFromNative } = useCurrencyConverter();
 
-  // Formatea un par de montos (ARS y USD) mostrando solo las monedas con valor.
+  // Dólares con convención local: "u$s 27.705,20" (el "$" solo es pesos).
+  const fmtUSD = useCallback(
+    (usd: number): string =>
+      `u$s ${usd.toLocaleString('es-AR', {
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2,
+      })}`,
+    [],
+  );
+
+  // Formatea un par de montos mostrando solo las monedas con valor.
+  // "$ ..." = pesos, "u$s ..." = dólares.
   const fmtMonto = useCallback(
     (ars: number, usd: number): string => {
       const partes: string[] = [];
       if (ars) partes.push(formatARSFromNative(ars));
-      if (usd) partes.push(formatUSD(usd));
-      return partes.length ? partes.join('  +  ') : formatARSFromNative(0);
+      if (usd) partes.push(fmtUSD(usd));
+      return partes.length ? partes.join('   +   ') : formatARSFromNative(0);
     },
-    [formatARSFromNative, formatUSD],
+    [formatARSFromNative, fmtUSD],
   );
 
   const formatDateToString = useCallback((date: Date): string => {
@@ -252,7 +263,7 @@ export default function ComisionesPage() {
                           </div>
                           {data.totalComisionesUSD > 0 && (
                             <div className="text-2xl font-bold text-[#6b4c57]">
-                              {formatUSD(data.totalComisionesUSD)}
+                              {fmtUSD(data.totalComisionesUSD)}
                             </div>
                           )}
                         </CardContent>
@@ -272,7 +283,7 @@ export default function ComisionesPage() {
                           </div>
                           {data.totales.totalUSD > 0 && (
                             <div className="text-lg font-bold text-[#6b4c57]">
-                              {formatUSD(data.totales.totalUSD)}
+                              {fmtUSD(data.totales.totalUSD)}
                             </div>
                           )}
                         </CardContent>
@@ -321,7 +332,7 @@ export default function ComisionesPage() {
                               <span>Servicios USD</span>
                             </div>
                             <div className="text-sm font-semibold text-[#4a3540]">
-                              {formatUSD(data.totales.serviciosUSD)}
+                              {fmtUSD(data.totales.serviciosUSD)}
                             </div>
                           </div>
 
@@ -343,7 +354,7 @@ export default function ComisionesPage() {
                               <span>Productos USD</span>
                             </div>
                             <div className="text-sm font-semibold text-[#4a3540]">
-                              {formatUSD(data.totales.productosUSD)}
+                              {fmtUSD(data.totales.productosUSD)}
                             </div>
                           </div>
                         </div>
