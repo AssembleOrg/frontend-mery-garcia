@@ -38,6 +38,7 @@ import { useMovimientosStore } from '@/features/movimientos';
 import ModalMovimientosManual from '@/components/cajas/ModalMovimientosManual';
 import { useAuthStore } from '@/features/auth/store/authStore';
 import ModalVerMovimientos from '@/components/cajas/ModalVerMovimientos';
+import ModalAjusteEfectivoCaja2 from '@/components/cajas/ModalAjusteEfectivoCaja2';
 
 const breadcrumbItems = [
   { label: 'Inicio', href: '/' },
@@ -61,6 +62,8 @@ export default function CajaGrandePage() {
   const [showModalMovimiento, setShowModalMovimiento] = useState(false);
   // Estado para modal de ver movimientos
   const [showModalVerMovimientos, setShowModalVerMovimientos] = useState(false);
+  // Estado para modal de ajuste de efectivo
+  const [showModalAjusteEfectivo, setShowModalAjusteEfectivo] = useState(false);
 
   // Estado para filtro de fechas - default: desde noviembre 2025 hasta el día actual
   const [dateRange, setDateRange] = useState<DateRange | undefined>(() => {
@@ -495,6 +498,21 @@ export default function CajaGrandePage() {
                             </Button>
                           </div>
 
+                          {/* Ajuste de Efectivo */}
+                          <div className="space-y-2">
+                            <p className="text-sm font-medium text-gray-700">
+                              💵 Ajuste de Efectivo
+                            </p>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => setShowModalAjusteEfectivo(true)}
+                              className="flex w-full items-center gap-2 border-emerald-200 text-emerald-700 hover:bg-emerald-50"
+                            >
+                              Ajustar Efectivo Caja 2
+                            </Button>
+                          </div>
+
                           {/* Controles de Exportación */}
                           <div className="space-y-2">
                             <p className="text-sm font-medium text-gray-700">
@@ -569,6 +587,18 @@ export default function CajaGrandePage() {
           onExportCSV={exportarMovimientosCSV}
           onExportPDF={exportarMovimientosPDF}
           title="Movimientos de la Caja Grande"
+        />
+
+        {/* Modal de Ajuste de Efectivo */}
+        <ModalAjusteEfectivoCaja2
+          abierto={showModalAjusteEfectivo}
+          onCerrar={() => setShowModalAjusteEfectivo(false)}
+          onAjusteRealizado={() => {
+            obtenerMovimientosPaginados({
+              fechaDesde: dateRange?.from?.toISOString() || '',
+              fechaHasta: dateRange?.to?.toISOString() || '',
+            });
+          }}
         />
       </div>
     </MainLayout>
