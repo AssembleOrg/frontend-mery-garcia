@@ -7,6 +7,12 @@ import StandardBreadcrumbs from '@/components/common/StandardBreadcrumbs';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { DatePicker } from '@/components/ui/date-picker';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
 import ClientOnly from '@/components/common/ClientOnly';
 import Spinner from '@/components/common/Spinner';
 import SummaryCardDual from '@/components/common/SummaryCardDual';
@@ -14,18 +20,19 @@ import SummaryCardCount from '@/components/common/SummaryCardCount';
 import { CajaResumenService } from '@/services/cajaResumen.service';
 import { ResumenCajaDiarioResponse, TipoPago } from '@/types/caja';
 import { toast } from 'sonner';
-import { 
-  CreditCard, 
-  Banknote, 
-  ArrowRightLeft, 
-  FileText, 
+import {
+  CreditCard,
+  Banknote,
+  ArrowRightLeft,
+  FileText,
   Smartphone,
   Gift,
   Calendar,
   RefreshCw,
   TrendingUp,
   TrendingDown,
-  DollarSign
+  DollarSign,
+  Eye
 } from 'lucide-react';
 
 const breadcrumbItems = [
@@ -91,6 +98,8 @@ export default function ResumenMetodosPagoPage() {
   const [data, setData] = useState<ResumenCajaDiarioResponse | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<Error | null>(null);
+  // Método de pago cuyo detalle se muestra en el modal (null = cerrado)
+  const [detalleTipoPago, setDetalleTipoPago] = useState<TipoPago | null>(null);
 
   const fetchData = async (fecha?: Date) => {
     try {
@@ -151,6 +160,32 @@ export default function ResumenMetodosPagoPage() {
       day: 'numeric',
     });
   };
+
+  const formatFechaHora = (iso: string) => {
+    const d = new Date(iso);
+    return isNaN(d.getTime())
+      ? iso
+      : d.toLocaleString('es-AR', {
+          day: '2-digit',
+          month: '2-digit',
+          hour: '2-digit',
+          minute: '2-digit',
+        });
+  };
+
+  // Detalle del método de pago seleccionado (para el modal)
+  const detalleActual =
+    detalleTipoPago && data?.detallePorMetodoPago
+      ? [...(data.detallePorMetodoPago[detalleTipoPago] ?? [])].sort((a, b) =>
+          a.fecha.localeCompare(b.fecha)
+        )
+      : [];
+  const detalleSubtotalARS = detalleActual
+    .filter((d) => d.moneda === 'ARS')
+    .reduce((s, d) => s + d.monto, 0);
+  const detalleSubtotalUSD = detalleActual
+    .filter((d) => d.moneda === 'USD')
+    .reduce((s, d) => s + d.monto, 0);
 
   return (
     <MainLayout>
@@ -340,19 +375,32 @@ export default function ResumenMetodosPagoPage() {
                                 }`}
                               >
                                 <CardHeader className={`bg-gradient-to-br ${config.bgColor} pb-3`}>
-                                  <div className="flex items-center gap-3">
-                                    <div
-                                      className="rounded-lg p-2.5"
-                                      style={{ backgroundColor: `${config.color}20` }}
-                                    >
-                                      <IconComponent
-                                        className="h-6 w-6"
-                                        style={{ color: config.color }}
-                                      />
+                                  <div className="flex items-center justify-between gap-3">
+                                    <div className="flex items-center gap-3">
+                                      <div
+                                        className="rounded-lg p-2.5"
+                                        style={{ backgroundColor: `${config.color}20` }}
+                                      >
+                                        <IconComponent
+                                          className="h-6 w-6"
+                                          style={{ color: config.color }}
+                                        />
+                                      </div>
+                                      <CardTitle className="text-lg font-semibold text-[#4a3540]">
+                                        {config.label}
+                                      </CardTitle>
                                     </div>
-                                    <CardTitle className="text-lg font-semibold text-[#4a3540]">
-                                      {config.label}
-                                    </CardTitle>
+                                    {tieneMovimiento && (
+                                      <Button
+                                        variant="ghost"
+                                        size="icon"
+                                        onClick={() => setDetalleTipoPago(tipoPago)}
+                                        title="Ver detalle de ingresos"
+                                        className="h-8 w-8 text-[#6b4c57] hover:bg-white/60"
+                                      >
+                                        <Eye className="h-5 w-5" />
+                                      </Button>
+                                    )}
                                   </div>
                                 </CardHeader>
                                 <CardContent className="pt-4">
@@ -520,6 +568,89 @@ export default function ResumenMetodosPagoPage() {
                 </div>
               </div>
             </div>
+
+            {/* Modal: detalle de ingresos por método de pago */}
+            <Dialog
+              open={detalleTipoPago !== null}
+              onOpenChange={(open) => !open && setDetalleTipoPago(null)}
+            >
+              <DialogContent className="flex max-h-[85vh] flex-col overflow-hidden bg-white sm:max-w-2xl">
+                <DialogHeader>
+                  <DialogTitle className="flex items-center gap-2 text-[#4a3540]">
+                    {detalleTipoPago && (
+                      <>
+                        {(() => {
+                          const Icon = metodoPagoConfig[detalleTipoPago].icon;
+                          return (
+                            <Icon
+                              className="h-5 w-5"
+                              style={{ color: metodoPagoConfig[detalleTipoPago].color }}
+                            />
+                          );
+                        })()}
+                        Detalle — {metodoPagoConfig[detalleTipoPago].label}
+                      </>
+                    )}
+                  </DialogTitle>
+                </DialogHeader>
+
+                {/* Subtotales */}
+                <div className="grid grid-cols-2 gap-3 border-b border-gray-200 pb-3">
+                  <div className="rounded-md bg-green-50 p-2 text-center">
+                    <div className="text-xs text-gray-500">Total ARS</div>
+                    <div className="font-bold text-green-700">
+                      {formatCurrency(detalleSubtotalARS, 'ARS')}
+                    </div>
+                  </div>
+                  <div className="rounded-md bg-green-50 p-2 text-center">
+                    <div className="text-xs text-gray-500">Total USD</div>
+                    <div className="font-bold text-green-700">
+                      {formatCurrency(detalleSubtotalUSD, 'USD')}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Lista de ingresos */}
+                <div className="-mx-2 flex-1 overflow-y-auto px-2">
+                  {detalleActual.length === 0 ? (
+                    <p className="py-8 text-center text-sm text-gray-500">
+                      Sin movimientos para este método de pago
+                    </p>
+                  ) : (
+                    <table className="w-full text-sm">
+                      <thead className="sticky top-0 bg-white">
+                        <tr className="border-b border-gray-200 text-left text-xs text-gray-500">
+                          <th className="py-2">Fecha</th>
+                          <th className="py-2">Comanda</th>
+                          <th className="py-2">Cliente</th>
+                          <th className="py-2 text-right">Monto</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-gray-100">
+                        {detalleActual.map((d, idx) => (
+                          <tr key={idx} className="hover:bg-[#f9bbc4]/5">
+                            <td className="py-2 text-gray-600">{formatFechaHora(d.fecha)}</td>
+                            <td className="py-2">
+                              {d.origen === 'seña' ? (
+                                <span className="rounded bg-[#d4a7ca]/20 px-1.5 py-0.5 text-xs text-[#6b4c57]">
+                                  Seña
+                                </span>
+                              ) : (
+                                <span className="font-medium text-[#4a3540]">{d.numero ?? '—'}</span>
+                              )}
+                            </td>
+                            <td className="py-2 text-gray-600">{d.cliente ?? '—'}</td>
+                            <td className="py-2 text-right font-semibold text-green-700">
+                              {formatCurrency(d.monto, d.moneda)}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  )}
+                </div>
+              </DialogContent>
+            </Dialog>
           </ClientOnly>
         </div>
       </MainLayout>

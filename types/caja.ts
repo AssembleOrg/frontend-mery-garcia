@@ -396,6 +396,26 @@ export interface PorMetodoPago {
 }
 
 /**
+ * Detalle de un ingreso individual que compone el total de un método de pago
+ */
+export interface DetalleIngresoMetodoPago {
+  origen: 'comanda' | 'seña';
+  comandaId?: string;
+  numero?: string;
+  cliente?: string;
+  fecha: string;
+  moneda: 'ARS' | 'USD';
+  monto: number;
+}
+
+/**
+ * Detalle línea por línea por método de pago
+ */
+export type DetallePorMetodoPago = {
+  [key in TipoPago]: DetalleIngresoMetodoPago[];
+};
+
+/**
  * Response completo del endpoint de resumen de caja diario
  */
 export interface ResumenCajaDiarioResponse {
@@ -411,6 +431,7 @@ export interface ResumenCajaDiarioResponse {
   totalEgresosARS: number;
   comandasValidadasIds: string[];
   porMetodoPago: PorMetodoPago;
+  detallePorMetodoPago?: DetallePorMetodoPago;
 }
 
 /**
