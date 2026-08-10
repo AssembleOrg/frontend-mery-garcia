@@ -180,12 +180,18 @@ export default function ResumenMetodosPagoPage() {
           a.fecha.localeCompare(b.fecha)
         )
       : [];
-  const detalleSubtotalARS = detalleActual
-    .filter((d) => d.moneda === 'ARS')
-    .reduce((s, d) => s + d.monto, 0);
-  const detalleSubtotalUSD = detalleActual
-    .filter((d) => d.moneda === 'USD')
-    .reduce((s, d) => s + d.monto, 0);
+  const detalleARS = detalleActual.filter((d) => d.moneda === 'ARS');
+  const detalleUSD = detalleActual.filter((d) => d.moneda === 'USD');
+  const detalleSubtotalARS = detalleARS.reduce((s, d) => s + d.monto, 0);
+  const detalleSubtotalUSD = detalleUSD.reduce((s, d) => s + d.monto, 0);
+
+  // Grupos ordenados: primero ARS, luego USD, con su total al final de cada uno
+  const gruposDetalle = (
+    [
+      { moneda: 'ARS' as const, items: detalleARS, subtotal: detalleSubtotalARS },
+      { moneda: 'USD' as const, items: detalleUSD, subtotal: detalleSubtotalUSD },
+    ]
+  ).filter((g) => g.items.length > 0);
 
   return (
     <MainLayout>
@@ -594,59 +600,66 @@ export default function ResumenMetodosPagoPage() {
                   </DialogTitle>
                 </DialogHeader>
 
-                {/* Subtotales */}
-                <div className="grid grid-cols-2 gap-3 border-b border-gray-200 pb-3">
-                  <div className="rounded-md bg-green-50 p-2 text-center">
-                    <div className="text-xs text-gray-500">Total ARS</div>
-                    <div className="font-bold text-green-700">
-                      {formatCurrency(detalleSubtotalARS, 'ARS')}
-                    </div>
-                  </div>
-                  <div className="rounded-md bg-green-50 p-2 text-center">
-                    <div className="text-xs text-gray-500">Total USD</div>
-                    <div className="font-bold text-green-700">
-                      {formatCurrency(detalleSubtotalUSD, 'USD')}
-                    </div>
-                  </div>
-                </div>
-
-                {/* Lista de ingresos */}
+                {/* Lista de ingresos agrupada por moneda, con total por grupo */}
                 <div className="-mx-2 flex-1 overflow-y-auto px-2">
                   {detalleActual.length === 0 ? (
                     <p className="py-8 text-center text-sm text-gray-500">
                       Sin movimientos para este método de pago
                     </p>
                   ) : (
-                    <table className="w-full text-sm">
-                      <thead className="sticky top-0 bg-white">
-                        <tr className="border-b border-gray-200 text-left text-xs text-gray-500">
-                          <th className="py-2">Fecha</th>
-                          <th className="py-2">Comanda</th>
-                          <th className="py-2">Cliente</th>
-                          <th className="py-2 text-right">Monto</th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-gray-100">
-                        {detalleActual.map((d, idx) => (
-                          <tr key={idx} className="hover:bg-[#f9bbc4]/5">
-                            <td className="py-2 text-gray-600">{formatFechaHora(d.fecha)}</td>
-                            <td className="py-2">
-                              {d.origen === 'seña' ? (
-                                <span className="rounded bg-[#d4a7ca]/20 px-1.5 py-0.5 text-xs text-[#6b4c57]">
-                                  Seña
-                                </span>
-                              ) : (
-                                <span className="font-medium text-[#4a3540]">{d.numero ?? '—'}</span>
-                              )}
-                            </td>
-                            <td className="py-2 text-gray-600">{d.cliente ?? '—'}</td>
-                            <td className="py-2 text-right font-semibold text-green-700">
-                              {formatCurrency(d.monto, d.moneda)}
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
+                    <div className="space-y-6">
+                      {gruposDetalle.map((grupo) => (
+                        <div key={grupo.moneda}>
+                          {/* Separador de moneda */}
+                          <div className="mb-1 flex items-center justify-between border-b-2 border-[#f9bbc4]/40 pb-1">
+                            <span className="text-sm font-bold text-[#4a3540]">{grupo.moneda}</span>
+                            <span className="text-xs text-gray-500">
+                              {grupo.items.length} {grupo.items.length === 1 ? 'movimiento' : 'movimientos'}
+                            </span>
+                          </div>
+                          <table className="w-full text-sm">
+                            <thead>
+                              <tr className="text-left text-xs text-gray-500">
+                                <th className="py-1 font-normal">Fecha</th>
+                                <th className="py-1 font-normal">Comanda</th>
+                                <th className="py-1 font-normal">Cliente</th>
+                                <th className="py-1 text-right font-normal">Monto</th>
+                              </tr>
+                            </thead>
+                            <tbody className="divide-y divide-gray-100">
+                              {grupo.items.map((d, idx) => (
+                                <tr key={idx} className="hover:bg-[#f9bbc4]/5">
+                                  <td className="py-2 text-gray-600">{formatFechaHora(d.fecha)}</td>
+                                  <td className="py-2">
+                                    {d.origen === 'seña' ? (
+                                      <span className="rounded bg-[#d4a7ca]/20 px-1.5 py-0.5 text-xs text-[#6b4c57]">
+                                        Seña
+                                      </span>
+                                    ) : (
+                                      <span className="font-medium text-[#4a3540]">{d.numero ?? '—'}</span>
+                                    )}
+                                  </td>
+                                  <td className="py-2 text-gray-600">{d.cliente ?? '—'}</td>
+                                  <td className="py-2 text-right font-semibold text-green-700">
+                                    {formatCurrency(d.monto, grupo.moneda)}
+                                  </td>
+                                </tr>
+                              ))}
+                            </tbody>
+                            <tfoot>
+                              <tr className="border-t-2 border-gray-300 bg-[#f9bbc4]/10">
+                                <td colSpan={3} className="py-2 font-semibold text-[#4a3540]">
+                                  Total {grupo.moneda}
+                                </td>
+                                <td className="py-2 text-right font-bold text-green-700">
+                                  {formatCurrency(grupo.subtotal, grupo.moneda)}
+                                </td>
+                              </tr>
+                            </tfoot>
+                          </table>
+                        </div>
+                      ))}
+                    </div>
                   )}
                 </div>
               </DialogContent>
