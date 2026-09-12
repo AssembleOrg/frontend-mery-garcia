@@ -38,6 +38,34 @@ export interface PresentismoHoy {
   openIncidents: number;
 }
 
+// ─── Pendientes de decisión ──────────────────────────────────────
+
+export type TipoPendiente = 'FICHAJE' | 'AUSENCIA' | 'LICENCIA' | 'TARDE' | 'HORAS_EXTRA';
+
+export interface Pendiente {
+  /** "LICENCIA:uuid" — alcanza para resolverla. */
+  id: string;
+  kind: TipoPendiente;
+  label: string;
+  person: string;
+  detail: string;
+  when: string;
+  priority: 'alta' | 'media' | 'baja';
+  tone: 'alerta' | 'info' | 'tarde' | 'licencia';
+}
+
+export interface Bandeja {
+  incidents: Pendiente[];
+  counts: {
+    total: number;
+    fichajes: number;
+    ausencias: number;
+    licencias: number;
+    horasExtra: number;
+    resueltasSemana: number;
+  };
+}
+
 // ─── Equipo ──────────────────────────────────────────────────────
 
 export interface PersonaRitmo {
@@ -258,6 +286,19 @@ class PresentismoService {
       cerrado = true;
       control.abort();
     };
+  }
+
+  /** Lo que espera una decisión: licencias, fichajes a revisar, tarde, extra. */
+  async pendientes(): Promise<Bandeja> {
+    const res = await apiFetch<Envelope<Bandeja>>(`${this.base}/pendientes`);
+    return res.data;
+  }
+
+  async resolverPendientes(ids: string[], decision: 'APROBADA' | 'RECHAZADA'): Promise<void> {
+    await apiFetch(`${this.base}/pendientes/resolver`, {
+      method: 'POST',
+      json: { ids, decision },
+    });
   }
 
   /** El equipo dado de alta en Ritmo, con su estado de acceso. */
