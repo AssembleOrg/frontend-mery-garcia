@@ -56,10 +56,40 @@ export default function TabPatron() {
   const [guardando, setGuardando] = useState(false);
   const [edicion, setEdicion] = useState<Edicion | null>(null);
 
+  /**
+   * Se cruza el patrón con el equipo de Ritmo: quien todavía no tiene ningún
+   * tramo igual tiene que aparecer, porque si no no hay forma de cargarle el
+   * primero.
+   */
   const cargar = useCallback(async () => {
     setCargando(true);
     try {
-      setPatron(await presentismoService.patron());
+      const [tramos, equipo] = await Promise.all([
+        presentismoService.patron(),
+        presentismoService.equipo(),
+      ]);
+
+      const porId = new Map(tramos.map((p) => [p.ritmoUserId, p]));
+      const completo: PatronDePersona[] = equipo.people
+        .filter((p) => p.role === 'EMPLEADO' && p.isActive)
+        .map(
+          (p) =>
+            porId.get(p.id) ?? {
+              ritmoUserId: p.id,
+              nombre: p.fullName,
+              tramos: [],
+              horasSemanaA: 0,
+              horasSemanaB: 0,
+            },
+        );
+
+      // Si alguien tiene patrón pero ya no figura como empleado activo, se
+      // muestra igual: si no, su horario quedaría generándose sin que se vea.
+      for (const p of tramos) {
+        if (!completo.some((c) => c.ritmoUserId === p.ritmoUserId)) completo.push(p);
+      }
+
+      setPatron(completo);
     } catch (error) {
       console.error('Error cargando el horario fijo:', error);
       toast.error('No se pudo cargar el horario fijo');
@@ -192,6 +222,12 @@ export default function TabPatron() {
             </CardHeader>
             <CardContent>
               <div className="flex flex-wrap gap-2">
+                {persona.tramos.length === 0 && (
+                  <p className="py-1 text-sm text-[#8b5a6b]">
+                    Todavía no tiene horario fijo. Tocá «Agregar día» para cargarle el
+                    primero.
+                  </p>
+                )}
                 {persona.tramos.map((tramo) => {
                   const dia = DIAS_SEMANA.find((d) => d.iso === tramo.diaIso);
                   return (

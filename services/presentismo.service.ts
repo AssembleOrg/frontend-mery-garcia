@@ -38,6 +38,37 @@ export interface PresentismoHoy {
   openIncidents: number;
 }
 
+// ─── Equipo ──────────────────────────────────────────────────────
+
+export interface PersonaRitmo {
+  id: string;
+  fullName: string;
+  email: string;
+  role: 'ADMIN' | 'SUPERVISOR' | 'CONTABLE' | 'EMPLEADO' | 'PLATAFORMA';
+  employeeCode: string | null;
+  worksiteName: string | null;
+  initials: string;
+  isActive: boolean;
+  /** "activo" | "sin-invitar" | "sin-acceso" */
+  access: string;
+  accessLabel: string;
+  statusLabel: string;
+  statusTone: 'ok' | 'alerta' | 'info';
+  shiftsThisWeek: number;
+  hoursThisWeek: number;
+  lateThisMonth: number;
+  lastLoginAt: string | null;
+}
+
+export interface Equipo {
+  people: PersonaRitmo[];
+  total: number;
+  withAccess: number;
+  notInvited: number;
+  inactive: number;
+  sites: Array<{ id: string; name: string; kind: string }>;
+}
+
 // ─── Semana de turnos ────────────────────────────────────────────
 
 export interface TurnoCelda {
@@ -162,6 +193,12 @@ class PresentismoService {
    */
   urlEventos(): string {
     return `${process.env.NEXT_PUBLIC_API_URL ?? ''}${this.base}/eventos`;
+  }
+
+  /** El equipo dado de alta en Ritmo, con su estado de acceso. */
+  async equipo(): Promise<Equipo> {
+    const res = await apiFetch<Envelope<Equipo>>(`${this.base}/personal`);
+    return res.data;
   }
 
   // ---- semana ----
