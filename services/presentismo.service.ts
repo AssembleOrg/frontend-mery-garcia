@@ -269,3 +269,82 @@ export function sumarSemanas(lunes: string, cantidad: number): string {
   d.setUTCDate(d.getUTCDate() + cantidad * 7);
   return d.toISOString().slice(0, 10);
 }
+
+// ─── Reporte de asistencia ───────────────────────────────────────
+
+export type EstadoDia = 'TRABAJADO' | 'INCOMPLETO' | 'AUSENTE' | 'LICENCIA' | 'SIN_TURNO';
+export type RevisionDia = 'VALIDO' | 'PENDIENTE' | 'RECHAZADO';
+
+export interface FilaAsistencia {
+  userId: string;
+  fullName: string;
+  employeeCode: string | null;
+  day: string;
+  shiftStart: string | null;
+  shiftEnd: string | null;
+  plannedMinutes: number;
+  checkIn: string | null;
+  checkOut: string | null;
+  breakMinutes: number;
+  workedMinutes: number;
+  balanceMinutes: number;
+  lateMinutes: number;
+  punches: number;
+  state: EstadoDia;
+  review: RevisionDia | null;
+  reviewReason: string | null;
+  absenceKind: string | null;
+  absenceStatus: string | null;
+}
+
+export interface ReporteAsistencia {
+  from: string;
+  to: string;
+  timezone: string;
+  rows: FilaAsistencia[];
+  summary: {
+    people: number;
+    days: number;
+    workedMinutes: number;
+    plannedMinutes: number;
+    pendingDays: number;
+    absentDays: number;
+    leaveDays: number;
+    lateDays: number;
+  };
+}
+
+class ReportesService {
+  private readonly base = '/api/ritmo/reportes';
+
+  async asistencia(desde: string, hasta: string): Promise<ReporteAsistencia> {
+    const res = await apiFetch<{ status: string; data: ReporteAsistencia }>(
+      `${this.base}/asistencia?desde=${desde}&hasta=${hasta}`,
+    );
+    return res.data;
+  }
+
+  /**
+   * URL de descarga del PDF. Se navega directo en vez de pasar por apiFetch:
+   * lo que vuelve es un archivo, no JSON, y el navegador lo baja solo.
+   */
+  urlPdf(desde: string, hasta: string): string {
+    return `${process.env.NEXT_PUBLIC_API_URL ?? ''}${this.base}/asistencia.pdf?desde=${desde}&hasta=${hasta}`;
+  }
+}
+
+export const reportesService = new ReportesService();
+
+/** 485 → "8h 05m"; negativos con signo. */
+export function duracion(minutos: number): string {
+  if (!minutos) return '—';
+  const signo = minutos < 0 ? '-' : '';
+  const abs = Math.abs(minutos);
+  return `${signo}${Math.floor(abs / 60)}h ${String(abs % 60).padStart(2, '0')}m`;
+}
+
+/** "2026-09-15" → "15/09". */
+export function fechaCorta(dia: string): string {
+  const [, m, d] = dia.split('-');
+  return `${d}/${m}`;
+}

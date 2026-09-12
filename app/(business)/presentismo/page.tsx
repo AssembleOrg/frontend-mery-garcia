@@ -7,10 +7,11 @@ import StandardBreadcrumbs from '@/components/common/StandardBreadcrumbs';
 import ClientOnly from '@/components/common/ClientOnly';
 import ManagerOrAdminOnly from '@/components/auth/ManagerOrAdminOnly';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { CalendarDays, Radio, Repeat } from 'lucide-react';
+import { CalendarDays, FileText, Radio, Repeat } from 'lucide-react';
 import TabHoy from '@/components/presentismo/TabHoy';
 import TabSemana from '@/components/presentismo/TabSemana';
 import TabPatron from '@/components/presentismo/TabPatron';
+import TabReportes from '@/components/presentismo/TabReportes';
 
 const breadcrumbItems = [
   { label: 'Inicio', href: '/dashboard' },
@@ -32,7 +33,7 @@ export default function PresentismoPage() {
             <div className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
               <ClientOnly>
                 <Tabs value={tab} onValueChange={setTab} className="w-full">
-                  <TabsList className="mb-6 grid w-full grid-cols-3 border border-[#f9bbc4]/30 bg-white/80 sm:w-fit">
+                  <TabsList className="mb-6 grid w-full grid-cols-4 border border-[#f9bbc4]/30 bg-white/80 sm:w-fit">
                     <TabsTrigger
                       value="hoy"
                       className="flex items-center gap-2 data-[state=active]:bg-[#f9bbc4] data-[state=active]:text-white"
@@ -46,6 +47,13 @@ export default function PresentismoPage() {
                     >
                       <CalendarDays className="h-4 w-4" />
                       Semana
+                    </TabsTrigger>
+                    <TabsTrigger
+                      value="reportes"
+                      className="flex items-center gap-2 data-[state=active]:bg-[#f9bbc4] data-[state=active]:text-white"
+                    >
+                      <FileText className="h-4 w-4" />
+                      Reportes
                     </TabsTrigger>
                     <TabsTrigger
                       value="patron"
@@ -63,6 +71,9 @@ export default function PresentismoPage() {
                   </TabsContent>
                   <TabsContent value="semana" className="mt-0">
                     {tab === 'semana' && <TabSemana />}
+                  </TabsContent>
+                  <TabsContent value="reportes" className="mt-0">
+                    {tab === 'reportes' && <TabReportes />}
                   </TabsContent>
                   <TabsContent value="patron" className="mt-0">
                     {tab === 'patron' && <TabPatron />}
