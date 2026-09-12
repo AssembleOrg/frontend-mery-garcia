@@ -55,13 +55,8 @@ export default function TabHoy() {
 
   // Stream de eventos: el backend avisa apenas alguien entra o sale.
   useEffect(() => {
-    const source = new EventSource(presentismoService.urlEventos());
-
-    source.onopen = () => setEnVivo(true);
-    source.onerror = () => setEnVivo(false); // EventSource reintenta solo.
-
-    source.addEventListener('fichaje', (e) => {
-      const evento = JSON.parse((e as MessageEvent).data) as EventoFichaje;
+    const cerrar = presentismoService.escucharEventos((crudo) => {
+      const evento = crudo as EventoFichaje;
       setUltimos((previos) => [evento, ...previos].slice(0, 8));
 
       const quien = evento.nombre ?? 'Alguien';
@@ -72,9 +67,9 @@ export default function TabHoy() {
         toast.success(`${quien} ${que}`);
       }
       void cargar();
-    });
+    }, setEnVivo);
 
-    return () => source.close();
+    return cerrar;
   }, [cargar]);
 
   if (cargando) {

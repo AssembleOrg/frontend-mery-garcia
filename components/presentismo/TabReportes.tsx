@@ -64,11 +64,18 @@ export default function TabReportes() {
     }
   }, [rango]);
 
-  const descargar = () => {
+  const [bajando, setBajando] = useState(false);
+
+  const descargar = async () => {
     if (!rango?.from || !rango?.to) return;
-    // Se abre la URL y el navegador baja el archivo: no pasa por fetch porque
-    // lo que vuelve es un PDF, no JSON.
-    window.open(reportesService.urlPdf(aFecha(rango.from), aFecha(rango.to)), '_blank');
+    setBajando(true);
+    try {
+      await reportesService.descargarPdf(aFecha(rango.from), aFecha(rango.to));
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'No se pudo bajar el PDF');
+    } finally {
+      setBajando(false);
+    }
   };
 
   const resumen = datos?.summary;
@@ -87,7 +94,7 @@ export default function TabReportes() {
           </div>
           <Button
             onClick={descargar}
-            disabled={!datos || cargando}
+            disabled={!datos || cargando || bajando}
             className="bg-gradient-to-r from-[#f9bbc4] to-[#e8b4c6] text-white"
           >
             <Download className="mr-2 h-4 w-4" />

@@ -1,4 +1,4 @@
-import { apiFetch } from '@/lib/apiClient';
+import { apiFetch, getToken } from '@/lib/apiClient';
 
 // ─── Presentismo de hoy ──────────────────────────────────────────
 
@@ -188,11 +188,76 @@ class PresentismoService {
   }
 
   /**
-   * URL del stream de eventos. Va aparte de `apiFetch` porque EventSource no
-   * acepta cabeceras: se abre contra la URL pelada.
+   * Abre el stream de presentismo y llama a `onEvento` con cada fichaje.
+   *
+   * No se usa EventSource: no acepta cabeceras, y la unica forma de
+   * autenticarlo seria mandar el token en la URL, donde quedaria escrito en
+   * los logs. Con fetch el token va en la cabecera como en el resto de la app;
+   * a cambio hay que reconectar a mano, que es lo que EventSource daba gratis.
+   *
+   * Devuelve la funcion para cerrarlo.
    */
-  urlEventos(): string {
-    return `${process.env.NEXT_PUBLIC_API_URL ?? ''}${this.base}/eventos`;
+  escucharEventos(
+    onEvento: (evento: unknown) => void,
+    onEstado: (conectado: boolean) => void,
+  ): () => void {
+    const control = new AbortController();
+    let cerrado = false;
+    let intentos = 0;
+
+    const conectar = async () => {
+      while (!cerrado) {
+        try {
+          const res = await fetch(
+            `${process.env.NEXT_PUBLIC_API_URL ?? ''}${this.base}/eventos`,
+            {
+              headers: {
+                Accept: 'text/event-stream',
+                ...(getToken() ? { Authorization: `Bearer ${getToken()}` } : {}),
+              },
+              signal: control.signal,
+            },
+          );
+          if (!res.ok || !res.body) throw new Error(`stream ${res.status}`);
+
+          intentos = 0;
+          onEstado(true);
+          const reader = res.body.getReader();
+          const decoder = new TextDecoder();
+          let buffer = '';
+
+          while (!cerrado) {
+            const { value, done } = await reader.read();
+            if (done) break;
+            buffer += decoder.decode(value, { stream: true });
+
+            // Los mensajes de SSE se separan con una linea en blanco.
+            const partes = buffer.split('\n\n');
+            buffer = partes.pop() ?? '';
+            for (const parte of partes) {
+              const tipo = /^event:\s*(.+)$/m.exec(parte)?.[1]?.trim();
+              const data = /^data:\s*(.+)$/m.exec(parte)?.[1];
+              if (tipo === 'fichaje' && data) onEvento(JSON.parse(data));
+            }
+          }
+        } catch {
+          if (cerrado) return;
+        }
+
+        onEstado(false);
+        // Espera creciente hasta 30 s: si el backend se cayo, no tiene sentido
+        // martillarlo cada segundo.
+        intentos += 1;
+        const espera = Math.min(1000 * 2 ** Math.min(intentos, 5), 30_000);
+        await new Promise((r) => setTimeout(r, espera));
+      }
+    };
+
+    void conectar();
+    return () => {
+      cerrado = true;
+      control.abort();
+    };
   }
 
   /** El equipo dado de alta en Ritmo, con su estado de acceso. */
@@ -362,11 +427,23 @@ class ReportesService {
   }
 
   /**
-   * URL de descarga del PDF. Se navega directo en vez de pasar por apiFetch:
-   * lo que vuelve es un archivo, no JSON, y el navegador lo baja solo.
+   * Baja el PDF. Va por fetch y no abriendo la URL porque el endpoint pide el
+   * token en la cabecera; despues se fuerza la descarga con un enlace temporal.
    */
-  urlPdf(desde: string, hasta: string): string {
-    return `${process.env.NEXT_PUBLIC_API_URL ?? ''}${this.base}/asistencia.pdf?desde=${desde}&hasta=${hasta}`;
+  async descargarPdf(desde: string, hasta: string): Promise<void> {
+    const res = await fetch(
+      `${process.env.NEXT_PUBLIC_API_URL ?? ''}${this.base}/asistencia.pdf?desde=${desde}&hasta=${hasta}`,
+      { headers: getToken() ? { Authorization: `Bearer ${getToken()}` } : {} },
+    );
+    if (!res.ok) throw new Error('No se pudo generar el PDF');
+
+    const blob = await res.blob();
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `asistencia-${desde}-a-${hasta}.pdf`;
+    a.click();
+    URL.revokeObjectURL(url);
   }
 }
 

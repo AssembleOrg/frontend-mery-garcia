@@ -25,6 +25,19 @@ export const setTokenGetter = (getter: () => string | null) => {
 };
 
 /**
+ * El token actual, de la misma fuente que usa apiFetch.
+ *
+ * Lo necesitan las llamadas que no pasan por apiFetch porque no devuelven
+ * JSON: el stream de presentismo y la descarga del PDF. Las dos mandan el
+ * token en la cabecera igual que el resto; ponerlo en la URL lo dejaria
+ * escrito en los logs del servidor y del proxy.
+ */
+export function getToken(): string | null {
+  if (getAuthToken) return getAuthToken();
+  return typeof window !== 'undefined' ? localStorage.getItem('token') : null;
+}
+
+/**
  * Helper minimalista sobre fetch.
  * Aplica BASE_URL, Authorization y serializa json.
  */
