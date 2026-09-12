@@ -4,6 +4,7 @@ import './globals.css';
 import { Toaster } from '@/components/ui/sonner';
 import { AuthProvider } from '@/features/auth/providers/AuthProvider';
 import AppInitializer from '@/components/AppInitializer';
+import ChatWhatsapp from '@/components/whatsapp/ChatWhatsapp';
 
 const avantMedium = localFont({
   src: '../public/font/avant-medium.woff2',
@@ -27,6 +28,8 @@ export default function RootLayout({
         <AuthProvider>
           <AppInitializer />
           {children}
+          {/* Botón flotante + bandeja de WhatsApp. Sólo se ve con rol admin o encargada. */}
+          <ChatWhatsapp />
         </AuthProvider>
         <Toaster position="top-right" richColors />
       </body>

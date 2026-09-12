@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import Link from 'next/link';
 import MainLayout from '@/components/layout/MainLayout';
 import StandardPageBanner from '@/components/common/StandardPageBanner';
 import StandardBreadcrumbs from '@/components/common/StandardBreadcrumbs';
@@ -10,7 +11,8 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useConfiguracion } from '@/features/configuracion/store/configuracionStore';
 import { METODO_PAGO_LABELS } from '@/lib/constants';
-import { Percent, RotateCcw, Save } from 'lucide-react';
+import { MessageCircle, Percent, RotateCcw, Save } from 'lucide-react';
+import { useAuth } from '@/features/auth/hooks/useAuth';
 import { toast } from 'sonner';
 
 const breadcrumbItems = [
@@ -24,6 +26,7 @@ export default function ConfiguracionPage() {
     actualizarDescuentoMetodo,
     resetearConfiguracion,
   } = useConfiguracion();
+  const { isAdmin } = useAuth();
 
   const [tempValues, setTempValues] = useState(() => {
     const stringValues: Record<string, string> = {};
@@ -211,6 +214,24 @@ export default function ConfiguracionPage() {
               </div>
             </CardContent>
           </Card>
+
+          {/* Sólo admin: el bot de WhatsApp no se muestra al resto del equipo. */}
+          {isAdmin && (
+            <Link
+              href="/configuracion/whatsapp"
+              className="mt-6 flex items-center gap-4 rounded-xl border border-[#f9bbc4]/40 bg-white/90 p-4 shadow-md transition hover:border-[#f9bbc4] hover:shadow-lg"
+            >
+              <div className="flex h-11 w-11 items-center justify-center rounded-full bg-gradient-to-br from-[#25D366] to-[#128C7E] text-white">
+                <MessageCircle className="h-5 w-5" />
+              </div>
+              <div>
+                <div className="font-semibold text-gray-800">WhatsApp</div>
+                <div className="text-sm text-gray-600">
+                  Respuestas del bot, horario de atención y conexión del número.
+                </div>
+              </div>
+            </Link>
+          )}
         </div>
       </div>
     </MainLayout>
