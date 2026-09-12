@@ -87,7 +87,7 @@ export default function BotonFlotante({ noLeidos, esperando, conexion, onClick }
     onClick();
   };
 
-  const total = noLeidos + (esperando > 0 ? 0 : 0);
+  const total = noLeidos;
   const puntoColor = conexion === 'conectado' ? 'bg-emerald-500' : conexion === 'desconectado' ? 'bg-rose-500' : 'bg-gray-400';
 
   return (
