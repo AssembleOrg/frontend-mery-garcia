@@ -397,32 +397,64 @@ export default function ComisionesPage() {
                               <div className="grid gap-4 lg:grid-cols-2">
                                 {/* Columna izquierda: Servicios y Productos */}
                                 <div className="space-y-3">
+                                  {/* Una tarjeta por moneda: los pesos del estilismo y los
+                                      dólares del cosmetic tattoo no se suman entre sí, así que
+                                      tampoco se muestran juntos. Mismo criterio que el
+                                      Resumen de Ventas de arriba. */}
                                   <div className="grid grid-cols-2 gap-3">
-                                    {/* Servicios */}
+                                    {/* Servicios ARS */}
                                     <div className="rounded-md bg-[#f9bbc4]/10 p-3">
                                       <div className="flex items-center gap-1 text-xs text-[#8b5a6b] mb-1">
                                         <Briefcase className="h-3 w-3" />
-                                        <span>Servicios (30%)</span>
+                                        <span>Servicios ARS (30%)</span>
                                       </div>
                                       <div className="font-semibold text-[#4a3540]">
-                                        {fmtMonto(trabajador.serviciosARS, trabajador.serviciosUSD)}
+                                        {formatARSFromNative(trabajador.serviciosARS)}
                                       </div>
                                       <div className="text-xs text-[#6b4c57] mt-1">
-                                        Com: {fmtMonto(trabajador.comisiones.serviciosARS, trabajador.comisiones.serviciosUSD)}
+                                        Com: {formatARSFromNative(trabajador.comisiones.serviciosARS)}
                                       </div>
                                     </div>
 
-                                    {/* Productos */}
+                                    {/* Servicios USD */}
+                                    <div className="rounded-md bg-[#f9bbc4]/10 p-3">
+                                      <div className="flex items-center gap-1 text-xs text-[#8b5a6b] mb-1">
+                                        <Briefcase className="h-3 w-3" />
+                                        <span>Servicios USD (30%)</span>
+                                      </div>
+                                      <div className="font-semibold text-[#4a3540]">
+                                        {fmtUSD(trabajador.serviciosUSD)}
+                                      </div>
+                                      <div className="text-xs text-[#6b4c57] mt-1">
+                                        Com: {fmtUSD(trabajador.comisiones.serviciosUSD)}
+                                      </div>
+                                    </div>
+
+                                    {/* Productos ARS */}
                                     <div className="rounded-md bg-[#e8b4c6]/10 p-3">
                                       <div className="flex items-center gap-1 text-xs text-[#8b5a6b] mb-1">
                                         <Package className="h-3 w-3" />
-                                        <span>Productos (10%)</span>
+                                        <span>Productos ARS (10%)</span>
                                       </div>
                                       <div className="font-semibold text-[#4a3540]">
-                                        {fmtMonto(trabajador.productosARS, trabajador.productosUSD)}
+                                        {formatARSFromNative(trabajador.productosARS)}
                                       </div>
                                       <div className="text-xs text-[#6b4c57] mt-1">
-                                        Com: {fmtMonto(trabajador.comisiones.productosARS, trabajador.comisiones.productosUSD)}
+                                        Com: {formatARSFromNative(trabajador.comisiones.productosARS)}
+                                      </div>
+                                    </div>
+
+                                    {/* Productos USD */}
+                                    <div className="rounded-md bg-[#e8b4c6]/10 p-3">
+                                      <div className="flex items-center gap-1 text-xs text-[#8b5a6b] mb-1">
+                                        <Package className="h-3 w-3" />
+                                        <span>Productos USD (10%)</span>
+                                      </div>
+                                      <div className="font-semibold text-[#4a3540]">
+                                        {fmtUSD(trabajador.productosUSD)}
+                                      </div>
+                                      <div className="text-xs text-[#6b4c57] mt-1">
+                                        Com: {fmtUSD(trabajador.comisiones.productosUSD)}
                                       </div>
                                     </div>
                                   </div>
