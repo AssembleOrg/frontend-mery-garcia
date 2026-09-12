@@ -10,6 +10,7 @@ import {
   DollarSign,
   ListOrdered,
   Cog,
+  CalendarClock,
 } from 'lucide-react';
 
 const breadcrumbItems = [
@@ -26,6 +27,15 @@ const menuItems = [
     gradientFrom: 'from-[#f9bbc4]',
     gradientTo: 'to-[#e292a3]',
     accentColor: '#f9bbc4',
+  },
+  {
+    title: 'Presentismo',
+    description: 'Quién está trabajando ahora y los horarios del equipo.',
+    href: '/presentismo',
+    icon: <CalendarClock size={32} strokeWidth={1.5} />,
+    gradientFrom: 'from-[#e8b4c6]',
+    gradientTo: 'to-[#d4a7ca]',
+    accentColor: '#e8b4c6',
   },
   {
     title: 'Caja 2',
