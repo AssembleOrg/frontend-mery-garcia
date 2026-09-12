@@ -73,15 +73,12 @@ export default function ComisionesPage() {
     [],
   );
 
-  // Formatea un par de montos mostrando solo las monedas con valor.
+  // Formatea un par de montos mostrando SIEMPRE ambas monedas (aunque sean
+  // 0), para que quede claro qué es pesos y qué es dólares sin ambigüedad.
   // "$ ..." = pesos, "u$s ..." = dólares.
   const fmtMonto = useCallback(
-    (ars: number, usd: number): string => {
-      const partes: string[] = [];
-      if (ars) partes.push(formatARSFromNative(ars));
-      if (usd) partes.push(fmtUSD(usd));
-      return partes.length ? partes.join('   +   ') : formatARSFromNative(0);
-    },
+    (ars: number, usd: number): string =>
+      `${formatARSFromNative(ars)}   +   ${fmtUSD(usd)}`,
     [formatARSFromNative, fmtUSD],
   );
 
@@ -261,11 +258,9 @@ export default function ComisionesPage() {
                           <div className="text-3xl font-bold text-[#4a3540]">
                             {formatARSFromNative(data.totalComisionesARS)}
                           </div>
-                          {data.totalComisionesUSD > 0 && (
-                            <div className="text-2xl font-bold text-[#6b4c57]">
-                              {fmtUSD(data.totalComisionesUSD)}
-                            </div>
-                          )}
+                          <div className="text-2xl font-bold text-[#6b4c57]">
+                            {fmtUSD(data.totalComisionesUSD)}
+                          </div>
                         </CardContent>
                       </Card>
 
@@ -281,11 +276,9 @@ export default function ComisionesPage() {
                           <div className="text-xl font-bold text-[#4a3540]">
                             {formatARSFromNative(data.totales.totalARS)}
                           </div>
-                          {data.totales.totalUSD > 0 && (
-                            <div className="text-lg font-bold text-[#6b4c57]">
-                              {fmtUSD(data.totales.totalUSD)}
-                            </div>
-                          )}
+                          <div className="text-lg font-bold text-[#6b4c57]">
+                            {fmtUSD(data.totales.totalUSD)}
+                          </div>
                         </CardContent>
                       </Card>
 
@@ -445,7 +438,7 @@ export default function ComisionesPage() {
                                           </div>
                                         </div>
                                         <div className="text-sm font-bold text-[#6b4c57]">
-                                          {formatARSFromNative(trabajador.totalConsultas)}
+                                          {fmtUSD(trabajador.totalConsultas)}
                                         </div>
                                       </div>
                                     </div>
