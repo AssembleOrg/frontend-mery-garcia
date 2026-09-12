@@ -125,7 +125,9 @@ interface Envelope<T> {
   data: T;
 }
 
-const BASE = '/whatsapp';
+// NEXT_PUBLIC_API_URL es el host pelado; el prefijo global del backend va acá.
+const BASE = '/api/whatsapp';
+const NOTIFICACIONES = '/api/notificaciones';
 
 function urlApi(path: string): string {
   return `${(process.env.NEXT_PUBLIC_API_URL ?? '').replace(/\/$/, '')}${path}`;
@@ -243,16 +245,16 @@ export const whatsappService = {
   // ─── Notificaciones ──────────────────────────────────────────
 
   async notificaciones(): Promise<Notificacion[]> {
-    const res = await apiFetch<Envelope<Notificacion[]>>('/notificaciones');
+    const res = await apiFetch<Envelope<Notificacion[]>>(NOTIFICACIONES);
     return res.data;
   },
 
   async marcarTodasLeidas(): Promise<void> {
-    await apiFetch('/notificaciones/leidas', { method: 'POST' });
+    await apiFetch(`${NOTIFICACIONES}/leidas`, { method: 'POST' });
   },
 
   async marcarLeida(id: string): Promise<void> {
-    await apiFetch(`/notificaciones/${id}/leida`, { method: 'POST' });
+    await apiFetch(`${NOTIFICACIONES}/${id}/leida`, { method: 'POST' });
   },
 
   // ─── Configuración (admin) ───────────────────────────────────

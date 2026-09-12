@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { MessageCircle, Settings, Wifi, WifiOff } from 'lucide-react';
-import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@/components/ui/dialog';
 import { cn } from '@/lib/utils';
 import { useWhatsappStore } from '@/features/whatsapp/store/whatsappStore';
 import { useAuth } from '@/features/auth/hooks/useAuth';
@@ -26,6 +26,7 @@ export default function ModalChat() {
           </div>
           <div className="min-w-0">
             <DialogTitle className="text-base font-semibold text-[#4a3540]">WhatsApp</DialogTitle>
+            <DialogDescription className="sr-only">Charlas de WhatsApp del salón: leer, responder y cerrar.</DialogDescription>
             <div className="flex items-center gap-2 text-[11px] text-[#8b5a6b]">
               <span className={cn('flex items-center gap-1', conexion === 'conectado' ? 'text-emerald-700' : conexion === 'desconectado' ? 'text-rose-600' : '')}>
                 {conexion === 'conectado' ? <Wifi className="h-3 w-3" /> : <WifiOff className="h-3 w-3" />}
