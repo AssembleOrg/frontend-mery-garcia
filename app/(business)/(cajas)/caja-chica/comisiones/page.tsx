@@ -4,6 +4,8 @@ import { useState, useCallback } from 'react';
 import MainLayout from '@/components/layout/MainLayout';
 import StandardPageBanner from '@/components/common/StandardPageBanner';
 import StandardBreadcrumbs from '@/components/common/StandardBreadcrumbs';
+import SummaryCardDual from '@/components/common/SummaryCardDual';
+import SummaryCardCount from '@/components/common/SummaryCardCount';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -19,14 +21,13 @@ import {
 import { DateRangePicker } from '@/components/ui/date-range-picker';
 import { DateRange } from 'react-day-picker';
 import Spinner from '@/components/common/Spinner';
-import { 
-  Calendar, 
-  DollarSign, 
-  TrendingUp, 
-  Users, 
+import {
+  Calendar,
+  DollarSign,
+  TrendingUp,
+  Users,
   Briefcase,
   Package,
-  Wallet,
   Calculator,
   Building2,
   ShoppingBag,
@@ -38,6 +39,7 @@ import { useCurrencyConverter } from '@/hooks/useCurrencyConverter';
 import ClientOnly from '@/components/common/ClientOnly';
 import ManagerOrAdminOnly from '@/components/auth/ManagerOrAdminOnly';
 import { Badge } from '@/components/ui/badge';
+import { cn } from '@/lib/utils';
 
 const breadcrumbItems = [
   { label: 'Inicio', href: '/' },
@@ -45,6 +47,41 @@ const breadcrumbItems = [
   { label: 'Caja 1 - Caja Chica', href: '/caja-chica' },
   { label: 'Comisiones' },
 ];
+
+/**
+ * Par de montos en dos filas "USD:" / "ARS:", con el mismo formato que las
+ * tarjetas de saldos de las cajas (SummaryCardDual). Las dos monedas nunca se
+ * suman ni se convierten: se muestran una debajo de la otra, siempre ambas.
+ */
+function MontoDual({
+  usd,
+  ars,
+  valueClassName,
+  labelClassName,
+}: {
+  usd: number;
+  ars: number;
+  valueClassName?: string;
+  labelClassName?: string;
+}) {
+  const { formatUSD, formatARSFromNative } = useCurrencyConverter();
+  return (
+    <div className="space-y-1">
+      <div className="flex items-center justify-between gap-3">
+        <span className={cn('text-xs text-gray-600', labelClassName)}>USD:</span>
+        <span className={cn('text-sm font-bold text-[#4a3540]', valueClassName)}>
+          {formatUSD(usd)}
+        </span>
+      </div>
+      <div className="flex items-center justify-between gap-3">
+        <span className={cn('text-xs text-gray-600', labelClassName)}>ARS:</span>
+        <span className={cn('text-sm font-bold text-[#4a3540]', valueClassName)}>
+          {formatARSFromNative(ars)}
+        </span>
+      </div>
+    </div>
+  );
+}
 
 export default function ComisionesPage() {
   const [dateRange, setDateRange] = useState<DateRange>({
@@ -61,26 +98,7 @@ export default function ComisionesPage() {
   const [comisionMeryGarciaUSD, setComisionMeryGarciaUSD] = useState(0);
   const [porcentajeRecepcion, setPorcentajeRecepcion] = useState<string>('');
 
-  const { formatARSFromNative } = useCurrencyConverter();
-
-  // Dólares con convención local: "u$s 27.705,20" (el "$" solo es pesos).
-  const fmtUSD = useCallback(
-    (usd: number): string =>
-      `u$s ${usd.toLocaleString('es-AR', {
-        minimumFractionDigits: 2,
-        maximumFractionDigits: 2,
-      })}`,
-    [],
-  );
-
-  // Formatea un par de montos mostrando SIEMPRE ambas monedas (aunque sean
-  // 0), para que quede claro qué es pesos y qué es dólares sin ambigüedad.
-  // "$ ..." = pesos, "u$s ..." = dólares.
-  const fmtMonto = useCallback(
-    (ars: number, usd: number): string =>
-      `${formatARSFromNative(ars)}   +   ${fmtUSD(usd)}`,
-    [formatARSFromNative, fmtUSD],
-  );
+  const { formatUSD } = useCurrencyConverter();
 
   const formatDateToString = useCallback((date: Date): string => {
     const year = date.getFullYear();
@@ -244,115 +262,40 @@ export default function ComisionesPage() {
                   </div>
                 ) : data ? (
                   <div className="space-y-6">
-                    {/* Resumen compacto - 2 filas en desktop, stack en mobile */}
+                    {/* Resumen: mismas tarjetas que los saldos de las cajas
+                        (SummaryCardDual), una fila por moneda. */}
                     <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-                      {/* Total Comisiones - Destacado */}
-                      <Card className="border-2 border-[#f9bbc4]/50 bg-gradient-to-br from-[#f9bbc4]/10 to-white shadow-lg lg:col-span-2">
-                        <CardHeader className="pb-2">
-                          <CardTitle className="flex items-center gap-2 text-sm font-medium text-[#6b4c57]">
-                            <Wallet className="h-4 w-4" />
-                            Total Comisiones
-                          </CardTitle>
-                        </CardHeader>
-                        <CardContent>
-                          <div className="text-3xl font-bold text-[#4a3540]">
-                            {formatARSFromNative(data.totalComisionesARS)}
-                          </div>
-                          <div className="text-2xl font-bold text-[#6b4c57]">
-                            {fmtUSD(data.totalComisionesUSD)}
-                          </div>
-                        </CardContent>
-                      </Card>
-
-                      {/* Bruto Cobrado */}
-                      <Card className="border border-[#d4a7ca]/30 bg-white shadow-md">
-                        <CardHeader className="pb-2">
-                          <CardTitle className="flex items-center gap-2 text-xs font-medium text-[#6b4c57]">
-                            <DollarSign className="h-4 w-4" />
-                            Bruto Cobrado
-                          </CardTitle>
-                        </CardHeader>
-                        <CardContent>
-                          <div className="text-xl font-bold text-[#4a3540]">
-                            {formatARSFromNative(data.totales.totalARS)}
-                          </div>
-                          <div className="text-lg font-bold text-[#6b4c57]">
-                            {fmtUSD(data.totales.totalUSD)}
-                          </div>
-                        </CardContent>
-                      </Card>
-
-                      {/* Trabajadores */}
-                      <Card className="border border-[#d4a7ca]/30 bg-white shadow-md">
-                        <CardHeader className="pb-2">
-                          <CardTitle className="flex items-center gap-2 text-xs font-medium text-[#6b4c57]">
-                            <Users className="h-4 w-4" />
-                            Trabajadores
-                          </CardTitle>
-                        </CardHeader>
-                        <CardContent>
-                          <div className="text-xl font-bold text-[#4a3540]">
-                            {data.trabajadores.length}
-                          </div>
-                        </CardContent>
-                      </Card>
+                      <SummaryCardDual
+                        title="Total Comisiones"
+                        totalUSD={data.totalComisionesUSD}
+                        totalARS={data.totalComisionesARS}
+                        showTransactionCount={false}
+                        className="border-2 border-[#f9bbc4]/50 bg-gradient-to-br from-[#f9bbc4]/10 to-white shadow-lg"
+                        valueClassName="text-green-700"
+                      />
+                      <SummaryCardDual
+                        title="Bruto Cobrado"
+                        totalUSD={data.totales.totalUSD}
+                        totalARS={data.totales.totalARS}
+                        showTransactionCount={false}
+                      />
+                      <SummaryCardDual
+                        title="Servicios (30%)"
+                        totalUSD={data.totales.serviciosUSD}
+                        totalARS={data.totales.serviciosARS}
+                        showTransactionCount={false}
+                      />
+                      <SummaryCardDual
+                        title="Productos (10%)"
+                        totalUSD={data.totales.productosUSD}
+                        totalARS={data.totales.productosARS}
+                        showTransactionCount={false}
+                      />
+                      <SummaryCardCount
+                        title="Trabajadores"
+                        count={data.trabajadores.length}
+                      />
                     </div>
-
-                    {/* Totales Generales - Compacto */}
-                    <Card className="border-2 border-[#e8b4c6]/30 bg-white/95 shadow-lg">
-                      <CardHeader className="pb-3">
-                        <CardTitle className="text-base font-semibold text-[#4a3540]">
-                          Resumen de Ventas
-                        </CardTitle>
-                      </CardHeader>
-                      <CardContent>
-                        <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-                          {/* Servicios ARS */}
-                          <div className="space-y-1">
-                            <div className="flex items-center gap-1 text-xs text-[#6b4c57]">
-                              <Briefcase className="h-3 w-3" />
-                              <span>Servicios ARS</span>
-                            </div>
-                            <div className="text-sm font-semibold text-[#4a3540]">
-                              {formatARSFromNative(data.totales.serviciosARS)}
-                            </div>
-                          </div>
-
-                          {/* Servicios USD */}
-                          <div className="space-y-1">
-                            <div className="flex items-center gap-1 text-xs text-[#6b4c57]">
-                              <Briefcase className="h-3 w-3" />
-                              <span>Servicios USD</span>
-                            </div>
-                            <div className="text-sm font-semibold text-[#4a3540]">
-                              {fmtUSD(data.totales.serviciosUSD)}
-                            </div>
-                          </div>
-
-                          {/* Productos ARS */}
-                          <div className="space-y-1">
-                            <div className="flex items-center gap-1 text-xs text-[#6b4c57]">
-                              <Package className="h-3 w-3" />
-                              <span>Productos ARS</span>
-                            </div>
-                            <div className="text-sm font-semibold text-[#4a3540]">
-                              {formatARSFromNative(data.totales.productosARS)}
-                            </div>
-                          </div>
-
-                          {/* Productos USD */}
-                          <div className="space-y-1">
-                            <div className="flex items-center gap-1 text-xs text-[#6b4c57]">
-                              <Package className="h-3 w-3" />
-                              <span>Productos USD</span>
-                            </div>
-                            <div className="text-sm font-semibold text-[#4a3540]">
-                              {fmtUSD(data.totales.productosUSD)}
-                            </div>
-                          </div>
-                        </div>
-                      </CardContent>
-                    </Card>
 
                     {/* Lista de Trabajadores - Compacta */}
                     <Card className="border-2 border-[#f9bbc4]/30 bg-white/95 shadow-xl">
@@ -375,8 +318,16 @@ export default function ComisionesPage() {
                                   <h3 className="text-lg font-semibold text-[#4a3540]">
                                     {trabajador.nombre}
                                   </h3>
-                                  <div className="rounded-full bg-gradient-to-r from-[#f9bbc4] to-[#e8b4c6] px-4 py-1.5 text-base font-bold text-white shadow-md">
-                                    {fmtMonto(trabajador.comisiones.totalARS, trabajador.comisiones.totalUSD)}
+                                  <div className="min-w-[180px] rounded-lg bg-gradient-to-r from-[#f9bbc4] to-[#e8b4c6] px-4 py-2 shadow-md">
+                                    <div className="mb-1 text-xs font-medium text-white/90">
+                                      Comisión total
+                                    </div>
+                                    <MontoDual
+                                      usd={trabajador.comisiones.totalUSD}
+                                      ars={trabajador.comisiones.totalARS}
+                                      labelClassName="text-white/90"
+                                      valueClassName="text-white"
+                                    />
                                   </div>
                                 </div>
                                 {/* Botón de recepción solo para Mery García */}
@@ -397,64 +348,47 @@ export default function ComisionesPage() {
                               <div className="grid gap-4 lg:grid-cols-2">
                                 {/* Columna izquierda: Servicios y Productos */}
                                 <div className="space-y-3">
-                                  {/* Una tarjeta por moneda: los pesos del estilismo y los
-                                      dólares del cosmetic tattoo no se suman entre sí, así que
-                                      tampoco se muestran juntos. Mismo criterio que el
-                                      Resumen de Ventas de arriba. */}
-                                  <div className="grid grid-cols-2 gap-3">
-                                    {/* Servicios ARS */}
+                                  {/* Una tarjeta por rubro con filas USD/ARS, igual que
+                                      los saldos de las cajas. Los pesos del estilismo y los
+                                      dólares del cosmetic tattoo no se suman ni se convierten. */}
+                                  <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                                    {/* Servicios */}
                                     <div className="rounded-md bg-[#f9bbc4]/10 p-3">
-                                      <div className="flex items-center gap-1 text-xs text-[#8b5a6b] mb-1">
+                                      <div className="flex items-center gap-1 text-xs text-[#8b5a6b] mb-2">
                                         <Briefcase className="h-3 w-3" />
-                                        <span>Servicios ARS (30%)</span>
+                                        <span>Servicios vendidos</span>
                                       </div>
-                                      <div className="font-semibold text-[#4a3540]">
-                                        {formatARSFromNative(trabajador.serviciosARS)}
-                                      </div>
-                                      <div className="text-xs text-[#6b4c57] mt-1">
-                                        Com: {formatARSFromNative(trabajador.comisiones.serviciosARS)}
-                                      </div>
-                                    </div>
-
-                                    {/* Servicios USD */}
-                                    <div className="rounded-md bg-[#f9bbc4]/10 p-3">
-                                      <div className="flex items-center gap-1 text-xs text-[#8b5a6b] mb-1">
-                                        <Briefcase className="h-3 w-3" />
-                                        <span>Servicios USD (30%)</span>
-                                      </div>
-                                      <div className="font-semibold text-[#4a3540]">
-                                        {fmtUSD(trabajador.serviciosUSD)}
-                                      </div>
-                                      <div className="text-xs text-[#6b4c57] mt-1">
-                                        Com: {fmtUSD(trabajador.comisiones.serviciosUSD)}
+                                      <MontoDual
+                                        usd={trabajador.serviciosUSD}
+                                        ars={trabajador.serviciosARS}
+                                      />
+                                      <div className="mt-2 border-t border-[#f9bbc4]/30 pt-2">
+                                        <div className="mb-1 text-xs text-[#6b4c57]">Comisión (30%)</div>
+                                        <MontoDual
+                                          usd={trabajador.comisiones.serviciosUSD}
+                                          ars={trabajador.comisiones.serviciosARS}
+                                          valueClassName="text-green-700"
+                                        />
                                       </div>
                                     </div>
 
-                                    {/* Productos ARS */}
+                                    {/* Productos */}
                                     <div className="rounded-md bg-[#e8b4c6]/10 p-3">
-                                      <div className="flex items-center gap-1 text-xs text-[#8b5a6b] mb-1">
+                                      <div className="flex items-center gap-1 text-xs text-[#8b5a6b] mb-2">
                                         <Package className="h-3 w-3" />
-                                        <span>Productos ARS (10%)</span>
+                                        <span>Productos vendidos</span>
                                       </div>
-                                      <div className="font-semibold text-[#4a3540]">
-                                        {formatARSFromNative(trabajador.productosARS)}
-                                      </div>
-                                      <div className="text-xs text-[#6b4c57] mt-1">
-                                        Com: {formatARSFromNative(trabajador.comisiones.productosARS)}
-                                      </div>
-                                    </div>
-
-                                    {/* Productos USD */}
-                                    <div className="rounded-md bg-[#e8b4c6]/10 p-3">
-                                      <div className="flex items-center gap-1 text-xs text-[#8b5a6b] mb-1">
-                                        <Package className="h-3 w-3" />
-                                        <span>Productos USD (10%)</span>
-                                      </div>
-                                      <div className="font-semibold text-[#4a3540]">
-                                        {fmtUSD(trabajador.productosUSD)}
-                                      </div>
-                                      <div className="text-xs text-[#6b4c57] mt-1">
-                                        Com: {fmtUSD(trabajador.comisiones.productosUSD)}
+                                      <MontoDual
+                                        usd={trabajador.productosUSD}
+                                        ars={trabajador.productosARS}
+                                      />
+                                      <div className="mt-2 border-t border-[#e8b4c6]/30 pt-2">
+                                        <div className="mb-1 text-xs text-[#6b4c57]">Comisión (10%)</div>
+                                        <MontoDual
+                                          usd={trabajador.comisiones.productosUSD}
+                                          ars={trabajador.comisiones.productosARS}
+                                          valueClassName="text-green-700"
+                                        />
                                       </div>
                                     </div>
                                   </div>
@@ -470,7 +404,7 @@ export default function ComisionesPage() {
                                           </div>
                                         </div>
                                         <div className="text-sm font-bold text-[#6b4c57]">
-                                          {fmtUSD(trabajador.totalConsultas)}
+                                          {formatUSD(trabajador.totalConsultas)}
                                         </div>
                                       </div>
                                     </div>
@@ -575,9 +509,11 @@ export default function ComisionesPage() {
                         <div className="text-xs text-[#8b5a6b] mb-1">
                           Comisión Total Mery García
                         </div>
-                        <div className="text-2xl font-bold text-[#4a3540]">
-                          {fmtMonto(comisionMeryGarciaARS, comisionMeryGarciaUSD)}
-                        </div>
+                        <MontoDual
+                          usd={comisionMeryGarciaUSD}
+                          ars={comisionMeryGarciaARS}
+                          valueClassName="text-xl"
+                        />
                       </div>
 
                       {/* Input de Porcentaje */}
@@ -604,14 +540,16 @@ export default function ComisionesPage() {
                       {/* Resultado */}
                       {porcentajeRecepcion && (
                         <div className="rounded-lg bg-gradient-to-r from-[#d4a7ca]/20 to-[#e8b4c6]/20 p-4 border-2 border-[#d4a7ca]/40">
-                          <div className="flex items-center justify-between">
-                            <div>
+                          <div className="flex items-center justify-between gap-4">
+                            <div className="flex-1">
                               <div className="text-xs text-[#8b5a6b] mb-1">
                                 Comisión Recepción ({porcentajeRecepcion}%)
                               </div>
-                              <div className="text-3xl font-bold text-[#4a3540]">
-                                {fmtMonto(calcularComisionRecepcion().ars, calcularComisionRecepcion().usd)}
-                              </div>
+                              <MontoDual
+                                usd={calcularComisionRecepcion().usd}
+                                ars={calcularComisionRecepcion().ars}
+                                valueClassName="text-2xl"
+                              />
                             </div>
                             <div className="rounded-full bg-gradient-to-r from-[#d4a7ca] to-[#e8b4c6] p-3">
                               <Users className="h-6 w-6 text-white" />
@@ -620,15 +558,12 @@ export default function ComisionesPage() {
 
                           {/* Desglose adicional */}
                           <div className="mt-3 pt-3 border-t border-[#d4a7ca]/30">
-                            <div className="flex justify-between text-sm">
-                              <span className="text-[#8b5a6b]">Queda para Mery García:</span>
-                              <span className="font-semibold text-[#6b4c57]">
-                                {fmtMonto(
-                                  comisionMeryGarciaARS - calcularComisionRecepcion().ars,
-                                  comisionMeryGarciaUSD - calcularComisionRecepcion().usd,
-                                )}
-                              </span>
-                            </div>
+                            <div className="mb-1 text-sm text-[#8b5a6b]">Queda para Mery García:</div>
+                            <MontoDual
+                              usd={comisionMeryGarciaUSD - calcularComisionRecepcion().usd}
+                              ars={comisionMeryGarciaARS - calcularComisionRecepcion().ars}
+                              valueClassName="text-[#6b4c57]"
+                            />
                           </div>
                         </div>
                       )}
