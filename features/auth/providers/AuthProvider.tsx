@@ -19,7 +19,7 @@ const LoadingSpinner = () => (
 );
 
 export function AuthProvider({ children }: AuthProviderProps) {
-  const { isAuthenticated, isLoading, initializeAuth } = useAuth();
+  const { isAuthenticated, isLoading, initializeAuth, soloPresentismo } = useAuth();
   const router = useRouter();
   const pathname = usePathname();
   const { handleAuthError } = useAuthErrorHandler();
@@ -66,15 +66,27 @@ export function AuthProvider({ children }: AuthProviderProps) {
 
     // Redirección para usuarios autenticados desde la página de login
     if (isAuthenticated && pathname === '/') {
-      router.push('/dashboard');
+      router.push(soloPresentismo ? '/presentismo' : '/dashboard');
+      return;
     }
-  }, [isAuthenticated, isLoading, pathname, router]);
+
+    // Quien sólo tiene presentismo no sale de ahí: cualquier otra ruta
+    // (dashboard, cajas, clientes…) lo devuelve. El backend igual rechaza
+    // sus llamadas al resto; esto es para que no vea pantallas rotas.
+    if (isAuthenticated && soloPresentismo && !pathname.startsWith('/presentismo')) {
+      router.replace('/presentismo');
+    }
+  }, [isAuthenticated, isLoading, pathname, router, soloPresentismo]);
 
   if (isLoading) {
     return <LoadingSpinner />;
   }
 
   if (isAuthenticated && pathname === '/') {
+    return <LoadingSpinner />;
+  }
+
+  if (isAuthenticated && soloPresentismo && !pathname.startsWith('/presentismo')) {
     return <LoadingSpinner />;
   }
 

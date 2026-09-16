@@ -12,7 +12,7 @@ export interface AuthResponse {
       id: string;
       email: string;
       nombre: string;
-      rol: 'admin' | 'user' | 'encargado';
+      rol: 'admin' | 'user' | 'encargado' | 'presentismo';
       unidadesDisponibles: string[];
       fechaIngreso?: string;
     };
@@ -23,7 +23,7 @@ export interface UserProfile {
   id: string;
   nombre: string;
   email: string;
-  rol: 'admin' | 'user' | 'encargado';
+  rol: 'admin' | 'user' | 'encargado' | 'presentismo';
   unidadesDisponibles: ('tattoo' | 'estilismo' | 'formacion')[];
   telefono?: string;
   fechaIngreso: string;
