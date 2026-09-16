@@ -24,7 +24,7 @@ export default function PresentismoPage() {
   const [tab, setTab] = useState('hoy');
 
   return (
-    <ManagerOrAdminOnly>
+    <ManagerOrAdminOnly permitirPresentismo>
       <MainLayout>
         <div className="min-h-screen bg-gradient-to-br from-[#f9bbc4]/15 via-[#e8b4c6]/12 to-[#d4a7ca]/10">
           <StandardPageBanner title="Presentismo" />

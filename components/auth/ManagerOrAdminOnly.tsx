@@ -12,6 +12,8 @@ interface ManagerOrAdminOnlyProps {
   redirectTo?: string;
   showBackButton?: boolean;
   excludeCaja2?: boolean;
+  /** Deja pasar también al rol "presentismo" (sólo para esa sección). */
+  permitirPresentismo?: boolean;
 }
 
 export default function ManagerOrAdminOnly({
@@ -19,11 +21,13 @@ export default function ManagerOrAdminOnly({
   redirectTo = '/dashboard',
   showBackButton = true,
   excludeCaja2 = false,
+  permitirPresentismo = false,
 }: ManagerOrAdminOnlyProps) {
   const { isAdmin, hasRole, isAuthenticated, isLoading } = useAuth();
   const router = useRouter();
 
-  const hasAccess = isAdmin || hasRole('encargado');
+  const hasAccess =
+    isAdmin || hasRole('encargado') || (permitirPresentismo && hasRole('presentismo'));
 
   const isEncargadoWithCaja2Restriction =
     excludeCaja2 && hasRole('encargado') && !isAdmin;
