@@ -31,7 +31,8 @@ import {
   Calculator,
   Building2,
   ShoppingBag,
-  Percent
+  Percent,
+  FileDown
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { comisionesService, ResumenComisionesDto } from '@/services/comisiones.service';
@@ -91,6 +92,7 @@ export default function ComisionesPage() {
   const [valorDolar, setValorDolar] = useState<string>('');
   const [data, setData] = useState<ResumenComisionesDto | null>(null);
   const [cargando, setCargando] = useState(false);
+  const [descargando, setDescargando] = useState(false);
   
   // Estado para modal de recepción
   const [modalRecepcionAbierto, setModalRecepcionAbierto] = useState(false);
@@ -134,6 +136,22 @@ export default function ComisionesPage() {
       setCargando(false);
     }
   }, [dateRange, formatDateToString, valorDolar]);
+
+  const handleDescargarPdf = useCallback(async () => {
+    setDescargando(true);
+    try {
+      await comisionesService.descargarReporteServiciosPdf({
+        fechaDesde: dateRange.from ? formatDateToString(dateRange.from) : undefined,
+        fechaHasta: dateRange.to ? formatDateToString(dateRange.to) : undefined,
+      });
+      toast.success('Reporte descargado');
+    } catch (error) {
+      console.error('Error al descargar el reporte:', error);
+      toast.error('No se pudo generar el PDF');
+    } finally {
+      setDescargando(false);
+    }
+  }, [dateRange, formatDateToString]);
 
   const handleDateRangeChange = useCallback((range: DateRange | undefined) => {
     if (range) {
@@ -243,14 +261,26 @@ export default function ComisionesPage() {
                             Si vacío, usa el valor de cada comanda
                           </span>
                         </div>
-                        <Button
-                          onClick={handleCalcular}
-                          disabled={cargando}
-                          className="bg-gradient-to-r from-[#f9bbc4] to-[#e8b4c6] hover:from-[#e8b4c6] hover:to-[#d4a7ca] text-white font-semibold shadow-lg"
-                        >
-                          <Calculator className="mr-2 h-4 w-4" />
-                          {cargando ? 'Calculando...' : 'Calcular Comisiones'}
-                        </Button>
+                        <div className="flex flex-col gap-2 sm:flex-row">
+                          <Button
+                            onClick={handleCalcular}
+                            disabled={cargando}
+                            className="bg-gradient-to-r from-[#f9bbc4] to-[#e8b4c6] hover:from-[#e8b4c6] hover:to-[#d4a7ca] text-white font-semibold shadow-lg"
+                          >
+                            <Calculator className="mr-2 h-4 w-4" />
+                            {cargando ? 'Calculando...' : 'Calcular Comisiones'}
+                          </Button>
+                          <Button
+                            onClick={handleDescargarPdf}
+                            disabled={descargando || cargando}
+                            variant="outline"
+                            className="border-[#f9bbc4]/40 text-[#6b4c57] hover:bg-[#f9bbc4]/10"
+                            title="Servicios detallados y señas por medio de pago, del rango elegido"
+                          >
+                            <FileDown className="mr-2 h-4 w-4" />
+                            {descargando ? 'Generando...' : 'Servicios y señas (PDF)'}
+                          </Button>
+                        </div>
                       </div>
                     </div>
                   </CardContent>

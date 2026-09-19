@@ -1,4 +1,4 @@
-import { apiFetch } from '@/lib/apiClient';
+import { apiFetch, getToken } from '@/lib/apiClient';
 
 // Interfaces basadas en el endpoint v1.5.0
 export interface ProductoServicioItem {
@@ -86,6 +86,37 @@ class ComisionesService {
       console.error('Error al obtener comisiones:', error);
       throw error;
     }
+  }
+
+  /**
+   * Descarga el PDF de servicios y señas por profesional. No pasa por apiFetch
+   * porque la respuesta es un archivo, no JSON: el token va en la cabecera,
+   * igual que el reporte de presentismo (nunca en la URL, que queda en logs).
+   */
+  async descargarReporteServiciosPdf(params: {
+    fechaDesde?: string;
+    fechaHasta?: string;
+    trabajadores?: string[];
+  }): Promise<void> {
+    const qs = new URLSearchParams();
+    if (params.fechaDesde) qs.append('fechaDesde', params.fechaDesde);
+    if (params.fechaHasta) qs.append('fechaHasta', params.fechaHasta);
+    if (params.trabajadores?.length) qs.append('trabajadores', params.trabajadores.join(','));
+
+    const token = getToken();
+    const res = await fetch(
+      `${process.env.NEXT_PUBLIC_API_URL ?? ''}${this.baseUrl}/reporte-servicios/pdf?${qs.toString()}`,
+      { headers: token ? { Authorization: `Bearer ${token}` } : {} },
+    );
+    if (!res.ok) throw new Error('No se pudo generar el PDF');
+
+    const blob = await res.blob();
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `servicios-y-senas_${params.fechaDesde ?? ''}_a_${params.fechaHasta ?? ''}.pdf`;
+    a.click();
+    URL.revokeObjectURL(url);
   }
 }
 
