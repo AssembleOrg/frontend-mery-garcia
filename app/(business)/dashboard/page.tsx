@@ -11,6 +11,7 @@ import {
   ListOrdered,
   Cog,
   CalendarClock,
+  CalendarCheck,
 } from 'lucide-react';
 
 const breadcrumbItems = [
@@ -36,6 +37,15 @@ const menuItems = [
     gradientFrom: 'from-[#e8b4c6]',
     gradientTo: 'to-[#d4a7ca]',
     accentColor: '#e8b4c6',
+  },
+  {
+    title: 'Reservas',
+    description: 'Qué reservaron las clientas y si se hicieron ese servicio u otro.',
+    href: '/reservas',
+    icon: <CalendarCheck size={32} strokeWidth={1.5} />,
+    gradientFrom: 'from-[#f9bbc4]',
+    gradientTo: 'to-[#e8b4c6]',
+    accentColor: '#f9bbc4',
   },
   {
     title: 'Caja 2',
