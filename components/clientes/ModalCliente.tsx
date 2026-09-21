@@ -20,7 +20,9 @@ import {
 import { Cliente } from '@/types/caja';
 import { useCurrencyConverter } from '@/hooks/useCurrencyConverter';
 import { TipoPagoNew, ClienteNew } from '@/services/unidadNegocio.service';
-import { extractarTipoPagoDePrepagos } from '@/lib/utils';
+import { extractarTipoPagoDePrepagos, extractarServicioDePrepagos } from '@/lib/utils';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Search, Check, ChevronsUpDown } from 'lucide-react';
 import { reservasService, type ServicioBooking } from '@/services/reservas.service';
 
 interface ModalClienteProps {
@@ -54,6 +56,8 @@ export default function ModalCliente({
   const [tipoPagoUSD, setTipoPagoUSD] = useState<TipoPagoNew>(TipoPagoNew.EFECTIVO);
   const [servicioReservado, setServicioReservado] = useState<string>('');
   const [serviciosBooking, setServiciosBooking] = useState<ServicioBooking[]>([]);
+  const [buscadorServicio, setBuscadorServicio] = useState('');
+  const [servicioAbierto, setServicioAbierto] = useState(false);
 
   // Estados de validación
   const [errores, setErrores] = useState<Record<string, string>>({});
@@ -100,6 +104,13 @@ export default function ModalCliente({
         
         setTipoPagoARS((tipoPagoARSValue as TipoPagoNew) || TipoPagoNew.EFECTIVO);
         setTipoPagoUSD((tipoPagoUSDValue as TipoPagoNew) || TipoPagoNew.EFECTIVO);
+
+        if ('prepagosGuardados' in cliente) {
+          const clienteNew = cliente as ClienteNew;
+          setServicioReservado(
+            extractarServicioDePrepagos(clienteNew.prepagosGuardados) || '',
+          );
+        }
       } else {
         // Modo creación
         clearForm();
@@ -540,27 +551,84 @@ export default function ModalCliente({
             </div>
           </div>
 
-          {/* Servicio al que apunta la seña (opcional) */}
+          {/* Servicio al que apunta la seña (opcional), con buscador */}
           <div className="px-6 pb-2">
             <Label className="mb-1.5 block text-sm text-[#6b4c57]">
               Servicio de la seña <span className="text-[#8b5a6b]/60">(opcional)</span>
             </Label>
-            <Select
-              value={servicioReservado || 'NINGUNO'}
-              onValueChange={(v) => setServicioReservado(v === 'NINGUNO' ? '' : v)}
+            <Popover
+              open={servicioAbierto}
+              onOpenChange={(o) => {
+                setServicioAbierto(o);
+                if (!o) setBuscadorServicio('');
+              }}
             >
-              <SelectTrigger className="border-[#f9bbc4]/30">
-                <SelectValue placeholder="¿A qué servicio apunta?" />
-              </SelectTrigger>
-              <SelectContent className="max-h-72">
-                <SelectItem value="NINGUNO">Sin especificar</SelectItem>
-                {serviciosBooking.map((s) => (
-                  <SelectItem key={s.id} value={s.nombre}>
-                    {s.nombre}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+              <PopoverTrigger asChild>
+                <button
+                  type="button"
+                  className="flex w-full items-center justify-between rounded-md border border-[#f9bbc4]/30 bg-white px-3 py-2 text-left text-sm text-[#4a3540] hover:border-[#f9bbc4]/50"
+                >
+                  <span className={servicioReservado ? '' : 'text-[#8b5a6b]/60'}>
+                    {servicioReservado || 'Sin especificar'}
+                  </span>
+                  <ChevronsUpDown className="h-4 w-4 shrink-0 text-[#8b5a6b]/60" />
+                </button>
+              </PopoverTrigger>
+              <PopoverContent className="w-[var(--radix-popover-trigger-width)] p-0" align="start">
+                <div className="flex items-center gap-2 border-b border-[#f9bbc4]/20 px-3 py-2">
+                  <Search className="h-4 w-4 text-[#8b5a6b]/60" />
+                  <input
+                    autoFocus
+                    value={buscadorServicio}
+                    onChange={(e) => setBuscadorServicio(e.target.value)}
+                    placeholder="Buscar servicio..."
+                    className="w-full bg-transparent text-sm outline-none placeholder:text-[#8b5a6b]/50"
+                  />
+                </div>
+                <div className="max-h-64 overflow-y-auto py-1">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setServicioReservado('');
+                      setServicioAbierto(false);
+                      setBuscadorServicio('');
+                    }}
+                    className="flex w-full items-center justify-between px-3 py-2 text-left text-sm text-[#8b5a6b] hover:bg-[#f9bbc4]/10"
+                  >
+                    Sin especificar
+                    {!servicioReservado && <Check className="h-4 w-4 text-[#e292a3]" />}
+                  </button>
+                  {serviciosBooking
+                    .filter((s) =>
+                      s.nombre
+                        .toLowerCase()
+                        .includes(buscadorServicio.trim().toLowerCase()),
+                    )
+                    .map((s) => (
+                      <button
+                        key={s.id}
+                        type="button"
+                        onClick={() => {
+                          setServicioReservado(s.nombre);
+                          setServicioAbierto(false);
+                          setBuscadorServicio('');
+                        }}
+                        className="flex w-full items-center justify-between px-3 py-2 text-left text-sm text-[#4a3540] hover:bg-[#f9bbc4]/10"
+                      >
+                        <span className="pr-2">{s.nombre}</span>
+                        {servicioReservado === s.nombre && (
+                          <Check className="h-4 w-4 shrink-0 text-[#e292a3]" />
+                        )}
+                      </button>
+                    ))}
+                  {serviciosBooking.length === 0 && (
+                    <div className="px-3 py-3 text-center text-xs text-[#8b5a6b]/60">
+                      No se pudo cargar la lista de servicios.
+                    </div>
+                  )}
+                </div>
+              </PopoverContent>
+            </Popover>
             <p className="mt-1 text-xs text-[#8b5a6b]/70">
               Para el reporte de reservas: qué servicio dejó reservado con esta seña.
             </p>

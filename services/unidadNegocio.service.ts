@@ -200,6 +200,8 @@ export interface PrepagoGuardadoNew {
   cliente: ClienteNew;
   estado: EstadoPrepagoNew;
   comanda: ComandaNew;
+  tipoPago?: string;
+  servicioReservado?: string;
   createdAt: string;
   updatedAt: string;
   deletedAt: string;

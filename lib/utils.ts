@@ -296,3 +296,15 @@ export function extractarTipoPagoDePrepagos(
 
   return prepagoActivo?.tipoPago;
 }
+
+export function extractarServicioDePrepagos(
+  prepagos: Array<{ estado: string; servicioReservado?: string }> | undefined,
+): string | undefined {
+  if (!prepagos || prepagos.length === 0) return undefined;
+  const activo = prepagos.find(
+    (p) =>
+      (p.estado === 'ACTIVO' || p.estado === 'ACTIVA') &&
+      !!p.servicioReservado,
+  );
+  return activo?.servicioReservado || undefined;
+}
