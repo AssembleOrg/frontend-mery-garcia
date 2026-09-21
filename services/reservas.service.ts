@@ -35,9 +35,20 @@ interface Envelope<T> {
   data: T;
 }
 
+export interface ServicioBooking {
+  id: string;
+  nombre: string;
+  categoria: string | null;
+}
+
 const BASE = '/api/reservas/reporte';
 
 class ReservasService {
+  async servicios(): Promise<ServicioBooking[]> {
+    const res = await apiFetch<Envelope<ServicioBooking[]>>(`${BASE}/servicios`);
+    return res.data;
+  }
+
   async reporte(params: {
     fechaDesde?: string;
     fechaHasta?: string;

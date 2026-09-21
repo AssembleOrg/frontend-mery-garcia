@@ -21,6 +21,7 @@ import { Cliente } from '@/types/caja';
 import { useCurrencyConverter } from '@/hooks/useCurrencyConverter';
 import { TipoPagoNew, ClienteNew } from '@/services/unidadNegocio.service';
 import { extractarTipoPagoDePrepagos } from '@/lib/utils';
+import { reservasService, type ServicioBooking } from '@/services/reservas.service';
 
 interface ModalClienteProps {
   isOpen: boolean;
@@ -51,6 +52,8 @@ export default function ModalCliente({
   const [señaUsd, setSeñaUsd] = useState('0');
   const [tipoPagoARS, setTipoPagoARS] = useState<TipoPagoNew>(TipoPagoNew.EFECTIVO);
   const [tipoPagoUSD, setTipoPagoUSD] = useState<TipoPagoNew>(TipoPagoNew.EFECTIVO);
+  const [servicioReservado, setServicioReservado] = useState<string>('');
+  const [serviciosBooking, setServiciosBooking] = useState<ServicioBooking[]>([]);
 
   // Estados de validación
   const [errores, setErrores] = useState<Record<string, string>>({});
@@ -115,6 +118,7 @@ export default function ModalCliente({
     setSeñaUsd('0');
     setTipoPagoARS(TipoPagoNew.EFECTIVO);
     setTipoPagoUSD(TipoPagoNew.EFECTIVO);
+    setServicioReservado('');
     setErrores({});
   };
 
@@ -163,6 +167,14 @@ export default function ModalCliente({
     return Object.keys(nuevosErrores).length === 0;
   };
 
+  useEffect(() => {
+    if (!isOpen) return;
+    reservasService
+      .servicios()
+      .then(setServiciosBooking)
+      .catch(() => setServiciosBooking([]));
+  }, [isOpen]);
+
   const handleGuardar = async () => {
     if (!validateForm()) return;
 
@@ -172,7 +184,7 @@ export default function ModalCliente({
       const clienteData: Omit<
         Cliente,
         'id' | 'fechaRegistro' | 'señasDisponibles'
-      > = {
+      > & { servicioReservado?: string } = {
         nombre: nombre.trim(),
         telefono: telefono.trim() || undefined,
         email: email.trim() || undefined,
@@ -180,6 +192,7 @@ export default function ModalCliente({
         dni: dni.trim() || undefined,
         tipoPagoARS: tipoPagoARS,
         tipoPagoUSD: tipoPagoUSD,
+        servicioReservado: servicioReservado || undefined,
       };
 
       const señas = {
@@ -525,6 +538,32 @@ export default function ModalCliente({
                 </div>
               </div>
             </div>
+          </div>
+
+          {/* Servicio al que apunta la seña (opcional) */}
+          <div className="px-6 pb-2">
+            <Label className="mb-1.5 block text-sm text-[#6b4c57]">
+              Servicio de la seña <span className="text-[#8b5a6b]/60">(opcional)</span>
+            </Label>
+            <Select
+              value={servicioReservado || 'NINGUNO'}
+              onValueChange={(v) => setServicioReservado(v === 'NINGUNO' ? '' : v)}
+            >
+              <SelectTrigger className="border-[#f9bbc4]/30">
+                <SelectValue placeholder="¿A qué servicio apunta?" />
+              </SelectTrigger>
+              <SelectContent className="max-h-72">
+                <SelectItem value="NINGUNO">Sin especificar</SelectItem>
+                {serviciosBooking.map((s) => (
+                  <SelectItem key={s.id} value={s.nombre}>
+                    {s.nombre}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <p className="mt-1 text-xs text-[#8b5a6b]/70">
+              Para el reporte de reservas: qué servicio dejó reservado con esta seña.
+            </p>
           </div>
 
           <div className="flex justify-end gap-3 border-t border-[#f9bbc4]/20 bg-gradient-to-r from-[#f9bbc4]/5 to-[#e8b4c6]/5 p-6">
