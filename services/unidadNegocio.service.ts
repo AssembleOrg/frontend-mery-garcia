@@ -202,6 +202,7 @@ export interface PrepagoGuardadoNew {
   comanda: ComandaNew;
   tipoPago?: string;
   servicioReservado?: string;
+  serviciosReservados?: string[];
   createdAt: string;
   updatedAt: string;
   deletedAt: string;

@@ -12,6 +12,7 @@ export interface CrearClienteDto {
   señaArs?: number;
   tipoPagoARS?: string;
   servicioReservado?: string;
+  serviciosReservados?: string[];
   tipoPagoUSD?: string;
 }
 
@@ -25,6 +26,7 @@ export interface ActualizarClienteDto {
   señaArs?: number;
   tipoPagoARS?: string;
   servicioReservado?: string;
+  serviciosReservados?: string[];
   tipoPagoUSD?: string;
 }
 

@@ -308,3 +308,17 @@ export function extractarServicioDePrepagos(
   );
   return activo?.servicioReservado || undefined;
 }
+
+export function extractarServiciosDePrepagos(
+  prepagos: Array<{ estado: string; servicioReservado?: string; serviciosReservados?: string[] }> | undefined,
+): string[] {
+  if (!prepagos || prepagos.length === 0) return [];
+  const activo = prepagos.find(
+    (p) =>
+      (p.estado === 'ACTIVO' || p.estado === 'ACTIVA') &&
+      ((p.serviciosReservados && p.serviciosReservados.length > 0) || !!p.servicioReservado),
+  );
+  if (!activo) return [];
+  if (activo.serviciosReservados && activo.serviciosReservados.length > 0) return activo.serviciosReservados;
+  return activo.servicioReservado ? [activo.servicioReservado] : [];
+}

@@ -20,7 +20,7 @@ import {
 import { Cliente } from '@/types/caja';
 import { useCurrencyConverter } from '@/hooks/useCurrencyConverter';
 import { TipoPagoNew, ClienteNew } from '@/services/unidadNegocio.service';
-import { extractarTipoPagoDePrepagos, extractarServicioDePrepagos } from '@/lib/utils';
+import { extractarTipoPagoDePrepagos, extractarServiciosDePrepagos } from '@/lib/utils';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Search, Check, ChevronsUpDown } from 'lucide-react';
 import { reservasService, type ServicioBooking } from '@/services/reservas.service';
@@ -54,7 +54,7 @@ export default function ModalCliente({
   const [señaUsd, setSeñaUsd] = useState('0');
   const [tipoPagoARS, setTipoPagoARS] = useState<TipoPagoNew>(TipoPagoNew.EFECTIVO);
   const [tipoPagoUSD, setTipoPagoUSD] = useState<TipoPagoNew>(TipoPagoNew.EFECTIVO);
-  const [servicioReservado, setServicioReservado] = useState<string>('');
+  const [serviciosReservados, setServiciosReservados] = useState<string[]>([]);
   const [serviciosBooking, setServiciosBooking] = useState<ServicioBooking[]>([]);
   const [buscadorServicio, setBuscadorServicio] = useState('');
   const [servicioAbierto, setServicioAbierto] = useState(false);
@@ -107,9 +107,7 @@ export default function ModalCliente({
 
         if ('prepagosGuardados' in cliente) {
           const clienteNew = cliente as ClienteNew;
-          setServicioReservado(
-            extractarServicioDePrepagos(clienteNew.prepagosGuardados) || '',
-          );
+          setServiciosReservados(extractarServiciosDePrepagos(clienteNew.prepagosGuardados));
         }
       } else {
         // Modo creación
@@ -129,7 +127,7 @@ export default function ModalCliente({
     setSeñaUsd('0');
     setTipoPagoARS(TipoPagoNew.EFECTIVO);
     setTipoPagoUSD(TipoPagoNew.EFECTIVO);
-    setServicioReservado('');
+    setServiciosReservados([]);
     setErrores({});
   };
 
@@ -195,7 +193,7 @@ export default function ModalCliente({
       const clienteData: Omit<
         Cliente,
         'id' | 'fechaRegistro' | 'señasDisponibles'
-      > & { servicioReservado?: string } = {
+      > & { serviciosReservados?: string[] } = {
         nombre: nombre.trim(),
         telefono: telefono.trim() || undefined,
         email: email.trim() || undefined,
@@ -203,7 +201,7 @@ export default function ModalCliente({
         dni: dni.trim() || undefined,
         tipoPagoARS: tipoPagoARS,
         tipoPagoUSD: tipoPagoUSD,
-        servicioReservado: servicioReservado || undefined,
+        serviciosReservados: serviciosReservados.length ? serviciosReservados : undefined,
       };
 
       const señas = {
@@ -551,11 +549,35 @@ export default function ModalCliente({
             </div>
           </div>
 
-          {/* Servicio al que apunta la seña (opcional), con buscador */}
+          {/* Servicios a los que apunta la seña (opcional, varios), con buscador */}
           <div className="px-6 pb-2">
             <Label className="mb-1.5 block text-sm text-[#6b4c57]">
-              Servicio de la seña <span className="text-[#8b5a6b]/60">(opcional)</span>
+              Servicios de la seña <span className="text-[#8b5a6b]/60">(opcional, podés elegir varios)</span>
             </Label>
+
+            {serviciosReservados.length > 0 && (
+              <div className="mb-2 flex flex-wrap gap-1.5">
+                {serviciosReservados.map((nombre) => (
+                  <span
+                    key={nombre}
+                    className="inline-flex items-center gap-1 rounded-full border border-[#f9bbc4]/40 bg-[#f9bbc4]/10 px-2.5 py-1 text-xs text-[#6b4c57]"
+                  >
+                    {nombre}
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setServiciosReservados((prev) => prev.filter((n) => n !== nombre))
+                      }
+                      className="text-[#8b5a6b]/70 hover:text-rose-500"
+                      aria-label={`Quitar ${nombre}`}
+                    >
+                      <X className="h-3 w-3" />
+                    </button>
+                  </span>
+                ))}
+              </div>
+            )}
+
             <Popover
               open={servicioAbierto}
               onOpenChange={(o) => {
@@ -568,8 +590,10 @@ export default function ModalCliente({
                   type="button"
                   className="flex w-full items-center justify-between rounded-md border border-[#f9bbc4]/30 bg-white px-3 py-2 text-left text-sm text-[#4a3540] hover:border-[#f9bbc4]/50"
                 >
-                  <span className={servicioReservado ? '' : 'text-[#8b5a6b]/60'}>
-                    {servicioReservado || 'Sin especificar'}
+                  <span className="text-[#8b5a6b]/70">
+                    {serviciosReservados.length > 0
+                      ? `${serviciosReservados.length} servicio${serviciosReservados.length > 1 ? 's' : ''} seleccionado${serviciosReservados.length > 1 ? 's' : ''}`
+                      : 'Agregar servicio…'}
                   </span>
                   <ChevronsUpDown className="h-4 w-4 shrink-0 text-[#8b5a6b]/60" />
                 </button>
@@ -586,51 +610,51 @@ export default function ModalCliente({
                   />
                 </div>
                 <div className="max-h-64 overflow-y-auto py-1">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setServicioReservado('');
-                      setServicioAbierto(false);
-                      setBuscadorServicio('');
-                    }}
-                    className="flex w-full items-center justify-between px-3 py-2 text-left text-sm text-[#8b5a6b] hover:bg-[#f9bbc4]/10"
-                  >
-                    Sin especificar
-                    {!servicioReservado && <Check className="h-4 w-4 text-[#e292a3]" />}
-                  </button>
                   {serviciosBooking
                     .filter((s) =>
-                      s.nombre
-                        .toLowerCase()
-                        .includes(buscadorServicio.trim().toLowerCase()),
+                      s.nombre.toLowerCase().includes(buscadorServicio.trim().toLowerCase()),
                     )
-                    .map((s) => (
-                      <button
-                        key={s.id}
-                        type="button"
-                        onClick={() => {
-                          setServicioReservado(s.nombre);
-                          setServicioAbierto(false);
-                          setBuscadorServicio('');
-                        }}
-                        className="flex w-full items-center justify-between px-3 py-2 text-left text-sm text-[#4a3540] hover:bg-[#f9bbc4]/10"
-                      >
-                        <span className="pr-2">{s.nombre}</span>
-                        {servicioReservado === s.nombre && (
-                          <Check className="h-4 w-4 shrink-0 text-[#e292a3]" />
-                        )}
-                      </button>
-                    ))}
+                    .map((s) => {
+                      const elegido = serviciosReservados.includes(s.nombre);
+                      return (
+                        <button
+                          key={s.id}
+                          type="button"
+                          onClick={() =>
+                            setServiciosReservados((prev) =>
+                              prev.includes(s.nombre)
+                                ? prev.filter((n) => n !== s.nombre)
+                                : [...prev, s.nombre],
+                            )
+                          }
+                          className="flex w-full items-center justify-between px-3 py-2 text-left text-sm text-[#4a3540] hover:bg-[#f9bbc4]/10"
+                        >
+                          <span className="pr-2">{s.nombre}</span>
+                          {elegido && <Check className="h-4 w-4 shrink-0 text-[#e292a3]" />}
+                        </button>
+                      );
+                    })}
                   {serviciosBooking.length === 0 && (
                     <div className="px-3 py-3 text-center text-xs text-[#8b5a6b]/60">
                       No se pudo cargar la lista de servicios.
                     </div>
                   )}
                 </div>
+                {serviciosReservados.length > 0 && (
+                  <div className="border-t border-[#f9bbc4]/20 p-2">
+                    <button
+                      type="button"
+                      onClick={() => setServiciosReservados([])}
+                      className="w-full rounded px-2 py-1 text-center text-xs text-[#8b5a6b] hover:bg-[#f9bbc4]/10"
+                    >
+                      Limpiar selección
+                    </button>
+                  </div>
+                )}
               </PopoverContent>
             </Popover>
             <p className="mt-1 text-xs text-[#8b5a6b]/70">
-              Para el reporte de reservas: qué servicio dejó reservado con esta seña.
+              Para el reporte de reservas: qué servicios dejó reservados con esta seña.
             </p>
           </div>
 
