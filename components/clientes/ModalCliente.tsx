@@ -24,6 +24,7 @@ import { extractarTipoPagoDePrepagos, extractarServiciosDePrepagos } from '@/lib
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Search, Check, ChevronsUpDown } from 'lucide-react';
 import { reservasService, type ServicioBooking } from '@/services/reservas.service';
+import { señasActivas, formatoMonto, fechaCorta } from './SeñasOrigenPopover';
 
 interface ModalClienteProps {
   isOpen: boolean;
@@ -48,6 +49,13 @@ export default function ModalCliente({
   const [email, setEmail] = useState('');
   const [cuit, setCuit] = useState('');
   const [dni, setDni] = useState('');
+
+  // Señas activas de la ficha (solo al editar), para mostrar de qué se compone
+  // el total y cómo se aplica un cambio cuando hay más de una.
+  const prepagosCliente =
+    cliente && 'prepagosGuardados' in cliente ? cliente.prepagosGuardados : undefined;
+  const desgloseArs = señasActivas(prepagosCliente, 'ARS');
+  const desgloseUsd = señasActivas(prepagosCliente, 'USD');
 
   // Estados para señas
   const [señaArs, setSeñaArs] = useState('0');
@@ -413,6 +421,15 @@ export default function ModalCliente({
                       className={`pl-12 ${errores.señaArs ? 'border-red-300' : 'border-[#f9bbc4]/30 focus:border-[#f9bbc4]'}`}
                     />
                   </div>
+                  {desgloseArs.length > 1 && (
+                    <p className="mt-1.5 text-[11px] leading-snug text-[#8b5a6b]">
+                      Suma de {desgloseArs.length} señas:{' '}
+                      {desgloseArs
+                        .map((x) => `${formatoMonto(x.monto, 'ARS')} (${fechaCorta(x.fechaCreacion)})`)
+                        .join(' + ')}
+                      . Si bajás el total se descuenta de la más antigua; si lo subís se agrega una seña por la diferencia.
+                    </p>
+                  )}
                 </div>
                 <div>
                   <Label htmlFor="seña-usd" className="font-medium text-[#4a3540]">
@@ -434,6 +451,15 @@ export default function ModalCliente({
                       className={`pl-10 ${errores.señaUsd ? 'border-red-300' : 'border-[#f9bbc4]/30 focus:border-[#f9bbc4]'}`}
                     />
                   </div>
+                  {desgloseUsd.length > 1 && (
+                    <p className="mt-1.5 text-[11px] leading-snug text-[#8b5a6b]">
+                      Suma de {desgloseUsd.length} señas:{' '}
+                      {desgloseUsd
+                        .map((x) => `${formatoMonto(x.monto, 'USD')} (${fechaCorta(x.fechaCreacion)})`)
+                        .join(' + ')}
+                      . Si bajás el total se descuenta de la más antigua; si lo subís se agrega una seña por la diferencia.
+                    </p>
+                  )}
                 </div>
               </div>
 

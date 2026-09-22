@@ -51,6 +51,8 @@ import { Cliente } from '@/types/caja';
 import { useClientes } from '@/features/clientes/hooks/useClientes';
 import { useCurrencyConverter } from '@/hooks/useCurrencyConverter';
 import ModalCliente from './ModalCliente';
+import { SeñasOrigenPopover } from './SeñasOrigenPopover';
+import type { PrepagoGuardadoNew } from '@/services/unidadNegocio.service';
 
 export default function ClientesTab() {
   const {
@@ -418,17 +420,27 @@ export default function ClientesTab() {
                       </div>
                     </TableCell>
                     <TableCell>
-                      <div className="flex flex-col space-y-1">
-                        <Badge
-                          variant={'outline'}
-                          className={`font-mono ${cliente.señasDisponibles?.ars > 0 ? 'border-blue-300 bg-blue-100 text-blue-800' : 'bg-gray-100 text-gray-600'}`}>
-                          {formatARSFromNative(cliente.señasDisponibles?.ars?? 0)}
-                        </Badge>
-                        <Badge
-                          variant={'outline'}
-                          className={`font-mono ${cliente.señasDisponibles?.usd > 0 ? 'border-green-300 bg-green-100 text-green-800' : 'bg-gray-100 text-gray-600'}`}>
-                          {formatUSD(cliente.señasDisponibles?.usd ?? 0)}
-                        </Badge>
+                      <div className="flex flex-col items-start space-y-1">
+                        <SeñasOrigenPopover
+                          moneda="ARS"
+                          prepagos={(cliente as { prepagosGuardados?: PrepagoGuardadoNew[] }).prepagosGuardados}
+                        >
+                          <Badge
+                            variant={'outline'}
+                            className={`font-mono ${cliente.señasDisponibles?.ars > 0 ? 'border-blue-300 bg-blue-100 text-blue-800' : 'bg-gray-100 text-gray-600'}`}>
+                            {formatARSFromNative(cliente.señasDisponibles?.ars?? 0)}
+                          </Badge>
+                        </SeñasOrigenPopover>
+                        <SeñasOrigenPopover
+                          moneda="USD"
+                          prepagos={(cliente as { prepagosGuardados?: PrepagoGuardadoNew[] }).prepagosGuardados}
+                        >
+                          <Badge
+                            variant={'outline'}
+                            className={`font-mono ${cliente.señasDisponibles?.usd > 0 ? 'border-green-300 bg-green-100 text-green-800' : 'bg-gray-100 text-gray-600'}`}>
+                            {formatUSD(cliente.señasDisponibles?.usd ?? 0)}
+                          </Badge>
+                        </SeñasOrigenPopover>
                       </div>
                     </TableCell>
                     <TableCell>

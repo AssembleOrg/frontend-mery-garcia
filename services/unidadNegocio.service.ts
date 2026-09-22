@@ -203,6 +203,12 @@ export interface PrepagoGuardadoNew {
   tipoPago?: string;
   servicioReservado?: string;
   serviciosReservados?: string[];
+  observaciones?: string;
+  /** Solo en señas que entraron por una reserva online (booking). */
+  bookingId?: string | null;
+  bookingCode?: string | null;
+  empleadoReservado?: string | null;
+  fechaTurno?: string | null;
   createdAt: string;
   updatedAt: string;
   deletedAt: string;
