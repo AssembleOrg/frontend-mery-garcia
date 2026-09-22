@@ -1,6 +1,6 @@
 'use client';
 
-import { useRef, useState, type ReactNode } from 'react';
+import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
 import { CalendarClock, Info, Store } from 'lucide-react';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import type { PrepagoGuardadoNew } from '@/services/unidadNegocio.service';
@@ -111,6 +111,10 @@ function Fila({ seña, moneda }: { seña: PrepagoGuardadoNew; moneda: 'ARS' | 'U
  * dónde sale el total: fecha, monto, método de pago original y origen de cada
  * seña.
  */
+// Solo un detalle abierto a la vez en toda la tabla: al abrir uno se cierra
+// el anterior, aunque su timer de cierre todavía no haya corrido.
+let cerrarAbierto: (() => void) | null = null;
+
 export function SeñasOrigenPopover({
   prepagos,
   moneda,
@@ -122,28 +126,70 @@ export function SeñasOrigenPopover({
 }) {
   const [open, setOpen] = useState(false);
   const cierre = useRef<number | null>(null);
-  const lista = señasActivas(prepagos, moneda);
+  const punteroMouse = useRef(false);
 
-  if (lista.length === 0) return <>{children}</>;
+  const limpiarTimer = () => {
+    if (cierre.current) {
+      window.clearTimeout(cierre.current);
+      cierre.current = null;
+    }
+  };
+
+  const cerrar = useCallback(() => {
+    limpiarTimer();
+    setOpen(false);
+    if (cerrarAbierto === cerrarRef.current) cerrarAbierto = null;
+  }, []);
+  const cerrarRef = useRef(cerrar);
+  cerrarRef.current = cerrar;
 
   const abrir = () => {
-    if (cierre.current) window.clearTimeout(cierre.current);
+    limpiarTimer();
+    if (cerrarAbierto && cerrarAbierto !== cerrarRef.current) cerrarAbierto();
+    cerrarAbierto = cerrarRef.current;
     setOpen(true);
   };
   const cerrarLuego = () => {
-    cierre.current = window.setTimeout(() => setOpen(false), 120);
+    limpiarTimer();
+    cierre.current = window.setTimeout(cerrar, 150);
   };
+
+  useEffect(
+    () => () => {
+      limpiarTimer();
+      if (cerrarAbierto === cerrarRef.current) cerrarAbierto = null;
+    },
+    [],
+  );
+
+  const lista = señasActivas(prepagos, moneda);
+  if (lista.length === 0) return <>{children}</>;
+
   const total = lista.reduce((acc, s) => acc + Number(s.monto), 0);
 
   return (
-    <Popover open={open} onOpenChange={setOpen}>
+    <Popover
+      open={open}
+      onOpenChange={(v) => (v ? abrir() : cerrar())}
+    >
       <PopoverTrigger asChild>
         <button
           type="button"
-          onMouseEnter={abrir}
-          onMouseLeave={cerrarLuego}
-          onFocus={abrir}
-          onBlur={cerrarLuego}
+          onPointerEnter={(e) => {
+            punteroMouse.current = e.pointerType === 'mouse';
+            if (punteroMouse.current) abrir();
+          }}
+          onPointerLeave={(e) => {
+            if (e.pointerType === 'mouse') cerrarLuego();
+          }}
+          onPointerDown={(e) => {
+            punteroMouse.current = e.pointerType === 'mouse';
+          }}
+          onClick={(e) => {
+            // Con mouse el detalle lo maneja el hover; el click no debe
+            // cerrarlo. En táctil, tocar abre y cierra.
+            if (punteroMouse.current) e.preventDefault();
+          }}
           aria-label={
             lista.length === 1
               ? `Ver el origen de la seña en ${moneda}`
@@ -158,12 +204,17 @@ export function SeñasOrigenPopover({
       <PopoverContent
         side="right"
         align="start"
-        onMouseEnter={abrir}
-        onMouseLeave={cerrarLuego}
+        onPointerEnter={(e) => {
+          if (e.pointerType === 'mouse') abrir();
+        }}
+        onPointerLeave={(e) => {
+          if (e.pointerType === 'mouse') cerrarLuego();
+        }}
         onOpenAutoFocus={(e) => e.preventDefault()}
-        className="w-80 border-[#f9bbc4]/40 p-0"
+        onCloseAutoFocus={(e) => e.preventDefault()}
+        className="w-80 overflow-hidden rounded-lg border-2 border-[#f9bbc4] bg-white p-0 text-[#4a3540] opacity-100 shadow-xl shadow-[#4a3540]/15"
       >
-        <div className="border-b border-[#f9bbc4]/30 bg-[#fdf4f6] px-4 py-2.5">
+        <div className="border-b-2 border-[#f9bbc4]/60 bg-[#fdf4f6] px-4 py-2.5">
           <p className="text-sm font-semibold text-[#4a3540]">
             Seña {moneda} · {formatoMonto(total, moneda)}
           </p>
@@ -173,7 +224,7 @@ export function SeñasOrigenPopover({
               : `Suma de ${lista.length} señas activas, de la más antigua a la más nueva`}
           </p>
         </div>
-        <ul className="max-h-80 divide-y divide-[#f9bbc4]/25 overflow-y-auto px-4 py-2.5">
+        <ul className="max-h-80 divide-y divide-[#f9bbc4]/40 overflow-y-auto bg-white px-4 py-2.5">
           {lista.map((s) => (
             <Fila key={s.id} seña={s} moneda={moneda} />
           ))}
