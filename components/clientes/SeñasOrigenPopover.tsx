@@ -106,10 +106,10 @@ function Fila({ seña, moneda }: { seña: PrepagoGuardadoNew; moneda: 'ARS' | 'U
 }
 
 /**
- * Envuelve el badge del total de señas. Cuando la clienta tiene más de una seña
- * activa en esa moneda, al pasar el mouse (o tocar, en pantallas táctiles)
- * muestra de dónde sale el total: fecha, monto, método de pago original y
- * origen de cada seña.
+ * Envuelve el badge del total de señas. Si la clienta tiene señas activas en
+ * esa moneda, al pasar el mouse (o tocar, en pantallas táctiles) muestra de
+ * dónde sale el total: fecha, monto, método de pago original y origen de cada
+ * seña.
  */
 export function SeñasOrigenPopover({
   prepagos,
@@ -124,7 +124,7 @@ export function SeñasOrigenPopover({
   const cierre = useRef<number | null>(null);
   const lista = señasActivas(prepagos, moneda);
 
-  if (lista.length < 2) return <>{children}</>;
+  if (lista.length === 0) return <>{children}</>;
 
   const abrir = () => {
     if (cierre.current) window.clearTimeout(cierre.current);
@@ -144,7 +144,11 @@ export function SeñasOrigenPopover({
           onMouseLeave={cerrarLuego}
           onFocus={abrir}
           onBlur={cerrarLuego}
-          aria-label={`Ver el origen de las ${lista.length} señas en ${moneda}`}
+          aria-label={
+            lista.length === 1
+              ? `Ver el origen de la seña en ${moneda}`
+              : `Ver el origen de las ${lista.length} señas en ${moneda}`
+          }
           className="inline-flex items-center gap-1 rounded-md text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-[#f9bbc4]"
         >
           {children}
@@ -164,7 +168,9 @@ export function SeñasOrigenPopover({
             Seña {moneda} · {formatoMonto(total, moneda)}
           </p>
           <p className="text-[11px] text-[#8b5a6b]">
-            Suma de {lista.length} señas activas, de la más antigua a la más nueva
+            {lista.length === 1
+              ? 'Origen de la seña activa'
+              : `Suma de ${lista.length} señas activas, de la más antigua a la más nueva`}
           </p>
         </div>
         <ul className="max-h-80 divide-y divide-[#f9bbc4]/25 overflow-y-auto px-4 py-2.5">
