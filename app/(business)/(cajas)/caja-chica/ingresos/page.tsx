@@ -1,5 +1,6 @@
 'use client';
 
+import { formatDate } from '@/lib/utils';
 import { useState, useEffect } from 'react';
 import MainLayout from '@/components/layout/MainLayout';
 import StandardPageBanner from '@/components/common/StandardPageBanner';
@@ -703,9 +704,9 @@ export default function IngresosPage() {
                           {dateRange && (
                             <span className="rounded-full bg-[#f9bbc4]/20 px-2 py-1">
                               Fechas:{' '}
-                              {dateRange.from?.toLocaleDateString('es-ES')}
+                              {dateRange.from && formatDate(dateRange.from)}
                               {dateRange.to &&
-                                ` - ${dateRange.to.toLocaleDateString('es-ES')}`}
+                                ` - ${formatDate(dateRange.to)}`}
                             </span>
                           )}
                           {incluirTraspasadas && (

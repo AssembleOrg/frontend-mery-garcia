@@ -19,6 +19,10 @@ export interface ComisionTrabajadorDto {
   totalConsultas: number;
   unidadesNegocio: Record<string, number>;
   productosServicios: ProductoServicioItem[];
+  /** Servicios por categoría (A, B, C...), ordenadas. */
+  categorias?: { id: string; nombre: string; orden: number; cantidad: number }[];
+  /** Servicios sin categoría asignada (sin contar consultas). */
+  serviciosSinCategoria?: number;
   comisiones: {
     serviciosARS: number;
     serviciosUSD: number;

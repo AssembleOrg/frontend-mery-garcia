@@ -1,5 +1,6 @@
 'use client';
 
+import { mesesEnEspanol } from '@/lib/utils';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -214,12 +215,12 @@ export default function TabPendientes() {
                       </Badge>
                     )}
                   </div>
-                  <div className="mt-1 text-sm text-[#6b4c57]">{item.label}</div>
+                  <div className="mt-1 text-sm text-[#6b4c57]">{mesesEnEspanol(item.label)}</div>
                   {item.detail && (
-                    <div className="mt-0.5 text-xs text-[#8b5a6b]">{item.detail}</div>
+                    <div className="mt-0.5 text-xs text-[#8b5a6b]">{mesesEnEspanol(item.detail)}</div>
                   )}
                 </div>
-                <span className="shrink-0 text-xs text-[#8b5a6b]">{item.when}</span>
+                <span className="shrink-0 text-xs text-[#8b5a6b]">{mesesEnEspanol(item.when)}</span>
               </label>
             ))}
           </CardContent>

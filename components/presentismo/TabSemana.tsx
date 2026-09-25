@@ -1,5 +1,6 @@
 'use client';
 
+import { formatDiaISO } from '@/lib/utils';
 import { useCallback, useEffect, useState } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -170,7 +171,7 @@ export default function TabSemana() {
               <ChevronLeft className="h-4 w-4" />
             </Button>
             <div className="min-w-[210px] text-center">
-              <div className="font-semibold text-[#4a3540]">{semana?.label ?? '…'}</div>
+              <div className="font-semibold text-[#4a3540]">{semana ? `Semana del ${formatDiaISO(semana.weekStart)}` : '…'}</div>
               <div className="text-xs text-[#8b5a6b]">
                 {semana?.publishedLabel}
                 {semana && (
@@ -305,7 +306,7 @@ export default function TabSemana() {
               {edicion?.turno ? 'Editar turno' : 'Agregar turno'}
             </DialogTitle>
             <DialogDescription className="text-[#8b5a6b]">
-              {edicion?.nombre} · {edicion?.day}
+              {edicion?.nombre} · {formatDiaISO(edicion?.day)}
               <br />
               Cambia sólo este día. Para el horario que se repite todas las semanas, usá
               la pestaña «Horario fijo».

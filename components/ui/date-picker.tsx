@@ -2,7 +2,7 @@
 
 import * as React from 'react';
 import { CalendarIcon, X } from 'lucide-react';
-import { cn } from '@/lib/utils';
+import { cn, formatDate as formatFecha } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Calendar } from '@/components/ui/calendar';
 import {
@@ -46,7 +46,7 @@ export function DatePicker({
 
   const formatDate = (date: Date | undefined) => {
     if (!date) return placeholder;
-    return date.toLocaleDateString('es-ES');
+    return formatFecha(date);
   };
 
   const clearDate = (e: React.MouseEvent) => {

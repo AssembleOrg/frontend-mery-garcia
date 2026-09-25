@@ -1,5 +1,6 @@
 'use client';
 
+import { formatDate } from '@/lib/utils';
 import { useState, useEffect } from 'react';
 import MainLayout from '@/components/layout/MainLayout';
 import StandardPageBanner from '@/components/common/StandardPageBanner';
@@ -434,19 +435,11 @@ export default function EgresosPage() {
                                 Filtro de fechas activo
                               </span>
                               <span className="text-xs text-[#6b4c57]">
-                                {dateRange.from?.toLocaleDateString('es-ES', {
-                                  year: 'numeric',
-                                  month: 'long',
-                                  day: 'numeric'
-                                })}
+                                {(dateRange.from ? formatDate(dateRange.from) : '')}
                                 {dateRange.to && dateRange.to.getTime() !== dateRange.from?.getTime() && (
                                   <>
                                     {' → '}
-                                    {dateRange.to.toLocaleDateString('es-ES', {
-                                      year: 'numeric',
-                                      month: 'long',
-                                      day: 'numeric'
-                                    })}
+                                    {(dateRange.to ? formatDate(dateRange.to) : '')}
                                   </>
                                 )}
                               </span>

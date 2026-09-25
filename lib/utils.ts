@@ -49,6 +49,75 @@ export function formatDate(date: Date | string | number, locale = 'es-ES') {
   }).format(d);
 }
 
+/**
+ * Fecha y hora para mostrar: dd/mm/aaaa HH:mm (24 h, hora de Argentina).
+ * Con `segundos` agrega :ss.
+ */
+export function formatFechaHora(date: Date | string | number, segundos = false) {
+  const d =
+    typeof date === 'string' || typeof date === 'number'
+      ? new Date(date)
+      : date;
+  return new Intl.DateTimeFormat('es-AR', {
+    timeZone: 'America/Argentina/Buenos_Aires',
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+    ...(segundos ? { second: '2-digit' } : {}),
+    hour12: false,
+  })
+    .format(d)
+    .replace(',', '');
+}
+
+/** Hora para mostrar: HH:mm (24 h, hora de Argentina). */
+export function formatHora(date: Date | string | number) {
+  const d =
+    typeof date === 'string' || typeof date === 'number'
+      ? new Date(date)
+      : date;
+  return new Intl.DateTimeFormat('es-AR', {
+    timeZone: 'America/Argentina/Buenos_Aires',
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: false,
+  }).format(d);
+}
+
+/** "2026-09-05" (clave de día) → "05/09/2026", sin pasar por zonas horarias. */
+export function formatDiaISO(dia: string | null | undefined) {
+  if (!dia) return '';
+  const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(dia);
+  return m ? `${m[3]}/${m[2]}/${m[1]}` : dia;
+}
+
+/** "2026-09-25" → "Viernes 25/09/2026". */
+export function formatDiaConNombre(dia: string | null | undefined) {
+  if (!dia) return '';
+  const nombre = new Date(`${dia.slice(0, 10)}T12:00:00Z`).toLocaleDateString('es-AR', {
+    weekday: 'long',
+    timeZone: 'UTC',
+  });
+  return `${nombre.charAt(0).toUpperCase()}${nombre.slice(1)} ${formatDiaISO(dia)}`;
+}
+
+const MESES_EN_ES: Record<string, string> = {
+  january: 'enero', february: 'febrero', march: 'marzo', april: 'abril',
+  may: 'mayo', june: 'junio', july: 'julio', august: 'agosto',
+  september: 'septiembre', october: 'octubre', november: 'noviembre', december: 'diciembre',
+};
+
+/** Pasa a castellano los meses que vienen en inglés en textos armados por Ritmo. */
+export function mesesEnEspanol(texto: string | null | undefined) {
+  if (!texto) return texto ?? '';
+  return texto.replace(
+    /\b(january|february|march|april|may|june|july|august|september|october|november|december)\b/gi,
+    (m) => MESES_EN_ES[m.toLowerCase()] ?? m,
+  );
+}
+
 export function formatUSD(amount: number) {
   return new Intl.NumberFormat('en-US', {
     style: 'currency',

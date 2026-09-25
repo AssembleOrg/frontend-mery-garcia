@@ -14,6 +14,7 @@ import { METODO_PAGO_LABELS } from '@/lib/constants';
 import { MessageCircle, Percent, RotateCcw, Save } from 'lucide-react';
 import { useAuth } from '@/features/auth/hooks/useAuth';
 import { toast } from 'sonner';
+import CategoriasServicio from '@/components/configuracion/CategoriasServicio';
 
 const breadcrumbItems = [
   { label: 'Dashboard', href: '/dashboard' },
@@ -26,7 +27,8 @@ export default function ConfiguracionPage() {
     actualizarDescuentoMetodo,
     resetearConfiguracion,
   } = useConfiguracion();
-  const { isAdmin } = useAuth();
+  const { isAdmin, hasRole } = useAuth();
+  const puedeEditarCategorias = isAdmin || hasRole('encargado');
 
   const [tempValues, setTempValues] = useState(() => {
     const stringValues: Record<string, string> = {};
@@ -214,6 +216,8 @@ export default function ConfiguracionPage() {
               </div>
             </CardContent>
           </Card>
+
+          {puedeEditarCategorias && <CategoriasServicio />}
 
           {/* Sólo admin: el bot de WhatsApp no se muestra al resto del equipo. */}
           {isAdmin && (

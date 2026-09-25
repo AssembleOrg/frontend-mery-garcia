@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import { toast } from 'sonner';
-import { logger } from '@/lib/utils';
+import { logger, formatDiaISO } from '@/lib/utils';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 
@@ -532,8 +532,8 @@ export const useAuditoriaStore = create<AuditoriaStore>((set, get) => ({
           let yPosition = 45;
           
           const filtrosAplicados = [];
-          if (filtros.fechaInicio) filtrosAplicados.push(`Desde: ${filtros.fechaInicio}`);
-          if (filtros.fechaFin) filtrosAplicados.push(`Hasta: ${filtros.fechaFin}`);
+          if (filtros.fechaInicio) filtrosAplicados.push(`Desde: ${formatDiaISO(filtros.fechaInicio)}`);
+          if (filtros.fechaFin) filtrosAplicados.push(`Hasta: ${formatDiaISO(filtros.fechaFin)}`);
           if (filtros.modulo) filtrosAplicados.push(`Módulo: ${filtros.modulo}`);
           if (filtros.tipoAccion) filtrosAplicados.push(`Acción: ${filtros.tipoAccion}`);
           if (filtros.usuarioId) filtrosAplicados.push(`Usuario: ${filtros.usuarioId}`);

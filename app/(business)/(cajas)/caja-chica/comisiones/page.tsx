@@ -32,7 +32,8 @@ import {
   Building2,
   ShoppingBag,
   Percent,
-  FileDown
+  FileDown,
+  Layers
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { comisionesService, ResumenComisionesDto } from '@/services/comisiones.service';
@@ -40,7 +41,7 @@ import { useCurrencyConverter } from '@/hooks/useCurrencyConverter';
 import ClientOnly from '@/components/common/ClientOnly';
 import ManagerOrAdminOnly from '@/components/auth/ManagerOrAdminOnly';
 import { Badge } from '@/components/ui/badge';
-import { cn } from '@/lib/utils';
+import { cn, formatDate } from '@/lib/utils';
 
 const breadcrumbItems = [
   { label: 'Inicio', href: '/' },
@@ -167,21 +168,13 @@ export default function ComisionesPage() {
   const formatDateRange = useCallback(() => {
     if (!dateRange.from) return 'Selecciona un rango';
     
-    const fromStr = dateRange.from.toLocaleDateString('es-AR', {
-      day: '2-digit',
-      month: 'short',
-      year: 'numeric',
-    });
+    const fromStr = formatDate(dateRange.from);
 
     if (!dateRange.to || dateRange.from.getTime() === dateRange.to.getTime()) {
       return fromStr;
     }
 
-    const toStr = dateRange.to.toLocaleDateString('es-AR', {
-      day: '2-digit',
-      month: 'short',
-      year: 'numeric',
-    });
+    const toStr = formatDate(dateRange.to);
 
     return `${fromStr} - ${toStr}`;
   }, [dateRange]);
@@ -443,6 +436,32 @@ export default function ComisionesPage() {
 
                                 {/* Columna derecha: Unidades de Negocio y Detalles */}
                                 <div className="space-y-3">
+                                  {/* Categorías de servicio (A, B, C...) */}
+                                  {((trabajador.categorias?.length ?? 0) > 0 ||
+                                    (trabajador.serviciosSinCategoria ?? 0) > 0) && (
+                                    <div className="rounded-md bg-white border border-[#f9bbc4]/40 p-3">
+                                      <div className="flex items-center gap-1 text-xs font-medium text-[#6b4c57] mb-2">
+                                        <Layers className="h-3 w-3" />
+                                        <span>Servicios por categoría</span>
+                                      </div>
+                                      <div className="flex flex-wrap gap-2">
+                                        {trabajador.categorias?.map((c) => (
+                                          <Badge
+                                            key={c.id}
+                                            className="bg-[#f9bbc4]/30 text-[#4a3540] hover:bg-[#f9bbc4]/30"
+                                          >
+                                            {c.nombre}: <span className="ml-1 font-bold">{c.cantidad}</span>
+                                          </Badge>
+                                        ))}
+                                        {(trabajador.serviciosSinCategoria ?? 0) > 0 && (
+                                          <Badge variant="outline" className="border-gray-300 text-gray-500">
+                                            Sin categoría: {trabajador.serviciosSinCategoria}
+                                          </Badge>
+                                        )}
+                                      </div>
+                                    </div>
+                                  )}
+
                                   {/* Unidades de Negocio */}
                                   {Object.keys(trabajador.unidadesNegocio).length > 0 && (
                                     <div className="rounded-md bg-white border border-[#f9bbc4]/20 p-3">

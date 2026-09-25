@@ -1,5 +1,6 @@
 'use client';
 
+import { formatHora, formatDiaConNombre } from '@/lib/utils';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -95,7 +96,7 @@ export default function TabHoy() {
       <Card className="border-2 border-[#f9bbc4]/30 bg-white/95 shadow-xl">
         <CardContent className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between">
           <div>
-            <div className="text-lg font-semibold text-[#4a3540]">{datos.dateLabel}</div>
+            <div className="text-lg font-semibold text-[#4a3540]">{formatDiaConNombre(datos.day)}</div>
             <div className="text-sm text-[#8b5a6b]">
               {datos.teamSize} {datos.teamSize === 1 ? 'persona' : 'personas'} en el equipo
             </div>
@@ -204,10 +205,7 @@ export default function TabHoy() {
                         </div>
                         <div className="text-xs text-[#8b5a6b]">
                           {evento.kind.toLowerCase().replace('_', ' ')} ·{' '}
-                          {new Date(evento.happenedAt).toLocaleTimeString('es-AR', {
-                            hour: '2-digit',
-                            minute: '2-digit',
-                          })}
+                          {formatHora(evento.happenedAt)}
                         </div>
                       </div>
                     </div>

@@ -1,5 +1,6 @@
 'use client';
 
+import { formatDate } from '@/lib/utils';
 import { useState, useEffect, useMemo, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -445,7 +446,7 @@ export default function ClientesTab() {
                     </TableCell>
                     <TableCell>
                       <div className="text-sm text-[#8b5a6b]">
-                        {new Date(cliente.fechaRegistro).toLocaleDateString()}
+                        {formatDate(cliente.fechaRegistro)}
                       </div>
                     </TableCell>
                     <TableCell className="text-right">

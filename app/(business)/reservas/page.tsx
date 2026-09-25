@@ -40,7 +40,7 @@ const BADGE: Record<string, { texto: string; clase: string }> = {
 function fechaCorta(iso: string | null): string {
   if (!iso) return '—';
   const d = new Date(iso);
-  return `${String(d.getUTCDate()).padStart(2, '0')}/${String(d.getUTCMonth() + 1).padStart(2, '0')}`;
+  return `${String(d.getUTCDate()).padStart(2, '0')}/${String(d.getUTCMonth() + 1).padStart(2, '0')}/${d.getUTCFullYear()}`;
 }
 
 function fmtFecha(date: Date): string {

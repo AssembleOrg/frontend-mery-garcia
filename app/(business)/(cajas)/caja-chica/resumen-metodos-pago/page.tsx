@@ -1,5 +1,6 @@
 'use client';
 
+import { formatDate as formatFecha, formatFechaHora as formatFechaHoraAR } from '@/lib/utils';
 import { useState, useEffect } from 'react';
 import MainLayout from '@/components/layout/MainLayout';
 import StandardPageBanner from '@/components/common/StandardPageBanner';
@@ -152,25 +153,15 @@ export default function ResumenMetodosPagoPage() {
     }).format(amount);
   };
 
+  // "sábado 05/09/2026": el día de la semana ayuda, la fecha va en dd/mm/aaaa.
   const formatDate = (date: Date) => {
-    return date.toLocaleDateString('es-ES', {
-      weekday: 'long',
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric',
-    });
+    const dia = date.toLocaleDateString('es-AR', { weekday: 'long' });
+    return `${dia} ${formatFecha(date)}`;
   };
 
   const formatFechaHora = (iso: string) => {
     const d = new Date(iso);
-    return isNaN(d.getTime())
-      ? iso
-      : d.toLocaleString('es-AR', {
-          day: '2-digit',
-          month: '2-digit',
-          hour: '2-digit',
-          minute: '2-digit',
-        });
+    return isNaN(d.getTime()) ? iso : formatFechaHoraAR(d);
   };
 
   // Detalle del método de pago seleccionado (para el modal)

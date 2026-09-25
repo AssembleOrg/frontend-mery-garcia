@@ -3,7 +3,7 @@
 import * as React from 'react';
 import { CalendarIcon, X } from 'lucide-react';
 import { DateRange } from 'react-day-picker';
-import { cn } from '@/lib/utils';
+import { cn, formatDate } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Calendar } from '@/components/ui/calendar';
 import {
@@ -51,27 +51,11 @@ export function DateRangePicker({
     if (from && to) {
       const isSameDay = from.toDateString() === to.toDateString();
       if (isSameDay) {
-        return `${from.toLocaleDateString('es-ES', {
-          year: 'numeric',
-          month: 'short',
-          day: 'numeric'
-        })}`;
+        return `${formatDate(from)}`;
       }
-      return `${from.toLocaleDateString('es-ES', {
-        year: 'numeric',
-        month: 'short',
-        day: 'numeric'
-      })} - ${to.toLocaleDateString('es-ES', {
-        year: 'numeric',
-        month: 'short',
-        day: 'numeric'
-      })}`;
+      return `${formatDate(from)} - ${formatDate(to)}`;
     } else if (from) {
-      return `Desde ${from.toLocaleDateString('es-ES', {
-        year: 'numeric',
-        month: 'short',
-        day: 'numeric'
-      })}`;
+      return `Desde ${formatDate(from)}`;
     }
 
     return placeholder;
@@ -138,7 +122,7 @@ export function DateRangePicker({
               {date?.from ? (
                 date.to ? (
                   <span>
-                    Seleccionado: {date.from.toLocaleDateString('es-ES')} - {date.to.toLocaleDateString('es-ES')}
+                    Seleccionado: {formatDate(date.from)} - {formatDate(date.to)}
                   </span>
                 ) : (
                   <span>

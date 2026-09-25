@@ -498,8 +498,8 @@ export function duracion(minutos: number): string {
   return `${signo}${Math.floor(abs / 60)}h ${String(abs % 60).padStart(2, '0')}m`;
 }
 
-/** "2026-09-15" → "15/09". */
+/** "2026-09-15" → "15/09/2026". */
 export function fechaCorta(dia: string): string {
-  const [, m, d] = dia.split('-');
-  return `${d}/${m}`;
+  const [a, m, d] = dia.split('-');
+  return `${d}/${m}/${a}`;
 }

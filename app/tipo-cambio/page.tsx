@@ -1,5 +1,6 @@
 'use client';
 
+import { formatFechaHora } from '@/lib/utils';
 import { useEffect, useState, useCallback } from 'react';
 import { useExchangeRate } from '@/features/exchange-rate/hooks/useExchangeRate';
 import MainLayout from '@/components/layout/MainLayout';
@@ -250,7 +251,7 @@ export default function TipoCambioPage() {
             {!canRefresh && nextRefreshTime && (
               <div className="rounded-lg border border-yellow-200 bg-yellow-50 p-3 text-sm text-yellow-800">
                 Próximo refresh disponible:{' '}
-                {nextRefreshTime.toLocaleString('es-ES')}
+                {formatFechaHora(nextRefreshTime)}
               </div>
             )}
 
@@ -359,7 +360,11 @@ export default function TipoCambioPage() {
                       >
                         <span className="text-gray-600">
                           {(() => {
-                            return registro.fechaCreacion?.split(",")[0]
+                            // El backend la manda como "5/9/2026, 10:30:00" (es-AR sin ceros).
+                            const [d, m, a] = (registro.fechaCreacion?.split(',')[0] ?? '').trim().split('/');
+                            return d && m && a
+                              ? `${d.padStart(2, '0')}/${m.padStart(2, '0')}/${a}`
+                              : registro.fechaCreacion?.split(',')[0];
                           })()}
                         </span>
                         <div className="flex items-center gap-2">
