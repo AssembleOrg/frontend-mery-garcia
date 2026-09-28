@@ -2,6 +2,7 @@
 
 import { useAuth } from '@/features/auth/hooks/useAuth';
 import { useRouter } from 'next/navigation';
+import { useEffect } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { ShieldX, ArrowLeft } from 'lucide-react';
@@ -19,11 +20,11 @@ export default function AdminOnly({
 }: AdminOnlyProps) {
   const { isAdmin, isAuthenticated, isLoading } = useAuth();
   const router = useRouter();
-  //* Añadir AUTH y ROL permision cuando este el BE
-  // useEffect(() => {
-  //   if (!isLoading && isAuthenticated && !isAdmin) {
-  //   }
-  // }, [isAdmin, isAuthenticated, isLoading, router, redirectTo]);
+  // Redirigir en un efecto, no durante el render: al montar la sesión todavía
+  // no se restauró y un push acá mandaba siempre al login.
+  useEffect(() => {
+    if (!isLoading && !isAuthenticated) router.push('/login');
+  }, [isAuthenticated, isLoading, router]);
 
   if (isLoading) {
     return (
@@ -34,8 +35,11 @@ export default function AdminOnly({
   }
 
   if (!isAuthenticated) {
-    router.push('/login');
-    return null;
+    return (
+      <div className="flex min-h-[400px] items-center justify-center">
+        <div className="border-primary h-8 w-8 animate-spin rounded-full border-b-2"></div>
+      </div>
+    );
   }
 
   if (!isAdmin) {

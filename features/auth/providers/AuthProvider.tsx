@@ -1,5 +1,5 @@
 'use client';
-import { ReactNode, useEffect } from 'react';
+import { ReactNode, useEffect, useState } from 'react';
 import { useAuth } from '../hooks/useAuth';
 import { useRouter, usePathname } from 'next/navigation';
 import { useAuthErrorHandler } from '@/hooks/useAuthErrorHandler';
@@ -24,8 +24,15 @@ export function AuthProvider({ children }: AuthProviderProps) {
   const pathname = usePathname();
   const { handleAuthError } = useAuthErrorHandler();
 
+  // Hasta que initializeAuth no restauró la sesión, isAuthenticated vale false
+  // aunque haya token: redirigir antes mandaba toda URL directa (p. ej.
+  // /contable, que no tiene acceso desde el dashboard) al login y de ahí al
+  // dashboard.
+  const [sesionLista, setSesionLista] = useState(false);
+
   useEffect(() => {
     initializeAuth();
+    setSesionLista(true);
   }, [initializeAuth]);
 
   // Manejador global de errores para autenticación
@@ -54,7 +61,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
   }, [handleAuthError]);
 
   useEffect(() => {
-    if (isLoading) return;
+    if (isLoading || !sesionLista) return;
 
     const isPublicRoute = PUBLIC_ROUTES.includes(pathname);
 
@@ -76,9 +83,9 @@ export function AuthProvider({ children }: AuthProviderProps) {
     if (isAuthenticated && soloPresentismo && !pathname.startsWith('/presentismo')) {
       router.replace('/presentismo');
     }
-  }, [isAuthenticated, isLoading, pathname, router, soloPresentismo]);
+  }, [isAuthenticated, isLoading, sesionLista, pathname, router, soloPresentismo]);
 
-  if (isLoading) {
+  if (isLoading || !sesionLista) {
     return <LoadingSpinner />;
   }
 
