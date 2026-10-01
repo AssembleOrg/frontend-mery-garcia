@@ -211,14 +211,14 @@ export default function PanelDia({ persona, day, fila, pendientes, onCambio, onC
                   }
                   disabled={ocupado}
                   aria-label="Agregar turno"
-                  className="flex h-9 w-9 items-center justify-center rounded-md bg-[#4a3540] text-white hover:bg-[#6b4c57] disabled:opacity-50"
+                  className="flex h-9 w-9 items-center justify-center rounded-md bg-[#4a3540] text-white hover:bg-[#6b4c57] disabled:opacity-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#ec9cab]"
                 >
                   <Check className="h-4 w-4" />
                 </button>
                 <button
                   onClick={() => setNuevo(null)}
                   aria-label="Cancelar"
-                  className="flex h-9 w-9 items-center justify-center rounded-md text-[#6b4c57] hover:bg-[#fcf0f3]"
+                  className="flex h-9 w-9 items-center justify-center rounded-md text-[#6b4c57] hover:bg-[#fcf0f3] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#ec9cab]"
                 >
                   <X className="h-4 w-4" />
                 </button>
@@ -226,7 +226,7 @@ export default function PanelDia({ persona, day, fila, pendientes, onCambio, onC
             ) : (
               <button
                 onClick={() => setNuevo({ desde: '10:00', hasta: '18:00' })}
-                className="inline-flex items-center gap-1.5 text-sm text-[#6b4c57] underline-offset-4 hover:underline"
+                className="inline-flex items-center gap-1.5 text-sm text-[#6b4c57] underline-offset-4 hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#ec9cab]"
               >
                 <Plus className="h-4 w-4" />
                 {turnos.length ? 'Agregar otro turno' : 'Agregar turno'}
@@ -301,7 +301,7 @@ function EditorTurno({
           onClick={() => onGuardar(desde, hasta)}
           disabled={ocupado}
           aria-label="Guardar turno"
-          className="flex h-9 w-9 items-center justify-center rounded-md bg-[#4a3540] text-white hover:bg-[#6b4c57] disabled:opacity-50"
+          className="flex h-9 w-9 items-center justify-center rounded-md bg-[#4a3540] text-white hover:bg-[#6b4c57] disabled:opacity-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#ec9cab]"
         >
           <Check className="h-4 w-4" />
         </button>
@@ -311,7 +311,7 @@ function EditorTurno({
           disabled={ocupado}
           aria-label="Eliminar turno"
           title="Eliminar turno"
-          className="flex h-9 w-9 items-center justify-center rounded-md text-[#9b1450] hover:bg-[#fdf0f5] disabled:opacity-50"
+          className="flex h-9 w-9 items-center justify-center rounded-md text-[#9b1450] hover:bg-[#fdf0f5] disabled:opacity-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#ec9cab]"
         >
           <Trash2 className="h-4 w-4" />
         </button>
