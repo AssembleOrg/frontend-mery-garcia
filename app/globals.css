@@ -552,3 +552,71 @@
   transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
   transition-duration: 150ms;
 }
+
+/* ===== PRESENTISMO ===== */
+
+/* Día incompleto: rayado ámbar, se distingue sin depender sólo del color. */
+.mg-rayado {
+  background-color: #fff6e6;
+  background-image: repeating-linear-gradient(
+    135deg,
+    #fbe3b8 0 4px,
+    transparent 4px 8px
+  );
+}
+
+.mg-presentismo ::selection {
+  background: #f9bbc4;
+  color: #4a3540;
+}
+
+.mg-presentismo .mg-scroll {
+  scrollbar-width: thin;
+  scrollbar-color: #e8b4c6 transparent;
+}
+
+.mg-presentismo .mg-scroll::-webkit-scrollbar {
+  height: 8px;
+  width: 8px;
+}
+
+.mg-presentismo .mg-scroll::-webkit-scrollbar-thumb {
+  background: #e8b4c6;
+  border-radius: 999px;
+}
+
+@keyframes mg-entrar {
+  from {
+    opacity: 0.4;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.mg-entrar {
+  animation: mg-entrar 200ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes mg-latido {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.35;
+  }
+}
+
+.mg-latido {
+  animation: mg-latido 1.6s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .mg-entrar,
+  .mg-latido {
+    animation: none;
+  }
+}

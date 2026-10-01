@@ -1,10 +1,8 @@
 'use client';
 
 import { useCallback, useEffect, useState } from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
-import { Input } from '@/components/ui/input';
+import HoraInput, { HORA_VALIDA } from './HoraInput';
 import { Label } from '@/components/ui/label';
 import {
   Select,
@@ -21,8 +19,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-import Spinner from '@/components/common/Spinner';
-import { Plus, Repeat, Trash2 } from 'lucide-react';
+import { Plus, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 import {
   DIAS_SEMANA,
@@ -102,12 +99,12 @@ export default function TabPatron() {
     void cargar();
   }, [cargar]);
 
-  const abrirNuevo = (persona: PatronDePersona) =>
+  const abrirNuevo = (persona: PatronDePersona, diaIso = 2) =>
     setEdicion({
       tramo: null,
       ritmoUserId: persona.ritmoUserId,
       nombre: persona.nombre,
-      diaIso: 2,
+      diaIso,
       desde: '10:00',
       hasta: '18:00',
       alternancia: 'TODAS',
@@ -126,6 +123,10 @@ export default function TabPatron() {
 
   const guardar = async () => {
     if (!edicion) return;
+    if (!HORA_VALIDA.test(edicion.desde) || !HORA_VALIDA.test(edicion.hasta)) {
+      toast.error('Escribí las horas como 10:00 o 18:30');
+      return;
+    }
     const desdeMinuto = horaAMinutos(edicion.desde);
     const hastaMinuto = horaAMinutos(edicion.hasta);
     if (hastaMinuto <= desdeMinuto) {
@@ -175,90 +176,99 @@ export default function TabPatron() {
 
   if (cargando) {
     return (
-      <div className="flex justify-center py-16">
-        <Spinner />
+      <div className="space-y-2" aria-busy="true">
+        {Array.from({ length: 5 }).map((_, i) => (
+          <div key={i} className="h-14 animate-pulse rounded-lg bg-[#fcf0f3]" />
+        ))}
       </div>
     );
   }
 
   return (
     <div className="space-y-4">
-      <Card className="border border-[#f9bbc4]/30 bg-white/95">
-        <CardContent className="flex items-start gap-3 p-4">
-          <Repeat className="mt-0.5 h-5 w-5 shrink-0 text-[#d4a7ca]" />
-          <p className="text-sm text-[#6b4c57]">
-            Este es el horario que se repite todas las semanas. El domingo a la noche se
-            arma sola la semana que viene a partir de acá. Cambiar un tramo afecta de ahí
-            en adelante; para tocar un día puntual, usá la pestaña «Semana».
-          </p>
-        </CardContent>
-      </Card>
+      <p className="max-w-[70ch] text-sm text-[#6b4c57]">
+        El horario que se repite todas las semanas. El domingo a la noche se arma sola la semana
+        siguiente a partir de acá. Un cambio vale de ahí en adelante; para un día puntual, usá la
+        escala Semana o Día.
+      </p>
 
       {patron.length === 0 ? (
-        <Card className="border-2 border-[#f9bbc4]/30 bg-white/95 shadow-xl">
-          <CardContent className="py-12 text-center">
-            <p className="text-sm text-[#8b5a6b]">Todavía no hay ningún horario fijo cargado.</p>
-          </CardContent>
-        </Card>
+        <div className="rounded-xl border border-[#f5d0d9] bg-white px-4 py-12 text-center text-sm text-[#6b4c57]">
+          No hay nadie del equipo cargado en Ritmo todavía.
+        </div>
       ) : (
-        patron.map((persona) => (
-          <Card
-            key={persona.ritmoUserId}
-            className="border-2 border-[#f9bbc4]/30 bg-white/95 shadow-xl"
-          >
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3">
-              <div>
-                <CardTitle className="text-[#4a3540]">{persona.nombre}</CardTitle>
-                <div className="mt-1 text-xs text-[#8b5a6b]">
-                  {persona.horasSemanaA === persona.horasSemanaB
-                    ? `${persona.horasSemanaA} h por semana`
-                    : `${persona.horasSemanaA} h (semana A) · ${persona.horasSemanaB} h (semana B)`}
-                </div>
-              </div>
-              <Button variant="outline" size="sm" onClick={() => abrirNuevo(persona)}>
-                <Plus className="mr-2 h-4 w-4" />
-                Agregar día
-              </Button>
-            </CardHeader>
-            <CardContent>
-              <div className="flex flex-wrap gap-2">
-                {persona.tramos.length === 0 && (
-                  <p className="py-1 text-sm text-[#8b5a6b]">
-                    Todavía no tiene horario fijo. Tocá «Agregar día» para cargarle el
-                    primero.
-                  </p>
-                )}
-                {persona.tramos.map((tramo) => {
-                  const dia = DIAS_SEMANA.find((d) => d.iso === tramo.diaIso);
-                  return (
-                    <button
-                      key={tramo.id}
-                      onClick={() => abrirExistente(tramo)}
-                      className={`rounded-md border px-3 py-2 text-left transition hover:border-[#d4a7ca] hover:bg-[#f9bbc4]/10 ${
-                        tramo.activo
-                          ? 'border-[#e8b4c6]/40 bg-white'
-                          : 'border-neutral-200 bg-neutral-50 opacity-60'
-                      }`}
-                    >
-                      <div className="text-xs font-semibold text-[#6b4c57]">{dia?.largo}</div>
-                      <div className="text-sm font-medium text-[#4a3540]">
-                        {minutosAHora(tramo.desdeMinuto)}–{minutosAHora(tramo.hastaMinuto)}
-                      </div>
-                      {tramo.alternancia !== 'TODAS' && (
-                        <Badge
-                          variant="outline"
-                          className="mt-1 border-[#d4a7ca]/40 text-[10px] text-[#8b5a6b]"
-                        >
-                          {tramo.alternancia === 'SEMANA_A' ? 'Semana A' : 'Semana B'}
-                        </Badge>
-                      )}
-                    </button>
-                  );
-                })}
-              </div>
-            </CardContent>
-          </Card>
-        ))
+        <div className="mg-scroll overflow-x-auto rounded-xl border border-[#f5d0d9] bg-white">
+          <table className="w-full min-w-[860px] table-fixed border-collapse text-sm">
+            <colgroup>
+              <col className="w-[7.5rem] sm:w-[10.5rem]" />
+              {DIAS_SEMANA.map((d) => (
+                <col key={d.iso} />
+              ))}
+              <col className="w-28" />
+            </colgroup>
+            <thead>
+              <tr className="border-b border-[#f5d0d9] text-xs text-[#8b5a6b]">
+                <th scope="col" className="sticky left-0 z-10 bg-white px-3 py-2 text-left font-normal">Persona</th>
+                {DIAS_SEMANA.map((d) => (
+                  <th key={d.iso} scope="col" className="px-1 py-2 text-center font-normal">{d.corto}</th>
+                ))}
+                <th scope="col" className="px-3 py-2 text-right font-normal">Horas</th>
+              </tr>
+            </thead>
+            <tbody>
+              {patron.map((persona) => (
+                <tr key={persona.ritmoUserId} className="border-b border-[#fcf0f3] last:border-b-0">
+                  <th scope="row" className="sticky left-0 z-10 bg-white px-3 py-2 text-left font-normal">
+                    <span className="block truncate">{persona.nombre}</span>
+                  </th>
+                  {DIAS_SEMANA.map((d) => {
+                    const tramos = persona.tramos.filter((t) => t.diaIso === d.iso);
+                    return (
+                      <td key={d.iso} className="p-1 align-top">
+                        <div className="flex min-h-[3.25rem] flex-col gap-1">
+                          {tramos.map((tramo) => (
+                            <button
+                              key={tramo.id}
+                              onClick={() => abrirExistente(tramo)}
+                              className={`rounded-md px-2 py-1.5 text-left text-xs transition-colors focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[#ec9cab] ${
+                                tramo.activo
+                                  ? 'bg-[#f3e4ec] text-[#4a3540] hover:bg-[#ead0dc]'
+                                  : 'bg-[#fcf0f3] text-[#8b5a6b] line-through'
+                              }`}
+                            >
+                              <span className="tabular-nums">
+                                {minutosAHora(tramo.desdeMinuto)}–{minutosAHora(tramo.hastaMinuto)}
+                              </span>
+                              {tramo.alternancia !== 'TODAS' && (
+                                <span className="ml-1 text-[10px] text-[#8b5a6b]">
+                                  {tramo.alternancia === 'SEMANA_A' ? 'sem. A' : 'sem. B'}
+                                </span>
+                              )}
+                            </button>
+                          ))}
+                          <button
+                            onClick={() => abrirNuevo(persona, d.iso)}
+                            aria-label={`Agregar ${d.largo} a ${persona.nombre}`}
+                            className={`flex flex-1 items-center justify-center rounded-md text-[#d4a7ca] transition-colors hover:bg-[#fcf0f3] hover:text-[#8b5a6b] focus-visible:outline-2 focus-visible:outline-[#ec9cab] ${
+                              tramos.length ? 'min-h-6' : 'min-h-[3.25rem]'
+                            }`}
+                          >
+                            <Plus className="h-3.5 w-3.5" />
+                          </button>
+                        </div>
+                      </td>
+                    );
+                  })}
+                  <td className="px-3 text-right text-xs tabular-nums text-[#6b4c57]">
+                    {persona.horasSemanaA === persona.horasSemanaB
+                      ? `${persona.horasSemanaA} h`
+                      : `A ${persona.horasSemanaA} h · B ${persona.horasSemanaB} h`}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       )}
 
       <Dialog open={!!edicion} onOpenChange={(abierto) => !abierto && setEdicion(null)}>
@@ -299,26 +309,22 @@ export default function TabPatron() {
                 <Label htmlFor="p-desde" className="text-[#6b4c57]">
                   Entrada
                 </Label>
-                <Input
+                <HoraInput
                   id="p-desde"
-                  type="time"
-                  value={edicion?.desde ?? ''}
-                  onChange={(e) =>
-                    setEdicion((prev) => (prev ? { ...prev, desde: e.target.value } : prev))
-                  }
+                  etiqueta="Entrada"
+                  valor={edicion?.desde ?? ''}
+                  onCambio={(v) => setEdicion((prev) => (prev ? { ...prev, desde: v } : prev))}
                 />
               </div>
               <div className="space-y-2">
                 <Label htmlFor="p-hasta" className="text-[#6b4c57]">
                   Salida
                 </Label>
-                <Input
+                <HoraInput
                   id="p-hasta"
-                  type="time"
-                  value={edicion?.hasta ?? ''}
-                  onChange={(e) =>
-                    setEdicion((prev) => (prev ? { ...prev, hasta: e.target.value } : prev))
-                  }
+                  etiqueta="Salida"
+                  valor={edicion?.hasta ?? ''}
+                  onCambio={(v) => setEdicion((prev) => (prev ? { ...prev, hasta: v } : prev))}
                 />
               </div>
             </div>
@@ -357,7 +363,7 @@ export default function TabPatron() {
                 variant="outline"
                 onClick={borrar}
                 disabled={guardando}
-                className="text-rose-600"
+                className="border-[#f5d0d9] text-[#9b1450] hover:bg-[#fdf0f5]"
               >
                 <Trash2 className="mr-2 h-4 w-4" />
                 Eliminar
@@ -372,7 +378,7 @@ export default function TabPatron() {
               <Button
                 onClick={guardar}
                 disabled={guardando}
-                className="bg-gradient-to-r from-[#f9bbc4] to-[#e8b4c6] text-white"
+                className="bg-[#4a3540] text-white hover:bg-[#6b4c57]"
               >
                 Guardar
               </Button>
