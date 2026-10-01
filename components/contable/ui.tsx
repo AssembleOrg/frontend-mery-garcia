@@ -34,12 +34,12 @@ export function formatMonto(n: number, moneda: Moneda): string {
 /** Para ejes y etiquetas chicas: "$ 1,2 M", "US$ 15 k". */
 export function formatMontoCorto(n: number, moneda: Moneda): string {
   const abs = Math.abs(n);
-  const pref = moneda === 'USD' ? 'US$ ' : '$ ';
+  const pref = `${n < 0 ? '−' : ''}${moneda === 'USD' ? 'US$ ' : '$ '}`;
   const f = (v: number, suf: string) =>
     `${pref}${new Intl.NumberFormat('es-AR', { maximumFractionDigits: v < 10 ? 1 : 0 }).format(v)}${suf}`;
-  if (abs >= 1_000_000) return f(n / 1_000_000, ' M');
-  if (abs >= 1_000) return f(n / 1_000, ' k');
-  return f(n, '');
+  if (abs >= 1_000_000) return f(abs / 1_000_000, ' M');
+  if (abs >= 1_000) return f(abs / 1_000, ' k');
+  return f(abs, '');
 }
 
 const MESES_CORTOS = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic'];

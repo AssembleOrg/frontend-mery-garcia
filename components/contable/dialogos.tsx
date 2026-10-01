@@ -26,12 +26,14 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Checkbox } from '@/components/ui/checkbox';
 import { cn } from '@/lib/utils';
 import {
   contableService,
   mensajeError,
   type Acreedor,
   type AcreedorResumen,
+  type Adelanto,
   type Comprobante,
   type Deuda,
   type Moneda,
@@ -41,6 +43,21 @@ import {
 import { formatMonto, hoyLocal, MontoInput, SelectorDia, VentanaEdicion } from './ui';
 
 const BOTON_PRIMARIO = 'bg-[#8b5a6b] text-white hover:bg-[#744a5a]';
+
+const totalesCero = () => ({ deuda: 0, pagado: 0, saldo: 0, aFavor: 0, neto: 0 });
+
+/** Un acreedor recién creado, con la forma de la lista (sin movimientos). */
+function acreedorNuevo(a: Acreedor): AcreedorResumen {
+  return {
+    ...a,
+    totales: { ARS: totalesCero(), USD: totalesCero() },
+    cantidadDeudas: 0,
+    deudasAbiertas: 0,
+    deudasVencidas: 0,
+    adelantosAbiertos: 0,
+    ultimoMovimiento: a.createdAt,
+  };
+}
 
 function Campo({ label, htmlFor, children, ayuda }: { label: string; htmlFor?: string; children: React.ReactNode; ayuda?: string }) {
   return (
@@ -195,6 +212,7 @@ export function DeudaDialog({
     notas: '',
   });
   const [guardando, setGuardando] = useState(false);
+  const [descontar, setDescontar] = useState(true);
   // Pasadas las 24 h sólo se corrigen concepto, vencimiento y notas.
   const bloqueado = !!deuda && !deuda.editable;
   const conPagos = !!deuda && deuda.pagado > 0;
@@ -215,7 +233,14 @@ export function DeudaDialog({
       vencimiento: deuda?.vencimiento ?? null,
       notas: deuda?.notas ?? '',
     });
+    setDescontar(true);
   }, [abierto, deuda, acreedorInicial]);
+
+  // Saldo a favor (adelantos) del acreedor elegido, en la moneda elegida.
+  const aFavor = deuda
+    ? 0
+    : (acreedores.find((a) => a.id === f.acreedorId)?.totales[f.moneda]?.aFavor ?? 0);
+  const seDescuenta = Math.min(aFavor, f.monto);
 
   const guardar = async () => {
     if (!f.acreedorId) return toast.error('Elegí a quién se le debe');
@@ -230,8 +255,15 @@ export function DeudaDialog({
         await contableService.actualizarDeuda(deuda.id, datos);
         toast.success('Deuda actualizada');
       } else {
-        await contableService.crearDeuda(f);
-        toast.success('Deuda registrada');
+        const aplicar = aFavor > 0 && descontar;
+        const creada = await contableService.crearDeuda({ ...f, aplicarAdelantos: aplicar });
+        toast.success(
+          aplicar && creada.pagado > 0
+            ? creada.saldo <= 0
+              ? 'Deuda registrada y cubierta con adelantos'
+              : `Deuda registrada: se descontaron ${formatMonto(creada.pagado, creada.moneda)} de adelantos`
+            : 'Deuda registrada',
+        );
       }
       onGuardado();
     } catch (e) {
@@ -284,7 +316,7 @@ export function DeudaDialog({
                   title="Nuevo acreedor"
                   onClick={() =>
                     onNuevoAcreedor((a) => {
-                      setAcreedores((l) => [...l, { ...a, totales: { ARS: { deuda: 0, pagado: 0, saldo: 0 }, USD: { deuda: 0, pagado: 0, saldo: 0 } }, cantidadDeudas: 0, deudasAbiertas: 0, deudasVencidas: 0, ultimoMovimiento: a.createdAt }]);
+                      setAcreedores((l) => [...l, acreedorNuevo(a)]);
                       setF((x) => ({ ...x, acreedorId: a.id }));
                     })
                   }
@@ -342,6 +374,26 @@ export function DeudaDialog({
             </Campo>
           </div>
 
+          {aFavor > 0 && (
+            <label className="flex cursor-pointer items-start gap-3 rounded-xl border border-teal-200 bg-teal-50/60 p-3 text-sm">
+              <Checkbox
+                checked={descontar}
+                onCheckedChange={(v) => setDescontar(v === true)}
+                className="mt-0.5"
+              />
+              <span className="text-[#3d2a32]">
+                <span className="font-medium">Descontar adelantos</span>
+                <span className="block text-xs text-[#6b4c57]">
+                  Tiene {formatMonto(aFavor, f.moneda)} a favor.
+                  {f.monto > 0 &&
+                    (aFavor >= f.monto
+                      ? ` Cubre toda la deuda${aFavor > f.monto ? ` y quedan ${formatMonto(aFavor - f.monto, f.moneda)} a favor` : ''}.`
+                      : ` Se descuentan ${formatMonto(seDescuenta, f.moneda)} y quedan ${formatMonto(f.monto - seDescuenta, f.moneda)} por pagar.`)}
+                </span>
+              </span>
+            </label>
+          )}
+
           <Campo label="Notas" htmlFor="de-notas">
             <Textarea id="de-notas" rows={2} value={f.notas} onChange={(e) => setF({ ...f, notas: e.target.value })} />
           </Campo>
@@ -384,9 +436,7 @@ export function PagoDialog({
   const [f, setF] = useState({ monto: 0, fecha: hoyLocal(), metodo: '', nota: '' });
   const [archivos, setArchivos] = useState<File[]>([]);
   const [existentes, setExistentes] = useState<Comprobante[]>([]);
-  const [arrastrando, setArrastrando] = useState(false);
   const [guardando, setGuardando] = useState(false);
-  const inputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (!abierto) return;
@@ -405,32 +455,6 @@ export function PagoDialog({
   const tope = Math.round((deuda.saldo + (pago?.monto ?? 0)) * 100) / 100;
   const restante = Math.max(0, Math.round((tope - f.monto) * 100) / 100);
 
-  const sumarArchivos = (lista: FileList | null) => {
-    if (!lista) return;
-    const nuevos: File[] = [];
-    for (const a of Array.from(lista)) {
-      if (!ACEPTA.split(',').includes(a.type)) {
-        toast.error(`${a.name}: sólo imágenes o PDF`);
-        continue;
-      }
-      if (a.size > MAX_MB * 1024 * 1024) {
-        toast.error(`${a.name} pesa más de ${MAX_MB} MB`);
-        continue;
-      }
-      nuevos.push(a);
-    }
-    setArchivos((l) => [...l, ...nuevos].slice(0, 5));
-  };
-
-  const quitarExistente = async (c: Comprobante) => {
-    try {
-      await contableService.eliminarComprobante(c.id);
-      setExistentes((l) => l.filter((x) => x.id !== c.id));
-      toast.success('Comprobante quitado');
-    } catch (e) {
-      toast.error(mensajeError(e, 'No se pudo quitar'));
-    }
-  };
 
   const guardar = async () => {
     if (!(f.monto > 0)) return toast.error('El monto tiene que ser mayor a cero');
@@ -536,6 +560,303 @@ export function PagoDialog({
           </Campo>
 
           <Campo label="Comprobantes (opcional)">
+            <ZonaArchivos archivos={archivos} setArchivos={setArchivos} existentes={existentes} setExistentes={setExistentes} />
+          </Campo>
+        </div>
+
+        <DialogFooter>
+          <Button variant="outline" onClick={onCerrar}>Cancelar</Button>
+          <Button className={BOTON_PRIMARIO} onClick={guardar} disabled={guardando}>
+            {guardando ? 'Guardando…' : pago ? 'Guardar cambios' : 'Registrar pago'}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+// ─── Adelanto (saldo a favor) ───────────────────────────────────
+
+/**
+ * Plata que se da antes de que exista la deuda (p. ej. a cuenta de comisiones
+ * que se calculan a fin de mes). Queda a favor y se descuenta al cargar la
+ * deuda real.
+ */
+export function AdelantoDialog({
+  abierto,
+  adelanto,
+  acreedorInicial,
+  version,
+  onCerrar,
+  onGuardado,
+  onNuevoAcreedor,
+}: {
+  abierto: boolean;
+  adelanto: Adelanto | null;
+  acreedorInicial?: string;
+  version: number;
+  onCerrar: () => void;
+  onGuardado: () => void;
+  onNuevoAcreedor: (alCrear: (a: Acreedor) => void) => void;
+}) {
+  const [acreedores, setAcreedores] = useState<AcreedorResumen[]>([]);
+  const [f, setF] = useState({
+    acreedorId: '',
+    concepto: '',
+    moneda: 'ARS' as Moneda,
+    monto: 0,
+    fecha: hoyLocal(),
+    fechaEstimada: null as string | null,
+    metodo: '',
+    nota: '',
+  });
+  const [archivos, setArchivos] = useState<File[]>([]);
+  const [existentes, setExistentes] = useState<Comprobante[]>([]);
+  const [guardando, setGuardando] = useState(false);
+  // Pasadas las 24 h sólo se corrigen concepto, fecha estimada y nota.
+  const bloqueado = !!adelanto && !adelanto.editable;
+  const aplicado = adelanto?.aplicado ?? 0;
+
+  useEffect(() => {
+    if (!abierto) return;
+    contableService.acreedores().then(setAcreedores).catch(() => toast.error('No se pudieron cargar los acreedores'));
+  }, [abierto, version]);
+
+  useEffect(() => {
+    if (!abierto) return;
+    setF({
+      acreedorId: adelanto?.acreedorId ?? acreedorInicial ?? '',
+      concepto: adelanto?.concepto ?? '',
+      moneda: adelanto?.moneda ?? 'ARS',
+      monto: adelanto?.monto ?? 0,
+      fecha: adelanto?.fecha ?? hoyLocal(),
+      fechaEstimada: adelanto?.fechaEstimada ?? null,
+      metodo: adelanto?.metodo ?? '',
+      nota: adelanto?.nota ?? '',
+    });
+    setArchivos([]);
+    setExistentes(adelanto?.comprobantes ?? []);
+  }, [abierto, adelanto, acreedorInicial]);
+
+  const guardar = async () => {
+    if (!f.acreedorId) return toast.error('Elegí a quién se le adelanta');
+    if (!f.concepto.trim()) return toast.error('Poné a cuenta de qué es (ej.: comisiones de octubre)');
+    if (!(f.monto > 0)) return toast.error('El monto tiene que ser mayor a cero');
+    if (adelanto && f.monto < aplicado)
+      return toast.error(`No puede ser menor a lo ya descontado (${formatMonto(aplicado, adelanto.moneda)})`);
+    setGuardando(true);
+    try {
+      const datos = bloqueado
+        ? { concepto: f.concepto, fechaEstimada: f.fechaEstimada, nota: f.nota }
+        : f;
+      const guardado = adelanto
+        ? await contableService.actualizarAdelanto(adelanto.id, datos)
+        : await contableService.crearAdelanto(f);
+      if (archivos.length) {
+        try {
+          await contableService.subirComprobantesAdelanto(guardado.id, archivos);
+        } catch (e) {
+          toast.error(`El adelanto quedó guardado, pero no los comprobantes: ${mensajeError(e)}`);
+        }
+      }
+      toast.success(adelanto ? 'Adelanto actualizado' : 'Adelanto registrado: queda a favor');
+      onGuardado();
+    } catch (e) {
+      toast.error(mensajeError(e, 'No se pudo guardar el adelanto'));
+    } finally {
+      setGuardando(false);
+    }
+  };
+
+  return (
+    <Dialog open={abierto} onOpenChange={(o) => !o && onCerrar()}>
+      <DialogContent className="max-h-[92vh] overflow-y-auto sm:max-w-lg">
+        <DialogHeader>
+          <DialogTitle className="text-[#3d2a32]">{adelanto ? 'Editar adelanto' : 'Nuevo adelanto'}</DialogTitle>
+          <DialogDescription asChild>
+            <div className="text-sm text-[#6b4c57]">
+              {adelanto ? (
+                bloqueado ? (
+                  <span className="inline-flex items-center gap-1">
+                    <Lock className="h-3 w-3" /> Pasaron 24 h: sólo concepto, fecha estimada y nota.
+                  </span>
+                ) : (
+                  <VentanaEdicion hasta={adelanto.editableHasta} />
+                )
+              ) : (
+                'Plata que se da antes de saber el total. Queda a favor y se descuenta cuando cargues la deuda real.'
+              )}
+            </div>
+          </DialogDescription>
+        </DialogHeader>
+
+        <div className="space-y-4">
+          <Campo label="A quién">
+            <div className="flex gap-2">
+              <Select
+                value={f.acreedorId}
+                onValueChange={(v) => setF({ ...f, acreedorId: v })}
+                disabled={bloqueado || aplicado > 0}
+              >
+                <SelectTrigger className="flex-1 bg-white">
+                  <SelectValue placeholder="Elegí persona o empresa" />
+                </SelectTrigger>
+                <SelectContent className="bg-white">
+                  {acreedores.map((a) => (
+                    <SelectItem key={a.id} value={a.id}>
+                      {a.nombre}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              {!adelanto && (
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="icon"
+                  title="Nuevo acreedor"
+                  onClick={() =>
+                    onNuevoAcreedor((a) => {
+                      setAcreedores((l) => [...l, acreedorNuevo(a)]);
+                      setF((x) => ({ ...x, acreedorId: a.id }));
+                    })
+                  }
+                >
+                  <Plus className="h-4 w-4" />
+                </Button>
+              )}
+            </div>
+          </Campo>
+
+          <Campo label="A cuenta de" htmlFor="ad-concepto">
+            <Input
+              id="ad-concepto"
+              value={f.concepto}
+              maxLength={200}
+              placeholder="Ej.: Comisiones de octubre"
+              onChange={(e) => setF({ ...f, concepto: e.target.value })}
+            />
+          </Campo>
+
+          <div className="grid grid-cols-[auto_1fr] gap-3">
+            <Campo label="Moneda">
+              <div className="inline-flex h-9 rounded-md border border-[#f0dde3] bg-white p-0.5">
+                {(['ARS', 'USD'] as Moneda[]).map((m) => (
+                  <button
+                    key={m}
+                    type="button"
+                    disabled={bloqueado || aplicado > 0}
+                    onClick={() => setF({ ...f, moneda: m })}
+                    className={cn(
+                      'rounded px-3 text-sm font-medium disabled:opacity-50',
+                      f.moneda === m ? 'bg-[#8b5a6b] text-white' : 'text-[#6b4c57]',
+                    )}
+                  >
+                    {m}
+                  </button>
+                ))}
+              </div>
+            </Campo>
+            <Campo
+              label="Monto adelantado"
+              htmlFor="ad-monto"
+              ayuda={aplicado > 0 ? `Ya se descontaron ${formatMonto(aplicado, f.moneda)}.` : undefined}
+            >
+              <MontoInput id="ad-monto" valor={f.monto} moneda={f.moneda} disabled={bloqueado} onCambio={(n) => setF((x) => ({ ...x, monto: n }))} />
+            </Campo>
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            <Campo label="Se entregó">
+              <SelectorDia valor={f.fecha} disabled={bloqueado} onCambio={(d) => setF({ ...f, fecha: d ?? hoyLocal() })} />
+            </Campo>
+            <Campo label="Se liquida aprox." ayuda="Orientativo, no vence.">
+              <SelectorDia valor={f.fechaEstimada} placeholder="Sin fecha" onCambio={(d) => setF({ ...f, fechaEstimada: d })} />
+            </Campo>
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            <Campo label="Método" htmlFor="ad-metodo">
+              <Input
+                id="ad-metodo"
+                list="metodos-pago-contable"
+                value={f.metodo}
+                maxLength={40}
+                disabled={bloqueado}
+                placeholder="Efectivo, transferencia…"
+                onChange={(e) => setF({ ...f, metodo: e.target.value })}
+              />
+              <datalist id="metodos-pago-contable">
+                {METODOS.map((m) => (
+                  <option key={m} value={m} />
+                ))}
+              </datalist>
+            </Campo>
+            <Campo label="Nota" htmlFor="ad-nota">
+              <Input id="ad-nota" value={f.nota} onChange={(e) => setF({ ...f, nota: e.target.value })} />
+            </Campo>
+          </div>
+
+          <Campo label="Comprobantes (opcional)">
+            <ZonaArchivos archivos={archivos} setArchivos={setArchivos} existentes={existentes} setExistentes={setExistentes} />
+          </Campo>
+        </div>
+
+        <DialogFooter>
+          <Button variant="outline" onClick={onCerrar}>Cancelar</Button>
+          <Button className={BOTON_PRIMARIO} onClick={guardar} disabled={guardando}>
+            {guardando ? 'Guardando…' : adelanto ? 'Guardar cambios' : 'Registrar adelanto'}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+/** Adjuntar fotos/PDF (nuevos) y ver o quitar los ya subidos (si están en sus 24 h). */
+function ZonaArchivos({
+  archivos,
+  setArchivos,
+  existentes,
+  setExistentes,
+}: {
+  archivos: File[];
+  setArchivos: React.Dispatch<React.SetStateAction<File[]>>;
+  existentes: Comprobante[];
+  setExistentes: React.Dispatch<React.SetStateAction<Comprobante[]>>;
+}) {
+  const [arrastrando, setArrastrando] = useState(false);
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  const sumarArchivos = (lista: FileList | null) => {
+    if (!lista) return;
+    const nuevos: File[] = [];
+    for (const a of Array.from(lista)) {
+      if (!ACEPTA.split(',').includes(a.type)) {
+        toast.error(`${a.name}: sólo imágenes o PDF`);
+        continue;
+      }
+      if (a.size > MAX_MB * 1024 * 1024) {
+        toast.error(`${a.name} pesa más de ${MAX_MB} MB`);
+        continue;
+      }
+      nuevos.push(a);
+    }
+    setArchivos((l) => [...l, ...nuevos].slice(0, 5));
+  };
+
+  const quitarExistente = async (c: Comprobante) => {
+    try {
+      await contableService.eliminarComprobante(c.id);
+      setExistentes((l) => l.filter((x) => x.id !== c.id));
+      toast.success('Comprobante quitado');
+    } catch (e) {
+      toast.error(mensajeError(e, 'No se pudo quitar'));
+    }
+  };
+
+  return (
+    <>
             <div
               onDragOver={(e) => {
                 e.preventDefault();
@@ -595,17 +916,7 @@ export function PagoDialog({
                 ))}
               </ul>
             )}
-          </Campo>
-        </div>
-
-        <DialogFooter>
-          <Button variant="outline" onClick={onCerrar}>Cancelar</Button>
-          <Button className={BOTON_PRIMARIO} onClick={guardar} disabled={guardando}>
-            {guardando ? 'Guardando…' : pago ? 'Guardar cambios' : 'Registrar pago'}
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
+    </>
   );
 }
 

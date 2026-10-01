@@ -1,7 +1,7 @@
 'use client';
 
 import { useCallback, useMemo, useState } from 'react';
-import { History, LayoutDashboard, Plus, UserPlus, Users, Wallet } from 'lucide-react';
+import { History, LayoutDashboard, PiggyBank, Plus, UserPlus, Users, Wallet } from 'lucide-react';
 import MainLayout from '@/components/layout/MainLayout';
 import StandardPageBanner from '@/components/common/StandardPageBanner';
 import StandardBreadcrumbs from '@/components/common/StandardBreadcrumbs';
@@ -9,9 +9,9 @@ import ClientOnly from '@/components/common/ClientOnly';
 import AdminOnly from '@/components/auth/AdminOnly';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
-import type { Acreedor, Deuda, Moneda, Pago } from '@/services/contable.service';
+import type { Acreedor, Adelanto, Deuda, Moneda, Pago } from '@/services/contable.service';
 import { Contable, type ContableCtx } from '@/components/contable/contexto';
-import { AcreedorDialog, DeudaDialog, PagoDialog } from '@/components/contable/dialogos';
+import { AcreedorDialog, AdelantoDialog, DeudaDialog, PagoDialog } from '@/components/contable/dialogos';
 import { SelectorMoneda } from '@/components/contable/ui';
 import ResumenTab from '@/components/contable/ResumenTab';
 import AcreedoresTab from '@/components/contable/AcreedoresTab';
@@ -44,6 +44,7 @@ export default function ContablePage() {
   const [dlgAcreedor, setDlgAcreedor] = useState<{ acreedor: Acreedor | null; alCrear?: (a: Acreedor) => void } | null>(null);
   const [dlgDeuda, setDlgDeuda] = useState<{ deuda: Deuda | null; acreedorId?: string } | null>(null);
   const [dlgPago, setDlgPago] = useState<{ deuda: Deuda; pago: Pago | null } | null>(null);
+  const [dlgAdelanto, setDlgAdelanto] = useState<{ adelanto: Adelanto | null; acreedorId?: string } | null>(null);
 
   const refrescar = useCallback(() => setVersion((v) => v + 1), []);
 
@@ -60,6 +61,8 @@ export default function ContablePage() {
       editarDeuda: (d) => setDlgDeuda({ deuda: d }),
       pagar: (d) => setDlgPago({ deuda: d, pago: null }),
       editarPago: (p, d) => setDlgPago({ deuda: d, pago: p }),
+      nuevoAdelanto: (acreedorId) => setDlgAdelanto({ adelanto: null, acreedorId }),
+      editarAdelanto: (a) => setDlgAdelanto({ adelanto: a }),
     }),
     [moneda, version, refrescar],
   );
@@ -102,6 +105,14 @@ export default function ContablePage() {
                       <Button variant="outline" className="rounded-full border-[#e6cfd7] bg-white" onClick={() => ctx.nuevoAcreedor()}>
                         <UserPlus className="mr-1.5 h-4 w-4" /> Acreedor
                       </Button>
+                      <Button
+                        variant="outline"
+                        className="rounded-full border-teal-200 bg-white text-teal-800 hover:bg-teal-50"
+                        onClick={() => ctx.nuevoAdelanto()}
+                        title="Plata a cuenta de algo que todavía no se calculó (queda a favor)"
+                      >
+                        <PiggyBank className="mr-1.5 h-4 w-4" /> Adelanto
+                      </Button>
                       <Button className="rounded-full bg-[#8b5a6b] text-white hover:bg-[#744a5a]" onClick={() => ctx.nuevaDeuda()}>
                         <Plus className="mr-1.5 h-4 w-4" /> Nueva deuda
                       </Button>
@@ -137,6 +148,18 @@ export default function ContablePage() {
                 onCerrar={() => setDlgDeuda(null)}
                 onGuardado={() => {
                   setDlgDeuda(null);
+                  refrescar();
+                }}
+                onNuevoAcreedor={(alCrear) => setDlgAcreedor({ acreedor: null, alCrear })}
+              />
+              <AdelantoDialog
+                abierto={!!dlgAdelanto}
+                adelanto={dlgAdelanto?.adelanto ?? null}
+                acreedorInicial={dlgAdelanto?.acreedorId}
+                version={version}
+                onCerrar={() => setDlgAdelanto(null)}
+                onGuardado={() => {
+                  setDlgAdelanto(null);
                   refrescar();
                 }}
                 onNuevoAcreedor={(alCrear) => setDlgAcreedor({ acreedor: null, alCrear })}

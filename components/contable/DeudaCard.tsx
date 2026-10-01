@@ -2,7 +2,7 @@
 
 import { useRef, useState } from 'react';
 import { toast } from 'sonner';
-import { CalendarClock, ChevronDown, HandCoins, Lock, MoreHorizontal, Paperclip, Pencil, Trash2 } from 'lucide-react';
+import { CalendarClock, ChevronDown, HandCoins, Lock, MoreHorizontal, Paperclip, Pencil, PiggyBank, Repeat2, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
@@ -69,7 +69,24 @@ export default function DeudaCard({
     }
   };
 
+  const [aplicando, setAplicando] = useState(false);
+  const descontarAdelanto = async () => {
+    setAplicando(true);
+    try {
+      const d = await contableService.aplicarAdelantos(deuda.id);
+      toast.success(
+        d.saldo <= 0 ? 'Deuda cubierta con adelantos' : `Se descontaron adelantos: quedan ${formatMonto(d.saldo, d.moneda)}`,
+      );
+      refrescar();
+    } catch (e) {
+      toast.error(mensajeError(e, 'No se pudo descontar'));
+    } finally {
+      setAplicando(false);
+    }
+  };
+
   const dias = deuda.vencimiento ? diasHasta(deuda.vencimiento) : null;
+  const puedeDescontar = deuda.saldo > 0 && deuda.aFavorDisponible > 0;
 
   return (
     <article
@@ -161,6 +178,22 @@ export default function DeudaCard({
 
       <div className="px-4 pb-3">
         <BarraAvance pagado={deuda.pagado} total={deuda.monto} />
+        {puedeDescontar && (
+          <div className="mt-2 flex items-center justify-between gap-2 rounded-lg bg-teal-50 px-3 py-1.5 text-xs text-teal-900">
+            <span className="flex items-center gap-1.5">
+              <PiggyBank className="h-3.5 w-3.5" />
+              Tiene {formatMonto(deuda.aFavorDisponible, deuda.moneda)} a favor
+            </span>
+            <button
+              type="button"
+              disabled={aplicando}
+              onClick={descontarAdelanto}
+              className="rounded-md bg-white px-2 py-0.5 font-medium text-teal-800 shadow-sm hover:bg-teal-100 disabled:opacity-50"
+            >
+              Descontar {formatMonto(Math.min(deuda.aFavorDisponible, deuda.saldo), deuda.moneda)}
+            </button>
+          </div>
+        )}
         <button
           type="button"
           onClick={() => setAbierta((a) => !a)}
@@ -185,15 +218,23 @@ export default function DeudaCard({
               {deuda.pagos.map((p) => (
                 <li key={p.id} className="rounded-xl border border-[#f4e6ea] bg-white px-3 py-2.5">
                   <div className="flex items-start gap-3">
-                    <span className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-blue-50 text-[#3565b8]">
-                      <HandCoins className="h-3.5 w-3.5" />
-                    </span>
+                    {p.adelantoId ? (
+                      <span className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-teal-50 text-teal-700" title="Descontado de un adelanto">
+                        <Repeat2 className="h-3.5 w-3.5" />
+                      </span>
+                    ) : (
+                      <span className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-blue-50 text-[#3565b8]">
+                        <HandCoins className="h-3.5 w-3.5" />
+                      </span>
+                    )}
                     <div className="min-w-0 flex-1">
                       <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
                         <span className="font-semibold text-[#3d2a32] tabular-nums">{formatMonto(p.monto, deuda.moneda)}</span>
                         <span className="text-xs text-[#9a7d88]">
                           {formatDiaISO(p.fecha)}
-                          {p.metodo && ` · ${p.metodo}`}
+                          {p.adelanto
+                            ? ` · de adelanto "${p.adelanto.concepto}" (${formatDiaISO(p.adelanto.fecha)})`
+                            : p.metodo && ` · ${p.metodo}`}
                         </span>
                         {p.editable ? (
                           <VentanaEdicion hasta={p.editableHasta} />
@@ -237,14 +278,16 @@ export default function DeudaCard({
                       </Button>
                       {p.editable && (
                         <>
-                          <Button variant="ghost" size="icon" className="h-7 w-7 text-[#6b4c57]" title="Editar pago" onClick={() => editarPago(p, deuda)}>
-                            <Pencil className="h-3.5 w-3.5" />
-                          </Button>
+                          {!p.adelantoId && (
+                            <Button variant="ghost" size="icon" className="h-7 w-7 text-[#6b4c57]" title="Editar pago" onClick={() => editarPago(p, deuda)}>
+                              <Pencil className="h-3.5 w-3.5" />
+                            </Button>
+                          )}
                           <Button
                             variant="ghost"
                             size="icon"
                             className="h-7 w-7 text-[#6b4c57] hover:text-red-600"
-                            title="Borrar pago"
+                            title={p.adelantoId ? 'Deshacer descuento (vuelve a favor)' : 'Borrar pago'}
                             onClick={() => setBorrar({ tipo: 'pago', pago: p })}
                           >
                             <Trash2 className="h-3.5 w-3.5" />
@@ -277,9 +320,18 @@ export default function DeudaCard({
 
       <Confirmar
         abierto={!!borrar}
-        titulo={borrar?.tipo === 'deuda' ? '¿Borrar la deuda?' : '¿Borrar el pago?'}
+        titulo={
+          borrar?.tipo === 'deuda'
+            ? '¿Borrar la deuda?'
+            : borrar?.pago.adelantoId
+              ? '¿Deshacer el descuento?'
+              : '¿Borrar el pago?'
+        }
+        accion={borrar?.tipo === 'pago' && borrar.pago.adelantoId ? 'Deshacer' : 'Borrar'}
         texto={
-          borrar?.tipo === 'pago'
+          borrar?.tipo === 'pago' && borrar.pago.adelantoId
+            ? `Los ${formatMonto(borrar.pago.monto, deuda.moneda)} vuelven al saldo a favor y a la deuda. Queda registrado en el historial.`
+            : borrar?.tipo === 'pago'
             ? `Se borra el pago de ${formatMonto(borrar.pago.monto, deuda.moneda)} y el monto vuelve al saldo. Queda registrado en el historial.`
             : `Se borra "${deuda.concepto}". Queda registrado en el historial.`
         }

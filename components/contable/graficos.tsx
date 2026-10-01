@@ -171,15 +171,23 @@ export function LineaSaldo({ serie, moneda, alto = 240 }: { serie: PuntoSerie[];
   const [ref, ancho] = useAncho<HTMLDivElement>();
   const [activo, setActivo] = useState<number | null>(null);
   const valores = serie.map((p) => p[moneda].saldo);
-  const { tope, marcas } = escala(Math.max(0, ...valores));
+  // El saldo neto puede quedar negativo si se adelantó más de lo que se debía.
+  const minimo = Math.min(0, ...valores);
+  const maximo = Math.max(0, ...valores);
+  const esc = escala(maximo - minimo);
+  const pasoEje = esc.marcas.length > 1 ? esc.marcas[1] - esc.marcas[0] : 1;
+  const piso = minimo < 0 ? Math.floor(minimo / pasoEje) * pasoEje : 0;
+  const marcas: number[] = [];
+  for (let v = piso; v < maximo + pasoEje; v += pasoEje) marcas.push(v);
+  const tope = marcas[marcas.length - 1];
 
   const w = Math.max(0, ancho - MARGEN.izquierda - MARGEN.derecha - 8);
   const h = alto - MARGEN.arriba - MARGEN.abajo;
   const paso = serie.length > 1 ? w / (serie.length - 1) : 0;
   const x = (i: number) => MARGEN.izquierda + 4 + paso * i;
-  const y = (v: number) => MARGEN.arriba + h - (Math.max(0, v) / tope) * h;
+  const y = (v: number) => MARGEN.arriba + h - ((v - piso) / (tope - piso || 1)) * h;
   const linea = valores.map((v, i) => `${i ? 'L' : 'M'}${x(i)},${y(v)}`).join('');
-  const area = `${linea}L${x(valores.length - 1)},${MARGEN.arriba + h}L${x(0)},${MARGEN.arriba + h}Z`;
+  const area = `${linea}L${x(valores.length - 1)},${y(0)}L${x(0)},${y(0)}Z`;
   const cada = paso < 34 ? 2 : 1;
 
   const alMover = (e: React.MouseEvent<SVGSVGElement>) => {
@@ -195,7 +203,7 @@ export function LineaSaldo({ serie, moneda, alto = 240 }: { serie: PuntoSerie[];
           width={ancho}
           height={alto}
           role="img"
-          aria-label="Saldo pendiente al cierre de cada mes"
+          aria-label="Saldo neto al cierre de cada mes"
           onMouseMove={alMover}
           onMouseLeave={() => setActivo(null)}
         >
@@ -235,7 +243,11 @@ export function LineaSaldo({ serie, moneda, alto = 240 }: { serie: PuntoSerie[];
       {activo !== null && ancho > 0 && (
         <Tooltip x={x(activo)} y={y(valores[activo]) - 20} anchoContenedor={ancho}>
           <p className="mb-1 font-semibold capitalize text-[#3d2a32]">{nombreMes(serie[activo].mes, true)}</p>
-          <FilaTooltip color="#8b5a6b" etiqueta="Saldo pendiente" valor={formatMonto(valores[activo], moneda)} />
+          <FilaTooltip
+            color="#8b5a6b"
+            etiqueta={valores[activo] < 0 ? 'Adelantado de más' : 'Saldo neto'}
+            valor={formatMonto(Math.abs(valores[activo]), moneda)}
+          />
         </Tooltip>
       )}
     </div>

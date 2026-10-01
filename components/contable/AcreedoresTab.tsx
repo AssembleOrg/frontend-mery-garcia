@@ -33,7 +33,14 @@ export default function AcreedoresTab() {
     const otra = moneda === 'ARS' ? 'USD' : 'ARS';
     return (lista ?? [])
       .filter((a) => !q || normalizar(a.nombre).includes(q) || normalizar(a.documento ?? '').includes(q))
-      .filter((a) => !soloConSaldo || a.totales.ARS.saldo > 0 || a.totales.USD.saldo > 0)
+      .filter(
+        (a) =>
+          !soloConSaldo ||
+          a.totales.ARS.saldo > 0 ||
+          a.totales.USD.saldo > 0 ||
+          a.totales.ARS.aFavor > 0 ||
+          a.totales.USD.aFavor > 0,
+      )
       .sort((a, b) => {
         if (orden === 'nombre') return a.nombre.localeCompare(b.nombre);
         if (orden === 'reciente') return b.ultimoMovimiento.localeCompare(a.ultimoMovimiento);
@@ -131,6 +138,9 @@ export default function AcreedoresTab() {
                     </p>
                     {tOtra.saldo > 0 && (
                       <p className="text-xs text-[#6b4c57] tabular-nums">+ {formatMonto(tOtra.saldo, otra)}</p>
+                    )}
+                    {t.aFavor > 0 && (
+                      <p className="text-xs font-medium text-teal-700 tabular-nums">A favor {formatMonto(t.aFavor, moneda)}</p>
                     )}
                   </div>
                   <p className="text-right text-xs text-[#9a7d88]">

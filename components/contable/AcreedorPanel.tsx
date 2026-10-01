@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
-import { Mail, Pencil, Phone, Plus, Trash2, Wallet } from 'lucide-react';
+import { Mail, Pencil, Phone, PiggyBank, Plus, Trash2, Wallet } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -11,12 +11,13 @@ import { contableService, mensajeError, type AcreedorDetalle, type Moneda } from
 import { useContable } from './contexto';
 import { Confirmar } from './dialogos';
 import DeudaCard from './DeudaCard';
+import AdelantoCard from './AdelantoCard';
 import HistorialTab from './HistorialTab';
 import { BarraAvance, Cargando, formatMonto, IconoAcreedor, Vacio } from './ui';
 
 /** Ficha lateral de un acreedor: totales, deudas con sus pagos e historial propio. */
 export default function AcreedorPanel({ id, onCerrar }: { id: string | null; onCerrar: () => void }) {
-  const { version, editarAcreedor, nuevaDeuda, refrescar } = useContable();
+  const { version, editarAcreedor, nuevaDeuda, nuevoAdelanto, refrescar } = useContable();
   const [datos, setDatos] = useState<AcreedorDetalle | null>(null);
   const [verSaldadas, setVerSaldadas] = useState(false);
   const [borrar, setBorrar] = useState(false);
@@ -51,7 +52,11 @@ export default function AcreedorPanel({ id, onCerrar }: { id: string | null; onC
 
   const abiertas = datos?.deudas.filter((d) => d.saldo > 0) ?? [];
   const saldadas = datos?.deudas.filter((d) => d.saldo <= 0) ?? [];
-  const monedas = (['ARS', 'USD'] as Moneda[]).filter((m) => (datos?.totales[m]?.deuda ?? 0) > 0);
+  const monedas = (['ARS', 'USD'] as Moneda[]).filter(
+    (m) => (datos?.totales[m]?.deuda ?? 0) > 0 || (datos?.totales[m]?.aFavor ?? 0) > 0,
+  );
+  const adelantosAbiertos = datos?.adelantos.filter((a) => a.disponible > 0).length ?? 0;
+  const sinMovimientos = !!datos && datos.deudas.length === 0 && datos.adelantos.length === 0;
 
   return (
     <Sheet open={!!id} onOpenChange={(o) => !o && onCerrar()}>
@@ -104,6 +109,18 @@ export default function AcreedorPanel({ id, onCerrar }: { id: string | null; onC
                       <p className="mt-1.5 text-[11px] text-white/70 tabular-nums">
                         Pagado {formatMonto(t.pagado, m)} de {formatMonto(t.deuda, m)}
                       </p>
+                      {t.aFavor > 0 && (
+                        <div className="mt-3 rounded-lg bg-white/12 px-3 py-2 text-xs tabular-nums">
+                          <div className="flex justify-between">
+                            <span className="text-white/80">A favor (adelantos)</span>
+                            <span className="font-semibold">− {formatMonto(t.aFavor, m)}</span>
+                          </div>
+                          <div className="mt-1 flex justify-between border-t border-white/20 pt-1">
+                            <span className="text-white/80">{t.neto >= 0 ? 'Neto a pagar' : 'Adelantado de más'}</span>
+                            <span className="font-semibold">{formatMonto(Math.abs(t.neto), m)}</span>
+                          </div>
+                        </div>
+                      )}
                     </div>
                   );
                 })}
@@ -113,10 +130,18 @@ export default function AcreedorPanel({ id, onCerrar }: { id: string | null; onC
                 <Button size="sm" className="bg-[#8b5a6b] text-white hover:bg-[#744a5a]" onClick={() => nuevaDeuda(datos.id)}>
                   <Plus className="mr-1 h-4 w-4" /> Nueva deuda
                 </Button>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="border-teal-200 text-teal-800 hover:bg-teal-50"
+                  onClick={() => nuevoAdelanto(datos.id)}
+                >
+                  <PiggyBank className="mr-1 h-3.5 w-3.5" /> Adelanto
+                </Button>
                 <Button size="sm" variant="outline" onClick={() => editarAcreedor(datos)}>
                   <Pencil className="mr-1 h-3.5 w-3.5" /> Editar datos
                 </Button>
-                {datos.deudas.length === 0 && (
+                {sinMovimientos && (
                   <Button size="sm" variant="ghost" className="text-red-600 hover:text-red-700" onClick={() => setBorrar(true)}>
                     <Trash2 className="mr-1 h-3.5 w-3.5" /> Eliminar
                   </Button>
@@ -128,6 +153,9 @@ export default function AcreedorPanel({ id, onCerrar }: { id: string | null; onC
               <TabsList className="mb-4 w-full border border-[#f0dde3] bg-white">
                 <TabsTrigger value="deudas" className="flex-1 data-[state=active]:bg-[#fbeef2] data-[state=active]:text-[#5b2139]">
                   Deudas ({abiertas.length})
+                </TabsTrigger>
+                <TabsTrigger value="adelantos" className="flex-1 data-[state=active]:bg-teal-50 data-[state=active]:text-teal-800">
+                  Adelantos ({adelantosAbiertos})
                 </TabsTrigger>
                 <TabsTrigger value="historial" className="flex-1 data-[state=active]:bg-[#fbeef2] data-[state=active]:text-[#5b2139]">
                   Historial
@@ -169,6 +197,17 @@ export default function AcreedorPanel({ id, onCerrar }: { id: string | null; onC
                   </>
                 )}
               </TabsContent>
+              <TabsContent value="adelantos" className="mt-0 space-y-3">
+                {datos.adelantos.length === 0 ? (
+                  <Vacio
+                    icono={<PiggyBank className="h-6 w-6" />}
+                    titulo="Sin adelantos"
+                    texto="Si le vas dando plata antes de saber el total (p. ej. comisiones), cargala como adelanto: queda a favor y se descuenta al cargar la deuda."
+                  />
+                ) : (
+                  datos.adelantos.map((a) => <AdelantoCard key={a.id} adelanto={a} />)
+                )}
+              </TabsContent>
               <TabsContent value="historial" className="mt-0">
                 <HistorialTab acreedorId={datos.id} />
               </TabsContent>
@@ -178,7 +217,7 @@ export default function AcreedorPanel({ id, onCerrar }: { id: string | null; onC
         <Confirmar
           abierto={borrar}
           titulo="¿Eliminar acreedor?"
-          texto="No tiene deudas cargadas. Queda registrado en el historial."
+          texto="No tiene deudas ni adelantos cargados. Queda registrado en el historial."
           accion="Eliminar"
           onConfirmar={eliminar}
           onCerrar={() => setBorrar(false)}

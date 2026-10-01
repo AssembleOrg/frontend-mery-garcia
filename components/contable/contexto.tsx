@@ -1,7 +1,7 @@
 'use client';
 
 import { createContext, useContext } from 'react';
-import type { Acreedor, Deuda, Moneda, Pago } from '@/services/contable.service';
+import type { Acreedor, Adelanto, Deuda, Moneda, Pago } from '@/services/contable.service';
 
 /**
  * Lo que comparten las pestañas de /contable: la moneda elegida, un contador
@@ -20,6 +20,9 @@ export interface ContableCtx {
   editarDeuda: (d: Deuda) => void;
   pagar: (d: Deuda) => void;
   editarPago: (p: Pago, d: Deuda) => void;
+  /** Plata a cuenta de una deuda que todavía no existe (queda a favor). */
+  nuevoAdelanto: (acreedorId?: string) => void;
+  editarAdelanto: (a: Adelanto) => void;
 }
 
 export const Contable = createContext<ContableCtx | null>(null);

@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
-import { AlertTriangle, ArrowDownRight, ArrowUpRight, CalendarClock, HandCoins, Plus, Wallet } from 'lucide-react';
+import { AlertTriangle, ArrowDownRight, ArrowUpRight, CalendarClock, HandCoins, PiggyBank, Plus, Wallet } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { contableService, type Resumen } from '@/services/contable.service';
@@ -35,7 +35,11 @@ export default function ResumenTab() {
   }
 
   const k = datos.kpis[moneda];
-  const sinNada = datos.kpis.ARS.deudaTotal === 0 && datos.kpis.USD.deudaTotal === 0;
+  const sinNada =
+    datos.kpis.ARS.deudaTotal === 0 &&
+    datos.kpis.USD.deudaTotal === 0 &&
+    datos.kpis.ARS.saldoAFavor === 0 &&
+    datos.kpis.USD.saldoAFavor === 0;
   if (sinNada) {
     return (
       <Panel>
@@ -60,12 +64,13 @@ export default function ResumenTab() {
   const top = acreedores.slice(0, 7);
   const resto = acreedores.slice(7).reduce((s, a) => s + a[moneda], 0);
   const vencimientos = datos.proximosVencimientos.filter((d) => d.moneda === moneda);
+  const adelantos = datos.adelantosPendientes.filter((a) => a.moneda === moneda);
   const mesActual = nombreMes(datos.hoy.slice(0, 7), true);
 
   return (
     <div className="space-y-5">
       {/* KPIs */}
-      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-[1.4fr_1fr_1fr_1fr]">
+      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-[1.4fr_1fr_1fr_1fr_1fr]">
         <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-[#5b2139] via-[#7a3f55] to-[#9c5a73] p-5 text-white shadow-[0_12px_32px_-16px_rgba(91,33,57,0.7)]">
           <div className="pointer-events-none absolute -top-10 -right-10 h-40 w-40 rounded-full bg-white/10 blur-2xl" />
           <p className="text-xs font-medium tracking-[0.14em] text-white/70 uppercase">Saldo pendiente</p>
@@ -74,6 +79,13 @@ export default function ResumenTab() {
             {k.deudasAbiertas} {k.deudasAbiertas === 1 ? 'deuda abierta' : 'deudas abiertas'} · {k.acreedoresConSaldo}{' '}
             {k.acreedoresConSaldo === 1 ? 'acreedor' : 'acreedores'}
           </p>
+          {k.saldoAFavor > 0 && (
+            <p className="mt-2 inline-flex rounded-full bg-white/15 px-2.5 py-0.5 text-xs tabular-nums">
+              {k.saldoNeto >= 0
+                ? `Neto ${formatMonto(k.saldoNeto, moneda)} descontando adelantos`
+                : `Adelantado de más: ${formatMonto(-k.saldoNeto, moneda)}`}
+            </p>
+          )}
           <div className="mt-4">
             <div className="mb-1 flex justify-between text-[11px] text-white/70">
               <span>Cancelado {Math.round(k.porcentajeCancelado)}%</span>
@@ -93,12 +105,23 @@ export default function ResumenTab() {
           pie={k.deudasVencidas > 0 ? `${k.deudasVencidas} ${k.deudasVencidas === 1 ? 'deuda vencida' : 'deudas vencidas'}` : 'Nada vencido'}
         />
         <Kpi
+          titulo="A favor"
+          icono={<PiggyBank className="h-4 w-4" />}
+          valor={formatMonto(k.saldoAFavor, moneda)}
+          tono={k.saldoAFavor > 0 ? 'favor' : 'neutro'}
+          pie={
+            k.adelantosAbiertos > 0
+              ? `${k.adelantosAbiertos} ${k.adelantosAbiertos === 1 ? 'adelanto' : 'adelantos'} sin descontar`
+              : 'Sin adelantos pendientes'
+          }
+        />
+        <Kpi
           titulo={`Pagado en ${mesActual.split(' ')[0]}`}
           icono={<HandCoins className="h-4 w-4" />}
           valor={formatMonto(k.pagadoMes, moneda)}
           pie={
             variacion === null ? (
-              `Mes anterior: ${formatMonto(k.pagadoMesAnterior, moneda)}`
+              `Incluye adelantos · mes anterior ${formatMonto(k.pagadoMesAnterior, moneda)}`
             ) : (
               <span className="inline-flex items-center gap-1">
                 {variacion >= 0 ? <ArrowUpRight className="h-3.5 w-3.5" /> : <ArrowDownRight className="h-3.5 w-3.5" />}
@@ -137,10 +160,10 @@ export default function ResumenTab() {
         >
           <BarrasMensuales serie={datos.serie} moneda={moneda} />
           <div className="mt-2">
-            <Leyenda items={[{ color: COLOR.deuda, texto: 'Deuda nueva' }, { color: COLOR.pagos, texto: 'Pagos' }]} />
+            <Leyenda items={[{ color: COLOR.deuda, texto: 'Deuda nueva' }, { color: COLOR.pagos, texto: 'Pagos y adelantos' }]} />
           </div>
         </Panel>
-        <Panel titulo="Saldo pendiente" subtitulo="Lo que se debía al cierre de cada mes">
+        <Panel titulo="Saldo neto" subtitulo="Lo que se debía al cierre de cada mes, descontando adelantos">
           <LineaSaldo serie={datos.serie} moneda={moneda} />
         </Panel>
       </div>
@@ -165,6 +188,7 @@ export default function ResumenTab() {
           )}
         </Panel>
 
+        <div className="space-y-5">
         <Panel titulo="Vencimientos" subtitulo="Deudas abiertas con fecha de vencimiento" cuerpoClassName="p-2">
           {vencimientos.length ? (
             <ul className="divide-y divide-[#f7ecef]">
@@ -207,6 +231,46 @@ export default function ResumenTab() {
             </div>
           )}
         </Panel>
+
+        {adelantos.length > 0 && (
+          <Panel titulo="Adelantos a liquidar" subtitulo="Saldo a favor que se descuenta al cargar la deuda" cuerpoClassName="p-2">
+            <ul className="divide-y divide-[#f7ecef]">
+              {adelantos.map((a) => {
+                const dias = a.fechaEstimada ? diasHasta(a.fechaEstimada, datos.hoy) : null;
+                return (
+                  <li key={a.id}>
+                    <button
+                      type="button"
+                      onClick={() => verAcreedor(a.acreedorId)}
+                      className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left hover:bg-[#fdf6f8]"
+                    >
+                      <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-teal-50 text-teal-700">
+                        <PiggyBank className="h-4 w-4" />
+                      </span>
+                      <div className="min-w-0 flex-1">
+                        <p className="truncate text-sm font-medium text-[#3d2a32]">{a.acreedor?.nombre}</p>
+                        <p className="truncate text-xs text-[#9a7d88]">{a.concepto}</p>
+                      </div>
+                      <div className="text-right">
+                        <p className="text-sm font-semibold text-teal-800 tabular-nums">{formatMonto(a.disponible, a.moneda)}</p>
+                        <p className="text-[11px] text-[#9a7d88]">
+                          {dias === null
+                            ? 'Sin fecha estimada'
+                            : dias < 0
+                              ? `Se esperaba hace ${-dias} ${dias === -1 ? 'día' : 'días'}`
+                              : dias === 0
+                                ? 'Se liquida hoy (aprox.)'
+                                : `Se liquida en ~${dias} ${dias === 1 ? 'día' : 'días'}`}
+                        </p>
+                      </div>
+                    </button>
+                  </li>
+                );
+              })}
+            </ul>
+          </Panel>
+        )}
+        </div>
       </div>
 
       <Panel titulo="Actividad reciente" cuerpoClassName="px-3 pb-3 pt-2">
@@ -231,20 +295,20 @@ function Kpi({
   icono: React.ReactNode;
   valor: string;
   pie: React.ReactNode;
-  tono?: 'neutro' | 'alerta';
+  tono?: 'neutro' | 'alerta' | 'favor';
 }) {
   return (
     <div
       className={cn(
         'rounded-2xl border bg-white/90 p-5 shadow-[0_1px_2px_rgba(139,90,107,0.06)]',
-        tono === 'alerta' ? 'border-red-200' : 'border-[#f0dde3]',
+        tono === 'alerta' ? 'border-red-200' : tono === 'favor' ? 'border-teal-200' : 'border-[#f0dde3]',
       )}
     >
       <div className="flex items-center justify-between">
         <p className="text-xs font-medium tracking-[0.12em] text-[#9a7d88] uppercase">{titulo}</p>
-        <span className={cn('rounded-lg p-1.5', tono === 'alerta' ? 'bg-red-50 text-red-700' : 'bg-[#fbeef2] text-[#8b5a6b]')}>{icono}</span>
+        <span className={cn('rounded-lg p-1.5', tono === 'alerta' ? 'bg-red-50 text-red-700' : tono === 'favor' ? 'bg-teal-50 text-teal-700' : 'bg-[#fbeef2] text-[#8b5a6b]')}>{icono}</span>
       </div>
-      <p className={cn('mt-3 text-2xl font-semibold tabular-nums', tono === 'alerta' ? 'text-red-700' : 'text-[#3d2a32]')}>{valor}</p>
+      <p className={cn('mt-3 text-2xl font-semibold tabular-nums', tono === 'alerta' ? 'text-red-700' : tono === 'favor' ? 'text-teal-800' : 'text-[#3d2a32]')}>{valor}</p>
       <p className="mt-1 text-xs text-[#9a7d88]">{pie}</p>
     </div>
   );

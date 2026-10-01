@@ -8,11 +8,16 @@ export interface Totales {
   deuda: number;
   pagado: number;
   saldo: number;
+  /** Adelantos sin aplicar. */
+  aFavor: number;
+  /** saldo - aFavor (negativo = se adelantó de más). */
+  neto: number;
 }
 
 export interface Comprobante {
   id: string;
-  pagoId: string;
+  pagoId: string | null;
+  adelantoId: string | null;
   nombre: string;
   mimeType: string;
   tamanio: number;
@@ -27,10 +32,43 @@ export interface Pago {
   fecha: string;
   metodo: string | null;
   nota: string | null;
+  /** Si es un descuento de adelanto (no salió plata en este pago). */
+  adelantoId: string | null;
+  adelanto: { id: string; concepto: string; fecha: string } | null;
   creadoPorNombre: string | null;
   createdAt: string;
   editableHasta: string;
   editable: boolean;
+  comprobantes: Comprobante[];
+}
+
+export interface Adelanto {
+  id: string;
+  acreedorId: string;
+  acreedor?: { id: string; nombre: string; tipo: TipoAcreedor };
+  concepto: string;
+  moneda: Moneda;
+  monto: number;
+  fecha: string;
+  /** Orientativa: cuándo se espera liquidar. */
+  fechaEstimada: string | null;
+  metodo: string | null;
+  nota: string | null;
+  creadoPorNombre: string | null;
+  createdAt: string;
+  editableHasta: string;
+  editable: boolean;
+  aplicado: number;
+  disponible: number;
+  aplicaciones: {
+    pagoId: string;
+    deudaId: string;
+    deudaConcepto: string | null;
+    monto: number;
+    fecha: string;
+    createdAt: string;
+    editable: boolean;
+  }[];
   comprobantes: Comprobante[];
 }
 
@@ -53,6 +91,8 @@ export interface Deuda {
   saldo: number;
   estado: EstadoDeuda;
   vencida: boolean;
+  /** Saldo a favor del acreedor en esta moneda que se puede descontar. */
+  aFavorDisponible: number;
   pagos: Pago[];
 }
 
@@ -72,12 +112,14 @@ export interface AcreedorResumen extends Acreedor {
   cantidadDeudas: number;
   deudasAbiertas: number;
   deudasVencidas: number;
+  adelantosAbiertos: number;
   ultimoMovimiento: string;
 }
 
 export interface AcreedorDetalle extends Acreedor {
   totales: Record<Moneda, Totales>;
   deudas: Deuda[];
+  adelantos: Adelanto[];
 }
 
 export type TipoMovimiento =
@@ -91,7 +133,11 @@ export type TipoMovimiento =
   | 'PAGO_EDITADO'
   | 'PAGO_ELIMINADO'
   | 'COMPROBANTE_AGREGADO'
-  | 'COMPROBANTE_ELIMINADO';
+  | 'COMPROBANTE_ELIMINADO'
+  | 'ADELANTO_REGISTRADO'
+  | 'ADELANTO_EDITADO'
+  | 'ADELANTO_ELIMINADO'
+  | 'ADELANTO_APLICADO';
 
 export interface Movimiento {
   id: string;
@@ -99,6 +145,7 @@ export interface Movimiento {
   acreedorId: string | null;
   deudaId: string | null;
   pagoId: string | null;
+  adelantoId: string | null;
   moneda: Moneda | null;
   monto: number | null;
   descripcion: string;
@@ -119,6 +166,10 @@ export interface KpisMoneda {
   pagadoMes: number;
   pagadoMesAnterior: number;
   porcentajeCancelado: number;
+  saldoAFavor: number;
+  adelantosAbiertos: number;
+  /** saldo - saldoAFavor. */
+  saldoNeto: number;
 }
 
 export interface PuntoSerie {
@@ -133,6 +184,7 @@ export interface Resumen {
   serie: PuntoSerie[];
   acreedores: { id: string; nombre: string; tipo: TipoAcreedor; ARS: number; USD: number }[];
   proximosVencimientos: Omit<Deuda, 'pagos'>[];
+  adelantosPendientes: Omit<Adelanto, 'aplicaciones' | 'comprobantes'>[];
   actividad: Movimiento[];
 }
 
@@ -153,6 +205,19 @@ export interface GuardarDeuda {
   fecha?: string;
   vencimiento?: string | null;
   notas?: string;
+  /** Al crear: descontar el saldo a favor del acreedor. */
+  aplicarAdelantos?: boolean;
+}
+
+export interface GuardarAdelanto {
+  acreedorId: string;
+  concepto: string;
+  moneda: Moneda;
+  monto: number;
+  fecha?: string;
+  fechaEstimada?: string | null;
+  metodo?: string;
+  nota?: string;
 }
 
 export interface GuardarPago {
@@ -198,6 +263,23 @@ async function del(path: string): Promise<void> {
   await apiFetch(`${BASE}${path}`, { method: 'DELETE' });
 }
 
+/** multipart: no pasa por apiFetch porque no es JSON. */
+async function subir<T>(path: string, archivos: File[]): Promise<T> {
+  const form = new FormData();
+  for (const a of archivos) form.append('comprobantes', a, a.name);
+  const res = await fetch(urlApi(`${BASE}${path}`), {
+    method: 'POST',
+    headers: cabecerasAuth(),
+    body: form,
+  });
+  const json = (await res.json().catch(() => null)) as Envelope<T> | { message?: string } | null;
+  if (!res.ok) {
+    const msg = (json as { message?: string | string[] } | null)?.message;
+    throw new Error(Array.isArray(msg) ? msg.join(', ') : msg || `Error ${res.status}`);
+  }
+  return (json as Envelope<T>).data;
+}
+
 export const contableService = {
   resumen: (meses = 12) => get<Resumen>(`/resumen?meses=${meses}`),
 
@@ -222,22 +304,23 @@ export const contableService = {
   actualizarPago: (id: string, d: Partial<GuardarPago>) => send<Pago>('PUT', `/pagos/${id}`, d),
   eliminarPago: (id: string) => del(`/pagos/${id}`),
 
-  /** multipart: no pasa por apiFetch porque no es JSON. */
-  async subirComprobantes(pagoId: string, archivos: File[]): Promise<Pago> {
-    const form = new FormData();
-    for (const a of archivos) form.append('comprobantes', a, a.name);
-    const res = await fetch(urlApi(`${BASE}/pagos/${pagoId}/comprobantes`), {
-      method: 'POST',
-      headers: cabecerasAuth(),
-      body: form,
-    });
-    const json = (await res.json().catch(() => null)) as Envelope<Pago> | { message?: string } | null;
-    if (!res.ok) {
-      const msg = (json as { message?: string | string[] } | null)?.message;
-      throw new Error(Array.isArray(msg) ? msg.join(', ') : msg || `Error ${res.status}`);
-    }
-    return (json as Envelope<Pago>).data;
+  adelantos: (filtro: { acreedorId?: string; estado?: 'disponibles' | 'todos' } = {}) => {
+    const q = new URLSearchParams(
+      Object.entries(filtro).filter(([, v]) => v) as [string, string][],
+    ).toString();
+    return get<Adelanto[]>(`/adelantos${q ? `?${q}` : ''}`);
   },
+  crearAdelanto: (d: GuardarAdelanto) => send<Adelanto>('POST', '/adelantos', d),
+  actualizarAdelanto: (id: string, d: Partial<GuardarAdelanto>) => send<Adelanto>('PUT', `/adelantos/${id}`, d),
+  eliminarAdelanto: (id: string) => del(`/adelantos/${id}`),
+  /** Descuenta de la deuda el saldo a favor del acreedor (todo lo posible, o `monto`). */
+  aplicarAdelantos: (deudaId: string, monto?: number) =>
+    send<Deuda>('POST', `/deudas/${deudaId}/aplicar-adelantos`, monto ? { monto } : {}),
+
+  subirComprobantes: (pagoId: string, archivos: File[]) =>
+    subir<Pago>(`/pagos/${pagoId}/comprobantes`, archivos),
+  subirComprobantesAdelanto: (adelantoId: string, archivos: File[]) =>
+    subir<Adelanto>(`/adelantos/${adelantoId}/comprobantes`, archivos),
 
   /** Abre el comprobante en otra pestaña (fetch con token → blob:). */
   async abrirComprobante(c: Comprobante): Promise<void> {

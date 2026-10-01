@@ -4,6 +4,8 @@ import { useEffect, useMemo, useState } from 'react';
 import { toast } from 'sonner';
 import {
   FilePlus2,
+  PiggyBank,
+  Repeat2,
   FileX2,
   HandCoins,
   History,
@@ -19,7 +21,9 @@ import { contableService, type Movimiento, type TipoMovimiento } from '@/service
 import { useContable } from './contexto';
 import { Cargando, formatMonto, haceCuanto, Panel, Vacio } from './ui';
 
-const TIPOS: Record<TipoMovimiento, { Icono: LucideIcon; clase: string; grupo: 'deudas' | 'pagos' | 'acreedores' }> = {
+type Grupo = 'deudas' | 'pagos' | 'adelantos' | 'acreedores';
+
+const TIPOS: Record<TipoMovimiento, { Icono: LucideIcon; clase: string; grupo: Grupo }> = {
   ACREEDOR_CREADO: { Icono: UserPlus, clase: 'bg-[#fbeef2] text-[#8b5a6b]', grupo: 'acreedores' },
   ACREEDOR_EDITADO: { Icono: PencilLine, clase: 'bg-[#fbeef2] text-[#8b5a6b]', grupo: 'acreedores' },
   ACREEDOR_ELIMINADO: { Icono: UserX, clase: 'bg-gray-100 text-gray-600', grupo: 'acreedores' },
@@ -31,12 +35,17 @@ const TIPOS: Record<TipoMovimiento, { Icono: LucideIcon; clase: string; grupo: '
   PAGO_ELIMINADO: { Icono: Trash2, clase: 'bg-gray-100 text-gray-600', grupo: 'pagos' },
   COMPROBANTE_AGREGADO: { Icono: FilePlus2, clase: 'bg-blue-50 text-[#3565b8]', grupo: 'pagos' },
   COMPROBANTE_ELIMINADO: { Icono: FileX2, clase: 'bg-gray-100 text-gray-600', grupo: 'pagos' },
+  ADELANTO_REGISTRADO: { Icono: PiggyBank, clase: 'bg-teal-50 text-teal-700', grupo: 'adelantos' },
+  ADELANTO_EDITADO: { Icono: PencilLine, clase: 'bg-teal-50 text-teal-700', grupo: 'adelantos' },
+  ADELANTO_ELIMINADO: { Icono: Trash2, clase: 'bg-gray-100 text-gray-600', grupo: 'adelantos' },
+  ADELANTO_APLICADO: { Icono: Repeat2, clase: 'bg-teal-50 text-teal-700', grupo: 'adelantos' },
 };
 
 const CAMPOS: Record<string, string> = {
   monto: 'Monto',
   fecha: 'Fecha',
   vencimiento: 'Vencimiento',
+  fechaEstimada: 'Fecha estimada',
   concepto: 'Concepto',
   moneda: 'Moneda',
   metodo: 'Método',
@@ -53,7 +62,7 @@ const CAMPOS: Record<string, string> = {
 function valorLegible(campo: string, v: unknown, moneda: Movimiento['moneda']): string {
   if (v === null || v === undefined || v === '') return '—';
   if (campo === 'monto' && moneda) return formatMonto(Number(v), moneda);
-  if ((campo === 'fecha' || campo === 'vencimiento') && typeof v === 'string') return formatDiaISO(v);
+  if ((campo === 'fecha' || campo === 'vencimiento' || campo === 'fechaEstimada') && typeof v === 'string') return formatDiaISO(v);
   if (campo === 'acreedorId') return 'otro acreedor';
   return String(v);
 }
@@ -87,10 +96,16 @@ export function ItemHistorial({ m, compacto = false }: { m: Movimiento; compacto
             <span
               className={cn(
                 'text-sm font-semibold tabular-nums',
-                eliminado ? 'text-[#9a7d88] line-through' : t.grupo === 'pagos' ? 'text-[#3565b8]' : 'text-[#3d2a32]',
+                eliminado
+                  ? 'text-[#9a7d88] line-through'
+                  : t.grupo === 'pagos'
+                    ? 'text-[#3565b8]'
+                    : t.grupo === 'adelantos'
+                      ? 'text-teal-700'
+                      : 'text-[#3d2a32]',
               )}
             >
-              {t.grupo === 'pagos' && !eliminado ? '− ' : ''}
+              {(t.grupo === 'pagos' || m.tipo === 'ADELANTO_REGISTRADO') && !eliminado ? '− ' : ''}
               {formatMonto(m.monto, m.moneda)}
             </span>
           )}
@@ -119,6 +134,7 @@ const FILTROS = [
   { id: 'todo', texto: 'Todo' },
   { id: 'deudas', texto: 'Deudas' },
   { id: 'pagos', texto: 'Pagos y comprobantes' },
+  { id: 'adelantos', texto: 'Adelantos' },
   { id: 'acreedores', texto: 'Acreedores' },
 ] as const;
 
