@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { toast } from 'sonner';
 import { ChevronLeft, ChevronRight, Download, Inbox, Repeat, Users } from 'lucide-react';
-import { Sheet, SheetContent, SheetTitle } from '@/components/ui/sheet';
+import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog';
 import { formatDiaConNombre, formatDiaISO } from '@/lib/utils';
 import {
   duracion,
@@ -96,21 +96,12 @@ export default function Presentismo() {
   const [version, setVersion] = useState(0);
   const [enVivo, setEnVivo] = useState(false);
   const [bajando, setBajando] = useState(false);
-  const [esAncho, setEsAncho] = useState(true);
   const [leyendaAbierta, setLeyendaAbierta] = useState(false);
 
   const hoy = hoyISO();
   const { desde, hasta } = periodoDe(zoom, fecha);
   const incluyeHoy = desde <= hoy && hoy <= hasta;
   const recargar = useCallback(() => setVersion((v) => v + 1), []);
-
-  useEffect(() => {
-    const mq = window.matchMedia('(min-width: 1024px)');
-    const actualizar = () => setEsAncho(mq.matches);
-    actualizar();
-    mq.addEventListener('change', actualizar);
-    return () => mq.removeEventListener('change', actualizar);
-  }, []);
 
   // Asistencia del período: la usan las tres escalas y el panel.
   useEffect(() => {
@@ -242,7 +233,7 @@ export default function Presentismo() {
         fila={filaDe(seleccion.userId, seleccion.day)}
         pendientes={pendientesDe(personaSel.nombre)}
         onCambio={recargar}
-        onCerrar={esAncho ? () => setSeleccion(null) : null}
+        onCerrar={() => setSeleccion(null)}
         onIrAlDia={zoom === 'dia' ? undefined : () => irAlDia(seleccion.day)}
       />
     ) : null;
@@ -391,8 +382,8 @@ export default function Presentismo() {
             </div>
           </div>
 
-          <div className="flex items-start gap-4">
-            <div key={`${zoom}-${desde}`} className="mg-entrar min-w-0 flex-1">
+          <div>
+            <div key={`${zoom}-${desde}`} className="mg-entrar min-w-0">
               {zoom === 'dia' && (
                 <VistaDia
                   dia={fecha}
@@ -433,21 +424,20 @@ export default function Presentismo() {
               )}
             </div>
 
-            {esAncho && panel && (
-              <aside className="mg-entrar sticky top-4 w-[340px] shrink-0 rounded-xl border border-[#f5d0d9] bg-white">
-                {panel}
-              </aside>
-            )}
           </div>
 
-          {!esAncho && (
-            <Sheet open={!!panel} onOpenChange={(abierto) => !abierto && setSeleccion(null)}>
-              <SheetContent side="bottom" className="max-h-[85vh] overflow-y-auto rounded-t-2xl bg-white p-0">
-                <SheetTitle className="sr-only">Detalle del día</SheetTitle>
-                {panel}
-              </SheetContent>
-            </Sheet>
-          )}
+          {/* El detalle del día se abre en un modal sobre la grilla. */}
+          <Dialog open={!!panel} onOpenChange={(abierto) => !abierto && setSeleccion(null)}>
+            <DialogContent
+              showCloseButton={false}
+              className="max-h-[90vh] gap-0 overflow-y-auto border-[#f5d0d9] bg-white p-0 text-[#4a3540] sm:max-w-md"
+            >
+              <DialogTitle className="sr-only">
+                {personaSel ? `${personaSel.nombre}, detalle del día` : 'Detalle del día'}
+              </DialogTitle>
+              {panel}
+            </DialogContent>
+          </Dialog>
         </>
       ) : (
         <div className="mg-entrar pt-4">
