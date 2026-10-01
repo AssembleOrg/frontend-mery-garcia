@@ -252,8 +252,9 @@ export default function Presentismo() {
   return (
     <div className="mg-presentismo text-[#4a3540]">
       {/* Barra */}
-      <div className="flex flex-col gap-3 border-b border-[#f5d0d9] pb-4 lg:grid lg:grid-cols-[auto_1fr_auto] lg:items-center lg:gap-6">
-        <div className="flex items-center">
+      {/* La barra se acomoda en una o dos líneas según el ancho: nunca empuja la página. */}
+      <div className="flex flex-wrap items-center gap-x-4 gap-y-3 border-b border-[#f5d0d9] pb-4">
+        <div className="flex w-full items-center sm:w-auto">
           <div role="tablist" aria-label="Escala" className="grid w-full grid-cols-3 rounded-lg border border-[#f5d0d9] bg-white p-0.5 sm:inline-flex sm:w-auto">
             {ZOOMS.map((z) => {
               const activo = vista === z.id;
@@ -275,7 +276,7 @@ export default function Presentismo() {
         </div>
 
         {enGrilla ? (
-            <div className="flex w-full items-center justify-between gap-1 sm:w-auto sm:justify-center">
+            <div className="flex w-full items-center justify-between gap-1 sm:w-auto sm:flex-1 sm:justify-center">
               <BotonIcono onClick={() => mover(-1)} etiqueta="Anterior">
                 <ChevronLeft className="h-4 w-4" />
               </BotonIcono>
@@ -314,11 +315,9 @@ export default function Presentismo() {
                 </span>
               )}
             </div>
-        ) : (
-          <span className="hidden lg:block" />
-        )}
+        ) : null}
 
-        <div className="flex items-center gap-1 lg:justify-end">
+        <div className="ml-auto flex items-center gap-1">
           <BotonSeccion activo={vista === 'pendientes'} onClick={() => setVista('pendientes')}>
             <Inbox className="h-4 w-4" />
             <span className="sr-only sm:not-sr-only">Pendientes</span>
