@@ -40,12 +40,22 @@ export default function ListaLotes({
                   <p className="mt-0.5 truncate text-xs text-[#9a7d88]">{l.nombreArchivo}</p>
                   <p className="mt-1 text-xs text-[#6b4c57] tabular-nums">
                     {r.total} hojas
-                    {r.ok + r.revisar + r.noEncontradas > 0 && (
+                    {r.ok + r.pendientesAprobacion + r.aprobadas + r.conError > 0 && (
                       <>
                         {' · '}
-                        <span className="text-emerald-700">{r.ok} OK</span>
-                        {' · '}
-                        <span className="text-amber-700">{r.revisar + r.noEncontradas} revisar</span>
+                        <span className="text-emerald-700">{r.ok + r.aprobadas} OK</span>
+                        {r.pendientesAprobacion > 0 && (
+                          <>
+                            {' · '}
+                            <span className="text-amber-700">{r.pendientesAprobacion} {r.pendientesAprobacion === 1 ? 'pendiente' : 'pendientes'}</span>
+                          </>
+                        )}
+                        {r.conError > 0 && (
+                          <>
+                            {' · '}
+                            <span className="text-red-700">{r.conError} con error</span>
+                          </>
+                        )}
                       </>
                     )}
                     {l.costoUsd > 0 && ` · ${usd(l.costoUsd)}`}

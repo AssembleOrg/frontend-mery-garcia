@@ -3,6 +3,8 @@ import { apiFetch, getToken } from '@/lib/apiClient';
 export type EstadoLote = 'SUBIDO' | 'LEYENDO' | 'LISTO';
 export type EstadoPagina = 'PENDIENTE' | 'LEYENDO' | 'LEIDA' | 'ERROR';
 export type ResultadoPagina = 'OK' | 'REVISAR' | 'NO_ENCONTRADA';
+/** Decisión de una persona sobre la hoja. */
+export type RevisionPagina = 'APROBADA' | 'CON_ERROR';
 export type CampoDiferencia = 'fecha' | 'cliente' | 'servicios' | 'responsables' | 'sena' | 'cobrado' | 'anulada';
 
 /** Lo que leyó la IA en la hoja (sin ver el sistema). */
@@ -34,9 +36,12 @@ export interface ComandaSistema {
   estado: string;
   cliente: string | null;
   observaciones: string | null;
-  items: { nombre: string; trabajador: string | null }[];
+  items: { nombre: string; trabajador: string | null; cantidad?: number; subtotal?: number }[];
   pagos: { tipo: string; moneda: string; monto: number }[];
-  senas: { moneda: string; monto: number }[];
+  senas: { moneda: string; monto: number; tipoPago?: string }[];
+  precioPesos?: number;
+  precioDolar?: number;
+  cargadaPor?: string | null;
 }
 
 export interface Diferencia {
@@ -62,17 +67,29 @@ export interface Hoja {
   costoUsd: number;
   error: string | null;
   leidaAt: string | null;
+  /** sha256 de la imagen (la misma foto no se paga dos veces). */
+  huella: string | null;
+  /** La lectura se copió de esta hoja: misma foto ya leída antes, sin costo. */
+  lecturaDeId: string | null;
+  revision: RevisionPagina | null;
+  revisionNota: string | null;
+  revisadoPorNombre: string | null;
+  revisadoAt: string | null;
   /** El mismo número aparece en otra hoja del lote. */
   repetida: boolean;
 }
 
 export interface ResumenLote {
   total: number;
-  pendientes: number;
+  sinLeer: number;
   leyendo: number;
   errores: number;
+  /** La IA no encontró diferencias y nadie la revisó todavía. */
   ok: number;
-  revisar: number;
+  /** Hay diferencias (o no está en el sistema) y espera que una persona decida. */
+  pendientesAprobacion: number;
+  aprobadas: number;
+  conError: number;
   noEncontradas: number;
 }
 
@@ -95,6 +112,8 @@ export interface Lote {
 
 export interface LoteDetalle extends Lote {
   iaConfigurada: boolean;
+  /** Hojas sin leer cuya foto ya se leyó en otro lote: al leer, no se cobran. */
+  reutilizables: number;
   paginas: Hoja[];
   /** Comandas cargadas ese día que no aparecen en ninguna hoja. */
   faltantes: { id: string; numero: string; cliente: string | null; estado: string }[];
@@ -154,6 +173,21 @@ export const validacionComandasService = {
   eliminar: async (id: string) => {
     await apiFetch(`${BASE}/lotes/${id}`, { method: 'DELETE' });
   },
+
+  /** Una persona aprueba la hoja o marca un error real (con nota). No modifica la comanda. */
+  revisar: async (paginaId: string, decision: RevisionPagina, nota?: string) =>
+    (
+      await apiFetch<Envelope<LoteDetalle>>(`${BASE}/paginas/${paginaId}/revision`, {
+        method: 'POST',
+        json: { decision, nota },
+      })
+    ).data,
+  deshacerRevision: async (paginaId: string) =>
+    (await apiFetch<Envelope<LoteDetalle>>(`${BASE}/paginas/${paginaId}/revision`, { method: 'DELETE' })).data,
+
+  /** Gemelo digital: la comanda del sistema por número ("01-11089"). */
+  gemelo: async (numero: string) =>
+    (await apiFetch<Envelope<ComandaSistema>>(`${BASE}/comandas/${encodeURIComponent(numero)}`)).data,
 
   /**
    * Imagen de la hoja como URL local (blob:). Se usa fetch y no `src` directo

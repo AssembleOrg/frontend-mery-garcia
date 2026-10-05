@@ -1,8 +1,8 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { toast } from 'sonner';
-import { AlertTriangle, CheckCircle2, FileQuestion, HelpCircle, RefreshCw, Sparkles, Trash2 } from 'lucide-react';
+import { CheckCircle2, Clock, FileQuestion, RefreshCw, ShieldCheck, ShieldX, Sparkles, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
   AlertDialog,
@@ -14,22 +14,67 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { cn, formatDiaISO } from '@/lib/utils';
-import { mensajeError, validacionComandasService, type Hoja, type LoteDetalle } from '@/services/validacionComandas.service';
-import { Panel } from '@/components/contable/ui';
+import {
+  mensajeError,
+  validacionComandasService,
+  type ComandaSistema,
+  type LoteDetalle,
+} from '@/services/validacionComandas.service';
+import { Cargando, Panel } from '@/components/contable/ui';
 import ImagenHoja from './ImagenHoja';
 import HojaDialog from './HojaDialog';
-import { COSTO_HOJA_USD, Insignia, textoEstadoLote, usd, visualHoja } from './formato';
+import GemeloComanda from './GemeloComanda';
+import { COSTO_HOJA_USD, esPendiente, Insignia, textoEstadoLote, usd, visualHoja } from './formato';
 
 const FILTROS = [
   { id: 'todas', texto: 'Todas' },
-  { id: 'revisar', texto: 'Revisar' },
-  { id: 'ok', texto: 'Coinciden' },
-  { id: 'sinLeer', texto: 'Sin leer / error' },
+  { id: 'pendientes', texto: 'Pendientes de aprobación' },
+  { id: 'ok', texto: 'OK' },
+  { id: 'aprobadas', texto: 'Aprobadas' },
+  { id: 'conError', texto: 'Con error' },
+  { id: 'sinLeer', texto: 'Sin leer' },
 ] as const;
 type Filtro = (typeof FILTROS)[number]['id'];
 
-const esRevisar = (h: Hoja) => h.estado === 'LEIDA' && (h.resultado !== 'OK' || h.repetida);
+const CAMPO_CORTO: Record<string, string> = {
+  fecha: 'fecha',
+  cliente: 'clienta',
+  servicios: 'servicios',
+  responsables: 'responsable',
+  sena: 'seña',
+  cobrado: 'cobrado',
+  anulada: 'anulada',
+};
+
+/** Gemelo de una comanda cargada que no tiene hoja de papel en el lote. */
+function GemeloSinPapel({ numero, onCerrar }: { numero: string | null; onCerrar: () => void }) {
+  const [gemelo, setGemelo] = useState<ComandaSistema | null>(null);
+  useEffect(() => {
+    if (!numero) return;
+    let vivo = true;
+    setGemelo(null);
+    validacionComandasService
+      .gemelo(numero)
+      .then((g) => vivo && setGemelo(g))
+      .catch((e) => toast.error(mensajeError(e, 'No se pudo cargar la comanda')));
+    return () => {
+      vivo = false;
+    };
+  }, [numero]);
+  return (
+    <Dialog open={!!numero} onOpenChange={(o) => !o && onCerrar()}>
+      <DialogContent className="max-h-[94vh] grid-cols-[minmax(0,1fr)] overflow-y-auto sm:max-w-xl">
+        <DialogHeader>
+          <DialogTitle className="text-[#3d2a32]">Comanda {numero} · sin papel</DialogTitle>
+          <DialogDescription>Está cargada en el sistema con la fecha del lote, pero no aparece en ninguna hoja.</DialogDescription>
+        </DialogHeader>
+        {gemelo ? <GemeloComanda sistema={gemelo} /> : <Cargando alto="h-96" />}
+      </DialogContent>
+    </Dialog>
+  );
+}
 
 export default function DetalleLote({
   lote,
@@ -42,23 +87,35 @@ export default function DetalleLote({
 }) {
   const [filtro, setFiltro] = useState<Filtro>('todas');
   const [abierta, setAbierta] = useState<number | null>(null);
+  const [sinPapel, setSinPapel] = useState<string | null>(null);
   const [confirmarLectura, setConfirmarLectura] = useState(false);
   const [confirmarBorrado, setConfirmarBorrado] = useState(false);
   const [ocupado, setOcupado] = useState(false);
   const r = lote.resumen;
-  const porLeer = r.pendientes + r.errores;
+  const porLeer = r.sinLeer + r.errores;
+  /** Las fotos ya leídas en otro lote reutilizan esa lectura: no se cobran. */
+  const aCobrar = Math.max(0, porLeer - lote.reutilizables);
+  const reutilizadas = lote.paginas.filter((h) => h.lecturaDeId).length;
+  const leidas = r.ok + r.pendientesAprobacion + r.aprobadas + r.conError;
 
   const visibles = useMemo(
     () =>
-      lote.paginas.filter((h) =>
-        filtro === 'revisar'
-          ? esRevisar(h)
-          : filtro === 'ok'
-            ? h.estado === 'LEIDA' && h.resultado === 'OK' && !h.repetida
-            : filtro === 'sinLeer'
-              ? h.estado !== 'LEIDA'
-              : true,
-      ),
+      lote.paginas.filter((h) => {
+        switch (filtro) {
+          case 'pendientes':
+            return esPendiente(h);
+          case 'ok':
+            return h.estado === 'LEIDA' && !h.revision && !esPendiente(h);
+          case 'aprobadas':
+            return h.revision === 'APROBADA';
+          case 'conError':
+            return h.revision === 'CON_ERROR';
+          case 'sinLeer':
+            return h.estado !== 'LEIDA';
+          default:
+            return true;
+        }
+      }),
     [lote.paginas, filtro],
   );
 
@@ -75,7 +132,7 @@ export default function DetalleLote({
     }
   };
 
-  const hojaAbierta = abierta !== null ? lote.paginas.find((h) => h.orden === abierta) ?? null : null;
+  const hojaAbierta = abierta !== null ? (lote.paginas.find((h) => h.orden === abierta) ?? null) : null;
 
   return (
     <div className="space-y-5">
@@ -85,26 +142,26 @@ export default function DetalleLote({
             Comandas del {formatDiaISO(lote.fecha)} <Insignia v={textoEstadoLote(lote)} />
           </span>
         }
-        subtitulo={`${lote.nombreArchivo} · subido por ${lote.creadoPorNombre ?? '—'}${lote.costoUsd > 0 ? ` · costo IA ${usd(lote.costoUsd)}` : ''}`}
+        subtitulo={`${lote.nombreArchivo} · subido por ${lote.creadoPorNombre ?? '—'}${lote.costoUsd > 0 ? ` · costo IA ${usd(lote.costoUsd)}` : ''}${reutilizadas ? ` · ${reutilizadas} ${reutilizadas === 1 ? 'hoja reutilizada' : 'hojas reutilizadas'} sin costo` : ''}`}
         accion={
           <div className="flex flex-wrap justify-end gap-2">
             {porLeer > 0 && (
               <Button
                 size="sm"
                 className="bg-[#8b5a6b] text-white hover:bg-[#744a5a]"
-                disabled={ocupado || lote.leyendo || !lote.iaConfigurada}
-                title={lote.iaConfigurada ? undefined : 'Falta ANTHROPIC_API_KEY en el servidor'}
+                disabled={ocupado || lote.leyendo || (!lote.iaConfigurada && aCobrar > 0)}
+                title={lote.iaConfigurada || aCobrar === 0 ? undefined : 'Falta ANTHROPIC_API_KEY en el servidor'}
                 onClick={() => setConfirmarLectura(true)}
               >
                 <Sparkles className="mr-1 h-4 w-4" /> Leer con IA ({porLeer})
               </Button>
             )}
-            {r.ok + r.revisar + r.noEncontradas > 0 && (
+            {leidas > 0 && (
               <Button
                 size="sm"
                 variant="outline"
                 disabled={ocupado || lote.leyendo}
-                title="Vuelve a comparar lo ya leído contra el sistema (por si corregiste comandas). No usa IA."
+                title="Vuelve a comparar contra el sistema (por si corregiste comandas). No usa IA. Si una comparación cambia, su revisión se borra."
                 onClick={() => accion(() => validacionComandasService.recomparar(lote.id), 'Comparación actualizada')}
               >
                 <RefreshCw className="mr-1 h-3.5 w-3.5" /> Volver a comparar
@@ -116,6 +173,7 @@ export default function DetalleLote({
               className="text-red-600 hover:text-red-700"
               disabled={ocupado || lote.leyendo}
               onClick={() => setConfirmarBorrado(true)}
+              title="Borrar lote"
             >
               <Trash2 className="h-3.5 w-3.5" />
             </Button>
@@ -127,31 +185,46 @@ export default function DetalleLote({
             La lectura con IA no está configurada en el servidor (falta ANTHROPIC_API_KEY).
           </p>
         )}
-        <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
+        <div className="grid grid-cols-2 gap-3 md:grid-cols-5">
           {[
-            { t: 'Coinciden', n: r.ok, Icono: CheckCircle2, c: 'text-emerald-700 bg-emerald-50' },
-            { t: 'Revisar', n: r.revisar, Icono: AlertTriangle, c: 'text-amber-800 bg-amber-50' },
-            { t: 'No están en el sistema', n: r.noEncontradas, Icono: HelpCircle, c: 'text-red-700 bg-red-50' },
-            { t: 'Cargadas sin papel', n: lote.faltantes.length, Icono: FileQuestion, c: 'text-[#8b5a6b] bg-[#fbeef2]' },
+            { t: 'OK', n: r.ok, Icono: CheckCircle2, c: 'text-emerald-700 bg-emerald-50', f: 'ok' as Filtro },
+            { t: 'Pendientes de aprobación', n: r.pendientesAprobacion, Icono: Clock, c: 'text-amber-800 bg-amber-50', f: 'pendientes' as Filtro },
+            { t: 'Aprobadas', n: r.aprobadas, Icono: ShieldCheck, c: 'text-emerald-800 bg-emerald-100', f: 'aprobadas' as Filtro },
+            { t: 'Con error', n: r.conError, Icono: ShieldX, c: 'text-red-700 bg-red-50', f: 'conError' as Filtro },
+            { t: 'Cargadas sin papel', n: lote.faltantes.length, Icono: FileQuestion, c: 'text-[#8b5a6b] bg-[#fbeef2]', f: null },
           ].map((x) => (
-            <div key={x.t} className="rounded-xl border border-[#f0dde3] bg-white p-3">
-              <div className="flex items-center justify-between">
-                <p className="text-[11px] tracking-wide text-[#9a7d88] uppercase">{x.t}</p>
+            <button
+              key={x.t}
+              type="button"
+              disabled={!x.f}
+              onClick={() => x.f && setFiltro(x.f)}
+              className={cn(
+                'rounded-xl border bg-white p-3 text-left transition-colors enabled:hover:border-[#d9b8c4]',
+                x.f && filtro === x.f ? 'border-[#8b5a6b]' : 'border-[#f0dde3]',
+              )}
+            >
+              <div className="flex items-center justify-between gap-2">
+                <p className="text-[11px] leading-tight tracking-wide text-[#9a7d88] uppercase">{x.t}</p>
                 <span className={cn('rounded-lg p-1', x.c)}>
                   <x.Icono className="h-3.5 w-3.5" />
                 </span>
               </div>
               <p className="mt-1 text-2xl font-semibold text-[#3d2a32] tabular-nums">{x.n}</p>
-            </div>
+            </button>
           ))}
         </div>
+        {leidas > 0 && r.pendientesAprobacion === 0 && porLeer === 0 && (
+          <p className="mt-3 rounded-xl bg-emerald-50 px-3 py-2 text-sm text-emerald-900">
+            No queda nada pendiente de aprobación en este lote.
+          </p>
+        )}
       </Panel>
 
       <Panel
         titulo="Hojas"
-        subtitulo="Tocá una hoja para ver el papel al lado del sistema."
+        subtitulo="Tocá una hoja para ver el papel al lado de su gemelo digital y aprobarla."
         accion={
-          <div className="flex flex-wrap gap-1">
+          <div className="flex flex-wrap justify-end gap-1">
             {FILTROS.map((f) => (
               <button
                 key={f.id}
@@ -181,7 +254,7 @@ export default function DetalleLote({
                   onClick={() => setAbierta(h.orden)}
                   className={cn(
                     'group overflow-hidden rounded-xl border bg-white text-left transition-shadow hover:shadow-[0_8px_24px_-14px_rgba(139,90,107,0.45)]',
-                    esRevisar(h) ? 'border-amber-200' : 'border-[#f0dde3]',
+                    esPendiente(h) ? 'border-amber-200' : h.revision === 'CON_ERROR' ? 'border-red-200' : 'border-[#f0dde3]',
                   )}
                 >
                   <ImagenHoja paginaId={h.id} alt={`Hoja ${h.orden}`} className="aspect-[3/4] w-full border-b border-[#f7ecef]" />
@@ -191,11 +264,9 @@ export default function DetalleLote({
                       <span className="ml-1 font-normal text-[#9a7d88]">· hoja {h.orden}</span>
                     </p>
                     <Insignia v={v} />
-                    <p className="truncate text-xs text-[#6b4c57]">{h.lectura?.cliente ?? (h.estado === 'LEIDA' ? '—' : ' ')}</p>
-                    {h.diferencias && h.diferencias.length > 0 && (
-                      <p className="truncate text-[11px] text-amber-800">
-                        {h.diferencias.map((d) => ({ fecha: 'fecha', cliente: 'clienta', servicios: 'servicios', responsables: 'responsable', sena: 'seña', cobrado: 'cobrado', anulada: 'anulada' })[d.campo]).join(' · ')}
-                      </p>
+                    <p className="truncate text-xs text-[#6b4c57]">{h.sistema?.cliente ?? h.lectura?.cliente ?? (h.estado === 'LEIDA' ? '—' : ' ')}</p>
+                    {esPendiente(h) && h.diferencias && h.diferencias.length > 0 && (
+                      <p className="truncate text-[11px] text-amber-800">{h.diferencias.map((d) => CAMPO_CORTO[d.campo]).join(' · ')}</p>
                     )}
                   </div>
                 </button>
@@ -208,19 +279,25 @@ export default function DetalleLote({
       {lote.faltantes.length > 0 && (
         <Panel
           titulo="Cargadas en el sistema sin papel"
-          subtitulo={`Comandas de ingreso del ${formatDiaISO(lote.fecha)} que no aparecen en ninguna hoja del lote.`}
+          subtitulo={`Comandas de ingreso del ${formatDiaISO(lote.fecha)} que no aparecen en ninguna hoja. Tocá una para ver su gemelo.`}
           cuerpoClassName="p-2"
         >
           <ul className="divide-y divide-[#f7ecef]">
             {lote.faltantes.map((f) => (
-              <li key={f.id} className="flex items-center justify-between gap-3 px-3 py-2 text-sm">
-                <span className="font-medium text-[#3d2a32]">{f.numero}</span>
-                <span className="flex-1 truncate text-[#6b4c57]">{f.cliente ?? '—'}</span>
-                <span className="text-xs text-[#9a7d88]">{f.estado}</span>
+              <li key={f.id}>
+                <button
+                  type="button"
+                  onClick={() => setSinPapel(f.numero)}
+                  className="flex w-full items-center justify-between gap-3 rounded-lg px-3 py-2 text-left text-sm hover:bg-[#fdf6f8]"
+                >
+                  <span className="font-medium text-[#3d2a32]">{f.numero}</span>
+                  <span className="flex-1 truncate text-[#6b4c57]">{f.cliente ?? '—'}</span>
+                  <span className="text-xs text-[#9a7d88]">{f.estado}</span>
+                </button>
               </li>
             ))}
           </ul>
-          {r.pendientes > 0 && (
+          {r.sinLeer > 0 && (
             <p className="px-3 pb-2 text-xs text-[#9a7d88]">Hasta leer todas las hojas, esta lista incluye las que todavía no se leyeron.</p>
           )}
         </Panel>
@@ -233,14 +310,20 @@ export default function DetalleLote({
         onMover={(d) => setAbierta((o) => (o === null ? o : Math.min(lote.totalPaginas, Math.max(1, o + d))))}
         onActualizado={onActualizado}
       />
+      <GemeloSinPapel numero={sinPapel} onCerrar={() => setSinPapel(null)} />
 
       <AlertDialog open={confirmarLectura} onOpenChange={setConfirmarLectura}>
         <AlertDialogContent className="bg-white">
           <AlertDialogHeader>
-            <AlertDialogTitle>¿Leer {porLeer} {porLeer === 1 ? 'hoja' : 'hojas'} con IA?</AlertDialogTitle>
+            <AlertDialogTitle>
+              ¿Leer {porLeer} {porLeer === 1 ? 'hoja' : 'hojas'} con IA?
+            </AlertDialogTitle>
             <AlertDialogDescription>
-              Costo aproximado {usd(porLeer * COSTO_HOJA_USD)}. La IA lee cada hoja y se compara contra el sistema. No se
-              modifica ninguna comanda.
+              {aCobrar > 0 ? `Costo aproximado ${usd(aCobrar * COSTO_HOJA_USD)}.` : 'Sin costo.'}
+              {lote.reutilizables > 0 &&
+                ` ${lote.reutilizables === 1 ? 'Una hoja ya se leyó' : `${lote.reutilizables} hojas ya se leyeron`} antes (misma foto): se reutiliza esa lectura sin pagar de nuevo.`}{' '}
+              {aCobrar > 0 ? 'La IA lee cada hoja y se compara contra el sistema.' : 'Se compara cada hoja contra el sistema.'} No
+              se modifica ninguna comanda.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -259,7 +342,9 @@ export default function DetalleLote({
         <AlertDialogContent className="bg-white">
           <AlertDialogHeader>
             <AlertDialogTitle>¿Borrar el lote?</AlertDialogTitle>
-            <AlertDialogDescription>Se borran las hojas y las lecturas de este lote. Las comandas del sistema no se tocan.</AlertDialogDescription>
+            <AlertDialogDescription>
+              Se borran las hojas, las lecturas y las revisiones de este lote. Las comandas del sistema no se tocan.
+            </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancelar</AlertDialogCancel>
