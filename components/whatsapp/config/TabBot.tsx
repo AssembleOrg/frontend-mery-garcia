@@ -22,6 +22,9 @@ const DIAS = [
 ];
 
 const MENSAJES: Array<{ clave: keyof MensajesBot; titulo: string; ayuda: string }> = [
+  { clave: 'presentacion', titulo: 'Presentación', ayuda: 'Va al principio del primer mensaje de cada charla, para que sepa con quién habla. {nombre} se reemplaza por el nombre de la clienta (si no se sabe, se saca).' },
+  { clave: 'presentacionClienta', titulo: 'Presentación para clientas', ayuda: 'En lugar de la anterior, cuando el celular coincide con una clienta del sistema. {nombre} sale de su ficha.' },
+  { clave: 'bienvenida', titulo: 'Bienvenida', ayuda: 'Después de la presentación, cuando la clienta sólo saludó y todavía no preguntó nada.' },
   { clave: 'derivacion', titulo: 'Cuando pasa la charla a una persona', ayuda: 'Se manda cuando la clienta pide hablar con alguien o el bot no entendió dos veces.' },
   { clave: 'fueraDeHorario', titulo: 'Fuera del horario de atención', ayuda: 'Se agrega cuando una charla pasa a una persona y el local está cerrado. {horario} se reemplaza por el horario de abajo.' },
   { clave: 'noEntendi', titulo: 'No entendió (menú)', ayuda: 'La primera vez que no entiende ofrece este menú. 1 y 2 mandan las respuestas elegidas abajo; 3 pasa a una persona.' },

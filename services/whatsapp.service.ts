@@ -82,6 +82,9 @@ export interface HorarioAtencion {
 }
 
 export interface MensajesBot {
+  presentacion: string;
+  presentacionClienta: string;
+  bienvenida: string;
   saludo: string;
   noEntendi: string;
   derivacion: string;
