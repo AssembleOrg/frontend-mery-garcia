@@ -3,7 +3,7 @@ import { apiFetch, getToken } from '@/lib/apiClient';
 // ─── Tipos ───────────────────────────────────────────────────────
 
 export type EstadoConversacion = 'BOT' | 'ESPERANDO' | 'ATENDIDA' | 'CERRADA';
-export type FiltroEstado = 'ABIERTAS' | EstadoConversacion;
+export type FiltroEstado = 'ABIERTAS' | 'VENCIDAS' | EstadoConversacion;
 export type TipoMensaje = 'TEXTO' | 'AUDIO' | 'IMAGEN' | 'DOCUMENTO' | 'OTRO';
 export type AutorMensaje = 'CLIENTA' | 'BOT' | 'OPERADOR';
 
@@ -26,6 +26,11 @@ export interface Conversacion {
   ultimoMensajeAt: string | null;
   ultimoEntranteAt: string | null;
   esperandoDesde: string | null;
+  /**
+   * Esperó a una persona más de una hora, nadie la tomó y volvió sola al bot.
+   * Queda hasta que alguien la revisa (la toma, le escribe o la marca revisada).
+   */
+  vencida: { at: string; motivo: string | null; esperandoDesde: string | null } | null;
   iniciadaAt: string;
   cerradaAt: string | null;
   motivoCierre: string | null;
@@ -157,14 +162,16 @@ export const whatsappService = {
     dia?: string;
     pagina?: number;
     porPagina?: number;
-  }): Promise<{ items: Conversacion[]; total: number; esperando: number; noLeidos: number }> {
+  }): Promise<{ items: Conversacion[]; total: number; esperando: number; vencidas: number; noLeidos: number }> {
     const qs = new URLSearchParams();
     if (params.estado) qs.set('estado', params.estado);
     if (params.q) qs.set('q', params.q);
     if (params.dia) qs.set('dia', params.dia);
     if (params.pagina) qs.set('pagina', String(params.pagina));
     if (params.porPagina) qs.set('porPagina', String(params.porPagina));
-    const res = await apiFetch<Envelope<{ items: Conversacion[]; total: number; esperando: number; noLeidos: number }>>(
+    const res = await apiFetch<
+      Envelope<{ items: Conversacion[]; total: number; esperando: number; vencidas: number; noLeidos: number }>
+    >(
       `${BASE}/conversaciones?${qs.toString()}`,
     );
     return res.data;
@@ -183,6 +190,14 @@ export const whatsappService = {
 
   async tomar(id: string): Promise<Conversacion> {
     const res = await apiFetch<Envelope<Conversacion>>(`${BASE}/conversaciones/${id}/tomar`, { method: 'POST' });
+    return res.data;
+  },
+
+  /** Ya la miró alguien: sale de "Vencidas" sin cambiar de estado. */
+  async revisarVencida(id: string): Promise<Conversacion> {
+    const res = await apiFetch<Envelope<Conversacion>>(`${BASE}/conversaciones/${id}/revisar-vencida`, {
+      method: 'POST',
+    });
     return res.data;
   },
 

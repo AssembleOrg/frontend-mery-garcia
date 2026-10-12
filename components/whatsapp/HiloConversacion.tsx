@@ -21,14 +21,14 @@ import { useAuth } from '@/features/auth/hooks/useAuth';
 import type { Mensaje } from '@/services/whatsapp.service';
 import BurbujaMensaje from './BurbujaMensaje';
 import GrabadorAudio from './GrabadorAudio';
-import { ESTADO_TEXTO, MOTIVO_TEXTO, claveDia, etiquetaDia } from './formato';
+import { ESTADO_TEXTO, MOTIVO_TEXTO, claveDia, etiquetaDia, horaCorta } from './formato';
 
 const ACEPTA = 'image/jpeg,image/png,image/webp,application/pdf,audio/*';
 const MAX_BYTES = 16 * 1024 * 1024;
 
 export default function HiloConversacion() {
   const { user } = useAuth();
-  const { seleccionadaId, conversaciones, mensajes, hayMas, cargandoMensajes, cargarMasMensajes, enviarTexto, enviarAdjunto, tomar, cerrar, devolverAlBot } =
+  const { seleccionadaId, conversaciones, mensajes, hayMas, cargandoMensajes, cargarMasMensajes, enviarTexto, enviarAdjunto, tomar, cerrar, devolverAlBot, revisarVencida } =
     useWhatsappStore();
   const conv = conversaciones.find((c) => c.id === seleccionadaId) ?? null;
   const lista = useMemo(() => (seleccionadaId ? (mensajes[seleccionadaId] ?? []) : []), [mensajes, seleccionadaId]);
@@ -182,6 +182,26 @@ export default function HiloConversacion() {
           )}
         </div>
       </div>
+
+      {/* Espera vencida: nadie la atendió a tiempo y volvió sola al bot */}
+      {conv.vencida && (
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5 border-b border-[#c2637f]/25 bg-[#c2637f]/10 px-4 py-2 text-xs text-[#6b2f42]">
+          <span className="min-w-0 flex-1">
+            <strong className="font-semibold">Esperó más de una hora sin respuesta.</strong>{' '}
+            {conv.vencida.motivo ? `${MOTIVO_TEXTO[conv.vencida.motivo] ?? conv.vencida.motivo}. ` : ''}
+            {conv.vencida.esperandoDesde ? `Esperaba desde ${etiquetaDia(conv.vencida.esperandoDesde).toLowerCase()} ${horaCorta(conv.vencida.esperandoDesde)}; ` : ''}
+            volvió al bot {etiquetaDia(conv.vencida.at).toLowerCase()} {horaCorta(conv.vencida.at)}.
+          </span>
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={() => accion(() => revisarVencida(conv.id), 'Marcada como revisada')}
+            className="h-7 border-[#c2637f]/40 bg-white text-xs text-[#6b2f42]"
+          >
+            Marcar revisada
+          </Button>
+        </div>
+      )}
 
       {/* Mensajes */}
       <div ref={fondoRef} className="flex-1 overflow-y-auto bg-[#fdf6f7] px-4 py-3">

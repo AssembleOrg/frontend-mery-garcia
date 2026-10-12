@@ -1,7 +1,7 @@
 'use client';
 
 import { useMemo } from 'react';
-import { Bot, CalendarDays, Loader2, Search, X } from 'lucide-react';
+import { Bot, CalendarDays, Clock, Loader2, Search, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Input } from '@/components/ui/input';
 import { useWhatsappStore } from '@/features/whatsapp/store/whatsappStore';
@@ -11,6 +11,7 @@ import { ESTADO_TEXTO, etiquetaDia, fechaLista, resumenMensaje } from './formato
 const FILTROS: Array<{ key: FiltroEstado; label: string }> = [
   { key: 'ABIERTAS', label: 'Abiertas' },
   { key: 'ESPERANDO', label: 'Esperando' },
+  { key: 'VENCIDAS', label: 'Vencidas' },
   { key: 'ATENDIDA', label: 'En atención' },
   { key: 'BOT', label: 'Con el bot' },
   { key: 'CERRADA', label: 'Cerradas' },
@@ -34,6 +35,7 @@ export default function ListaConversaciones() {
     cargandoLista,
     total,
     esperando,
+    vencidas,
     seleccionadaId,
     setFiltro,
     setQ,
@@ -96,6 +98,9 @@ export default function ListaConversaciones() {
               {f.key === 'ESPERANDO' && esperando > 0 && (
                 <span className="ml-1 rounded-full bg-amber-500 px-1.5 text-[10px] text-white">{esperando}</span>
               )}
+              {f.key === 'VENCIDAS' && vencidas > 0 && (
+                <span className="ml-1 rounded-full bg-[#c2637f] px-1.5 text-[10px] text-white">{vencidas}</span>
+              )}
             </button>
           ))}
         </div>
@@ -108,7 +113,11 @@ export default function ListaConversaciones() {
           </div>
         ) : conversaciones.length === 0 ? (
           <div className="px-6 py-12 text-center text-sm text-[#8b5a6b]">
-            {filtro === 'ABIERTAS' ? 'No hay charlas abiertas. Todo al día.' : 'No hay charlas con este filtro.'}
+            {filtro === 'ABIERTAS'
+              ? 'No hay charlas abiertas. Todo al día.'
+              : filtro === 'VENCIDAS'
+                ? 'Ninguna charla quedó sin atender. Todo al día.'
+                : 'No hay charlas con este filtro.'}
           </div>
         ) : (
           grupos.map(([etiqueta, lista]) => (
@@ -144,6 +153,11 @@ export default function ListaConversaciones() {
                       </div>
                       {c.contacto.cliente && c.contacto.telefono && (
                         <div className="truncate text-[11px] text-[#8b5a6b]">{c.contacto.telefono}</div>
+                      )}
+                      {c.vencida && (
+                        <div className="mt-0.5 flex items-center gap-1 text-[11px] font-medium text-[#c2637f]">
+                          <Clock className="h-3 w-3" /> Esperó sin respuesta · {fechaLista(c.vencida.at)}
+                        </div>
                       )}
                       <div className="mt-0.5 flex items-center justify-between gap-2">
                         <span className={cn('truncate text-xs', c.noLeidos > 0 ? 'text-[#4a3540]' : 'text-[#8b5a6b]')}>

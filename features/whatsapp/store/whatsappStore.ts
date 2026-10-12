@@ -21,6 +21,8 @@ interface WhatsappState {
   conversaciones: Conversacion[];
   total: number;
   esperando: number;
+  /** Charlas con la espera vencida que nadie revisó todavía. */
+  vencidas: number;
   noLeidosTotal: number;
   cargandoLista: boolean;
   pagina: number;
@@ -56,6 +58,7 @@ interface WhatsappActions {
   tomar: (id: string) => Promise<void>;
   cerrar: (id: string, despedida: boolean) => Promise<void>;
   devolverAlBot: (id: string) => Promise<void>;
+  revisarVencida: (id: string) => Promise<void>;
 
   cargarNotificaciones: () => Promise<void>;
   marcarTodasLeidas: () => Promise<void>;
@@ -79,6 +82,7 @@ function ordenar(lista: Conversacion[]): Conversacion[] {
 
 function pasaFiltro(c: Conversacion, filtro: FiltroEstado): boolean {
   if (filtro === 'ABIERTAS') return c.estado === 'ESPERANDO' || c.estado === 'ATENDIDA';
+  if (filtro === 'VENCIDAS') return !!c.vencida;
   return c.estado === filtro;
 }
 
@@ -94,6 +98,7 @@ export const useWhatsappStore = create<WhatsappState & WhatsappActions>()((set, 
   conversaciones: [],
   total: 0,
   esperando: 0,
+  vencidas: 0,
   noLeidosTotal: 0,
   cargandoLista: false,
   pagina: 1,
@@ -138,6 +143,7 @@ export const useWhatsappStore = create<WhatsappState & WhatsappActions>()((set, 
         conversaciones: masPaginas ? [...conversaciones, ...r.items] : r.items,
         total: r.total,
         esperando: r.esperando,
+        vencidas: r.vencidas ?? 0,
         noLeidosTotal: r.noLeidos,
         pagina: siguiente,
       });
@@ -212,6 +218,11 @@ export const useWhatsappStore = create<WhatsappState & WhatsappActions>()((set, 
     get().aplicarEvento({ type: 'conversacion', data: c });
   },
 
+  revisarVencida: async (id) => {
+    const c = await whatsappService.revisarVencida(id);
+    get().aplicarEvento({ type: 'conversacion', data: c });
+  },
+
   cargarNotificaciones: async () => {
     try {
       set({ notificaciones: await whatsappService.notificaciones() });
@@ -275,7 +286,7 @@ export const useWhatsappStore = create<WhatsappState & WhatsappActions>()((set, 
       try {
         const { filtro, q, dia } = get();
         const r = await whatsappService.conversaciones({ estado: filtro, q: q || undefined, dia: dia || undefined, porPagina: 1 });
-        set({ esperando: r.esperando, noLeidosTotal: r.noLeidos, total: r.total });
+        set({ esperando: r.esperando, vencidas: r.vencidas ?? 0, noLeidosTotal: r.noLeidos, total: r.total });
       } catch {
         /* sin drama: el próximo evento lo vuelve a intentar */
       }
