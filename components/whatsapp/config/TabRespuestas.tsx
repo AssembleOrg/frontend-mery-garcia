@@ -194,6 +194,11 @@ export default function TabRespuestas() {
               <div className="grid gap-1.5">
                 <Label htmlFor="respuesta">Respuesta que recibe la clienta</Label>
                 <Textarea id="respuesta" rows={8} value={editando.datos.respuesta} onChange={(e) => setEditando({ ...editando, datos: { ...editando.datos, respuesta: e.target.value } })} />
+                <p className="text-xs leading-relaxed text-[#8b5a6b]">
+                  Datos en vivo (se completan solos al responder, nunca hace falta escribir precios): <code>{'{formaciones}'}</code> lista de cursos con precio ·{' '}
+                  <code>{'{formacion:nanoblading}'}</code> un curso (el nombre de su link en merygarcia.com.ar) · <code>{'{servicios:laminado|tinte de}'}</code> servicios de la web de turnos cuyo nombre contiene esas palabras ·{' '}
+                  <code>{'{horario}'}</code> horario de atención · <code>{'{nombre}'}</code> nombre de la clienta. Si una fuente no responde, va el link de la web en lugar del precio.
+                </p>
               </div>
               <div className="flex flex-wrap gap-6">
                 <label className="flex items-center gap-2 text-sm text-[#6b4c57]">
