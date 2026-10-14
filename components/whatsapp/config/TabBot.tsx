@@ -32,6 +32,7 @@ const MENSAJES: Array<{ clave: keyof MensajesBot; titulo: string; ayuda: string 
   { clave: 'archivoRecibido', titulo: 'Recibió una imagen o archivo', ayuda: 'Igual que con los audios.' },
   { clave: 'avisoInactividad', titulo: 'Aviso por inactividad', ayuda: 'En una charla atendida por una persona, tras 1 hora sin mensajes.' },
   { clave: 'despedida', titulo: 'Despedida', ayuda: 'Al cerrar una charla con despedida, o 1 hora después del aviso de inactividad.' },
+  { clave: 'sinDerivacion', titulo: 'Sin derivación (pruebas)', ayuda: 'Con “Pasar charlas a recepción” apagado, lo que contesta cuando habría pasado la charla a recepción.' },
   { clave: 'botApagado', titulo: 'Bot apagado', ayuda: 'Si el bot está apagado, cada charla nueva recibe esto y pasa directo a una persona.' },
 ];
 
@@ -92,6 +93,15 @@ export default function TabBot() {
             <div className="text-xs text-[#8b5a6b]">Apagado, cada charla nueva pasa directo a una persona con el mensaje de “bot apagado”.</div>
           </div>
           <Switch checked={cfg.botActivo} onCheckedChange={(v) => setCfg({ ...cfg, botActivo: v })} />
+        </label>
+        <label className="mt-4 flex items-center justify-between gap-4 border-t border-[#f9bbc4]/30 pt-4">
+          <div>
+            <div className="font-medium text-[#4a3540]">Pasar charlas a recepción</div>
+            <div className="text-xs text-[#8b5a6b]">
+              Apagado (modo pruebas), el bot nunca deriva: cuando habría pasado la charla a recepción contesta el mensaje “sin derivación” y sigue él.
+            </div>
+          </div>
+          <Switch checked={cfg.derivacionActiva} onCheckedChange={(v) => setCfg({ ...cfg, derivacionActiva: v })} />
         </label>
       </section>
 

@@ -99,10 +99,12 @@ export interface MensajesBot {
   avisoInactividad: string;
   despedida: string;
   botApagado: string;
+  sinDerivacion: string;
 }
 
 export interface ConfigWhatsapp {
   botActivo: boolean;
+  derivacionActiva: boolean;
   horario: HorarioAtencion;
   mensajes: MensajesBot;
   menuOpcion1: string;
