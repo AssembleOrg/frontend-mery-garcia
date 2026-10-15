@@ -33,7 +33,8 @@ import {
   ShoppingBag,
   Percent,
   FileDown,
-  Layers
+  Layers,
+  Clock
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { comisionesService, ResumenComisionesDto } from '@/services/comisiones.service';
@@ -42,6 +43,7 @@ import ClientOnly from '@/components/common/ClientOnly';
 import ManagerOrAdminOnly from '@/components/auth/ManagerOrAdminOnly';
 import { Badge } from '@/components/ui/badge';
 import { cn, formatDate } from '@/lib/utils';
+import EsquemaBaseDetalle, { BadgePorcentajePendiente } from '@/components/cajas/EsquemaBaseDetalle';
 
 const breadcrumbItems = [
   { label: 'Inicio', href: '/' },
@@ -320,6 +322,18 @@ export default function ComisionesPage() {
                       />
                     </div>
 
+                    {/* Esquema por base fija: si algún mes no está confirmado, el total va al mínimo. */}
+                    {data.trabajadores.some((t) => t.esquemaBase?.porcentajePendiente) && (
+                      <div className="flex items-start gap-2 rounded-lg border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+                        <Clock className="mt-0.5 h-4 w-4 shrink-0" />
+                        <span>
+                          Hay porcentajes de comisión a confirmar al cierre del mes. Esas
+                          comisiones se suman al mínimo del rango; confirmalos en
+                          Configuración → Comisiones.
+                        </span>
+                      </div>
+                    )}
+
                     {/* Lista de Trabajadores - Compacta */}
                     <Card className="border-2 border-[#f9bbc4]/30 bg-white/95 shadow-xl">
                       <CardHeader className="pb-3">
@@ -343,7 +357,9 @@ export default function ComisionesPage() {
                                   </h3>
                                   <div className="min-w-[180px] rounded-lg bg-gradient-to-r from-[#f9bbc4] to-[#e8b4c6] px-4 py-2 shadow-md">
                                     <div className="mb-1 text-xs font-medium text-white/90">
-                                      Comisión total
+                                      {trabajador.esquemaBase?.porcentajePendiente
+                                        ? 'Comisión total (al mínimo)'
+                                        : 'Comisión total'}
                                     </div>
                                     <MontoDual
                                       usd={trabajador.comisiones.totalUSD}
@@ -353,6 +369,11 @@ export default function ComisionesPage() {
                                     />
                                   </div>
                                 </div>
+                                {trabajador.esquemaBase?.porcentajePendiente && (
+                                  <div className="mb-3">
+                                    <BadgePorcentajePendiente esquema={trabajador.esquemaBase} />
+                                  </div>
+                                )}
                                 {/* Botón de recepción solo para Mery García */}
                                 {trabajador.nombre.toLowerCase().includes('mery') && (
                                   <Button
@@ -386,7 +407,9 @@ export default function ComisionesPage() {
                                         ars={trabajador.serviciosARS}
                                       />
                                       <div className="mt-2 border-t border-[#f9bbc4]/30 pt-2">
-                                        <div className="mb-1 text-xs text-[#6b4c57]">Comisión (30%)</div>
+                                        <div className="mb-1 text-xs text-[#6b4c57]">
+                                          {trabajador.esquemaBase ? 'Comisión' : 'Comisión (30%)'}
+                                        </div>
                                         <MontoDual
                                           usd={trabajador.comisiones.serviciosUSD}
                                           ars={trabajador.comisiones.serviciosARS}
@@ -406,7 +429,9 @@ export default function ComisionesPage() {
                                         ars={trabajador.productosARS}
                                       />
                                       <div className="mt-2 border-t border-[#e8b4c6]/30 pt-2">
-                                        <div className="mb-1 text-xs text-[#6b4c57]">Comisión (10%)</div>
+                                        <div className="mb-1 text-xs text-[#6b4c57]">
+                                          {trabajador.esquemaBase ? 'Comisión' : 'Comisión (10%)'}
+                                        </div>
                                         <MontoDual
                                           usd={trabajador.comisiones.productosUSD}
                                           ars={trabajador.comisiones.productosARS}
@@ -510,6 +535,16 @@ export default function ComisionesPage() {
                                   )}
                                 </div>
                               </div>
+
+                              {/* El esquema existe aunque el período sea anterior a su
+                                  fecha de inicio: solo se muestra si aportó algo. */}
+                              {trabajador.esquemaBase &&
+                                (trabajador.esquemaBase.servicios.length > 0 ||
+                                  trabajador.esquemaBase.productosEfectivoARS > 0 ||
+                                  trabajador.esquemaBase.productosEfectivoUSD > 0 ||
+                                  trabajador.esquemaBase.serviciosSinComision.length > 0) && (
+                                <EsquemaBaseDetalle esquema={trabajador.esquemaBase} />
+                              )}
                             </div>
                           ))}
 
