@@ -305,13 +305,13 @@ export default function ComisionesPage() {
                         showTransactionCount={false}
                       />
                       <SummaryCardDual
-                        title="Servicios (30%)"
+                        title="Servicios cobrados"
                         totalUSD={data.totales.serviciosUSD}
                         totalARS={data.totales.serviciosARS}
                         showTransactionCount={false}
                       />
                       <SummaryCardDual
-                        title="Productos (10%)"
+                        title="Productos vendidos"
                         totalUSD={data.totales.productosUSD}
                         totalARS={data.totales.productosARS}
                         showTransactionCount={false}
