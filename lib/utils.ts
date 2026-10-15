@@ -109,6 +109,17 @@ const MESES_EN_ES: Record<string, string> = {
   september: 'septiembre', october: 'octubre', november: 'noviembre', december: 'diciembre',
 };
 
+const NOMBRES_MES = Object.values(MESES_EN_ES);
+
+/** "2026-10" → "octubre 2026", sin pasar por zonas horarias. */
+export function formatMes(mes: string | null | undefined) {
+  if (!mes) return '';
+  const m = /^(\d{4})-(\d{2})/.exec(mes);
+  if (!m) return mes;
+  const nombre = NOMBRES_MES[Number(m[2]) - 1];
+  return nombre ? `${nombre} ${m[1]}` : mes;
+}
+
 /** Pasa a castellano los meses que vienen en inglés en textos armados por Ritmo. */
 export function mesesEnEspanol(texto: string | null | undefined) {
   if (!texto) return texto ?? '';

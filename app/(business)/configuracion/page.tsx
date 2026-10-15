@@ -15,6 +15,7 @@ import { MessageCircle, Percent, RotateCcw, Save } from 'lucide-react';
 import { useAuth } from '@/features/auth/hooks/useAuth';
 import { toast } from 'sonner';
 import CategoriasServicio from '@/components/configuracion/CategoriasServicio';
+import ComisionesConfig from '@/components/configuracion/ComisionesConfig';
 
 const breadcrumbItems = [
   { label: 'Dashboard', href: '/dashboard' },
@@ -218,6 +219,9 @@ export default function ConfiguracionPage() {
           </Card>
 
           {puedeEditarCategorias && <CategoriasServicio />}
+
+          {/* Encargado lo ve; solo admin edita (el backend rechaza el resto). */}
+          {puedeEditarCategorias && <ComisionesConfig puedeEditar={isAdmin} />}
 
           {/* Sólo admin: el bot de WhatsApp no se muestra al resto del equipo. */}
           {isAdmin && (

@@ -31,6 +31,43 @@ export interface ComisionTrabajadorDto {
     totalARS: number;
     totalUSD: number;
   };
+  /**
+   * Detalle del esquema por base fija (desde oct 2026). null si la
+   * trabajadora no lo usa. "comisiones" ya lo incluye, al mínimo del rango
+   * mientras el mes no esté confirmado.
+   */
+  esquemaBase?: EsquemaBaseDto | null;
+}
+
+export interface EsquemaBaseServicioDto {
+  categoriaId: string;
+  categoria: string;
+  /** "YYYY-MM" */
+  mes: string;
+  cantidad: number;
+  montoBase: number;
+  porcentaje: number;
+  porcentajeMax: number;
+  confirmado: boolean;
+  baseTotal: number;
+  comision: number;
+  comisionMax: number;
+}
+
+export interface EsquemaBaseDto {
+  desde: string;
+  porcentajeMin: number;
+  porcentajeMax: number | null;
+  productosPorcentaje: number;
+  servicios: EsquemaBaseServicioDto[];
+  productosEfectivoARS: number;
+  productosEfectivoUSD: number;
+  comisionServiciosARS: number;
+  comisionProductosARS: number;
+  comisionProductosUSD: number;
+  porcentajePendiente: boolean;
+  totalARSAlMaximo: number;
+  serviciosSinComision: { nombre: string; cantidad: number }[];
 }
 
 export interface TotalesComisionesDto {
