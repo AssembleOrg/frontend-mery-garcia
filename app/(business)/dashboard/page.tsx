@@ -12,6 +12,7 @@ import {
   Cog,
   CalendarClock,
   CalendarCheck,
+  PackageCheck,
 } from 'lucide-react';
 
 const breadcrumbItems = [
@@ -82,6 +83,15 @@ const menuItems = [
     gradientFrom: 'from-[#e8b4c6]',
     gradientTo: 'to-[#cc8fa8]',
     accentColor: '#e8b4c6',
+  },
+  {
+    title: 'Control de Stock',
+    description: 'Carga tus productos y asigna cuáles usa cada persona del equipo.',
+    href: '/control-stock',
+    icon: <PackageCheck size={32} strokeWidth={1.5} />,
+    gradientFrom: 'from-[#f9bbc4]',
+    gradientTo: 'to-[#d4a7ca]',
+    accentColor: '#f9bbc4',
   },
   {
     title: 'Configuración',
