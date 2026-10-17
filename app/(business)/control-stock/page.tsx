@@ -236,7 +236,7 @@ export default function ControlStockPage() {
                           <Button
                             size="sm"
                             onClick={() => setModalAbierto(true)}
-                            className="bg-[#f9bbc4] text-white hover:bg-[#e292a3]"
+                            className="bg-[#d4748c] font-semibold text-white hover:bg-[#c0607a]"
                           >
                             <Plus className="mr-2 h-4 w-4" />
                             Cargar productos
@@ -439,7 +439,7 @@ export default function ControlStockPage() {
                               <Button
                                 onClick={guardarAsignacion}
                                 disabled={!hayCambios || guardando}
-                                className="bg-gradient-to-r from-[#f9bbc4] to-[#e8b4c6] text-white"
+                                className="bg-[#d4748c] font-semibold text-white hover:bg-[#c0607a]"
                               >
                                 {guardando ? 'Guardando...' : 'Guardar'}
                               </Button>

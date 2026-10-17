@@ -194,7 +194,7 @@ export default function ModalCargarProductos({ isOpen, onClose, onCreados }: Pro
               <Button
                 onClick={handleGuardar}
                 disabled={guardando || !nombres.length}
-                className="bg-[#f9bbc4] text-white hover:bg-[#e292a3]"
+                className="bg-[#d4748c] font-semibold text-white hover:bg-[#c0607a]"
               >
                 {guardando ? 'Guardando...' : 'Guardar'}
               </Button>
