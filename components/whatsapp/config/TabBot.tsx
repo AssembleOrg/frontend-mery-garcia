@@ -103,6 +103,15 @@ export default function TabBot() {
           </div>
           <Switch checked={cfg.derivacionActiva} onCheckedChange={(v) => setCfg({ ...cfg, derivacionActiva: v })} />
         </label>
+        <label className="mt-4 flex items-center justify-between gap-4 border-t border-[#f9bbc4]/30 pt-4">
+          <div>
+            <div className="font-medium text-[#4a3540]">Contestar sólo en chats con “Mery on”</div>
+            <div className="text-xs text-[#8b5a6b]">
+              Prendido, el bot no dice nada en ningún chat hasta que alguien escriba “Mery on” en ese chat (se puede escribir desde el celular del número). “Mery off” lo vuelve a callar.
+            </div>
+          </div>
+          <Switch checked={cfg.soloChatsConComando} onCheckedChange={(v) => setCfg({ ...cfg, soloChatsConComando: v })} />
+        </label>
       </section>
 
       <section className="space-y-3 rounded-xl border border-[#f9bbc4]/30 bg-white p-4">

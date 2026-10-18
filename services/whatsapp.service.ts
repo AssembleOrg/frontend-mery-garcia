@@ -105,6 +105,7 @@ export interface MensajesBot {
 export interface ConfigWhatsapp {
   botActivo: boolean;
   derivacionActiva: boolean;
+  soloChatsConComando: boolean;
   horario: HorarioAtencion;
   mensajes: MensajesBot;
   menuOpcion1: string;
