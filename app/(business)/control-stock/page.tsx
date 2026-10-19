@@ -7,6 +7,9 @@ import StandardBreadcrumbs from '@/components/common/StandardBreadcrumbs';
 import ManagerOrAdminOnly from '@/components/auth/ManagerOrAdminOnly';
 import Spinner from '@/components/common/Spinner';
 import ModalCargarProductos from '@/components/stock/ModalCargarProductos';
+import PanelSolicitudes from '@/components/stock/PanelSolicitudes';
+import PanelAccesos from '@/components/stock/PanelAccesos';
+import BotonAvisosCelular from '@/components/common/BotonAvisosCelular';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -29,15 +32,22 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import { Check, Package, Pencil, Plus, Search, Trash2, UserCheck, X } from 'lucide-react';
+import { Check, ClipboardList, KeyRound, Package, Pencil, Plus, Search, Trash2, UserCheck, X } from 'lucide-react';
 import { toast } from 'sonner';
-import { stockService, type ProductoStock } from '@/services/stock.service';
+import { solicitudesStockService, stockService, type ProductoStock } from '@/services/stock.service';
 import { trabajadoresService } from '@/services/trabajadores.service';
 import type { TrabajadorNew } from '@/services/unidadNegocio.service';
 
 const breadcrumbItems = [
   { label: 'Dashboard', href: '/dashboard' },
   { label: 'Control de Stock' },
+];
+
+type Pestana = 'productos' | 'solicitudes' | 'accesos';
+const PESTANAS: { id: Pestana; texto: string; icono: typeof Package }[] = [
+  { id: 'productos', texto: 'Productos', icono: Package },
+  { id: 'solicitudes', texto: 'Pedidos', icono: ClipboardList },
+  { id: 'accesos', texto: 'Accesos', icono: KeyRound },
 ];
 
 const normalizar = (s: string) =>
@@ -48,6 +58,33 @@ export default function ControlStockPage() {
   const [trabajadores, setTrabajadores] = useState<TrabajadorNew[]>([]);
   const [cargando, setCargando] = useState(true);
   const [modalAbierto, setModalAbierto] = useState(false);
+  const [pestana, setPestana] = useState<Pestana>('productos');
+  const [pendientes, setPendientes] = useState(0);
+
+  // Los avisos de pedidos traen ?tab=solicitudes.
+  useEffect(() => {
+    const tab = new URLSearchParams(window.location.search).get('tab');
+    if (tab === 'solicitudes' || tab === 'accesos') setPestana(tab);
+    solicitudesStockService.pendientes().then(setPendientes).catch(() => {});
+  }, []);
+
+  useEffect(() => {
+    const alAviso = (e: Event) => {
+      if ((e as CustomEvent<{ tipo?: string }>).detail?.tipo === 'SOLICITUD_STOCK') {
+        setPendientes((n) => n + 1);
+      }
+    };
+    window.addEventListener('mery:notificacion', alAviso);
+    return () => window.removeEventListener('mery:notificacion', alAviso);
+  }, []);
+
+  const cambiarPestana = (p: Pestana) => {
+    setPestana(p);
+    const url = new URL(window.location.href);
+    if (p === 'productos') url.searchParams.delete('tab');
+    else url.searchParams.set('tab', p);
+    window.history.replaceState(null, '', url);
+  };
 
   // Lista de productos
   const [busquedaProductos, setBusquedaProductos] = useState('');
@@ -214,18 +251,57 @@ export default function ControlStockPage() {
           <StandardBreadcrumbs items={breadcrumbItems} />
 
           <div className="bg-gradient-to-b from-[#f9bbc4]/8 via-[#e8b4c6]/6 to-[#d4a7ca]/8">
-            <div className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
+            <div className="mx-auto max-w-7xl px-4 pt-6 pb-28 sm:px-6 lg:px-8">
+              <div
+                role="tablist"
+                aria-label="Secciones de Control de Stock"
+                className="mb-6 flex gap-1 rounded-xl border border-[#f9bbc4]/30 bg-white/80 p-1"
+              >
+                {PESTANAS.map(({ id, texto, icono: Icono }) => (
+                  <button
+                    key={id}
+                    type="button"
+                    role="tab"
+                    aria-selected={pestana === id}
+                    onClick={() => cambiarPestana(id)}
+                    className={`flex h-10 min-w-0 flex-1 items-center justify-center gap-1.5 rounded-lg px-2 text-sm font-medium whitespace-nowrap transition-colors sm:gap-2 sm:px-3 ${
+                      pestana === id ? 'bg-[#d4748c] text-white shadow' : 'text-[#6b4c57] hover:bg-[#f9bbc4]/15'
+                    }`}
+                  >
+                    {/* En el celular sin ícono: así entran las tres pestañas con el contador. */}
+                    <Icono className="hidden h-4 w-4 sm:block" />
+                    {texto}
+                    {id === 'solicitudes' && pendientes > 0 && (
+                      <span
+                        className={`rounded-full px-1.5 text-xs font-semibold tabular-nums ${
+                          pestana === id ? 'bg-white/90 text-[#c0607a]' : 'bg-[#d4748c] text-white'
+                        }`}
+                      >
+                        {pendientes}
+                      </span>
+                    )}
+                  </button>
+                ))}
+              </div>
+
               {cargando ? (
                 <div className="flex justify-center py-16">
                   <Spinner />
                 </div>
+              ) : pestana === 'solicitudes' ? (
+                <div className="space-y-4">
+                  <BotonAvisosCelular className="w-full sm:w-auto" />
+                  <PanelSolicitudes onPendientes={setPendientes} />
+                </div>
+              ) : pestana === 'accesos' ? (
+                <PanelAccesos trabajadores={trabajadores} />
               ) : (
                 <>
                   <div className="grid grid-cols-1 gap-6 lg:grid-cols-5">
                     {/* Productos */}
                     <Card className="border-2 border-[#f9bbc4]/30 bg-white/95 shadow-xl lg:col-span-2">
                       <CardHeader className="pb-3">
-                        <CardTitle className="flex items-center justify-between gap-2 text-[#4a3540]">
+                        <CardTitle className="flex flex-wrap items-center justify-between gap-2 text-[#4a3540]">
                           <span className="flex items-center gap-2">
                             <Package className="h-5 w-5 text-[#8b5a6b]" />
                             Productos
@@ -267,11 +343,11 @@ export default function ControlStockPage() {
                             </p>
                           </div>
                         ) : (
-                          <div className="max-h-[480px] divide-y divide-[#f9bbc4]/15 overflow-y-auto rounded-lg border border-[#f9bbc4]/20">
+                          <div className="max-h-[60dvh] divide-y divide-[#f9bbc4]/15 overflow-y-auto rounded-lg border border-[#f9bbc4]/20">
                             {productosFiltrados.map((p) => (
                               <div
                                 key={p.id}
-                                className="flex items-center gap-2 px-3 py-2 hover:bg-[#f9bbc4]/5"
+                                className="flex items-center gap-1 px-3 py-1.5 hover:bg-[#f9bbc4]/5 sm:gap-2"
                               >
                                 {editando?.id === p.id ? (
                                   <>
@@ -291,40 +367,44 @@ export default function ControlStockPage() {
                                     <Button
                                       variant="ghost"
                                       size="sm"
+                                      aria-label="Guardar nombre"
                                       onClick={guardarNombre}
-                                      className="text-green-600 hover:bg-green-50"
+                                      className="h-10 w-10 shrink-0 p-0 text-green-600 hover:bg-green-50 sm:h-8 sm:w-8"
                                     >
                                       <Check className="h-4 w-4" />
                                     </Button>
                                     <Button
                                       variant="ghost"
                                       size="sm"
+                                      aria-label="Cancelar edición"
                                       onClick={() => setEditando(null)}
-                                      className="text-[#8b5a6b]"
+                                      className="h-10 w-10 shrink-0 p-0 text-[#8b5a6b] sm:h-8 sm:w-8"
                                     >
                                       <X className="h-4 w-4" />
                                     </Button>
                                   </>
                                 ) : (
                                   <>
-                                    <span className="flex-1 text-sm text-[#4a3540]">{p.nombre}</span>
-                                    <span className="text-xs text-[#8b5a6b]">
+                                    <span className="min-w-0 flex-1 text-sm break-words text-[#4a3540]">{p.nombre}</span>
+                                    <span className="shrink-0 text-xs text-[#8b5a6b]">
                                       {p.trabajadores.length > 0 &&
                                         `${p.trabajadores.length} ${p.trabajadores.length === 1 ? 'persona' : 'personas'}`}
                                     </span>
                                     <Button
                                       variant="ghost"
                                       size="sm"
+                                      aria-label="Renombrar"
                                       onClick={() => setEditando({ id: p.id, nombre: p.nombre })}
-                                      className="text-[#8b5a6b] hover:bg-[#f9bbc4]/10"
+                                      className="h-10 w-10 shrink-0 p-0 text-[#8b5a6b] hover:bg-[#f9bbc4]/10 sm:h-8 sm:w-8"
                                     >
                                       <Pencil className="h-4 w-4" />
                                     </Button>
                                     <Button
                                       variant="ghost"
                                       size="sm"
+                                      aria-label="Eliminar"
                                       onClick={() => setAEliminar(p)}
-                                      className="text-[#8b5a6b] hover:bg-red-50 hover:text-red-500"
+                                      className="h-10 w-10 shrink-0 p-0 text-[#8b5a6b] hover:bg-red-50 hover:text-red-500 sm:h-8 sm:w-8"
                                     >
                                       <Trash2 className="h-4 w-4" />
                                     </Button>
@@ -409,7 +489,7 @@ export default function ControlStockPage() {
                               </div>
                             </div>
 
-                            <div className="grid max-h-[400px] grid-cols-1 gap-2 overflow-y-auto sm:grid-cols-2">
+                            <div className="grid max-h-[50dvh] grid-cols-1 gap-2 overflow-y-auto sm:grid-cols-2">
                               {productosAsignar.map((p) => {
                                 const marcado = seleccion.has(p.id);
                                 return (

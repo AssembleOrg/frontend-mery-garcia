@@ -1,13 +1,15 @@
 'use client';
 
-import { Bell, CheckCheck, MessageCircle, UserRound } from 'lucide-react';
+import { Bell, CheckCheck, MessageCircle, Package, UserRound } from 'lucide-react';
+import { useRouter } from 'next/navigation';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { cn } from '@/lib/utils';
 import { useWhatsappStore } from '@/features/whatsapp/store/whatsappStore';
 import { fechaLista } from './formato';
 
 export default function PanelNotificaciones() {
-  const { notificaciones, marcarTodasLeidas, marcarLeida, seleccionar } = useWhatsappStore();
+  const { notificaciones, marcarTodasLeidas, marcarLeida, seleccionar, setAbierto } = useWhatsappStore();
+  const router = useRouter();
   const sinLeer = notificaciones.filter((n) => !n.leida).length;
 
   return (
@@ -49,6 +51,10 @@ export default function PanelNotificaciones() {
                 onClick={() => {
                   if (!n.leida) void marcarLeida(n.id);
                   if (n.conversacionId) void seleccionar(n.conversacionId);
+                  else if (n.enlace) {
+                    setAbierto(false);
+                    router.push(n.enlace);
+                  }
                 }}
                 className={cn(
                   'flex w-full items-start gap-3 border-b border-[#f9bbc4]/15 px-3 py-2.5 text-left transition hover:bg-[#f9bbc4]/10',
@@ -58,10 +64,20 @@ export default function PanelNotificaciones() {
                 <div
                   className={cn(
                     'mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-full',
-                    n.tipo === 'ESPERANDO' ? 'bg-amber-100 text-amber-700' : 'bg-sky-100 text-sky-700',
+                    n.tipo === 'ESPERANDO'
+                      ? 'bg-amber-100 text-amber-700'
+                      : n.tipo === 'SOLICITUD_STOCK'
+                        ? 'bg-[#f9bbc4]/30 text-[#8b5a6b]'
+                        : 'bg-sky-100 text-sky-700',
                   )}
                 >
-                  {n.tipo === 'ESPERANDO' ? <UserRound className="h-4 w-4" /> : <MessageCircle className="h-4 w-4" />}
+                  {n.tipo === 'ESPERANDO' ? (
+                    <UserRound className="h-4 w-4" />
+                  ) : n.tipo === 'SOLICITUD_STOCK' ? (
+                    <Package className="h-4 w-4" />
+                  ) : (
+                    <MessageCircle className="h-4 w-4" />
+                  )}
                 </div>
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center justify-between gap-2">

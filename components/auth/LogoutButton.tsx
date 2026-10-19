@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { olvidarPushLocal } from '@/lib/push';
 import { useAuth } from '@/features/auth/hooks/useAuth';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
@@ -33,6 +34,8 @@ export default function LogoutButton() {
   const handleLogout = async () => {
     setIsLoggingOut(true);
     try {
+      // Antes de cerrar: este navegador deja de recibir los push de esta persona.
+      await olvidarPushLocal();
       logout();
       setShowLogoutDialog(false);
       router.push('/');

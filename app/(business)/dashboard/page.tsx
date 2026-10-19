@@ -86,7 +86,7 @@ const menuItems = [
   },
   {
     title: 'Control de Stock',
-    description: 'Carga tus productos y asigna cuáles usa cada persona del equipo.',
+    description: 'Productos, pedidos del personal y sus accesos para pedir desde el celular.',
     href: '/control-stock',
     icon: <PackageCheck size={32} strokeWidth={1.5} />,
     gradientFrom: 'from-[#f9bbc4]',

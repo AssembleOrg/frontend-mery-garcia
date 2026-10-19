@@ -124,7 +124,7 @@ export default function ModalCargarProductos({ isOpen, onClose, onCreados }: Pro
         className="fixed inset-0 z-50 flex items-center justify-center p-4"
         onClick={(e) => e.target === e.currentTarget && onClose()}
       >
-        <div className="flex max-h-[90vh] w-full max-w-lg flex-col rounded-lg bg-white shadow-2xl">
+        <div className="flex max-h-[90dvh] w-full max-w-lg flex-col rounded-lg bg-white shadow-2xl">
           <div className="flex items-center justify-between border-b p-6">
             <div className="flex items-center gap-3">
               <div className="rounded-full bg-[#f9bbc4]/20 p-2">
