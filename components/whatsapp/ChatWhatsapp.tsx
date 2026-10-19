@@ -1,6 +1,7 @@
 'use client';
 
 import { useCallback, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
 import { useAuthStore } from '@/features/auth/store/authStore';
 import { useWhatsappStore } from '@/features/whatsapp/store/whatsappStore';
@@ -36,9 +37,13 @@ export default function ChatWhatsapp() {
     seleccionar,
   } = useWhatsappStore();
 
+  const router = useRouter();
+
   const avisar = useCallback(
     (n: Notificacion) => {
       sonarAviso();
+      // Las pantallas que muestran lo mismo (p. ej. solicitudes de stock) se refrescan solas.
+      window.dispatchEvent(new CustomEvent('mery:notificacion', { detail: n }));
       toast(n.titulo, {
         description: n.cuerpo,
         duration: 6000,
@@ -50,13 +55,19 @@ export default function ChatWhatsapp() {
                 void seleccionar(n.conversacionId as string);
               },
             }
-          : undefined,
+          : n.enlace
+            ? { label: 'Ver', onClick: () => router.push(n.enlace as string) }
+            : undefined,
       });
       if (typeof document !== 'undefined' && document.hidden && 'Notification' in window && Notification.permission === 'granted') {
         try {
           const nav = new Notification(n.titulo, { body: n.cuerpo, tag: n.id });
           nav.onclick = () => {
             window.focus();
+            if (n.enlace && !n.conversacionId) {
+              router.push(n.enlace);
+              return;
+            }
             setAbierto(true);
             if (n.conversacionId) void seleccionar(n.conversacionId);
           };
@@ -65,7 +76,7 @@ export default function ChatWhatsapp() {
         }
       }
     },
-    [seleccionar, setAbierto],
+    [router, seleccionar, setAbierto],
   );
 
   useEffect(() => {

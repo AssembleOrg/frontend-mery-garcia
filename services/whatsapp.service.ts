@@ -58,10 +58,12 @@ export interface Mensaje {
 
 export interface Notificacion {
   id: string;
-  tipo: 'ESPERANDO' | 'MENSAJE';
+  tipo: 'ESPERANDO' | 'MENSAJE' | 'SOLICITUD_STOCK' | 'SOLICITUD_RESUELTA';
   titulo: string;
   cuerpo: string;
   conversacionId: string | null;
+  /** Ruta de la web a la que lleva el aviso (p. ej. /control-stock). */
+  enlace: string | null;
   leida: boolean;
   createdAt: string;
 }

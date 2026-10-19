@@ -15,8 +15,9 @@ export default function LoginForm() {
   const { errors, validateField, validateForm } = useFormValidation({
     email: {
       required: true,
-      pattern: /^[^\s@]+@[^\s@]+\.[^\s@]+$/,
-      message: 'Email válido es requerido',
+      // Email del equipo o usuario del personal (sin @).
+      pattern: /^\S{3,}$/,
+      message: 'Ingresá tu email o usuario',
     },
     password: {
       required: true,
@@ -135,8 +136,12 @@ export default function LoginForm() {
             <Input
               id="email-address"
               name="email"
-              type="email"
-              autoComplete="email"
+              type="text"
+              inputMode="email"
+              autoCapitalize="none"
+              autoCorrect="off"
+              spellCheck={false}
+              autoComplete="username"
               required
               value={formData.email}
               onChange={(e) => handleInputChange('email', e.target.value)}
@@ -145,7 +150,7 @@ export default function LoginForm() {
                   ? 'border-red-500 focus:border-red-500'
                   : 'border-[#f9bbc4]/50 hover:border-[#f9bbc4]/70 focus:border-[#f9bbc4]'
               }`}
-              placeholder="Correo Electrónico"
+              placeholder="Email o usuario"
               style={{
                 boxShadow:
                   '0 10px 30px -8px rgba(249, 187, 196, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.15)',

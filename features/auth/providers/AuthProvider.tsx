@@ -19,9 +19,12 @@ const LoadingSpinner = () => (
 );
 
 export function AuthProvider({ children }: AuthProviderProps) {
-  const { isAuthenticated, isLoading, initializeAuth, soloPresentismo } = useAuth();
+  const { isAuthenticated, isLoading, initializeAuth, soloPresentismo, soloEmpleado } = useAuth();
   const router = useRouter();
   const pathname = usePathname();
+  // Roles que sólo ven una sección: no salen de ahí.
+  const seccionUnica = soloPresentismo ? '/presentismo' : soloEmpleado ? '/mis-productos' : null;
+  const fueraDeSeccion = isAuthenticated && !!seccionUnica && !pathname.startsWith(seccionUnica);
   const { handleAuthError } = useAuthErrorHandler();
 
   // Hasta que initializeAuth no restauró la sesión, isAuthenticated vale false
@@ -73,17 +76,18 @@ export function AuthProvider({ children }: AuthProviderProps) {
 
     // Redirección para usuarios autenticados desde la página de login
     if (isAuthenticated && pathname === '/') {
-      router.push(soloPresentismo ? '/presentismo' : '/dashboard');
+      router.push(seccionUnica ?? '/dashboard');
       return;
     }
 
-    // Quien sólo tiene presentismo no sale de ahí: cualquier otra ruta
-    // (dashboard, cajas, clientes…) lo devuelve. El backend igual rechaza
-    // sus llamadas al resto; esto es para que no vea pantallas rotas.
-    if (isAuthenticated && soloPresentismo && !pathname.startsWith('/presentismo')) {
-      router.replace('/presentismo');
+    // Quien sólo tiene presentismo (o es empleado) no sale de su sección:
+    // cualquier otra ruta (dashboard, cajas, clientes…) lo devuelve. El
+    // backend igual rechaza sus llamadas al resto; esto es para que no vea
+    // pantallas rotas.
+    if (fueraDeSeccion && seccionUnica) {
+      router.replace(seccionUnica);
     }
-  }, [isAuthenticated, isLoading, sesionLista, pathname, router, soloPresentismo]);
+  }, [isAuthenticated, isLoading, sesionLista, pathname, router, seccionUnica, fueraDeSeccion]);
 
   if (isLoading || !sesionLista) {
     return <LoadingSpinner />;
@@ -93,7 +97,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
     return <LoadingSpinner />;
   }
 
-  if (isAuthenticated && soloPresentismo && !pathname.startsWith('/presentismo')) {
+  if (fueraDeSeccion) {
     return <LoadingSpinner />;
   }
 
