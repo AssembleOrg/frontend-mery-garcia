@@ -25,6 +25,7 @@ import useComandaStore from '@/features/comandas/store/comandaStore';
 import { useExchangeRateStore } from '@/features/exchange-rate/store/exchangeRateStore';
 import { useModalScrollLock } from '@/hooks/useModalScrollLock';
 import { logger } from '@/lib/utils';
+import { señaAConsumir } from '@/lib/senas';
 import { useCurrencyConverter } from '@/hooks/useCurrencyConverter';
 import { useInitializeComandaStore } from '@/hooks/useInitializeComandaStore';
 import { useAuth } from '@/features/auth/hooks/useAuth';
@@ -661,20 +662,13 @@ export default function ModalEditarTransaccionRefactored({
       // Descuentos ya están aplicados a nivel de item como campo descuento
       const descuentos: any[] = [];
 
-      // Preparar IDs de prepago si las señas están activas
+      // Preparar IDs de prepago si las señas están activas: se conserva la que
+      // ya tenía la comanda; si no tenía, la más vieja de la clienta.
       const prepagoARS = señaActiva && señaMonedas.includes('ARS')
-        ? clienteSeleccionado?.prepagosGuardados.find(
-          (prepago) =>
-            prepago.moneda === MonedaNew.ARS &&
-            prepago.estado === EstadoPrepagoNew.ACTIVA
-        )?.id
+        ? señaAConsumir(clienteSeleccionado?.prepagosGuardados, MonedaNew.ARS, comandaState?.prepagoARSID)
         : null;
       const prepagoUSD = señaActiva && señaMonedas.includes('USD')
-        ? clienteSeleccionado?.prepagosGuardados.find(
-          (prepago) =>
-            prepago.moneda === MonedaNew.USD &&
-            prepago.estado === EstadoPrepagoNew.ACTIVA
-        )?.id
+        ? señaAConsumir(clienteSeleccionado?.prepagosGuardados, MonedaNew.USD, comandaState?.prepagoUSDID)
         : null;
 
       // Update existing comanda

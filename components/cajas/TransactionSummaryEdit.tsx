@@ -8,6 +8,7 @@ import { Calculator, DollarSign, Lock, HandCoins } from 'lucide-react';
 import { useCurrencyConverter } from '@/hooks/useCurrencyConverter';
 import { ItemComandaCreateNew, MonedaNew, ComandaNew, ClienteNew } from '@/services/unidadNegocio.service';
 import { MONEDAS } from '@/lib/constants';
+import { montoSeñaDisponible } from '@/lib/senas';
 import { useConfiguracion } from '@/features/configuracion/store/configuracionStore';
 
 /**
@@ -89,15 +90,8 @@ export default function TransactionSummaryEdit({
       // This handles cases where señas were used but not stored in prepago fields
       if ((ars === 0 && usd === 0) && comandaOriginal.cliente?.prepagosGuardados) {
         const prepagosGuardados = comandaOriginal.cliente.prepagosGuardados;
-        const prepagoARS = prepagosGuardados.find((p: any) => p.moneda === 'ARS');
-        const prepagoUSD = prepagosGuardados.find((p: any) => p.moneda === 'USD');
-        
-        if (prepagoARS?.monto) {
-          ars = parseFloat(prepagoARS.monto.toString());
-        }
-        if (prepagoUSD?.monto) {
-          usd = parseFloat(prepagoUSD.monto.toString());
-        }
+        ars = montoSeñaDisponible(prepagosGuardados, MonedaNew.ARS);
+        usd = montoSeñaDisponible(prepagosGuardados, MonedaNew.USD);
       }
       
       return { ars, usd };
@@ -109,15 +103,8 @@ export default function TransactionSummaryEdit({
       let ars = 0;
       let usd = 0;
       
-      const prepagoARS = clienteActual.prepagosGuardados.find((p: any) => p.moneda === 'ARS');
-      const prepagoUSD = clienteActual.prepagosGuardados.find((p: any) => p.moneda === 'USD');
-      
-      if (prepagoARS?.monto) {
-        ars = parseFloat(prepagoARS.monto.toString());
-      }
-      if (prepagoUSD?.monto) {
-        usd = parseFloat(prepagoUSD.monto.toString());
-      }
+      ars = montoSeñaDisponible(clienteActual.prepagosGuardados, MonedaNew.ARS);
+      usd = montoSeñaDisponible(clienteActual.prepagosGuardados, MonedaNew.USD);
       
       return { ars, usd };
     }

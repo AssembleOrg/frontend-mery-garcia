@@ -23,6 +23,7 @@ import useComandaStore from '@/features/comandas/store/comandaStore';
 import { useExchangeRateStore } from '@/features/exchange-rate/store/exchangeRateStore';
 import { useModalScrollLock } from '@/hooks/useModalScrollLock';
 import { logger } from '@/lib/utils';
+import { señaMasVieja } from '@/lib/senas';
 import { useCurrencyConverter } from '@/hooks/useCurrencyConverter';
 import { useInitializeComandaStore } from '@/hooks/useInitializeComandaStore';
 import { useAuth } from '@/features/auth/hooks/useAuth';
@@ -545,19 +546,11 @@ export default function ModalTransaccionUnificadoRefactored({
 
       const prepagoARS =
         señaActiva && señaMonedas.includes('ARS')
-          ? clienteSeleccionado?.prepagosGuardados.find(
-              (prepago) =>
-                prepago.moneda === MonedaNew.ARS &&
-                prepago.estado === EstadoPrepagoNew.ACTIVA
-            )?.id
+          ? señaMasVieja(clienteSeleccionado?.prepagosGuardados, MonedaNew.ARS)?.id
           : null;
       const prepagoUSD =
         señaActiva && señaMonedas.includes('USD')
-          ? clienteSeleccionado?.prepagosGuardados.find(
-              (prepago) =>
-                prepago.moneda === MonedaNew.USD &&
-                prepago.estado === EstadoPrepagoNew.ACTIVA
-            )?.id
+          ? señaMasVieja(clienteSeleccionado?.prepagosGuardados, MonedaNew.USD)?.id
           : null;
       const nuevaComandaNew: ComandaCreateNew = {
         clienteId: clienteSeleccionado?.id,

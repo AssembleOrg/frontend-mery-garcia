@@ -9,6 +9,7 @@ import { Calculator, DollarSign, Lock, Split, HandCoins } from 'lucide-react';
 import { useCurrencyConverter } from '@/hooks/useCurrencyConverter';
 import { ItemComandaCreateNew, MetodoPagoNew, MonedaNew } from '@/services/unidadNegocio.service';
 import { MONEDAS } from '@/lib/constants';
+import { montoSeñaDisponible } from '@/lib/senas';
 import { useConfiguracion } from '@/features/configuracion/store/configuracionStore';
 
 /**
@@ -54,6 +55,19 @@ export default function TransactionSummary({
 }: TransactionSummaryProps) {
   const { formatARS, formatUSD, formatARSFromNative, isExchangeRateValid, usdToArs, exchangeRate, arsToUsd } = useCurrencyConverter();
   const { descuentosPorMetodo } = useConfiguracion();
+
+  // Lo que se descuenta es una sola seña por moneda (la más vieja); si la
+  // clienta dejó otra para el próximo turno, no se suma acá.
+  const señasDisponibles = useMemo(
+    () =>
+      cliente?.prepagosGuardados
+        ? {
+            ars: montoSeñaDisponible(cliente.prepagosGuardados, MonedaNew.ARS),
+            usd: montoSeñaDisponible(cliente.prepagosGuardados, MonedaNew.USD),
+          }
+        : cliente?.señasDisponibles,
+    [cliente],
+  );
 
 
   // Helper function to format amount based on currency and frozen status
@@ -145,15 +159,15 @@ export default function TransactionSummary({
     });
 
     // Apply seña by currency if active
-    if (señaActiva && señaMonedas.length > 0 && cliente?.señasDisponibles) {
+    if (señaActiva && señaMonedas.length > 0 && señasDisponibles) {
       señaMonedas.forEach(moneda => {
         if (totals[moneda]) {
           let señaAplicada = 0;
           
-          if (moneda === 'ARS' && cliente.señasDisponibles.ars > 0) {
-            señaAplicada = Math.min(cliente.señasDisponibles.ars, totals[moneda].total);
-          } else if (moneda === 'USD' && cliente.señasDisponibles.usd > 0) {
-            señaAplicada = Math.min(cliente.señasDisponibles.usd, totals[moneda].total);
+          if (moneda === 'ARS' && señasDisponibles.ars > 0) {
+            señaAplicada = Math.min(señasDisponibles.ars, totals[moneda].total);
+          } else if (moneda === 'USD' && señasDisponibles.usd > 0) {
+            señaAplicada = Math.min(señasDisponibles.usd, totals[moneda].total);
           }
           
           totals[moneda].totalConSeña = Math.max(0, totals[moneda].total - señaAplicada);
@@ -170,7 +184,7 @@ export default function TransactionSummary({
     }).join(','),
     señaActiva,
     señaMonedas.join(','),
-    cliente?.señasDisponibles,
+    señasDisponibles,
     usdToArs
   ]);
 
@@ -219,7 +233,7 @@ export default function TransactionSummary({
 
     // Apply seña if active and currencies selected
     let totalConSeña = totalAmount;
-    if (señaActiva && señaMonedas.length > 0 && cliente?.señasDisponibles) {
+    if (señaActiva && señaMonedas.length > 0 && señasDisponibles) {
       let señaAplicada = 0;
       
       // Debug: Log exchange rate being used
@@ -227,29 +241,29 @@ export default function TransactionSummary({
         exchangeRate,
         isExchangeRateValid,
         primaryCurrency,
-        señaDisponible: cliente.señasDisponibles,
+        señaDisponible: señasDisponibles,
         señaMonedas
       });
       
       señaMonedas.forEach(moneda => {
-        if (moneda === 'ARS' && cliente.señasDisponibles.ars > 0) {
+        if (moneda === 'ARS' && señasDisponibles.ars > 0) {
           // Convert ARS seña to USD for calculation if needed
           if (primaryCurrency === MONEDAS.USD && isExchangeRateValid) {
             // Convert ARS to USD using real exchange rate
-            const señaEnUSD = arsToUsd(cliente.señasDisponibles.ars);
-            console.log(`   💵 Convirtiendo seña ARS ${cliente.señasDisponibles.ars} a USD: ${señaEnUSD} (rate: ${exchangeRate})`);
+            const señaEnUSD = arsToUsd(señasDisponibles.ars);
+            console.log(`   💵 Convirtiendo seña ARS ${señasDisponibles.ars} a USD: ${señaEnUSD} (rate: ${exchangeRate})`);
             señaAplicada += señaEnUSD;
           } else {
-            señaAplicada += cliente.señasDisponibles.ars;
+            señaAplicada += señasDisponibles.ars;
           }
-        } else if (moneda === 'USD' && cliente.señasDisponibles.usd > 0) {
+        } else if (moneda === 'USD' && señasDisponibles.usd > 0) {
           if (primaryCurrency === MONEDAS.ARS && isExchangeRateValid) {
             // Convert USD to ARS using real exchange rate
-            const señaEnARS = usdToArs(cliente.señasDisponibles.usd);
-            console.log(`   💵 Convirtiendo seña USD ${cliente.señasDisponibles.usd} a ARS: ${señaEnARS} (rate: ${exchangeRate})`);
+            const señaEnARS = usdToArs(señasDisponibles.usd);
+            console.log(`   💵 Convirtiendo seña USD ${señasDisponibles.usd} a ARS: ${señaEnARS} (rate: ${exchangeRate})`);
             señaAplicada += señaEnARS;
           } else {
-            señaAplicada += cliente.señasDisponibles.usd;
+            señaAplicada += señasDisponibles.usd;
           }
         }
       });
@@ -269,7 +283,7 @@ export default function TransactionSummary({
     }).join(','),
     señaActiva,
     señaMonedas.join(','),
-    cliente?.señasDisponibles,
+    señasDisponibles,
     arsToUsd,
     usdToArs,
     isExchangeRateValid
@@ -309,7 +323,7 @@ export default function TransactionSummary({
                 <div>
                   <div className="text-sm font-medium text-gray-700">Aplicar Seña</div>
                   <div className="text-xs text-gray-500">
-                    {!cliente?.señasDisponibles || (cliente.señasDisponibles.ars <= 0 && cliente.señasDisponibles.usd <= 0)
+                    {!señasDisponibles || (señasDisponibles.ars <= 0 && señasDisponibles.usd <= 0)
                       ? 'Sin seña disponible'
                       : señaActiva 
                         ? 'Seña activa - El cliente consume prepago' 
@@ -322,13 +336,13 @@ export default function TransactionSummary({
                 <Checkbox
                   checked={señaActiva}
                   onCheckedChange={onSeñaToggle}
-                  disabled={!cliente?.señasDisponibles || (cliente.señasDisponibles.ars <= 0 && cliente.señasDisponibles.usd <= 0)}
+                  disabled={!señasDisponibles || (señasDisponibles.ars <= 0 && señasDisponibles.usd <= 0)}
                   className={`h-5 w-5 border-2 ${
                     señaActiva 
                       ? 'bg-gradient-to-r from-blue-500 to-blue-600 border-blue-600' 
                       : 'border-gray-300 bg-white'
                   } ${
-                    !cliente?.señasDisponibles || (cliente.señasDisponibles.ars <= 0 && cliente.señasDisponibles.usd <= 0)
+                    !señasDisponibles || (señasDisponibles.ars <= 0 && señasDisponibles.usd <= 0)
                       ? 'opacity-50 cursor-not-allowed'
                       : 'hover:border-blue-400 cursor-pointer'
                   }`}
@@ -337,11 +351,11 @@ export default function TransactionSummary({
             </div>
             
             {/* Seña Currency Selection */}
-            {señaActiva && cliente?.señasDisponibles && onSeñaMonedasChange && (
+            {señaActiva && señasDisponibles && onSeñaMonedasChange && (
               <div className="mt-3 p-2 bg-blue-50 rounded border border-blue-200">
                 <div className="text-xs font-medium text-blue-700 mb-2">Seleccionar monedas para seña:</div>
                 <div className="space-y-2">
-                  {cliente.señasDisponibles.ars > 0 && (
+                  {señasDisponibles.ars > 0 && (
                     <div className="flex items-center gap-3 p-2 rounded-lg border border-gray-200 bg-white hover:bg-gray-50 transition-colors">
                       <Checkbox
                         checked={señaMonedas.includes('ARS')}
@@ -360,13 +374,13 @@ export default function TransactionSummary({
                       />
                       <div className="flex-1">
                         <span className="text-sm font-medium text-gray-900">
-                          ARS: {formatARSFromNative(cliente.señasDisponibles.ars)}
+                          ARS: {formatARSFromNative(señasDisponibles.ars)}
                         </span>
                         <div className="text-xs text-gray-500">Peso Argentino</div>
                       </div>
                     </div>
                   )}
-                  {cliente.señasDisponibles.usd > 0 && (
+                  {señasDisponibles.usd > 0 && (
                     <div className="flex items-center gap-3 p-2 rounded-lg border border-gray-200 bg-white hover:bg-gray-50 transition-colors">
                       <Checkbox
                         checked={señaMonedas.includes('USD')}
@@ -385,7 +399,7 @@ export default function TransactionSummary({
                       />
                       <div className="flex-1">
                         <span className="text-sm font-medium text-gray-900">
-                          USD: {formatUSD(cliente.señasDisponibles.usd)}
+                          USD: {formatUSD(señasDisponibles.usd)}
                         </span>
                         <div className="text-xs text-gray-500">Dólar Estadounidense</div>
                       </div>
@@ -402,18 +416,18 @@ export default function TransactionSummary({
                   Seleccione un cliente para ver información de seña
                 </div>
               </div>
-            ) : cliente?.señasDisponibles ? (
+            ) : señasDisponibles ? (
               <div className="mt-2 space-y-1 text-xs">
                 <div className="flex justify-between text-gray-600">
                   <span>Seña disponible ARS:</span>
                   <span className="font-medium text-green-600">
-                    {formatARSFromNative(cliente.señasDisponibles.ars || 0)}
+                    {formatARSFromNative(señasDisponibles.ars || 0)}
                   </span>
                 </div>
                 <div className="flex justify-between text-gray-600">
                   <span>Seña disponible USD:</span>
                   <span className="font-medium text-green-600">
-                    {formatUSD(cliente.señasDisponibles.usd || 0)}
+                    {formatUSD(señasDisponibles.usd || 0)}
                   </span>
                 </div>
                 
@@ -425,8 +439,8 @@ export default function TransactionSummary({
                       <div className="font-medium">
                         {señaMonedas.map(moneda => 
                           moneda === 'ARS' 
-                            ? `ARS: ${formatARSFromNative(cliente.señasDisponibles.ars)}`
-                            : `USD: ${formatUSD(cliente.señasDisponibles.usd)}`
+                            ? `ARS: ${formatARSFromNative(señasDisponibles.ars)}`
+                            : `USD: ${formatUSD(señasDisponibles.usd)}`
                         ).join(', ')}
                       </div>
                     </div>
