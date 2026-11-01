@@ -76,7 +76,7 @@ export default function PanelRitmoProductos() {
                   checked={v.ritmoRegistraProductos}
                   disabled={guardando === v.trabajadorId}
                   onCheckedChange={(valor) => void cambiar(v, valor)}
-                  className="data-[state=checked]:bg-[#d4748c]"
+                  className="h-6 w-11 data-[state=checked]:bg-[#d4748c] data-[state=unchecked]:bg-[#d9c7cd] [&>span]:size-5 [&>span]:bg-white [&>span]:shadow-sm [&>span]:data-[state=checked]:translate-x-[1.35rem] [&>span]:data-[state=unchecked]:translate-x-0.5"
                 />
               </li>
             ))}
