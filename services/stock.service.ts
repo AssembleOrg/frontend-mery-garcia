@@ -55,13 +55,16 @@ export type EstadoSolicitudStock = 'PENDIENTE' | 'APROBADA' | 'RECHAZADA' | 'CAN
 export interface SolicitudStock {
   id: string;
   estado: EstadoSolicitudStock;
+  /** RITMO = lo anotó ella desde la app de Ritmo. */
+  origen: 'PANEL' | 'RITMO';
   trabajador: { id: string; nombre: string };
   nota: string | null;
   respuesta: string | null;
   resueltaPor: string | null;
   resueltaAt: string | null;
   createdAt: string;
-  items: { productoId: string | null; nombre: string; cantidad: number }[];
+  /** `libre`: lo escribió ella porque no estaba en el catálogo. */
+  items: { productoId: string | null; nombre: string; cantidad: number; libre?: boolean }[];
 }
 
 export interface AccesoEmpleado {
@@ -96,10 +99,14 @@ class SolicitudesStockService {
   }
 
   // Equipo
-  async listar(filtro: { estado?: EstadoSolicitudStock; trabajadorId?: string } = {}): Promise<SolicitudStock[]> {
+  async listar(
+    filtro: { estado?: EstadoSolicitudStock; trabajadorId?: string; desde?: string; hasta?: string } = {},
+  ): Promise<SolicitudStock[]> {
     const q = new URLSearchParams();
     if (filtro.estado) q.set('estado', filtro.estado);
     if (filtro.trabajadorId) q.set('trabajadorId', filtro.trabajadorId);
+    if (filtro.desde) q.set('desde', filtro.desde);
+    if (filtro.hasta) q.set('hasta', filtro.hasta);
     const res = await apiFetch<Envelope<SolicitudStock[]>>(`${BASE}/solicitudes${q.size ? `?${q}` : ''}`);
     return res.data;
   }
@@ -137,3 +144,31 @@ class SolicitudesStockService {
 }
 
 export const solicitudesStockService = new SolicitudesStockService();
+
+// ─── Quién anota productos desde Ritmo ────────────────────────────
+
+export interface VinculoRitmo {
+  trabajadorId: string;
+  nombre: string;
+  activo: boolean;
+  /** Null: la trabajadora no está vinculada a una persona de Ritmo. */
+  ritmoUserId: string | null;
+  ritmoRegistraProductos: boolean;
+}
+
+class VinculosRitmoService {
+  async listar(): Promise<VinculoRitmo[]> {
+    const res = await apiFetch<Envelope<VinculoRitmo[]>>('/api/ritmo/servicios/vinculos');
+    return res.data;
+  }
+
+  async registraProductos(trabajadorId: string, valor: boolean): Promise<VinculoRitmo> {
+    const res = await apiFetch<Envelope<VinculoRitmo>>(`/api/ritmo/servicios/vinculos/${trabajadorId}`, {
+      method: 'PATCH',
+      json: { ritmoRegistraProductos: valor },
+    });
+    return res.data;
+  }
+}
+
+export const vinculosRitmoService = new VinculosRitmoService();
