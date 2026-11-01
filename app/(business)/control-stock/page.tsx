@@ -9,6 +9,7 @@ import Spinner from '@/components/common/Spinner';
 import ModalCargarProductos from '@/components/stock/ModalCargarProductos';
 import PanelSolicitudes from '@/components/stock/PanelSolicitudes';
 import PanelAccesos from '@/components/stock/PanelAccesos';
+import PanelRitmoProductos from '@/components/stock/PanelRitmoProductos';
 import BotonAvisosCelular from '@/components/common/BotonAvisosCelular';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -46,7 +47,7 @@ const breadcrumbItems = [
 type Pestana = 'productos' | 'solicitudes' | 'accesos';
 const PESTANAS: { id: Pestana; texto: string; icono: typeof Package }[] = [
   { id: 'productos', texto: 'Productos', icono: Package },
-  { id: 'solicitudes', texto: 'Pedidos', icono: ClipboardList },
+  { id: 'solicitudes', texto: 'Registros', icono: ClipboardList },
   { id: 'accesos', texto: 'Accesos', icono: KeyRound },
 ];
 
@@ -291,7 +292,12 @@ export default function ControlStockPage() {
               ) : pestana === 'solicitudes' ? (
                 <div className="space-y-4">
                   <BotonAvisosCelular className="w-full sm:w-auto" />
-                  <PanelSolicitudes onPendientes={setPendientes} />
+                  <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
+                    <div className="lg:col-span-2">
+                      <PanelSolicitudes onPendientes={setPendientes} />
+                    </div>
+                    <PanelRitmoProductos />
+                  </div>
                 </div>
               ) : pestana === 'accesos' ? (
                 <PanelAccesos trabajadores={trabajadores} />
