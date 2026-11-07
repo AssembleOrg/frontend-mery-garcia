@@ -412,6 +412,8 @@ export interface ComandaNew {
   valorDolar: number;
   responsablesIds?: string[];
   observaciones: string;
+  /** La clienta no se presentó: solo servicio + seña consumida, sin pagos. */
+  noAsistio?: boolean;
 }
 
 export type ComandaCreateNew = Partial<ComandaNew> & {

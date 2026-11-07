@@ -51,6 +51,7 @@ import { useErrorHandler } from '@/hooks/useErrorHandler';
 import ItemFormSimple from './ItemFormSimple';
 import TransactionSummary from './TransactionSummary';
 import MetodosPagoComanda from './MetodosPagoComanda';
+import NoAsistioToggle from './NoAsistioToggle';
 import { MONEDAS, METODOS_PAGO } from '@/lib/constants';
 import { useConfiguracion } from '@/features/configuracion/store/configuracionStore';
 import { MetodoPagoNew } from '@/services/unidadNegocio.service';
@@ -204,6 +205,8 @@ export default function ModalTransaccionUnificadoRefactored({
   // Seña state - now global for entire transaction
   const [señaActiva, setSeñaActiva] = useState(false);
   const [señaMonedas, setSeñaMonedas] = useState<string[]>([]); // Array of selected currencies for seña
+  // "No se presentó": solo servicio + seña consumida, sin pagos.
+  const [noAsistio, setNoAsistio] = useState(false);
 
   // Payment methods state - at comanda level
   const [metodosPago, setMetodosPago] = useState<Partial<MetodoPagoNew>[]>([
@@ -348,6 +351,10 @@ export default function ModalTransaccionUnificadoRefactored({
   }, [mostrarBuscador, productosServicios.length]);
 
   const agregarDesdeProducto = (producto: ProductoServicioNew) => {
+    if (noAsistio && producto.tipo === 'PRODUCTO') {
+      toast.error('Si la clienta no vino, la comanda solo lleva el servicio.');
+      return;
+    }
     // Para productos congelados: NO convertir, usar precio ARS como base
     // Para productos normales: mantener lógica USD actual
     let precioBase = producto.precio;
@@ -438,6 +445,32 @@ export default function ModalTransaccionUnificadoRefactored({
     setItems(newItems);
   };
 
+  // Seña que se consumiría (la activa más vieja de cada moneda).
+  const señaARSDisponible = Number(
+    señaMasVieja(clienteSeleccionado?.prepagosGuardados, MonedaNew.ARS)?.monto ?? 0,
+  );
+  const señaUSDDisponible = Number(
+    señaMasVieja(clienteSeleccionado?.prepagosGuardados, MonedaNew.USD)?.monto ?? 0,
+  );
+
+  const cambiarNoAsistio = (activo: boolean) => {
+    if (!activo) {
+      setNoAsistio(false);
+      return;
+    }
+    if (items.some((i) => i.productoServicio?.tipo === 'PRODUCTO')) {
+      toast.error('Sacá los productos: si la clienta no vino, la comanda solo lleva el servicio.');
+      return;
+    }
+    const monedas: string[] = [];
+    if (señaARSDisponible > 0) monedas.push('ARS');
+    if (señaUSDDisponible > 0) monedas.push('USD');
+    setSeñaActiva(true);
+    setSeñaMonedas(monedas);
+    setMetodosPago([{ tipo: TipoPagoNew.EFECTIVO, monto: 0, moneda: MonedaNew.ARS }]);
+    setNoAsistio(true);
+  };
+
   // Form validation
   const validarFormulario = (): boolean => {
     const nuevosErrores: Record<string, string> = {};
@@ -494,6 +527,19 @@ export default function ModalTransaccionUnificadoRefactored({
       }
     });
 
+    if (noAsistio) {
+      if (!clienteSeleccionado || (señaARSDisponible <= 0 && señaUSDDisponible <= 0)) {
+        toast.error('Para marcar "No se presentó" la clienta tiene que tener una seña.', { position: 'top-center' });
+        return false;
+      }
+      if (items.some((i) => i.productoServicio?.tipo === 'PRODUCTO')) {
+        toast.error('Si la clienta no vino, la comanda solo lleva el servicio (sin productos).', { position: 'top-center' });
+        return false;
+      }
+      setErrores(nuevosErrores);
+      return Object.keys(nuevosErrores).length === 0;
+    }
+
     // Validar métodos de pago
     const metodosPagoValidos = metodosPago.filter(mp => mp.monto && mp.monto > 0);
     if (metodosPagoValidos.length === 0) {
@@ -534,6 +580,7 @@ export default function ModalTransaccionUnificadoRefactored({
 
       // Filter out payment methods with 0 amount and add required fields
       const metodosPagoValidos = metodosPago
+        .filter(() => !noAsistio)
         .filter(mp => mp.monto && mp.monto > 0)
         .map(mp => ({
           tipo: mp.tipo!,
@@ -556,7 +603,8 @@ export default function ModalTransaccionUnificadoRefactored({
         clienteId: clienteSeleccionado?.id,
         creadoPorId: user?.id,
         numero: numeroTransaccion.toString(),
-        observaciones,
+        observaciones: noAsistio && !observaciones.trim() ? 'No se presentó' : observaciones,
+        noAsistio,
         tipoDeComanda:
           tipo === 'ingreso'
             ? TipoDeComandaNew.INGRESO
@@ -567,16 +615,18 @@ export default function ModalTransaccionUnificadoRefactored({
         descuentosAplicados: [],
         items: itemsForBackend,
         metodosPago: metodosPagoValidos,
-        usuarioConsumePrepagoARS: señaActiva && señaMonedas.includes('ARS'),
-        usuarioConsumePrepagoUSD: señaActiva && señaMonedas.includes('USD'),
+        usuarioConsumePrepagoARS: noAsistio ? señaARSDisponible > 0 : señaActiva && señaMonedas.includes('ARS'),
+        usuarioConsumePrepagoUSD: noAsistio ? señaUSDDisponible > 0 : señaActiva && señaMonedas.includes('USD'),
         createdAt: fechaCreacion,
       };
 
-      if (señaActiva && señaMonedas.includes('ARS')) {
-        nuevaComandaNew.prepagoARSID = prepagoARS?.toString() || '';
+      if (nuevaComandaNew.usuarioConsumePrepagoARS) {
+        nuevaComandaNew.prepagoARSID =
+          (noAsistio ? señaMasVieja(clienteSeleccionado?.prepagosGuardados, MonedaNew.ARS)?.id : prepagoARS)?.toString() || '';
       }
-      if (señaActiva && señaMonedas.includes('USD')) {
-        nuevaComandaNew.prepagoUSDID = prepagoUSD?.toString() || '';
+      if (nuevaComandaNew.usuarioConsumePrepagoUSD) {
+        nuevaComandaNew.prepagoUSDID =
+          (noAsistio ? señaMasVieja(clienteSeleccionado?.prepagosGuardados, MonedaNew.USD)?.id : prepagoUSD)?.toString() || '';
       }
 
       // Descuentos ya están aplicados a nivel de item como campo descuento
@@ -646,6 +696,7 @@ export default function ModalTransaccionUnificadoRefactored({
     setBusqueda('');
     setSeñaActiva(false); // Reset seña state
     setSeñaMonedas([]); // Reset seña currencies
+    setNoAsistio(false);
     setFechaCreacion(new Date()); // Reset to today
   };
 
@@ -973,6 +1024,7 @@ export default function ModalTransaccionUnificadoRefactored({
                               setTelefono('');
                               setSeñaActiva(false); // Reset seña cuando se deselecciona cliente
                               setSeñaMonedas([]); // Reset monedas de seña
+                              setNoAsistio(false);
                             }
                           }}
                           required={true}
@@ -982,6 +1034,15 @@ export default function ModalTransaccionUnificadoRefactored({
                             {errores.clienteProveedor}
                           </p>
                         )}
+                        <div className="mt-3">
+                          <NoAsistioToggle
+                            activo={noAsistio}
+                            onChange={cambiarNoAsistio}
+                            señaARS={señaARSDisponible}
+                            señaUSD={señaUSDDisponible}
+                            hayClienta={!!clienteSeleccionado}
+                          />
+                        </div>
                       </div>
                     )}
 
@@ -1082,8 +1143,19 @@ export default function ModalTransaccionUnificadoRefactored({
                 </CardContent>
               </Card>
 
+              {/* No se presentó: sin pagos, solo la seña */}
+              {noAsistio && items.length > 0 && (
+                <div className="rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-800">
+                  <p className="font-semibold">Sin pagos: la clienta no se presentó.</p>
+                  <p className="mt-1 text-red-700">
+                    Se consume la seña y la comisión del servicio se calcula sobre ella. Para cargar pagos, apagá
+                    &quot;No se presentó&quot;.
+                  </p>
+                </div>
+              )}
+
               {/* Payment Methods Section */}
-              {items.length > 0 && (
+              {items.length > 0 && !noAsistio && (
                 <Card className="border border-gray-300 bg-white shadow-md">
                   <CardHeader className="bg-gradient-to-r from-[#f9bbc4]/10 to-[#e8b4c6]/10">
                     <CardTitle className="text-lg text-[#4a3540]">
@@ -1181,6 +1253,7 @@ export default function ModalTransaccionUnificadoRefactored({
               </div>
               <div className="max-h-96 overflow-y-auto">
                 {productosServicios
+                  .filter((producto) => !noAsistio || producto.tipo !== 'PRODUCTO')
                   .filter((producto) =>
                     producto.nombre
                       .toLowerCase()

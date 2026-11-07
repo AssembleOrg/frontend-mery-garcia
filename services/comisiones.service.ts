@@ -37,6 +37,35 @@ export interface ComisionTrabajadorDto {
    * mientras el mes no esté confirmado.
    */
   esquemaBase?: EsquemaBaseDto | null;
+  /**
+   * Clientas que no se presentaron: cada servicio comisiona sobre la seña
+   * perdida (ya incluido en "comisiones"). null si no hubo.
+   */
+  noAsistio?: NoAsistioDto | null;
+}
+
+export interface NoAsistioDetalleDto {
+  comandaId: string;
+  numero: string;
+  /** "YYYY-MM-DD" */
+  dia: string;
+  servicio: string;
+  moneda: 'ARS' | 'USD';
+  seña: number;
+  porcentaje: number;
+  porcentajeMax: number;
+  confirmado: boolean;
+  comision: number;
+  comisionMax: number;
+}
+
+export interface NoAsistioDto {
+  cantidad: number;
+  señaARS: number;
+  señaUSD: number;
+  comisionARS: number;
+  comisionUSD: number;
+  detalle: NoAsistioDetalleDto[];
 }
 
 export interface EsquemaBaseServicioDto {

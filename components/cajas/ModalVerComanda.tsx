@@ -251,6 +251,11 @@ export default function ModalVerComanda({ isOpen, onClose, comanda }: ModalVerCo
                     <div>
                       <label className="text-sm font-medium text-gray-600">Número</label>
                       <p className="text-lg font-semibold text-[#4a3540]">{comanda.numero}</p>
+                      {comanda.noAsistio && (
+                        <p className="mt-1 inline-block rounded-full bg-red-100 px-2 py-0.5 text-xs font-medium text-red-700">
+                          No se presentó · se consumió la seña
+                        </p>
+                      )}
                     </div>
                     <div>
                       <label className="text-sm font-medium text-gray-600">Estado</label>

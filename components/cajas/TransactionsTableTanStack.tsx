@@ -119,6 +119,11 @@ export default function TransactionsTableTanStack({
           >
             {isValidated && <CheckCircle className="h-4 w-4 text-green-500" />}
             {getValue() as string}
+            {row.original.noAsistio && (
+              <span className="rounded-full bg-red-100 px-2 py-0.5 text-xs font-medium whitespace-nowrap text-red-700">
+                No se presentó
+              </span>
+            )}
           </div>
         );
       },

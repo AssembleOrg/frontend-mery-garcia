@@ -44,6 +44,7 @@ import ManagerOrAdminOnly from '@/components/auth/ManagerOrAdminOnly';
 import { Badge } from '@/components/ui/badge';
 import { cn, formatDate } from '@/lib/utils';
 import EsquemaBaseDetalle, { BadgePorcentajePendiente } from '@/components/cajas/EsquemaBaseDetalle';
+import NoAsistioDetalle from '@/components/cajas/NoAsistioDetalle';
 
 const breadcrumbItems = [
   { label: 'Inicio', href: '/' },
@@ -544,6 +545,9 @@ export default function ComisionesPage() {
                                   trabajador.esquemaBase.productosEfectivoUSD > 0 ||
                                   trabajador.esquemaBase.serviciosSinComision.length > 0) && (
                                 <EsquemaBaseDetalle esquema={trabajador.esquemaBase} />
+                              )}
+                              {trabajador.noAsistio && (
+                                <NoAsistioDetalle noAsistio={trabajador.noAsistio} />
                               )}
                             </div>
                           ))}
