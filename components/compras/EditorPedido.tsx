@@ -453,8 +453,8 @@ export default function EditorPedido(props: Props) {
                   <Lock className="h-3 w-3" aria-hidden />
                   Cerrado: pasaron 48 h desde que se compró
                   {pedido.estado === 'COMPRADO'
-                    ? '. Sólo queda marcar que llegó.'
-                    : '.'}
+                    ? '. Sólo queda marcar que llegó y adjuntar comprobantes.'
+                    : '. Todavía se pueden adjuntar comprobantes.'}
                 </p>
               ) : pedido?.editableHasta ? (
                 <p>
@@ -728,7 +728,9 @@ export default function EditorPedido(props: Props) {
                   ))}
                 </ul>
               )}
-              {!soloLectura && (
+              {/* Adjuntar se puede siempre, aunque esté cerrado: la factura
+                  suele llegar con la entrega. Borrar no. */}
+              {
                 <>
                   <input
                     ref={archivoRef}
@@ -752,7 +754,7 @@ export default function EditorPedido(props: Props) {
                     conciliarlo.
                   </p>
                 </>
-              )}
+              }
             </>
           )}
         </Seccion>
