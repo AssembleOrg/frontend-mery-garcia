@@ -19,12 +19,26 @@ const LoadingSpinner = () => (
 );
 
 export function AuthProvider({ children }: AuthProviderProps) {
-  const { isAuthenticated, isLoading, initializeAuth, soloPresentismo, soloEmpleado } = useAuth();
+  const {
+    isAuthenticated,
+    isLoading,
+    initializeAuth,
+    soloPresentismo,
+    soloEmpleado,
+    soloCompras,
+  } = useAuth();
   const router = useRouter();
   const pathname = usePathname();
   // Roles que sólo ven una sección: no salen de ahí.
-  const seccionUnica = soloPresentismo ? '/presentismo' : soloEmpleado ? '/mis-productos' : null;
-  const fueraDeSeccion = isAuthenticated && !!seccionUnica && !pathname.startsWith(seccionUnica);
+  const seccionUnica = soloPresentismo
+    ? '/presentismo'
+    : soloEmpleado
+      ? '/mis-productos'
+      : soloCompras
+        ? '/compras'
+        : null;
+  const fueraDeSeccion =
+    isAuthenticated && !!seccionUnica && !pathname.startsWith(seccionUnica);
   const { handleAuthError } = useAuthErrorHandler();
 
   // Hasta que initializeAuth no restauró la sesión, isAuthenticated vale false
@@ -59,7 +73,10 @@ export function AuthProvider({ children }: AuthProviderProps) {
 
     return () => {
       window.removeEventListener('error', handleGlobalError);
-      window.removeEventListener('unhandledrejection', handleUnhandledRejection);
+      window.removeEventListener(
+        'unhandledrejection',
+        handleUnhandledRejection
+      );
     };
   }, [handleAuthError]);
 
@@ -80,14 +97,22 @@ export function AuthProvider({ children }: AuthProviderProps) {
       return;
     }
 
-    // Quien sólo tiene presentismo (o es empleado) no sale de su sección:
+    // Quien sólo tiene presentismo, compras (o es empleado) no sale de su sección:
     // cualquier otra ruta (dashboard, cajas, clientes…) lo devuelve. El
     // backend igual rechaza sus llamadas al resto; esto es para que no vea
     // pantallas rotas.
     if (fueraDeSeccion && seccionUnica) {
       router.replace(seccionUnica);
     }
-  }, [isAuthenticated, isLoading, sesionLista, pathname, router, seccionUnica, fueraDeSeccion]);
+  }, [
+    isAuthenticated,
+    isLoading,
+    sesionLista,
+    pathname,
+    router,
+    seccionUnica,
+    fueraDeSeccion,
+  ]);
 
   if (isLoading || !sesionLista) {
     return <LoadingSpinner />;

@@ -11,14 +11,18 @@ interface AdminOnlyProps {
   children: React.ReactNode;
   redirectTo?: string;
   showBackButton?: boolean;
+  /** Deja pasar también al rol "compras" (sólo para esa sección). */
+  permitirCompras?: boolean;
 }
 
 export default function AdminOnly({
   children,
   redirectTo = '/dashboard',
   showBackButton = true,
+  permitirCompras = false,
 }: AdminOnlyProps) {
-  const { isAdmin, isAuthenticated, isLoading } = useAuth();
+  const { isAdmin, isAuthenticated, isLoading, soloCompras } = useAuth();
+  const puede = isAdmin || (permitirCompras && soloCompras);
   const router = useRouter();
   // Redirigir en un efecto, no durante el render: al montar la sesión todavía
   // no se restauró y un push acá mandaba siempre al login.
@@ -42,7 +46,7 @@ export default function AdminOnly({
     );
   }
 
-  if (!isAdmin) {
+  if (!puede) {
     return (
       <div className="flex min-h-[400px] items-center justify-center">
         <Card className="w-full max-w-md">

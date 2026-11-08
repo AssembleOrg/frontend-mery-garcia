@@ -14,7 +14,7 @@ const breadcrumbItems = [
 
 export default function ComprasPage() {
   return (
-    <AdminOnly>
+    <AdminOnly permitirCompras>
       <MainLayout>
         <div className="min-h-screen bg-gradient-to-br from-[#f9bbc4]/15 via-[#e8b4c6]/12 to-[#d4a7ca]/10">
           <StandardPageBanner title="Compras" />

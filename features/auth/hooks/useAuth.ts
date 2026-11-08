@@ -32,11 +32,21 @@ export const useAuth = () => {
     clearError,
 
     // Helpers - Estado derivado calculado en cada render
-    hasRole: (role: 'admin' | 'user' | 'encargado' | 'presentismo' | 'empleado') => user?.rol === role,
+    hasRole: (
+      role:
+        | 'admin'
+        | 'user'
+        | 'encargado'
+        | 'presentismo'
+        | 'empleado'
+        | 'compras'
+    ) => user?.rol === role,
     // Sólo presentismo: no ve el resto del sistema.
     soloPresentismo: user?.rol === 'presentismo',
     // Empleado de la estética: sólo pide productos de stock.
     soloEmpleado: user?.rol === 'empleado',
+    // Sólo Compras (pedidos a proveedores): no ve el resto del sistema.
+    soloCompras: user?.rol === 'compras',
     hasUnidadNegocio: (unidad: 'tattoo' | 'estilismo' | 'formacion') =>
       user?.unidadesDisponibles?.includes(unidad) ?? false,
     isAdmin: user?.rol === 'admin',
