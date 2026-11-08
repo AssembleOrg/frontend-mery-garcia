@@ -4,8 +4,25 @@ export interface ProductoStock {
   id: string;
   nombre: string;
   trabajadores: { id: string; nombre: string }[];
+  /**
+   * Lo que hay: entregado en Compras − usado por el personal + conteos.
+   * Null = todavía no se lleva la cuenta (sin compras entregadas ni conteo).
+   */
+  cantidad: number | null;
+  /** Avisar cuando queden esta cantidad o menos (null = sólo con 1 o 0). */
+  stockMinimo: number | null;
+  /** Queda poco: 1 o 0, o el mínimo. */
+  bajo: boolean;
   createdAt: string;
   updatedAt: string;
+}
+
+export interface AjusteStock {
+  id: string;
+  cantidad: number;
+  motivo: string | null;
+  hechoPorNombre: string | null;
+  createdAt: string;
 }
 
 interface Envelope<T> {
@@ -35,6 +52,29 @@ class StockService {
 
   async eliminarProducto(id: string): Promise<void> {
     await apiFetch(`${BASE}/productos/${id}`, { method: 'DELETE' });
+  }
+
+  /** Aviso de poco stock: null = sólo con 1 o 0. */
+  async cambiarMinimo(id: string, stockMinimo: number | null): Promise<void> {
+    await apiFetch(`${BASE}/productos/${id}`, { method: 'PATCH', json: { stockMinimo } });
+  }
+
+  /** Deja la cantidad en lo que se contó (guarda la diferencia como ajuste). */
+  async ajustar(
+    id: string,
+    contado: number,
+    motivo?: string,
+  ): Promise<{ cantidad: number | null; bajo: boolean }> {
+    const res = await apiFetch<Envelope<{ cantidad: number | null; bajo: boolean }>>(
+      `${BASE}/productos/${id}/ajustes`,
+      { method: 'POST', json: { contado, motivo: motivo || undefined } },
+    );
+    return res.data;
+  }
+
+  async ajustes(id: string): Promise<AjusteStock[]> {
+    const res = await apiFetch<Envelope<AjusteStock[]>>(`${BASE}/productos/${id}/ajustes`);
+    return res.data;
   }
 
   /** Reemplaza los productos que usa el trabajador. */

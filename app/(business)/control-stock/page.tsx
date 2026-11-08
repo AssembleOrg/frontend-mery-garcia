@@ -33,9 +33,34 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import { Check, ClipboardList, KeyRound, Package, Pencil, Plus, Search, Trash2, UserCheck, X } from 'lucide-react';
+import {
+  AlertTriangle,
+  Check,
+  ClipboardCheck,
+  ClipboardList,
+  KeyRound,
+  Package,
+  Pencil,
+  Plus,
+  Search,
+  Trash2,
+  UserCheck,
+  X,
+} from 'lucide-react';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogTitle,
+} from '@/components/ui/dialog';
+import { CLASE_POCO_STOCK, fechaHora, mensajeError } from '@/components/compras/formato';
 import { toast } from 'sonner';
-import { solicitudesStockService, stockService, type ProductoStock } from '@/services/stock.service';
+import {
+  solicitudesStockService,
+  stockService,
+  type AjusteStock,
+  type ProductoStock,
+} from '@/services/stock.service';
 import { trabajadoresService } from '@/services/trabajadores.service';
 import type { TrabajadorNew } from '@/services/unidadNegocio.service';
 
@@ -50,6 +75,10 @@ const PESTANAS: { id: Pestana; texto: string; icono: typeof Package }[] = [
   { id: 'solicitudes', texto: 'Registros', icono: ClipboardList },
   { id: 'accesos', texto: 'Accesos', icono: KeyRound },
 ];
+
+/** "Quedan 2" / "Sin stock". */
+const textoPoco = (cantidad: number | null) =>
+  cantidad !== null && cantidad <= 0 ? 'Sin stock' : `Quedan ${cantidad ?? 0}`;
 
 const normalizar = (s: string) =>
   s.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
@@ -91,6 +120,14 @@ export default function ControlStockPage() {
   const [busquedaProductos, setBusquedaProductos] = useState('');
   const [editando, setEditando] = useState<{ id: string; nombre: string } | null>(null);
   const [aEliminar, setAEliminar] = useState<ProductoStock | null>(null);
+
+  // Conteo (ajuste a lo que hay) y mínimo para el aviso
+  const [contando, setContando] = useState<ProductoStock | null>(null);
+  const [contado, setContado] = useState('');
+  const [motivo, setMotivo] = useState('');
+  const [minimo, setMinimo] = useState('');
+  const [ajustes, setAjustes] = useState<AjusteStock[]>([]);
+  const [guardandoConteo, setGuardandoConteo] = useState(false);
 
   // Asignación
   const [trabajadorId, setTrabajadorId] = useState<string>('');
@@ -236,6 +273,53 @@ export default function ControlStockPage() {
     }
   };
 
+  const abrirConteo = (p: ProductoStock) => {
+    setContando(p);
+    setContado(p.cantidad !== null && p.cantidad >= 0 ? String(p.cantidad) : '');
+    setMotivo('');
+    setMinimo(p.stockMinimo !== null ? String(p.stockMinimo) : '');
+    setAjustes([]);
+    stockService
+      .ajustes(p.id)
+      .then(setAjustes)
+      .catch(() => setAjustes([]));
+  };
+
+  const guardarConteo = async (ev?: React.FormEvent) => {
+    ev?.preventDefault();
+    if (!contando) return;
+    if (!/^\d+$/.test(contado.trim())) {
+      toast.error('Escribí cuántos hay (un número entero, 0 o más)');
+      return;
+    }
+    if (minimo.trim() && !/^\d+$/.test(minimo.trim())) {
+      toast.error('El aviso tiene que ser un número entero, o dejalo vacío');
+      return;
+    }
+    const nuevoMinimo = minimo.trim() ? Number(minimo.trim()) : null;
+    setGuardandoConteo(true);
+    try {
+      if (nuevoMinimo !== contando.stockMinimo) {
+        await stockService.cambiarMinimo(contando.id, nuevoMinimo);
+      }
+      const r = await stockService.ajustar(contando.id, Number(contado.trim()), motivo.trim());
+      setProductos((prev) =>
+        prev.map((p) =>
+          p.id === contando.id ? { ...p, ...r, stockMinimo: nuevoMinimo } : p,
+        ),
+      );
+      toast.success(`${contando.nombre}: quedan ${r.cantidad ?? 0}`);
+      setContando(null);
+      cargar();
+    } catch (error) {
+      toast.error(mensajeError(error, 'No se pudo guardar el conteo'));
+    } finally {
+      setGuardandoConteo(false);
+    }
+  };
+
+  const bajos = useMemo(() => productos.filter((p) => p.bajo), [productos]);
+
   const onCreados = (nuevos: ProductoStock[]) =>
     setProductos((prev) =>
       [...prev, ...nuevos].sort((a, b) => a.nombre.localeCompare(b.nombre)),
@@ -326,6 +410,21 @@ export default function ControlStockPage() {
                         </CardTitle>
                       </CardHeader>
                       <CardContent className="space-y-3">
+                        {bajos.length > 0 && (
+                          <p className="flex items-start gap-1.5 text-xs text-[#7a4a05]">
+                            <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0" aria-hidden />
+                            <span>
+                              Quedan pocos:{' '}
+                              {bajos.map((p, i) => (
+                                <span key={p.id} className="tabular-nums">
+                                  {i > 0 && ' · '}
+                                  {p.nombre} ({p.cantidad ?? 0})
+                                </span>
+                              ))}
+                            </span>
+                          </p>
+                        )}
+
                         {productos.length > 0 && (
                           <div className="relative">
                             <Search className="absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-[#8b5a6b]" />
@@ -391,11 +490,51 @@ export default function ControlStockPage() {
                                   </>
                                 ) : (
                                   <>
-                                    <span className="min-w-0 flex-1 text-sm break-words text-[#4a3540]">{p.nombre}</span>
-                                    <span className="shrink-0 text-xs text-[#8b5a6b]">
-                                      {p.trabajadores.length > 0 &&
-                                        `${p.trabajadores.length} ${p.trabajadores.length === 1 ? 'persona' : 'personas'}`}
+                                    <span className="min-w-0 flex-1 text-sm break-words text-[#4a3540]">
+                                      {p.nombre}
+                                      {p.trabajadores.length > 0 && (
+                                        <span className="block text-xs text-[#8b5a6b]">
+                                          {`${p.trabajadores.length} ${p.trabajadores.length === 1 ? 'persona' : 'personas'}`}
+                                        </span>
+                                      )}
                                     </span>
+                                    {p.bajo ? (
+                                      <span
+                                        className={`inline-flex shrink-0 items-center gap-1 rounded-full px-2 py-0.5 text-xs tabular-nums ${CLASE_POCO_STOCK}`}
+                                        title={
+                                          p.stockMinimo !== null
+                                            ? `Avisa cuando quedan ${p.stockMinimo} o menos`
+                                            : 'Avisa cuando queda 1 o ninguno'
+                                        }
+                                      >
+                                        <AlertTriangle className="h-3 w-3" aria-hidden />
+                                        {textoPoco(p.cantidad)}
+                                      </span>
+                                    ) : p.cantidad === null ? (
+                                      <span
+                                        className="shrink-0 px-1 text-sm text-[#b496a2]"
+                                        title="Todavía no se lleva la cuenta: entra con una compra entregada o con un conteo"
+                                      >
+                                        —
+                                      </span>
+                                    ) : (
+                                      <span
+                                        className="shrink-0 px-1 text-sm text-[#4a3540] tabular-nums"
+                                        title="Cantidad que hay"
+                                      >
+                                        {p.cantidad}
+                                      </span>
+                                    )}
+                                    <Button
+                                      variant="ghost"
+                                      size="sm"
+                                      aria-label={`Contar ${p.nombre}`}
+                                      title="Contar cuántos hay"
+                                      onClick={() => abrirConteo(p)}
+                                      className="h-10 w-10 shrink-0 p-0 text-[#8b5a6b] hover:bg-[#f9bbc4]/10 sm:h-8 sm:w-8"
+                                    >
+                                      <ClipboardCheck className="h-4 w-4" />
+                                    </Button>
                                     <Button
                                       variant="ghost"
                                       size="sm"
@@ -588,6 +727,102 @@ export default function ControlStockPage() {
           onClose={() => setModalAbierto(false)}
           onCreados={onCreados}
         />
+
+        <Dialog open={!!contando} onOpenChange={(abierto) => !abierto && setContando(null)}>
+          <DialogContent className="max-h-[90vh] overflow-y-auto border-[#f5d0d9] text-[#4a3540] sm:max-w-sm">
+            <DialogTitle className="text-lg font-medium text-[#4a3540]">
+              Contar {contando?.nombre}
+            </DialogTitle>
+            <DialogDescription className="text-sm text-[#6b4c57]">
+              {contando?.cantidad === null || contando?.cantidad === undefined
+                ? 'Desde este conteo se empieza a llevar la cuenta.'
+                : `Según el sistema hay ${contando.cantidad}. Si contaste otra cosa, queda lo que pongas.`}
+            </DialogDescription>
+            {contando && (
+              <form onSubmit={guardarConteo} className="space-y-3">
+                <div className="space-y-1">
+                  <label htmlFor="conteo-hay" className="text-xs text-[#8b5a6b]">
+                    ¿Cuántos hay ahora?
+                  </label>
+                  <Input
+                    id="conteo-hay"
+                    autoFocus
+                    required
+                    inputMode="numeric"
+                    value={contado}
+                    onChange={(e) => setContado(e.target.value.replace(/\D/g, ''))}
+                    placeholder="0"
+                    className="border-[#f9bbc4]/40 tabular-nums"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <label htmlFor="conteo-motivo" className="text-xs text-[#8b5a6b]">
+                    Motivo (opcional)
+                  </label>
+                  <Input
+                    id="conteo-motivo"
+                    maxLength={200}
+                    value={motivo}
+                    onChange={(e) => setMotivo(e.target.value)}
+                    placeholder="Conteo del lunes, se rompió uno…"
+                    className="border-[#f9bbc4]/40"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <label htmlFor="conteo-minimo" className="text-xs text-[#8b5a6b]">
+                    Avisar cuando queden (opcional)
+                  </label>
+                  <Input
+                    id="conteo-minimo"
+                    inputMode="numeric"
+                    value={minimo}
+                    onChange={(e) => setMinimo(e.target.value.replace(/\D/g, ''))}
+                    placeholder="Vacío: avisa con 1 o ninguno"
+                    className="border-[#f9bbc4]/40 tabular-nums"
+                  />
+                </div>
+
+                {ajustes.length > 0 && (
+                  <div className="space-y-1 border-t border-[#f9bbc4]/20 pt-3">
+                    <p className="text-xs text-[#8b5a6b]">Últimos conteos</p>
+                    <ul className="max-h-32 space-y-0.5 overflow-y-auto text-xs text-[#6b4c57]">
+                      {ajustes.slice(0, 8).map((a) => (
+                        <li key={a.id} className="flex gap-2">
+                          <span className="shrink-0 tabular-nums">{fechaHora(a.createdAt)}</span>
+                          <span className="w-10 shrink-0 text-right tabular-nums">
+                            {a.cantidad > 0 ? `+${a.cantidad}` : a.cantidad < 0 ? `−${Math.abs(a.cantidad)}` : '0'}
+                          </span>
+                          <span className="min-w-0 truncate" title={a.motivo ?? undefined}>
+                            {a.motivo}
+                            {a.hechoPorNombre ? ` · ${a.hechoPorNombre}` : ''}
+                          </span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+
+                <div className="flex justify-end gap-2 pt-1">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => setContando(null)}
+                    className="border-[#f9bbc4]/40 text-[#6b4c57]"
+                  >
+                    Cancelar
+                  </Button>
+                  <Button
+                    type="submit"
+                    disabled={guardandoConteo}
+                    className="bg-[#d4748c] font-semibold text-white hover:bg-[#c0607a]"
+                  >
+                    {guardandoConteo ? 'Guardando...' : 'Guardar'}
+                  </Button>
+                </div>
+              </form>
+            )}
+          </DialogContent>
+        </Dialog>
 
         <AlertDialog open={!!aEliminar} onOpenChange={(open) => !open && setAEliminar(null)}>
           <AlertDialogContent>

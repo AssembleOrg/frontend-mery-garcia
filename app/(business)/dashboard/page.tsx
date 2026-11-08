@@ -13,7 +13,9 @@ import {
   CalendarClock,
   CalendarCheck,
   PackageCheck,
+  ShoppingCart,
 } from 'lucide-react';
+import { useAuth } from '@/features/auth/hooks/useAuth';
 
 const breadcrumbItems = [
   { label: 'Inicio', href: '/' },
@@ -94,6 +96,16 @@ const menuItems = [
     accentColor: '#f9bbc4',
   },
   {
+    title: 'Compras',
+    description: 'Pedidos a proveedores: lo que falta comprar, precios, comprobantes y lo que llegó.',
+    href: '/compras',
+    icon: <ShoppingCart size={32} strokeWidth={1.5} />,
+    gradientFrom: 'from-[#e8b4c6]',
+    gradientTo: 'to-[#d4a7ca]',
+    accentColor: '#e8b4c6',
+    soloAdmin: true,
+  },
+  {
     title: 'Configuración',
     description: 'Ajustes generales y personalización.',
     href: '/configuracion',
@@ -105,6 +117,9 @@ const menuItems = [
 ];
 
 export default function DashboardPage() {
+  const { isAdmin } = useAuth();
+  const visibles = menuItems.filter((item) => !('soloAdmin' in item && item.soloAdmin) || isAdmin);
+
   return (
     <MainLayout>
       <div className="min-h-screen bg-gradient-to-br from-[#f9bbc4]/15 via-[#e8b4c6]/12 to-[#d4a7ca]/10">
@@ -129,7 +144,7 @@ export default function DashboardPage() {
             </div>
 
             <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
-              {menuItems.map((item) => (
+              {visibles.map((item) => (
                 <DashboardCard
                   key={item.title}
                   title={item.title}
