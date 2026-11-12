@@ -1,15 +1,27 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { AlertTriangle, Loader2, Save } from 'lucide-react';
+import { AlertTriangle, CalendarOff, Loader2, Plus, Save, ShieldCheck, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
+import { Input } from '@/components/ui/input';
+import { DatePicker } from '@/components/ui/date-picker';
 import { Switch } from '@/components/ui/switch';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { whatsappService, type ConfigWhatsapp, type MensajesBot, type Respuesta } from '@/services/whatsapp.service';
+import { whatsappService, type CierreEstudio, type ConfigWhatsapp, type MensajesBot, type Respuesta } from '@/services/whatsapp.service';
+
+/** 'YYYY-MM-DD' ↔ Date local (sin corrimientos por zona horaria). */
+function aFecha(iso: string): Date | undefined {
+  const [a, m, d] = iso.split('-').map(Number);
+  return a && m && d ? new Date(a, m - 1, d) : undefined;
+}
+function aIso(f: Date | undefined): string {
+  if (!f) return '';
+  return `${f.getFullYear()}-${String(f.getMonth() + 1).padStart(2, '0')}-${String(f.getDate()).padStart(2, '0')}`;
+}
 
 const DIAS = [
   { n: 1, l: 'Lun' },
@@ -34,6 +46,17 @@ const MENSAJES: Array<{ clave: keyof MensajesBot; titulo: string; ayuda: string 
   { clave: 'despedida', titulo: 'Despedida', ayuda: 'Al cerrar una charla con despedida, o 1 hora después del aviso de inactividad.' },
   { clave: 'sinDerivacion', titulo: 'Sin derivación (pruebas)', ayuda: 'Con “Pasar charlas a recepción” apagado, lo que contesta cuando habría pasado la charla a recepción.' },
   { clave: 'botApagado', titulo: 'Bot apagado', ayuda: 'Si el bot está apagado, cada charla nueva recibe esto y pasa directo a una persona.' },
+  {
+    clave: 'fueraDeTema',
+    titulo: 'Fuera de tema o intento de manipular el bot',
+    ayuda:
+      'Cuando escriben algo que no tiene nada que ver con el estudio (recetas, colectivos, clima, programación, tareas…) o intentan que el bot haga otra cosa. Nunca pasa a recepción.',
+  },
+  {
+    clave: 'cierreDerivacion',
+    titulo: 'Durante un cierre, al pasar a recepción',
+    ayuda: 'Va después del aviso «Estamos cerradas … Volvemos el …» cuando una charla pasa a recepción en días de cierre.',
+  },
 ];
 
 export default function TabBot() {
@@ -71,6 +94,12 @@ export default function TabBot() {
       setGuardando(false);
     }
   };
+
+  const cierres = cfg.cierres ?? [];
+  const cambiarCierre = (i: number, cambio: Partial<CierreEstudio>) =>
+    setCfg({ ...cfg, cierres: cierres.map((c, j) => (j === i ? { ...c, ...cambio } : c)) });
+  const agregarCierre = () => setCfg({ ...cfg, cierres: [...cierres, { desde: '', hasta: '', motivo: 'por vacaciones' }] });
+  const quitarCierre = (i: number) => setCfg({ ...cfg, cierres: cierres.filter((_, j) => j !== i) });
 
   const alternarDia = (n: number) => {
     const dias = cfg.horario.dias.includes(n) ? cfg.horario.dias.filter((d) => d !== n) : [...cfg.horario.dias, n].sort((a, b) => a - b);
@@ -143,6 +172,83 @@ export default function TabBot() {
           <span>a</span>
           <input type="time" value={cfg.horario.hasta} onChange={(e) => setCfg({ ...cfg, horario: { ...cfg.horario, hasta: e.target.value } })} className="rounded-md border border-[#f9bbc4]/40 px-2 py-1" />
         </div>
+      </section>
+
+      <section className="space-y-3 rounded-xl border border-[#f9bbc4]/30 bg-white p-4">
+        <div className="flex items-start gap-2">
+          <CalendarOff className="mt-0.5 h-4 w-4 shrink-0 text-[#d4a7ca]" />
+          <div>
+            <div className="font-medium text-[#4a3540]">Cierres y vacaciones</div>
+            <div className="text-xs text-[#8b5a6b]">
+              Días en que el estudio está cerrado (el último día cuenta como cerrado). El bot lo avisa en las respuestas con {'{cierre}'} y, esos días, no promete que
+              recepción responde. Acordate de bloquear también los días en Mery Booking.
+            </div>
+          </div>
+        </div>
+        {cierres.length === 0 && <div className="text-sm text-[#8b5a6b]">No hay cierres cargados.</div>}
+        {cierres.map((c, i) => (
+          <div key={i} data-testid="cierre" className="grid gap-2 rounded-lg border border-[#f9bbc4]/30 p-3 sm:grid-cols-[1fr_1fr_1.4fr_auto] sm:items-end">
+            <div className="grid gap-1.5">
+              <Label>Desde</Label>
+              <DatePicker key={`d-${i}-${c.desde}`} date={aFecha(c.desde)} onDateChange={(f) => cambiarCierre(i, { desde: aIso(f) })} placeholder="Primer día cerrado" />
+            </div>
+            <div className="grid gap-1.5">
+              <Label>Hasta (inclusive)</Label>
+              <DatePicker key={`h-${i}-${c.hasta}`} date={aFecha(c.hasta)} onDateChange={(f) => cambiarCierre(i, { hasta: aIso(f) })} placeholder="Último día cerrado" />
+            </div>
+            <div className="grid gap-1.5">
+              <Label htmlFor={`motivo-${i}`}>Motivo</Label>
+              <Input id={`motivo-${i}`} value={c.motivo} maxLength={60} placeholder="por vacaciones" onChange={(e) => cambiarCierre(i, { motivo: e.target.value })} />
+            </div>
+            <Button type="button" variant="outline" onClick={() => quitarCierre(i)} className="text-rose-600" aria-label="Quitar cierre">
+              <Trash2 className="h-4 w-4" />
+            </Button>
+          </div>
+        ))}
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <Button type="button" variant="outline" onClick={agregarCierre}>
+            <Plus className="mr-2 h-4 w-4" /> Agregar cierre
+          </Button>
+          <label className="flex items-center gap-2 text-sm text-[#6b4c57]">
+            Avisar desde
+            <Input
+              type="number"
+              min={0}
+              max={180}
+              value={cfg.diasAvisoCierre ?? 60}
+              onChange={(e) => setCfg({ ...cfg, diasAvisoCierre: Number(e.target.value) })}
+              className="w-20"
+              aria-label="Días de aviso antes del cierre"
+            />
+            días antes
+          </label>
+        </div>
+      </section>
+
+      <section className="space-y-3 rounded-xl border border-[#f9bbc4]/30 bg-white p-4">
+        <div className="flex items-start gap-2">
+          <ShieldCheck className="mt-0.5 h-4 w-4 shrink-0 text-[#d4a7ca]" />
+          <div>
+            <div className="font-medium text-[#4a3540]">Mensajes fuera de tema</div>
+            <div className="text-xs text-[#8b5a6b]">
+              El bot sólo responde sobre el estudio. Si escriben otra cosa o intentan manipularlo («ignorá tus instrucciones», «actuá como…»), contesta el mensaje
+              de fuera de tema, nunca pasa la charla a recepción y, si insisten, deja de contestar hasta que escriban algo del estudio.
+            </div>
+          </div>
+        </div>
+        <label className="flex items-center gap-2 text-sm text-[#6b4c57]">
+          Contestar hasta
+          <Input
+            type="number"
+            min={1}
+            max={10}
+            value={cfg.limiteFueraDeTema ?? 2}
+            onChange={(e) => setCfg({ ...cfg, limiteFueraDeTema: Number(e.target.value) })}
+            className="w-20"
+            aria-label="Veces seguidas que contesta fuera de tema"
+          />
+          veces seguidas
+        </label>
       </section>
 
       <section className="space-y-3 rounded-xl border border-[#f9bbc4]/30 bg-white p-4">

@@ -102,6 +102,17 @@ export interface MensajesBot {
   despedida: string;
   botApagado: string;
   sinDerivacion: string;
+  /** Algo que no tiene nada que ver con el estudio, o un intento de manipular al bot. */
+  fueraDeTema: string;
+  /** Durante un cierre, va después del aviso al pasar una charla a recepción. */
+  cierreDerivacion: string;
+}
+
+/** Un cierre del estudio (vacaciones). Fechas YYYY-MM-DD. */
+export interface CierreEstudio {
+  desde: string;
+  hasta: string;
+  motivo: string;
 }
 
 export interface ConfigWhatsapp {
@@ -112,6 +123,9 @@ export interface ConfigWhatsapp {
   mensajes: MensajesBot;
   menuOpcion1: string;
   menuOpcion2: string;
+  cierres: CierreEstudio[];
+  diasAvisoCierre: number;
+  limiteFueraDeTema: number;
   clasificadorConfigurado: boolean;
 }
 

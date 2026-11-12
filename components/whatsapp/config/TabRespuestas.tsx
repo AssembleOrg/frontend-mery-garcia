@@ -197,7 +197,11 @@ export default function TabRespuestas() {
                 <p className="text-xs leading-relaxed text-[#8b5a6b]">
                   Datos en vivo (se completan solos al responder, nunca hace falta escribir precios): <code>{'{formaciones}'}</code> lista de cursos con precio ·{' '}
                   <code>{'{formacion:nanoblading}'}</code> un curso (el nombre de su link en merygarcia.com.ar) · <code>{'{servicios:laminado|tinte de}'}</code> servicios de la web de turnos cuyo nombre contiene esas palabras ·{' '}
-                  <code>{'{horario}'}</code> horario de atención · <code>{'{nombre}'}</code> nombre de la clienta. Si una fuente no responde, va el link de la web en lugar del precio.
+                  <code>{'{horario}'}</code> horario de atención · <code>{'{nombre}'}</code> nombre de la clienta ·{' '}
+                  <code>{'{agenda:modelado de cejas}'}</code> próximos días de cada profesional que hace ese servicio (de Mery Booking) ·{' '}
+                  <code>{'{dias:lip blush [consulta obligatoria] sin}'}</code> días y horas de la semana en que se da ese servicio ·{' '}
+                  <code>{'{cierre}'}</code> aviso de vacaciones o cierre (sólo aparece cerca de las fechas cargadas en la pestaña Bot). Si una fuente no
+                  responde, va el link de la web en lugar del dato.
                 </p>
               </div>
               <div className="flex flex-wrap gap-6">
